@@ -1,0 +1,157 @@
+#ifdef USE_VFP_RUNTIME
+#   define DEF_GENERIC_OR_VFP_RUNTIME(func) DEF_VFP_RUNTIME(func)
+#   define DEF_LLVM_OR_VFP_RUNTIME(func) DEF_VFP_RUNTIME(func)
+#else
+#   undef DEF_VFP_RUNTIME
+#   define DEF_VFP_RUNTIME(func)
+#   define DEF_GENERIC_OR_VFP_RUNTIME(func) DEF_GENERIC_RUNTIME(func)
+#   define DEF_LLVM_OR_VFP_RUNTIME(func) DEF_LLVM_RUNTIME(func)
+#endif
+
+// Sorted
+DEF_LLVM_RUNTIME(__absvdi2)
+DEF_LLVM_RUNTIME(__absvsi2)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__adddf3)
+DEF_GENERIC_OR_VFP_RUNTIME(__addsf3)
+
+DEF_LLVM_RUNTIME(__addvdi3)
+DEF_LLVM_RUNTIME(__addvsi3)
+DEF_LLVM_RUNTIME(__ashldi3)
+#ifndef ANDROID // has one in bionic
+    DEF_LLVM_RUNTIME(__ashrdi3)
+#endif
+
+#ifdef USE_VFP_RUNTIME
+//    DEF_GENERIC_RUNTIME(__bswapdi2)
+//    DEF_GENERIC_RUNTIME(__bswapsi2)
+#endif
+
+DEF_LLVM_RUNTIME(__clzdi2)
+DEF_LLVM_RUNTIME(__clzsi2)
+DEF_LLVM_RUNTIME(__cmpdi2)
+DEF_LLVM_RUNTIME(__ctzdi2)
+DEF_LLVM_RUNTIME(__ctzsi2)
+
+#ifndef ANDROID // no complex extension
+    DEF_LLVM_RUNTIME(__divdc3)
+#endif
+
+DEF_GENERIC_OR_VFP_RUNTIME(__divdf3)
+
+DEF_LLVM_RUNTIME(__divdi3)
+
+#ifndef ANDROID // no complex extension
+    DEF_LLVM_RUNTIME(__divsc3)
+#endif
+
+DEF_GENERIC_OR_VFP_RUNTIME(__divsf3)
+
+DEF_LLVM_RUNTIME(__eprintf)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__eqdf2)
+DEF_GENERIC_OR_VFP_RUNTIME(__eqsf2)
+DEF_GENERIC_OR_VFP_RUNTIME(__extendsfdf2)
+
+DEF_LLVM_RUNTIME(__ffsdi2)
+DEF_LLVM_RUNTIME(__fixdfdi)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__fixdfsi)
+
+DEF_LLVM_RUNTIME(__fixsfdi)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__fixsfsi)
+
+DEF_LLVM_RUNTIME(__fixunsdfdi)
+DEF_LLVM_OR_VFP_RUNTIME(__fixunsdfsi)
+DEF_LLVM_RUNTIME(__fixunssfdi)
+
+DEF_LLVM_OR_VFP_RUNTIME(__fixunssfsi)
+
+DEF_LLVM_RUNTIME(__floatdidf)
+DEF_LLVM_RUNTIME(__floatdisf)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__floatsidf)
+DEF_GENERIC_OR_VFP_RUNTIME(__floatsisf)
+
+DEF_LLVM_RUNTIME(__floatundidf)
+DEF_LLVM_RUNTIME(__floatundisf)
+
+DEF_GENERIC_RUNTIME(__floatunsidf)
+DEF_GENERIC_RUNTIME(__floatunsisf)
+
+DEF_VFP_RUNTIME(__floatunssidf)
+DEF_VFP_RUNTIME(__floatunssisf)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__gedf2)
+DEF_GENERIC_OR_VFP_RUNTIME(__gesf2)
+DEF_VFP_RUNTIME(__gtdf2)
+DEF_VFP_RUNTIME(__gtsf2)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__ledf2)
+DEF_GENERIC_OR_VFP_RUNTIME(__lesf2)
+
+DEF_LLVM_RUNTIME(__lshrdi3)
+
+DEF_VFP_RUNTIME(__ltdf2)
+DEF_VFP_RUNTIME(__ltsf2)
+
+DEF_LLVM_RUNTIME(__moddi3)
+
+#ifndef ANDROID // no complex extension
+    DEF_LLVM_RUNTIME(__muldc3)
+#endif
+
+DEF_GENERIC_OR_VFP_RUNTIME(__muldf3)
+DEF_LLVM_RUNTIME(__muldi3)
+DEF_LLVM_RUNTIME(__muldsi3)
+                              
+#ifndef ANDROID // no complex extension
+    DEF_LLVM_RUNTIME(__mulsc3)
+#endif
+
+DEF_GENERIC_OR_VFP_RUNTIME(__mulsf3)
+
+DEF_LLVM_RUNTIME(__mulvdi3)
+DEF_LLVM_RUNTIME(__mulvsi3)
+
+DEF_VFP_RUNTIME(__nedf2)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__negdf2)
+
+DEF_LLVM_RUNTIME(__negdi2)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__negsf2)
+
+DEF_LLVM_RUNTIME(__negvdi2)
+DEF_LLVM_RUNTIME(__negvsi2)
+
+DEF_VFP_RUNTIME(__nesf2)
+
+DEF_LLVM_RUNTIME(__paritydi2)
+DEF_LLVM_RUNTIME(__paritysi2)
+DEF_LLVM_RUNTIME(__popcountdi2)
+DEF_LLVM_RUNTIME(__popcountsi2)
+DEF_LLVM_RUNTIME(__powidf2)
+DEF_LLVM_RUNTIME(__powisf2)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__subdf3)
+DEF_GENERIC_OR_VFP_RUNTIME(__subsf3)
+
+DEF_LLVM_RUNTIME(__subvdi3)
+DEF_LLVM_RUNTIME(__subvsi3)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__truncdfsf2)
+
+DEF_LLVM_RUNTIME(__ucmpdi2)
+DEF_LLVM_RUNTIME(__udivdi3)
+DEF_LLVM_RUNTIME(__udivmoddi4)
+DEF_LLVM_RUNTIME(__umoddi3)
+
+DEF_GENERIC_OR_VFP_RUNTIME(__unorddf2)
+DEF_GENERIC_OR_VFP_RUNTIME(__unordsf2)
+
+
+#undef DEF_GENERIC_RUNTIME
+#undef DEF_LLVM_RUNTIME
+#undef DEF_VFP_RUNTIME
