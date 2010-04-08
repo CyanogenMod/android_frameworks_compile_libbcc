@@ -21,7 +21,7 @@ DEFINE_COMPILERRT_FUNCTION(__lesf2vfp)
 	fmsr	s15, r1     // move from GPR 1 to float register
 	fcmps	s14, s15
 	fmstat
-	movls	r0, #1      // set result register to 1 if equal
-	movhi	r0, #0
+	movls	r0, #0      // set result register to 1 if equal
+	movhi	r0, #1
 	bx	lr
 
