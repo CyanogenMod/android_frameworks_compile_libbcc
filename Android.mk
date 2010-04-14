@@ -1,3 +1,6 @@
+# Only use this on the device or emulator.
+ifneq ($(TARGET_SIMULATOR),true)
+
 LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm/llvm
 
@@ -110,3 +113,5 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 # ========================================================
 
 include $(call all-makefiles-under,$(LOCAL_PATH))
+
+endif
