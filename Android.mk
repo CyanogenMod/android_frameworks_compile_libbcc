@@ -1,5 +1,6 @@
 # Only use this on the device or emulator.
 ifneq ($(TARGET_SIMULATOR),true)
+ifneq ($(TARGET_PRODUCT),sdk)
 
 LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm/llvm
@@ -114,4 +115,5 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))
 
-endif
+endif # TARGET_PRODUCT != sdk
+endif # TARGET_SIMULATOR != true
