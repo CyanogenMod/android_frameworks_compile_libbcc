@@ -1558,19 +1558,6 @@ class Compiler {
         case llvm::Value::FunctionVal:
           {
             llvm::Function* F = (llvm::Function*) V;
-            void* FnStub = GetLazyFunctionStubIfAvailable(F);
-
-            if(FnStub)
-              /*
-               * Return the function stub if it's already created.
-               * We do this first so that:
-               *   we're returning the same address for the function
-               *   as any previous call.
-               *
-               *  TODO: Yes, this is wrong. The lazy stub isn't guaranteed
-               *  to be close enough to call.
-               */
-              return FnStub;
 
             /*
              * If we know the target can handle arbitrary-distance calls, try to
@@ -1580,6 +1567,19 @@ class Compiler {
               /* If we have code, go ahead and return that. */
               if(void* ResultPtr = GetPointerToGlobalIfAvailable(F))
                 return ResultPtr;
+
+              void* FnStub = GetLazyFunctionStubIfAvailable(F);
+              if(FnStub)
+                /*
+                 * Return the function stub if it's already created.
+                 * We do this first so that:
+                 *   we're returning the same address for the function
+                 *   as any previous call.
+                 *
+                 *  TODO: Yes, this is wrong. The lazy stub isn't guaranteed
+                 *  to be close enough to call.
+                 */
+                return FnStub;
 
               /*
                * x86_64 architecture may encounter the bug
