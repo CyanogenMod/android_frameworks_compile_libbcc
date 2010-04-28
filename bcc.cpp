@@ -268,6 +268,10 @@ class Compiler {
     /* Set Triple, CPU and Features here */
     Triple = TARGET_TRIPLE_STRING;
 
+    Features.push_back("+neon");
+    Features.push_back("+vmlx");
+    Features.push_back("+neonfp");
+
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
     LLVMInitializeARMTargetInfo();
     LLVMInitializeARMTarget();
@@ -305,7 +309,7 @@ class Compiler {
      *  llvm::FloatABIType = llvm::FloatABI::Soft;
      *  llvm::UseSoftFloat = true;
      */
-    llvm::FloatABIType = llvm::FloatABI::Hard;
+    llvm::FloatABIType = llvm::FloatABI::Soft;
     llvm::UseSoftFloat = false;
 
     /*
@@ -351,6 +355,7 @@ class Compiler {
   }
 
   static const llvm::StringRef PragmaMetadataName;
+  static const llvm::StringRef ExportVarMetadataName;
 
  private:
   std::string mError;
@@ -369,6 +374,9 @@ class Compiler {
 
   typedef std::list< std::pair<std::string, std::string> > PragmaList;
   PragmaList mPragmas;
+
+  typedef std::list<void*> ExportVarList;
+  ExportVarList mExportVars;
 
   /* Memory manager for the code reside in memory */
   /*
@@ -418,8 +426,8 @@ class Compiler {
      *
      */
 
-    intptr_t mCurFuncMemIdx;
-    intptr_t mCurGSGMemIdx;
+    uintptr_t mCurFuncMemIdx;
+    uintptr_t mCurGSGMemIdx;
     llvm::sys::MemoryBlock* mpCodeMem;
 
     /* GOT Base */
@@ -430,7 +438,7 @@ class Compiler {
                      > FunctionMapTy;
     FunctionMapTy mFunctionMap;
 
-    inline intptr_t getFreeMemSize() const {
+    inline uintptr_t getFreeMemSize() const {
       return mCurGSGMemIdx - mCurFuncMemIdx;
     }
     inline uint8_t* getCodeMemBase() const {
@@ -462,7 +470,7 @@ class Compiler {
       llvm::sys::MemoryBlock B = llvm::sys::Memory::
           AllocateRWX(MaxCodeSize, NULL, &ErrMsg);
       if(B.base() == 0)
-        llvm::llvm_report_error(
+        llvm::report_fatal_error(
             "Failed to allocate Memory for code emitter\n" + ErrMsg
                                 );
       mpCodeMem = new llvm::sys::MemoryBlock(B.base(), B.size());
@@ -732,7 +740,7 @@ class Compiler {
      */
     std::vector<uintptr_t> mMBBLocations;
 
-    /* ConstantPool - The constant pool for the current function. */
+    /* mpConstantPool - The constant pool for the current function. */
     llvm::MachineConstantPool* mpConstantPool;
 
     /* ConstantPoolBase - A pointer to the first entry in the constant pool. */
@@ -741,10 +749,10 @@ class Compiler {
     /* ConstPoolAddresses - Addresses of individual constant pool entries. */
     llvm::SmallVector<uintptr_t, 8> mConstPoolAddresses;
 
-    /* JumpTable - The jump tables for the current function. */
+    /* mpJumpTable - The jump tables for the current function. */
     llvm::MachineJumpTableInfo *mpJumpTable;
 
-    /* JumpTableBase - A pointer to the first entry in the jump table. */
+    /* mpJumpTableBase - A pointer to the first entry in the jump table. */
     void *mpJumpTableBase;
 
     /*
@@ -753,13 +761,13 @@ class Compiler {
      */
     uint8_t *mpSavedBufferBegin, *mpSavedBufferEnd, *mpSavedCurBufferPtr;
 
-    /* Relocations - These are the relocations that the function needs,
+    /* mRelocations - These are the relocations that the function needs,
        as emitted. */
     std::vector<llvm::MachineRelocation> mRelocations;
 
-    /* LabelLocations - This vector is a mapping from Label ID's to their
+    /* mLabelLocations - This vector is a mapping from Label ID's to their
        address. */
-    std::vector<uintptr_t> mLabelLocations;
+    llvm::DenseMap<llvm::MCSymbol*, uintptr_t> mLabelLocations;
 
     class EmittedFunctionCode {
      public:
@@ -775,7 +783,7 @@ class Compiler {
                      > EmittedFunctionsMapTy;
     EmittedFunctionsMapTy mEmittedFunctions;
 
-    /* MMI - Machine module info for exception informations */
+    /* mpMMI - Machine module info for exception informations */
     llvm::MachineModuleInfo* mpMMI;
 
     GlobalAddressMapTy mGlobalAddressMap;
@@ -827,8 +835,8 @@ class Compiler {
      *  global value if it is has already been codegen'd,
      *  otherwise it returns null.
      */
-    void* GetPointerToGlobalIfAvailable(const llvm::GlobalValue* GV) const {
-      GlobalAddressMapTy::const_iterator I = mGlobalAddressMap.find(GV);
+    void* GetPointerToGlobalIfAvailable(const llvm::GlobalValue* GV) {
+      GlobalAddressMapTy::iterator I = mGlobalAddressMap.find(GV);
       return ((I != mGlobalAddressMap.end()) ? I->second : NULL);
     }
 
@@ -1223,7 +1231,7 @@ class Compiler {
         std::string msg;
         llvm::raw_string_ostream Msg(msg);
         Msg << "ConstantExpr not handled: " << *CE;
-        llvm::llvm_report_error(Msg.str());
+        llvm::report_fatal_error(Msg.str());
       } /* C->getValueID() == llvm::Value::ConstantExprVal */
 
       switch (C->getType()->getTypeID()) {
@@ -1292,7 +1300,7 @@ class Compiler {
           std::string msg;
           llvm::raw_string_ostream Msg(msg);
           Msg << "ERROR: Constant unimplemented for type: " << *C->getType();
-          llvm::llvm_report_error(Msg.str());
+          llvm::report_fatal_error(Msg.str());
           break;
       }
 
@@ -1488,7 +1496,7 @@ class Compiler {
         mConstPoolAddresses.push_back(CAddr);
 
         if(CPE.isMachineConstantPoolEntry())
-          llvm::llvm_report_error
+          llvm::report_fatal_error
               ("Initialize memory with machine specific constant pool"
                " entry has not been implemented!");
 
@@ -1672,14 +1680,14 @@ class Compiler {
       return GetLazyFunctionStub(F);
     }
 
-    typedef llvm::DenseMap<llvm::Function*, void*> FunctionToLazyStubMapTy;
+    typedef llvm::DenseMap<const llvm::Function*, void*> FunctionToLazyStubMapTy;
     FunctionToLazyStubMapTy mFunctionToLazyStubMap;
 
     void* GetLazyFunctionStubIfAvailable(llvm::Function* F) {
       return mFunctionToLazyStubMap.lookup(F);
     }
 
-    std::set<llvm::Function*> PendingFunctions;
+    std::set<const llvm::Function*> PendingFunctions;
     void* GetLazyFunctionStub(llvm::Function* F) {
       /* If we already have a lazy stub for this function, recycle it. */
       void*& Stub = mFunctionToLazyStubMap[F];
@@ -1741,7 +1749,7 @@ class Compiler {
        */
       if(Addr == NULL)
         if(AbortOnFailure)
-          llvm::llvm_report_error
+          llvm::report_fatal_error
               ("Could not resolve external function address: " + F->getName()
                );
         else
@@ -1762,7 +1770,7 @@ class Compiler {
           return Addr;
 
       if(AbortOnFailure)
-        llvm::llvm_report_error("Program used external symbol '" + Name +
+        llvm::report_fatal_error("Program used external symbol '" + Name +
                                 "' which could not be resolved!");
 
       return NULL;
@@ -1814,7 +1822,7 @@ class Compiler {
          * But I tend not to .
          * (should we disable this in the front-end (i.e. slang)?).
          */
-        llvm::llvm_report_error
+        llvm::report_fatal_error
             ("Compilation of Thread Local Storage (TLS) is disabled!");
 
       } else if(mpTJI->allocateSeparateGVMemory()) {
@@ -1847,7 +1855,8 @@ class Compiler {
       void* GA = GetPointerToGlobalIfAvailable(GV);
 
       if(GV->isThreadLocal())
-        llvm::llvm_report_error("We don't support Thread Local Storage (TLS)!");
+        llvm::report_fatal_error
+            ("We don't support Thread Local Storage (TLS)!");
 
       if(GA == NULL) {
         /* If it's not already specified, allocate memory for the global. */
@@ -1975,11 +1984,11 @@ class Compiler {
       return;
     }
 
-    inline global_addresses_const_iterator global_address_begin() const {
-      return mGlobalAddressMap.begin();
+    inline global_addresses_const_iterator global_address_begin() const { 
+      return mGlobalAddressMap.begin(); 
     }
-    inline global_addresses_const_iterator global_address_end() const {
-      return mGlobalAddressMap.end();
+    inline global_addresses_const_iterator global_address_end() const { 
+      return mGlobalAddressMap.end(); 
     }
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid* pContext) {
@@ -2140,7 +2149,7 @@ class Compiler {
       mpCurEmitFunction->Size = CurBufferPtr - BufferBegin;
       BufferBegin = CurBufferPtr = 0;
 
-      if(F.getFunction()->hasName())
+      if(F.getFunction()->hasName()) 
         mEmittedFunctions[F.getFunction()->getNameStr()] = mpCurEmitFunction;
       mpCurEmitFunction = NULL;
 
@@ -2155,6 +2164,8 @@ class Compiler {
 
       if(mpMMI)
         mpMMI->EndFunction();
+
+      updateFunctionStub(F.getFunction());
 
       return false;
     }
@@ -2207,10 +2218,8 @@ class Compiler {
     }
 
     /* emitLabel - Emits a label */
-    void emitLabel(uint64_t LabelID) {
-      if(mLabelLocations.size() <= LabelID)
-        mLabelLocations.resize((LabelID + 1) * 2);
-      mLabelLocations[LabelID] = getCurrentPCValue();
+    void emitLabel(llvm::MCSymbol *Label) {
+      mLabelLocations[Label] = getCurrentPCValue();
       return;
     }
 
@@ -2292,10 +2301,9 @@ class Compiler {
      * getLabelAddress - Return the address of the specified LabelID,
      *  only usable after the LabelID has been emitted.
      */
-    uintptr_t getLabelAddress(uint64_t LabelID) const {
-      assert(mLabelLocations.size() > (unsigned) LabelID &&
-             mLabelLocations[LabelID] && "Label not emitted!");
-      return mLabelLocations[LabelID];
+    uintptr_t getLabelAddress(llvm::MCSymbol* Label) const {
+      assert(mLabelLocations.count(Label) && "Label not emitted!");
+      return mLabelLocations.find(Label)->second;
     }
 
     /*
@@ -2308,12 +2316,12 @@ class Compiler {
       return;
     }
 
-    void updateFunctionStub(llvm::Function* F) {
+    void updateFunctionStub(const llvm::Function* F) {
       /* Get the empty stub we generated earlier. */
       void* Stub;
-      std::set<llvm::Function*>::iterator I = PendingFunctions.find(F);
+      std::set<const llvm::Function*>::iterator I = PendingFunctions.find(F);
       if(I != PendingFunctions.end())
-        Stub = *I;
+        Stub = mFunctionToLazyStubMap[F];
       else
         return;
 
@@ -2351,7 +2359,7 @@ class Compiler {
     void releaseUnnecessary() {
       mMBBLocations.clear();
       mLabelLocations.clear();
-      //sliao mGlobalAddressMap.clear();
+      mGlobalAddressMap.clear();
       mFunctionToLazyStubMap.clear();
       GlobalToIndirectSymMap.clear();
       ExternalFnToStubMap.clear();
@@ -2389,38 +2397,6 @@ class Compiler {
         return I->second->Code;
     }
 
-    void getVarNames(llvm::Module *M,
-                     BCCsizei* actualVarCount,
-                     BCCsizei maxVarCount,
-                     void** vars) {
-      int cnt = 0;
-      for (llvm::Module::const_global_iterator c = M->global_begin(),
-             e = M->global_end(); c != e; ++c) {
-        llvm::GlobalVariable *g = (const_cast<llvm::GlobalVariable*> (&(*c)));
-        if (!g->hasInternalLinkage()) {
-          cnt++;
-        }
-      }
-
-      if (actualVarCount)
-        *actualVarCount = cnt;
-      if (cnt > maxVarCount)
-        cnt = maxVarCount;
-      if (!vars)
-        return;
-
-      for (llvm::Module::const_global_iterator c = M->global_begin(),
-               e = M->global_end();
-           c != e && cnt > 0;
-           ++c, --cnt) {
-        llvm::GlobalVariable *g = (const_cast<llvm::GlobalVariable*> (&(*c)));
-        if (!g->hasInternalLinkage()) {
-          // A member function in CodeEmitter
-          *vars++ = (void*) GetPointerToGlobalIfAvailable(g);
-        }
-      }
-    }
-
     void getFunctionNames(BCCsizei* actualFunctionCount,
                           BCCsizei maxFunctionCount,
                           BCCchar** functions) {
@@ -2431,7 +2407,7 @@ class Compiler {
       if(functionCount > maxFunctionCount)
         functionCount = maxFunctionCount;
       if(functions)
-        for(EmittedFunctionsMapTy::const_iterator it =
+        for(EmittedFunctionsMapTy::const_iterator it = 
               mEmittedFunctions.begin();
             functionCount > 0;
             functionCount--, it++)
@@ -2441,10 +2417,10 @@ class Compiler {
     }
 
     void getFunctionBinary(BCCchar* label,
-                           BCCvoid** base,
+                           BCCvoid** base, 
                            BCCsizei* length) {
       EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(label);
-      if(I == mEmittedFunctions.end()) {
+      if(I == mEmittedFunctions.end()) { 
         *base = NULL;
         *length = 0;
       } else {
@@ -2477,12 +2453,9 @@ class Compiler {
   bool mTypeInformationPrepared;
   std::vector<const llvm::Type*> mTypes;
 
-  typedef llvm::StringMap<void*> GlobalVarAddresseTy;
-  GlobalVarAddresseTy mGlobalVarAddresses;
-
  public:
   Compiler() : mpSymbolLookupFn(NULL), mpSymbolLookupContext(NULL), mModule(NULL) {
-    llvm::llvm_install_error_handler(LLVMErrorHandler, &mError);
+    llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
     return;
   }
 
@@ -2502,8 +2475,10 @@ class Compiler {
     GlobalInitialization();
 
     /* Package input to object MemoryBuffer */
-    SB = llvm::MemoryBuffer::getMemBuffer(bitcode, bitcode + bitcodeSize);
+    SB = llvm::MemoryBuffer::getMemBuffer(
+            llvm::StringRef(bitcode, bitcodeSize));
     if(SB == NULL) {
+        //printf("ccc\n");
       setError("Error reading input Bitcode into memory");
       goto on_bcc_load_module_error;
     }
@@ -2527,7 +2502,9 @@ on_bcc_load_module_error:
     std::string FeaturesStr;
 
     llvm::FunctionPassManager* CodeGenPasses = NULL;
+
     const llvm::NamedMDNode* PragmaMetadata;
+    const llvm::NamedMDNode* ExportVarMetadata;
 
     if(mModule == NULL) /* No module was loaded */
       return 0;
@@ -2596,30 +2573,44 @@ on_bcc_load_module_error:
     CodeGenPasses->doInitialization();
     for(llvm::Module::iterator I = mModule->begin();
         I != mModule->end();
-        I++)
-      if(!I->isDeclaration())
+        I++) 
+      if(!I->isDeclaration()) 
         CodeGenPasses->run(*I);
 
     CodeGenPasses->doFinalization();
 
     /* Copy the global address mapping from code emitter and remapping */
-    for(CodeEmitter::global_addresses_const_iterator I =
-          mCodeEmitter->global_address_begin();
-        I != mCodeEmitter->global_address_end();
-        I++)
-    {
-      if(I->first->getValueID() != llvm::Value::GlobalVariableVal)
-        continue;
-      llvm::StringRef GlobalVarName = I->first->getName();
-      GlobalVarAddresseTy::value_type* V =
-          GlobalVarAddresseTy::value_type::Create(
-              GlobalVarName.begin(),
-              GlobalVarName.end(),
-              mGlobalVarAddresses.getAllocator(),
-              I->second
-          );
-      bool ret = mGlobalVarAddresses.insert(V);
-      assert(ret && "The global variable name should be unique over the module");
+    ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
+    if(ExportVarMetadata) {
+      for(int i=0;i<ExportVarMetadata->getNumOperands();i++) {
+        llvm::MDNode* ExportVar = ExportVarMetadata->getOperand(i);
+        if(ExportVar != NULL && ExportVar->getNumOperands() > 1) {
+          llvm::Value* ExportVarNameMDS = ExportVar->getOperand(0);
+          if(ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
+            llvm::StringRef ExportVarName =
+                static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
+            CodeEmitter::global_addresses_const_iterator I;
+            for(I = mCodeEmitter->global_address_begin();
+                I != mCodeEmitter->global_address_end();
+                I++)
+            {
+              if(I->first->getValueID() != llvm::Value::GlobalVariableVal)
+                continue;
+              if(ExportVarName == I->first->getName()) {
+                mExportVars.push_back(I->second);
+                break;
+              }
+            }
+            if(I != mCodeEmitter->global_address_end())
+              continue; // found
+          }
+        }
+        // if here, the global variable record in metadata is not 
+        // found, make an empty slot
+        mExportVars.push_back(NULL);
+      }
+      assert((mExportVars.size() == ExportVarMetadata->getNumOperands()) &&
+              "Number of slots doesn't match the number of export variables!");
     }
 
     /*
@@ -2678,20 +2669,31 @@ on_bcc_load_module_error:
   /* interface for bccGetScriptLabel() */
   void* lookup(const char* name) {
     void* addr = NULL;
-    if(mCodeEmitter.get()) {
+    if(mCodeEmitter.get()) 
       /* Find function pointer */
       addr = mCodeEmitter->lookup(name);
-      if(addr == NULL) {
-        /*
-         * No function labeled with given name.
-         * Try searching the global variables.
-         */
-        GlobalVarAddresseTy::const_iterator I = mGlobalVarAddresses.find(name);
-        if(I != mGlobalVarAddresses.end())
-          addr = I->getValue();
-      }
-    }
     return addr;
+  }
+
+  /* Interface for bccGetExportVars() */
+  void getExportVars(BCCsizei* actualVarCount,
+                     BCCsizei maxVarCount,
+                     BCCvoid** vars) {
+    int varCount = mExportVars.size();
+
+    if(actualVarCount)
+      *actualVarCount = varCount;
+    if(varCount > maxVarCount)
+      varCount = maxVarCount;
+    if(vars)
+      for(ExportVarList::const_iterator it = mExportVars.begin();
+          it != mExportVars.end();
+          it++)
+      {
+        *vars++ = *it;
+      }
+
+    return;
   }
 
   /* Interface for bccGetPragmas() */
@@ -2716,28 +2718,13 @@ on_bcc_load_module_error:
     return;
   }
 
-  /* Interface for bccGetVars() */
-  void getVars(BCCsizei* actualVarCount,
-               BCCsizei maxVarCount,
-               void** vars) {
-    if(mCodeEmitter.get())
-      mCodeEmitter->getVarNames(mModule,
-                                actualVarCount,
-                                maxVarCount,
-                                vars);
-    else
-      *actualVarCount = 0;
-
-    return;
-  }
-
   /* Interface for bccGetFunctions() */
   void getFunctions(BCCsizei* actualFunctionCount,
                  BCCsizei maxFunctionCount,
                  BCCchar** functions) {
     if(mCodeEmitter.get())
-      mCodeEmitter->getFunctionNames(actualFunctionCount,
-                                     maxFunctionCount,
+      mCodeEmitter->getFunctionNames(actualFunctionCount, 
+                                     maxFunctionCount, 
                                      functions);
     else
       *actualFunctionCount = 0;
@@ -2747,7 +2734,7 @@ on_bcc_load_module_error:
 
   /* Interface for bccGetFunctionBinary() */
   void getFunctionBinary(BCCchar* function,
-                         BCCvoid** base,
+                         BCCvoid** base, 
                          BCCsizei* length) {
     if(mCodeEmitter.get()) {
       mCodeEmitter->getFunctionBinary(function, base, length);
@@ -2790,6 +2777,12 @@ std::vector<std::string> Compiler::Features;
  */
 const llvm::StringRef Compiler::PragmaMetadataName = "#pragma";
 
+/*
+ * The named of metadata node that export variable name resides
+ * (should be synced with slang.cpp)
+ */
+const llvm::StringRef Compiler::ExportVarMetadataName = "#rs_export_var";
+
 struct BCCscript {
   /*
    * Part I. Compiler
@@ -2829,13 +2822,13 @@ struct BCCscript {
 
 
 extern "C"
-BCCscript* bccCreateScript()
+BCCscript* bccCreateScript() 
 {
   return new BCCscript();
 }
 
 extern "C"
-BCCenum bccGetError( BCCscript* script )
+BCCenum bccGetError( BCCscript* script ) 
 {
   return script->getError();
 }
@@ -2846,9 +2839,9 @@ void bccDeleteScript(BCCscript* script) {
 }
 
 extern "C"
-void bccRegisterSymbolCallback(BCCscript* script,
+void bccRegisterSymbolCallback(BCCscript* script, 
                                BCCSymbolLookupFn pFn,
-                               BCCvoid* pContext)
+                               BCCvoid* pContext) 
 {
   script->registerSymbolCallback(pFn, pContext);
 }
@@ -2856,16 +2849,16 @@ void bccRegisterSymbolCallback(BCCscript* script,
 extern "C"
 void bccScriptBitcode(BCCscript* script,
                       const BCCchar* bitcode,
-                      BCCint size)
+                      BCCint size) 
 {
   script->compiler.loadModule(bitcode, size);
 }
 
 extern "C"
-void bccCompileScript(BCCscript* script)
+void bccCompileScript(BCCscript* script) 
 {
   int result = script->compiler.compile();
-  if (result)
+  if (result) 
     script->setError(BCC_INVALID_OPERATION);
 }
 
@@ -2873,11 +2866,11 @@ extern "C"
 void bccGetScriptInfoLog(BCCscript* script,
                          BCCsizei maxLength,
                          BCCsizei* length,
-                         BCCchar* infoLog)
+                         BCCchar* infoLog) 
 {
   char* message = script->compiler.getErrorMessage();
   int messageLength = strlen(message) + 1;
-  if (length)
+  if (length) 
     *length = messageLength;
 
   if (infoLog && maxLength > 0) {
@@ -2888,53 +2881,51 @@ void bccGetScriptInfoLog(BCCscript* script,
 }
 
 extern "C"
-void bccGetScriptLabel(BCCscript* script,
+void bccGetScriptLabel(BCCscript* script, 
                        const BCCchar * name,
-                       BCCvoid ** address)
+                       BCCvoid ** address) 
 {
   void* value = script->compiler.lookup(name);
-  if (value)
+  if (value) 
     *address = value;
-  else
+  else 
     script->setError(BCC_INVALID_VALUE);
 }
 
 extern "C"
-void bccGetPragmas(BCCscript* script,
+void bccGetExportVars(BCCscript* script,
+                      BCCsizei* actualVarCount,
+                      BCCsizei maxVarCount,
+                      BCCvoid** vars)
+{
+  script->compiler.getExportVars(actualVarCount, maxVarCount, vars);
+}
+
+extern "C"
+void bccGetPragmas(BCCscript* script, 
                    BCCsizei* actualStringCount,
-                   BCCsizei maxStringCount,
+                   BCCsizei maxStringCount, 
                    BCCchar** strings)
 {
   script->compiler.getPragmas(actualStringCount, maxStringCount, strings);
 }
 
 extern "C"
-void bccGetVars(BCCscript* script,
-                BCCsizei* actualVarCount,
-                BCCsizei maxVarCount,
-                void** vars)
-{
-  script->compiler.getVars(actualVarCount,
-                           maxVarCount,
-                           vars);
-}
-
-extern "C"
-void bccGetFunctions(BCCscript* script,
+void bccGetFunctions(BCCscript* script, 
                      BCCsizei* actualFunctionCount,
-                     BCCsizei maxFunctionCount,
+                     BCCsizei maxFunctionCount, 
                      BCCchar** functions)
-{
-  script->compiler.getFunctions(actualFunctionCount,
-                                maxFunctionCount,
+{ 
+  script->compiler.getFunctions(actualFunctionCount, 
+                                maxFunctionCount, 
                                 functions);
 }
 
 extern "C"
-void bccGetFunctionBinary(BCCscript* script,
+void bccGetFunctionBinary(BCCscript* script, 
                           BCCchar* function,
-                          BCCvoid** base,
-                          BCCsizei* length)
+                          BCCvoid** base, 
+                          BCCsizei* length) 
 {
   script->compiler.getFunctionBinary(function, base, length);
 }

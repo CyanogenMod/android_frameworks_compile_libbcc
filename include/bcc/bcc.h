@@ -51,7 +51,7 @@ void bccDeleteScript(BCCscript* script);
 
 typedef BCCvoid* (*BCCSymbolLookupFn)(BCCvoid* pContext, const BCCchar* name);
 
-void bccRegisterSymbolCallback(BCCscript* script,
+void bccRegisterSymbolCallback(BCCscript* script, 
                                BCCSymbolLookupFn pFn,
                                BCCvoid* pContext);
 
@@ -68,38 +68,38 @@ void bccGetScriptInfoLog(BCCscript* script,
                          BCCsizei* length,
                          BCCchar* infoLog);
 
-void bccGetScriptLabel(BCCscript* script,
+void bccGetScriptLabel(BCCscript* script, 
                        const BCCchar* name,
                        BCCvoid** address);
 
-void bccGetPragmas(BCCscript* script,
+void bccGetExportVars(BCCscript* script,
+                      BCCsizei* actualVarCount,
+                      BCCsizei maxVarCount,
+                      BCCvoid** vars);
+
+void bccGetPragmas(BCCscript* script, 
                    BCCsizei* actualStringCount,
-                   BCCsizei maxStringCount,
+                   BCCsizei maxStringCount, 
                    BCCchar** strings);
 
-void bccGetVars(BCCscript* script,
-                BCCsizei* actualVarCount,
-                BCCsizei maxVarCount,
-                void** vars);
-
-void bccGetFunctions(BCCscript* script,
+void bccGetFunctions(BCCscript* script, 
                      BCCsizei* actualFunctionCount,
-                     BCCsizei maxFunctionCount,
+                     BCCsizei maxFunctionCount, 
                      BCCchar** functions);
 
-void bccGetFunctionBinary(BCCscript* script,
+void bccGetFunctionBinary(BCCscript* script, 
                           BCCchar* function,
-                          BCCvoid** base,
+                          BCCvoid** base, 
                           BCCsizei* length);
 
 #if 0
 /* Type-reflection functions below */
 BCCuint bccGetNumTypes(BCCscript* script);
-BCCtype* bccGetTypeOfName(BCCscript* script,
-                          BCCtype* resultType,
+BCCtype* bccGetTypeOfName(BCCscript* script, 
+                          BCCtype* resultType, 
                           const BCCchar* name);
-BCCtype* bccGetTypeOfIdx(BCCscript* script,
-                         BCCtype* resultType,
+BCCtype* bccGetTypeOfIdx(BCCscript* script, 
+                         BCCtype* resultType, 
                          BCCuint i);
 
 /* APIs to BCCtype (all with prefix "bccType") */
@@ -116,7 +116,7 @@ const BCCchar* bccTypeGetStruct(const BCCtype* h);
 const BCCchar* bccTypeGetFieldNames(const BCCtype* h);
 
 BCCuint bccTypeGetNumFields(const BCCtype* h);
-const BCCtype* bccTypeGetFieldType(const BCCtype* type,
+const BCCtype* bccTypeGetFieldType(const BCCtype* type, 
                                    BCCtype* resultType,
                                    BCCuint i);
 BCCchar* bccTypeGetFieldName(const BCCtype* type, BCCuint i);

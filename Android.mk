@@ -1,6 +1,4 @@
-# Only use this on the device or emulator.
 ifneq ($(TARGET_SIMULATOR),true)
-ifneq ($(TARGET_PRODUCT),sdk)
 
 LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm/llvm
@@ -48,7 +46,7 @@ LOCAL_SRC_FILES :=	\
 	runtime/lib/arm/unorddf2vfp.S	\
 	runtime/lib/arm/unordsf2vfp.S	#\
 #	disassembler/arm-dis.c	\
-#	disassembler/dis-asm.c 
+#	disassembler/dis-asm.c
 
 LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMARMCodeGen	\
@@ -115,5 +113,4 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))
 
-endif # TARGET_PRODUCT != sdk
 endif # TARGET_SIMULATOR != true

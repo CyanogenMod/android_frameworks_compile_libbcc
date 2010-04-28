@@ -15,7 +15,7 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES :=	\
 	$(LOCAL_PATH)/../include
 
-LOCAL_MODULE_TAGS := tests
+#LOCAL_MODULE_TAGS := tests
 
 include $(BUILD_HOST_EXECUTABLE)
 
@@ -30,11 +30,11 @@ LOCAL_SRC_FILES:= \
     disassem.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-    libbcc libdl
+    libbcc
 
 LOCAL_C_INCLUDES :=	\
 	$(LOCAL_PATH)/../include
 
-LOCAL_MODULE_TAGS := tests
+#LOCAL_MODULE_TAGS := tests
 
 include $(BUILD_EXECUTABLE)

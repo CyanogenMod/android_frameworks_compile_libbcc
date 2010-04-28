@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-    void ListRuntimeFunction();
 void* FindRuntimeFunction(const char* Name);
+void VerifyRuntimesTable();
 
 #ifdef __cplusplus
 };

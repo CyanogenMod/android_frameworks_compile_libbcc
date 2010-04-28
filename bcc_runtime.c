@@ -59,6 +59,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 typedef struct {
   const char* mName; 
@@ -73,10 +74,11 @@ typedef struct {
   #define DEF_VFP_RUNTIME(func) \
     extern void* func ## vfp;
   #define DEF_LLVM_RUNTIME(func)
+  #define DEF_BCC_RUNTIME(func)
 #include "bcc_runtime.def"
 #endif
 
-static const RuntimeFunction Runtimes[] = {
+static const RuntimeFunction gRuntimes[] = {
 #if defined(__arm__)
   #define DEF_GENERIC_RUNTIME(func)   \
     { #func, (void*) &func },
@@ -90,6 +92,8 @@ static const RuntimeFunction Runtimes[] = {
 #endif
 #define DEF_LLVM_RUNTIME(func)   \
   { #func, (void*) &func },
+#define DEF_BCC_RUNTIME(func) \
+  { #func, &func ## _bcc },
 #include "bcc_runtime.def"
 };
 
@@ -103,12 +107,23 @@ void* FindRuntimeFunction(const char* Name) {
   const RuntimeFunction Key = { Name, NULL };
   const RuntimeFunction* R = 
       bsearch(&Key, 
-              Runtimes, 
-              sizeof(Runtimes) / sizeof(RuntimeFunction), 
+              gRuntimes, 
+              sizeof(gRuntimes) / sizeof(RuntimeFunction), 
               sizeof(RuntimeFunction),
               CompareRuntimeFunction);
   if(R)
     return R->mPtr;
   else
     return NULL;
+}
+
+void VerifyRuntimesTable() {
+  int N = sizeof(gRuntimes) / sizeof(RuntimeFunction), i;
+  for(i=0;i<N;i++) {
+    const char* Name = gRuntimes[i].mName;
+    int* Ptr = FindRuntimeFunction(Name);
+
+    assert((Ptr == (int*) gRuntimes[i].mPtr) && 
+      "Table is corrupted (runtime name should be sorted in bcc_runtime.def).");
+  }
 }

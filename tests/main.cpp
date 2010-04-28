@@ -23,12 +23,12 @@
 
 typedef int (*MainPtr)(int, char**);
 // This is a separate function so it can easily be set by breakpoint in gdb.
-static int run(MainPtr mainFunc, int argc, char** argv)
+static int run(MainPtr mainFunc, int argc, char** argv) 
 {
   return mainFunc(argc, argv);
 }
 
-static BCCvoid* symbolLookup(BCCvoid* pContext, const BCCchar* name)
+static BCCvoid* symbolLookup(BCCvoid* pContext, const BCCchar* name) 
 {
   return (BCCvoid*) dlsym(RTLD_DEFAULT, name);
 }
@@ -85,7 +85,7 @@ static int disassemble(BCCscript* script, FILE* out) {
       }
     }
     delete[] labels;
-  }
+  }   
 
   return 1;
 }
@@ -158,7 +158,7 @@ static int parseOption(int argc, char** argv)
 
     switch(c) {
       case 'R':
-        runResults = true;
+        runResults = true; 
         break;
 
       case 'S':
@@ -211,7 +211,7 @@ static BCCscript* loadScript() {
   rewind(in);
   BCCchar* bitcode = new BCCchar[codeSize + 1];
   size_t bytesRead = fread(bitcode, 1, codeSize, in);
-  if (bytesRead != codeSize)
+  if (bytesRead != codeSize) 
       fprintf(stderr, "Could not read all of file %s\n", inFile);
 
   BCCscript* script = bccCreateScript();
@@ -232,17 +232,17 @@ static int compile(BCCscript* script) {
   if (result != 0) {
     BCCsizei bufferLength;
     bccGetScriptInfoLog(script, 0, &bufferLength, NULL);
-    char* buf = (char*) malloc(bufferLength + 1);
+    char* buf = (char*) malloc(bufferLength + 1); 
     if (buf != NULL) {
         bccGetScriptInfoLog(script, bufferLength + 1, NULL, buf);
         fprintf(stderr, "%s", buf);
         free(buf);
     } else {
         fprintf(stderr, "Out of memory.\n");
-    }
+    }   
     bccDeleteScript(script);
     return 0;
-  }
+  }   
 
   {
     BCCsizei numPragmaStrings;
@@ -250,7 +250,7 @@ static int compile(BCCscript* script) {
     if (numPragmaStrings) {
       char** strings = new char*[numPragmaStrings];
       bccGetPragmas(script, NULL, numPragmaStrings, strings);
-      for(BCCsizei i = 0; i < numPragmaStrings; i += 2)
+      for(BCCsizei i = 0; i < numPragmaStrings; i += 2) 
         fprintf(stderr, "#pragma %s(%s)\n", strings[i], strings[i+1]);
       delete[] strings;
     }
@@ -274,13 +274,13 @@ static int runMain(BCCscript* script, int argc, char** argv) {
     //codeArgv[0] = (char*) (inFile ? inFile : "stdin");
     result = run(mainPointer, codeArgc, codeArgv);
     fprintf(stderr, "result: %d\n", result);
-  }
+  }   
 
   return 1;
 
 }
 
-int main(int argc, char** argv)
+int main(int argc, char** argv) 
 {
   int result = 0;
   BCCscript* script;
@@ -288,7 +288,7 @@ int main(int argc, char** argv)
   if(!parseOption(argc, argv)) {
     result = 1;
     fprintf(stderr, "failed to parse option\n");
-    goto exit;
+    goto exit; 
   }
 
   if((script = loadScript()) == NULL) {
@@ -307,17 +307,6 @@ int main(int argc, char** argv)
     result = 4;
     fprintf(stderr, "failed to compile\n");
     goto exit;
-  }
-
-  BCCsizei numVars;
-  bccGetVars(script, &numVars, 0, NULL);
-  //  fprintf(out, "numVars=%d\n", numVars);
-  if (numVars) {
-    void** labels = new void*[numVars];
-    bccGetVars(script, NULL, numVars, labels);
-    for(BCCsizei i = 0; i < numVars; i++) {
-      //fprintf(out, "%x\n", labels[i]);
-    }
   }
 
   if(printListing && !disassemble(script, stderr)) {
