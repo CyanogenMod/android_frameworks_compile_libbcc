@@ -81,8 +81,10 @@
 // #define PROVIDE_TRACE_CODEGEN
 
 #if defined(USE_DISASSEMBLER)
-#   include "disassembler/dis-asm.h"
-#   include <cstdio>
+#   include "llvm/MC/MCInst.h"          /* for class llvm::MCInst */
+#   include "llvm/MC/MCAsmInfo.h"       /* for class llvm::MCAsmInfo */
+#   include "llvm/MC/MCInstPrinter.h"   /* for class llvm::MCInstPrinter */
+#   include "llvm/MC/MCDisassembler.h"  /* for class llvm::MCDisassembler */
 #endif
 
 #include <set>
@@ -135,7 +137,8 @@
 #include "llvm/Target/TargetData.h"     /* for class llvm::TargetData */
 #include "llvm/Target/TargetSelect.h"   /* for function
                                          * LLVMInitialize[ARM|X86]
-                                         * [TargetInfo|Target]()
+                                         * [TargetInfo|Target|Disassembler|
+                                         *  AsmPrinter]()
                                          */
 #include "llvm/Target/TargetOptions.h"  /* for
                                          *  variable bool llvm::UseSoftFloat
@@ -157,9 +160,10 @@
                                          */
 #include "llvm/Support/ValueHandle.h"   /* for class AssertingVH<> */
 #include "llvm/Support/MemoryBuffer.h"  /* for class llvm::MemoryBuffer */
+#include "llvm/Support/MemoryObject.h"  /* for class llvm::MemoryObject */
 #include "llvm/Support/ManagedStatic.h" /* for class llvm::llvm_shutdown */
 #include "llvm/Support/ErrorHandling.h" /* for function
-                                         * llvm::llvm_install_error_handler()
+                                         * llvm::install_fatal_error_handler()
                                          * and macro llvm_unreachable()
                                          */
 #include "llvm/Support/StandardPasses.h"/* for function
@@ -275,16 +279,28 @@ class Compiler {
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
     LLVMInitializeARMTargetInfo();
     LLVMInitializeARMTarget();
+#if defined(USE_DISASSEMBLER)
+    LLVMInitializeARMDisassembler();
+    LLVMInitializeARMAsmPrinter();
+#endif
 #endif
 
 #if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN)
     LLVMInitializeX86TargetInfo();
     LLVMInitializeX86Target();
+#if defined(USE_DISASSEMBLER)
+    LLVMInitializeX86Disassembler();
+    LLVMInitializeX86AsmPrinter();
+#endif
 #endif
 
 #if defined(DEFAULT_X64_CODEGEN) || defined(PROVIDE_X64_CODEGEN)
     LLVMInitializeX86TargetInfo();
     LLVMInitializeX86Target();
+#if defined(USE_DISASSEMBLER)
+    LLVMInitializeX86Disassembler();
+    LLVMInitializeX86AsmPrinter();
+#endif
 #endif
 
     /*
@@ -318,7 +334,7 @@ class Compiler {
      */
     llvm::TargetMachine::setRelocationModel(llvm::Reloc::Static);
 
-#ifdef DEFAULT_X64_CODEGEN
+#if defined(DEFAULT_X64_CODEGEN)
     /* Data address in X86_64 architecture may reside in a far-away place */
     llvm::TargetMachine::setCodeModel(llvm::CodeModel::Medium);
 #else
@@ -729,6 +745,8 @@ class Compiler {
     CodeMemoryManager* mpMemMgr;
 
     /* The JITInfo for the target we are compiling to */
+    const llvm::Target* mpTarget;
+
     llvm::TargetJITInfo* mpTJI;
 
     const llvm::TargetData* mpTD;
@@ -1721,8 +1739,7 @@ class Compiler {
       if(!Actual)
         PendingFunctions.insert(F);
       else
-        Disassembler(F->getNameStr() + " (stub)",
-                     (uint8_t*) Stub, SL.Size, (uintptr_t) Stub);
+        Disassemble(F->getName(), (uint8_t*) Stub, SL.Size, true);
 
       return Stub;
     }
@@ -1919,61 +1936,109 @@ class Compiler {
       return Stub;
     }
 
-
-    void Disassembler(const std::string& Name, uint8_t* Start,
-                      size_t Length, uintptr_t PC) {
 #if defined(USE_DISASSEMBLER)
-      FILE* out = stdout;
+    const llvm::MCAsmInfo* mpAsmInfo;
+    const llvm::MCDisassembler* mpDisassmbler;
+    llvm::MCInstPrinter* mpIP;
 
-      fprintf(out, "JIT: Disassembled code: %s\n", Name.c_str());
+    class BufferMemoryObject : public llvm::MemoryObject {
+    private:
+      const uint8_t* mBytes;
+      uint64_t mLength;
 
-      disassemble_info disasm_info;
-      int (*print_insn)(bfd_vma pc, disassemble_info *info);
+    public:
+      BufferMemoryObject(const uint8_t *Bytes, uint64_t Length) :
+        mBytes(Bytes), mLength(Length) { }
 
-      INIT_DISASSEMBLE_INFO(disasm_info, out, fprintf);
+      uint64_t getBase() const { return 0; }
+      uint64_t getExtent() const { return mLength; }
 
-      disasm_info.buffer = Start;
-      disasm_info.buffer_vma = (bfd_vma) (uintptr_t) Start;
-      disasm_info.buffer_length = Length;
-      disasm_info.endian = BFD_ENDIAN_LITTLE;
+      int readByte(uint64_t Addr, uint8_t *Byte) const {
+        if(Addr > getExtent())
+          return -1;
+        *Byte = mBytes[Addr];
+        return 0;
+      }
+    };
 
-#if defined(DEFAULT_X86_CODEGEN)
-      disasm_info.mach = bfd_mach_i386_i386;
-      print_insn = print_insn_i386;
-#elif defined(DEFAULT_ARM_CODEGEN)
-      print_insn = print_insn_arm;
-#elif defined(DEFAULT_X64_CODEGEN)
-      disasm_info.mach = bfd_mach_x86_64;
-      print_insn = print_insn_i386;
-#else
-#error "Unknown target for disassembler"
+    void Disassemble(const llvm::StringRef& Name, uint8_t* Start,
+                     size_t Length, bool IsStub) {
+
+      llvm::raw_ostream* OS = &llvm::outs();
+
+#if 0 
+      /* If you want the disassemble results write to file, uncomment this */
+      std::string ErrorInfo;
+      llvm::raw_fd_ostream* OS = new llvm::raw_fd_ostream(
+          <const char* FileName>, ErrorInfo, llvm::raw_fd_ostream::F_Append);
+      if(!ErrorInfo.empty()) {    // some errors occurred
+        delete OS;
+        return;
+      }
 #endif
 
-#if defined(DEFAULT_X64_CODEGEN)
-#   define TARGET_FMT_lx "%llx"
-#else
-#   define TARGET_FMT_lx "%08x"
-#endif
-      int Count;
-      for( ; Length > 0; PC += Count, Length -= Count) {
-        fprintf(out, "\t0x" TARGET_FMT_lx ": ", (bfd_vma) PC);
-        Count = print_insn(PC, &disasm_info);
-        fprintf(out, "\n");
+      *OS << "JIT: Disassembled code: " << Name 
+        << ((IsStub) ? " (stub)" : "") << "\n";
+
+      if(mpAsmInfo == NULL)
+        mpAsmInfo = mpTarget->createAsmInfo(Triple);
+      if(mpDisassmbler == NULL)
+        mpDisassmbler = mpTarget->createMCDisassembler();
+      if(mpIP == NULL)
+        mpIP = mpTarget->createMCInstPrinter(
+                  mpAsmInfo->getAssemblerDialect(), *mpAsmInfo);
+
+      const BufferMemoryObject* BufferMObj = 
+          new BufferMemoryObject(Start, Length);
+      uint64_t Size;
+      uint64_t Index;
+
+      for(Index=0;Index<Length;Index+=Size) {
+        llvm::MCInst Inst;
+    
+        if(mpDisassmbler->getInstruction(Inst, Size, *BufferMObj, Index, 
+              /* REMOVED */ llvm::nulls())) 
+        {
+          OS->indent(4).write("0x", 2).
+            write_hex((uint64_t) Start + Index).write(':');
+          mpIP->printInst(&Inst, *OS);
+          *OS << "\n";
+        } else {
+          if (Size == 0)
+            Size = 1; // skip illegible bytes
+        }   
       }
 
-      fprintf(out, "\n");
-#undef TARGET_FMT_lx
+      *OS << "\n";
+      delete BufferMObj;
 
-#endif  /* USE_DISASSEMBLER */
+#if 0 
+      /* If you want the disassemble results write to file, uncomment this */
+      OS->close();
+      delete OS;
+#endif
+
       return;
     }
+#else
+    void Disassemble(const std::string& Name, uint8_t* Start,
+                     size_t Length, bool IsStub) {
+      return;
+    }
+#endif  /* defined(USE_DISASSEMBLER) */
 
    public:
     /* Will take the ownership of @MemMgr */
     CodeEmitter(CodeMemoryManager* pMemMgr) :
         mpMemMgr(pMemMgr),
+        mpTarget(NULL),
         mpTJI(NULL),
         mpTD(NULL),
+#if defined(USE_DISASSEMBLER)
+        mpAsmInfo(NULL),
+        mpDisassmbler(NULL),
+        mpIP(NULL),
+#endif
         mpCurEmitFunction(NULL),
         mpConstantPool(NULL),
         mpJumpTable(NULL),
@@ -1998,6 +2063,8 @@ class Compiler {
     }
 
     void setTargetMachine(llvm::TargetMachine& TM) {
+      /* set Target */
+      mpTarget = &TM.getTarget();
       /* set TargetJITInfo */
       mpTJI = TM.getJITInfo();
       /* set TargetData */
@@ -2159,8 +2226,7 @@ class Compiler {
       /* Mark code region readable and executable if it's not so already. */
       mpMemMgr->setMemoryExecutable();
 
-      Disassembler(F.getFunction()->getNameStr(),
-                   FnStart, FnEnd - FnStart, (uintptr_t) FnStart);
+      Disassemble(F.getFunction()->getName(), FnStart, FnEnd - FnStart, false);
 
       if(mpMMI)
         mpMMI->EndFunction();
@@ -2339,8 +2405,7 @@ class Compiler {
       mpTJI->emitFunctionStub(F, Addr, *this);
       finishGVStub();
 
-      Disassembler(F->getNameStr() + " (stub)", (uint8_t*) Stub,
-                   SL.Size, (uintptr_t) Stub);
+      Disassemble(F->getName(), (uint8_t*) Stub, SL.Size, true);
 
       PendingFunctions.erase(I);
 
@@ -2433,6 +2498,14 @@ class Compiler {
     ~CodeEmitter() {
       if(mpMemMgr)
         delete mpMemMgr;
+#if defined(USE_DISASSEMBLER)
+      if(mpAsmInfo)
+        delete mpAsmInfo;
+      if(mpDisassmbler)
+        delete mpDisassmbler;
+      if(mpIP)
+        delete mpIP;
+#endif
       return;
     }
     /* }}} */
@@ -2478,7 +2551,6 @@ class Compiler {
     SB = llvm::MemoryBuffer::getMemBuffer(
             llvm::StringRef(bitcode, bitcodeSize));
     if(SB == NULL) {
-        //printf("ccc\n");
       setError("Error reading input Bitcode into memory");
       goto on_bcc_load_module_error;
     }

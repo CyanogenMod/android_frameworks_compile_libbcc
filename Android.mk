@@ -3,6 +3,8 @@ ifneq ($(TARGET_SIMULATOR),true)
 LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm/llvm
 
+USE_DISASSEMBLER := true
+
 # Shared library for target
 # ========================================================
 include $(CLEAR_VARS)
@@ -44,9 +46,7 @@ LOCAL_SRC_FILES :=	\
 	runtime/lib/arm/subsf3vfp.S	\
 	runtime/lib/arm/truncdfsf2vfp.S	\
 	runtime/lib/arm/unorddf2vfp.S	\
-	runtime/lib/arm/unordsf2vfp.S	#\
-#	disassembler/arm-dis.c	\
-#	disassembler/dis-asm.c
+	runtime/lib/arm/unordsf2vfp.S
 
 LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMARMCodeGen	\
@@ -68,9 +68,16 @@ LOCAL_STATIC_LIBRARIES :=	\
 LOCAL_SHARED_LIBRARIES := libdl libcutils libstlport
 
 LOCAL_C_INCLUDES :=	\
-	$(LOCAL_PATH)/include $(LOCAL_PATH)/disassembler
+	$(LOCAL_PATH)/include
 
-#LOCAL_CFLAGS := -DUSE_DISASSEMBLER
+ifeq ($(USE_DISASSEMBLER),true)
+LOCAL_CFLAGS += -DUSE_DISASSEMBLER
+LOCAL_STATIC_LIBRARIES :=	\
+	libLLVMARMDisassembler	\
+	libLLVMARMAsmPrinter	\
+	libLLVMMCParser	\
+	$(LOCAL_STATIC_LIBRARIES)
+endif
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
@@ -89,6 +96,7 @@ LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMBitReader	\
 	libLLVMSelectionDAG	\
 	libLLVMAsmPrinter	\
+	libLLVMMCParser	\
 	libLLVMCodeGen	\
 	libLLVMJIT	\
 	libLLVMTarget	\
@@ -104,6 +112,14 @@ LOCAL_LDLIBS := -ldl -lpthread
 
 LOCAL_C_INCLUDES :=	\
 	$(LOCAL_PATH)/include
+
+ifeq ($(USE_DISASSEMBLER),true)
+LOCAL_CFLAGS += -DUSE_DISASSEMBLER
+LOCAL_STATIC_LIBRARIES :=	\
+	libLLVMX86Disassembler	\
+	libLLVMX86AsmPrinter	\
+	$(LOCAL_STATIC_LIBRARIES)
+endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
