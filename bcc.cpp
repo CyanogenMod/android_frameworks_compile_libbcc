@@ -272,9 +272,9 @@ class Compiler {
     /* Set Triple, CPU and Features here */
     Triple = TARGET_TRIPLE_STRING;
 
-    Features.push_back("+neon");
+    /*TODO: Features.push_back("+neon");
     Features.push_back("+vmlx");
-    Features.push_back("+neonfp");
+    Features.push_back("+neonfp");*/
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
     LLVMInitializeARMTargetInfo();
