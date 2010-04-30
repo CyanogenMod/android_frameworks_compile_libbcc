@@ -85,6 +85,8 @@
 #   include "llvm/MC/MCAsmInfo.h"       /* for class llvm::MCAsmInfo */
 #   include "llvm/MC/MCInstPrinter.h"   /* for class llvm::MCInstPrinter */
 #   include "llvm/MC/MCDisassembler.h"  /* for class llvm::MCDisassembler */
+// If you want the disassemble results written to file, define this:
+#   define USE_DISASSEMBLER_FILE
 #endif
 
 #include <set>
@@ -272,6 +274,7 @@ class Compiler {
     /* Set Triple, CPU and Features here */
     Triple = TARGET_TRIPLE_STRING;
 
+    Features.push_back("+vfp3");
     /*TODO: Features.push_back("+neon");
     Features.push_back("+vmlx");
     Features.push_back("+neonfp");*/
@@ -1963,21 +1966,22 @@ class Compiler {
 
     void Disassemble(const llvm::StringRef& Name, uint8_t* Start,
                      size_t Length, bool IsStub) {
-
-      llvm::raw_ostream* OS = &llvm::outs();
-
-#if 0 
-      /* If you want the disassemble results write to file, uncomment this */
+#if defined(USE_DISASSEMBLER_FILE)
+      llvm::raw_fd_ostream* OS;
       std::string ErrorInfo;
-      llvm::raw_fd_ostream* OS = new llvm::raw_fd_ostream(
-          <const char* FileName>, ErrorInfo, llvm::raw_fd_ostream::F_Append);
+      OS = new llvm::raw_fd_ostream(
+          "/data/local/tmp/out.S"/*<const char* FileName>*/, ErrorInfo, llvm::raw_fd_ostream::F_Append);
       if(!ErrorInfo.empty()) {    // some errors occurred
+        LOGE("Error in creating disassembly file");
         delete OS;
         return;
       }
+#else
+      OS = &llvm::outs();
 #endif
 
-      *OS << "JIT: Disassembled code: " << Name 
+
+      *OS << "JIT: Disassembled code: " << Name
         << ((IsStub) ? " (stub)" : "") << "\n";
 
       if(mpAsmInfo == NULL)
@@ -1988,16 +1992,16 @@ class Compiler {
         mpIP = mpTarget->createMCInstPrinter(
                   mpAsmInfo->getAssemblerDialect(), *mpAsmInfo);
 
-      const BufferMemoryObject* BufferMObj = 
+      const BufferMemoryObject* BufferMObj =
           new BufferMemoryObject(Start, Length);
       uint64_t Size;
       uint64_t Index;
 
       for(Index=0;Index<Length;Index+=Size) {
         llvm::MCInst Inst;
-    
-        if(mpDisassmbler->getInstruction(Inst, Size, *BufferMObj, Index, 
-              /* REMOVED */ llvm::nulls())) 
+
+        if(mpDisassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
+              /* REMOVED */ llvm::nulls()))
         {
           OS->indent(4).write("0x", 2).
             write_hex((uint64_t) Start + Index).write(':');
@@ -2006,13 +2010,13 @@ class Compiler {
         } else {
           if (Size == 0)
             Size = 1; // skip illegible bytes
-        }   
+        }
       }
 
       *OS << "\n";
       delete BufferMObj;
 
-#if 0 
+#if defined(USE_DISASSEMBLER_FILE)
       /* If you want the disassemble results write to file, uncomment this */
       OS->close();
       delete OS;
@@ -2049,11 +2053,11 @@ class Compiler {
       return;
     }
 
-    inline global_addresses_const_iterator global_address_begin() const { 
-      return mGlobalAddressMap.begin(); 
+    inline global_addresses_const_iterator global_address_begin() const {
+      return mGlobalAddressMap.begin();
     }
-    inline global_addresses_const_iterator global_address_end() const { 
-      return mGlobalAddressMap.end(); 
+    inline global_addresses_const_iterator global_address_end() const {
+      return mGlobalAddressMap.end();
     }
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid* pContext) {
@@ -2216,7 +2220,7 @@ class Compiler {
       mpCurEmitFunction->Size = CurBufferPtr - BufferBegin;
       BufferBegin = CurBufferPtr = 0;
 
-      if(F.getFunction()->hasName()) 
+      if(F.getFunction()->hasName())
         mEmittedFunctions[F.getFunction()->getNameStr()] = mpCurEmitFunction;
       mpCurEmitFunction = NULL;
 
@@ -2472,7 +2476,7 @@ class Compiler {
       if(functionCount > maxFunctionCount)
         functionCount = maxFunctionCount;
       if(functions)
-        for(EmittedFunctionsMapTy::const_iterator it = 
+        for(EmittedFunctionsMapTy::const_iterator it =
               mEmittedFunctions.begin();
             functionCount > 0;
             functionCount--, it++)
@@ -2482,10 +2486,10 @@ class Compiler {
     }
 
     void getFunctionBinary(BCCchar* label,
-                           BCCvoid** base, 
+                           BCCvoid** base,
                            BCCsizei* length) {
       EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(label);
-      if(I == mEmittedFunctions.end()) { 
+      if(I == mEmittedFunctions.end()) {
         *base = NULL;
         *length = 0;
       } else {
@@ -2645,8 +2649,8 @@ on_bcc_load_module_error:
     CodeGenPasses->doInitialization();
     for(llvm::Module::iterator I = mModule->begin();
         I != mModule->end();
-        I++) 
-      if(!I->isDeclaration()) 
+        I++)
+      if(!I->isDeclaration())
         CodeGenPasses->run(*I);
 
     CodeGenPasses->doFinalization();
@@ -2677,7 +2681,7 @@ on_bcc_load_module_error:
               continue; // found
           }
         }
-        // if here, the global variable record in metadata is not 
+        // if here, the global variable record in metadata is not
         // found, make an empty slot
         mExportVars.push_back(NULL);
       }
@@ -2741,7 +2745,7 @@ on_bcc_load_module_error:
   /* interface for bccGetScriptLabel() */
   void* lookup(const char* name) {
     void* addr = NULL;
-    if(mCodeEmitter.get()) 
+    if(mCodeEmitter.get())
       /* Find function pointer */
       addr = mCodeEmitter->lookup(name);
     return addr;
@@ -2795,8 +2799,8 @@ on_bcc_load_module_error:
                  BCCsizei maxFunctionCount,
                  BCCchar** functions) {
     if(mCodeEmitter.get())
-      mCodeEmitter->getFunctionNames(actualFunctionCount, 
-                                     maxFunctionCount, 
+      mCodeEmitter->getFunctionNames(actualFunctionCount,
+                                     maxFunctionCount,
                                      functions);
     else
       *actualFunctionCount = 0;
@@ -2806,7 +2810,7 @@ on_bcc_load_module_error:
 
   /* Interface for bccGetFunctionBinary() */
   void getFunctionBinary(BCCchar* function,
-                         BCCvoid** base, 
+                         BCCvoid** base,
                          BCCsizei* length) {
     if(mCodeEmitter.get()) {
       mCodeEmitter->getFunctionBinary(function, base, length);
@@ -2894,13 +2898,13 @@ struct BCCscript {
 
 
 extern "C"
-BCCscript* bccCreateScript() 
+BCCscript* bccCreateScript()
 {
   return new BCCscript();
 }
 
 extern "C"
-BCCenum bccGetError( BCCscript* script ) 
+BCCenum bccGetError( BCCscript* script )
 {
   return script->getError();
 }
@@ -2911,9 +2915,9 @@ void bccDeleteScript(BCCscript* script) {
 }
 
 extern "C"
-void bccRegisterSymbolCallback(BCCscript* script, 
+void bccRegisterSymbolCallback(BCCscript* script,
                                BCCSymbolLookupFn pFn,
-                               BCCvoid* pContext) 
+                               BCCvoid* pContext)
 {
   script->registerSymbolCallback(pFn, pContext);
 }
@@ -2921,16 +2925,16 @@ void bccRegisterSymbolCallback(BCCscript* script,
 extern "C"
 void bccScriptBitcode(BCCscript* script,
                       const BCCchar* bitcode,
-                      BCCint size) 
+                      BCCint size)
 {
   script->compiler.loadModule(bitcode, size);
 }
 
 extern "C"
-void bccCompileScript(BCCscript* script) 
+void bccCompileScript(BCCscript* script)
 {
   int result = script->compiler.compile();
-  if (result) 
+  if (result)
     script->setError(BCC_INVALID_OPERATION);
 }
 
@@ -2938,11 +2942,11 @@ extern "C"
 void bccGetScriptInfoLog(BCCscript* script,
                          BCCsizei maxLength,
                          BCCsizei* length,
-                         BCCchar* infoLog) 
+                         BCCchar* infoLog)
 {
   char* message = script->compiler.getErrorMessage();
   int messageLength = strlen(message) + 1;
-  if (length) 
+  if (length)
     *length = messageLength;
 
   if (infoLog && maxLength > 0) {
@@ -2953,14 +2957,14 @@ void bccGetScriptInfoLog(BCCscript* script,
 }
 
 extern "C"
-void bccGetScriptLabel(BCCscript* script, 
+void bccGetScriptLabel(BCCscript* script,
                        const BCCchar * name,
-                       BCCvoid ** address) 
+                       BCCvoid ** address)
 {
   void* value = script->compiler.lookup(name);
-  if (value) 
+  if (value)
     *address = value;
-  else 
+  else
     script->setError(BCC_INVALID_VALUE);
 }
 
@@ -2974,30 +2978,30 @@ void bccGetExportVars(BCCscript* script,
 }
 
 extern "C"
-void bccGetPragmas(BCCscript* script, 
+void bccGetPragmas(BCCscript* script,
                    BCCsizei* actualStringCount,
-                   BCCsizei maxStringCount, 
+                   BCCsizei maxStringCount,
                    BCCchar** strings)
 {
   script->compiler.getPragmas(actualStringCount, maxStringCount, strings);
 }
 
 extern "C"
-void bccGetFunctions(BCCscript* script, 
+void bccGetFunctions(BCCscript* script,
                      BCCsizei* actualFunctionCount,
-                     BCCsizei maxFunctionCount, 
+                     BCCsizei maxFunctionCount,
                      BCCchar** functions)
-{ 
-  script->compiler.getFunctions(actualFunctionCount, 
-                                maxFunctionCount, 
+{
+  script->compiler.getFunctions(actualFunctionCount,
+                                maxFunctionCount,
                                 functions);
 }
 
 extern "C"
-void bccGetFunctionBinary(BCCscript* script, 
+void bccGetFunctionBinary(BCCscript* script,
                           BCCchar* function,
-                          BCCvoid** base, 
-                          BCCsizei* length) 
+                          BCCvoid** base,
+                          BCCsizei* length)
 {
   script->compiler.getFunctionBinary(function, base, length);
 }

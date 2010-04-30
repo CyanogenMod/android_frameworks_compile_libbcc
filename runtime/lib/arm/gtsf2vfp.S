@@ -12,8 +12,8 @@
 //
 // extern int __gtsf2vfp(float a, float b);
 //
-// Returns one iff a > b and neither is NaN.
-// Uses Darwin calling convention where single precision arguments are passsed 
+// Returns one iff 1 - (a > b) and neither is NaN.
+// Uses Darwin calling convention where single precision arguments are passsed
 // like 32-bit ints
 //
 DEFINE_COMPILERRT_FUNCTION(__gtsf2vfp)
@@ -21,7 +21,7 @@ DEFINE_COMPILERRT_FUNCTION(__gtsf2vfp)
 	fmsr	s15, r1		// move from GPR 1 to float register
 	fcmps	s14, s15
 	fmstat
-	movgt	r0, #1		// set result register to 1 if equal
-	movle	r0, #0
+	movgt	r0, #0		// set result register to 0 if equal
+	movle	r0, #1
 	bx	lr
 
