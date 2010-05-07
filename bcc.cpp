@@ -2532,6 +2532,7 @@ class Compiler {
 
  public:
   Compiler() : mpSymbolLookupFn(NULL), mpSymbolLookupContext(NULL), mModule(NULL) {
+    llvm::remove_fatal_error_handler();
     llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
     return;
   }
@@ -2831,7 +2832,7 @@ on_bcc_load_module_error:
 
   ~Compiler() {
     delete mModule;
-    llvm::llvm_shutdown();
+    //llvm::llvm_shutdown();
     return;
   }
 };  /* End of Class Compiler */
