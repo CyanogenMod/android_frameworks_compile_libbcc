@@ -108,7 +108,7 @@
 #include "llvm/PassManager.h"           /* for class llvm::PassManager and
                                          * llvm::FunctionPassManager
                                          */
-#include "llvm/LLVMContext.h"           /* for llvm::getGlobalContext() */
+#include "llvm/LLVMContext.h"           /* for class llvm::LLVMContext */
 #include "llvm/GlobalValue.h"           /* for class llvm::GlobalValue */
 #include "llvm/Instructions.h"          /* for class llvm::CallInst */
 #include "llvm/OperandTraits.h"         /* for macro
@@ -165,6 +165,7 @@
 #include "llvm/Support/MemoryObject.h"  /* for class llvm::MemoryObject */
 #include "llvm/Support/ManagedStatic.h" /* for class llvm::llvm_shutdown */
 #include "llvm/Support/ErrorHandling.h" /* for function
+                                         * llvm::remove_fatal_error_handler()
                                          * llvm::install_fatal_error_handler()
                                          * and macro llvm_unreachable()
                                          */
@@ -274,10 +275,11 @@ class Compiler {
     /* Set Triple, CPU and Features here */
     Triple = TARGET_TRIPLE_STRING;
 
+    /* TODO: NEON for JIT */
+    //Features.push_back("+neon");
+    //Features.push_back("+vmlx");
+    //Features.push_back("+neonfp");
     Features.push_back("+vfp3");
-    /*TODO: Features.push_back("+neon");
-    Features.push_back("+vmlx");
-    Features.push_back("+neonfp");*/
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
     LLVMInitializeARMTargetInfo();
@@ -375,6 +377,7 @@ class Compiler {
 
   static const llvm::StringRef PragmaMetadataName;
   static const llvm::StringRef ExportVarMetadataName;
+  static const llvm::StringRef ExportFuncMetadataName;
 
  private:
   std::string mError;
@@ -396,6 +399,9 @@ class Compiler {
 
   typedef std::list<void*> ExportVarList;
   ExportVarList mExportVars;
+
+  typedef std::list<void*> ExportFuncList;
+  ExportFuncList mExportFuncs;
 
   /* Memory manager for the code reside in memory */
   /*
@@ -1966,13 +1972,13 @@ class Compiler {
 
     void Disassemble(const llvm::StringRef& Name, uint8_t* Start,
                      size_t Length, bool IsStub) {
-#if defined(USE_DISASSEMBLER_FILE)
       llvm::raw_fd_ostream* OS;
+#if defined(USE_DISASSEMBLER_FILE)
       std::string ErrorInfo;
       OS = new llvm::raw_fd_ostream(
-          "/data/local/tmp/out.S"/*<const char* FileName>*/, ErrorInfo, llvm::raw_fd_ostream::F_Append);
+          "/data/local/tmp/out.S", ErrorInfo, llvm::raw_fd_ostream::F_Append);
       if(!ErrorInfo.empty()) {    // some errors occurred
-        LOGE("Error in creating disassembly file");
+        //LOGE("Error in creating disassembly file");
         delete OS;
         return;
       }
@@ -2004,7 +2010,7 @@ class Compiler {
               /* REMOVED */ llvm::nulls()))
         {
           OS->indent(4).write("0x", 2).
-            write_hex((uint64_t) Start + Index).write(':');
+            write_hex((uint32_t) Start + Index).write(':');
           mpIP->printInst(&Inst, *OS);
           *OS << "\n";
         } else {
@@ -2016,7 +2022,7 @@ class Compiler {
       *OS << "\n";
       delete BufferMObj;
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if  defined(USE_DISASSEMBLER_FILE)
       /* If you want the disassemble results write to file, uncomment this */
       OS->close();
       delete OS;
@@ -2459,7 +2465,11 @@ class Compiler {
     }
 
     void* lookup(const char* Name) {
-      EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(Name);
+      return lookup( llvm::StringRef(Name) );
+    }
+
+    void* lookup(const llvm::StringRef& Name) {
+      EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(Name.str());
       if(I == mEmittedFunctions.end())
         return NULL;
       else
@@ -2525,15 +2535,22 @@ class Compiler {
   BCCSymbolLookupFn mpSymbolLookupFn;
   void* mpSymbolLookupContext;
 
+  llvm::LLVMContext* mContext;
   llvm::Module* mModule;
 
   bool mTypeInformationPrepared;
   std::vector<const llvm::Type*> mTypes;
 
  public:
-  Compiler() : mpSymbolLookupFn(NULL), mpSymbolLookupContext(NULL), mModule(NULL) {
+  Compiler() :
+    mpSymbolLookupFn(NULL),
+    mpSymbolLookupContext(NULL),
+    mContext(NULL),
+    mModule(NULL)
+  {
     llvm::remove_fatal_error_handler();
     llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
+    mContext = new llvm::LLVMContext();
     return;
   }
 
@@ -2561,7 +2578,7 @@ class Compiler {
     }
 
     /* Read the input Bitcode as a Module */
-    mModule = llvm::ParseBitcodeFile(SB, llvm::getGlobalContext(), &mError);
+    mModule = llvm::ParseBitcodeFile(SB, *mContext, &mError);
 
 on_bcc_load_module_error:
     if (SB)
@@ -2582,6 +2599,7 @@ on_bcc_load_module_error:
 
     const llvm::NamedMDNode* PragmaMetadata;
     const llvm::NamedMDNode* ExportVarMetadata;
+    const llvm::NamedMDNode* ExportFuncMetadata;
 
     if(mModule == NULL) /* No module was loaded */
       return 0;
@@ -2690,6 +2708,21 @@ on_bcc_load_module_error:
               "Number of slots doesn't match the number of export variables!");
     }
 
+    ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
+    if(ExportFuncMetadata) {
+      for(int i=0;i<ExportFuncMetadata->getNumOperands();i++) {
+        llvm::MDNode* ExportFunc = ExportFuncMetadata->getOperand(i);
+        if(ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
+          llvm::Value* ExportFuncNameMDS = ExportFunc->getOperand(0);
+          if(ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
+            llvm::StringRef ExportFuncName =
+                static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
+            mExportFuncs.push_back(mCodeEmitter->lookup(ExportFuncName));
+          }
+        }
+      }
+    }
+
     /*
      * Tell code emitter now can release the memory using
      * during the JIT since we have done the code emission
@@ -2773,6 +2806,27 @@ on_bcc_load_module_error:
     return;
   }
 
+  /* Interface for bccGetExportFuncs() */
+  void getExportFuncs(BCCsizei* actualFuncCount,
+                      BCCsizei maxFuncCount,
+                      BCCvoid** funcs) {
+    int funcCount = mExportFuncs.size();
+
+    if(actualFuncCount)
+      *actualFuncCount = funcCount;
+    if(funcCount > maxFuncCount)
+      funcCount = maxFuncCount;
+    if(funcs)
+      for(ExportFuncList::const_iterator it = mExportFuncs.begin();
+          it != mExportFuncs.end();
+          it++)
+      {
+        *funcs++ = *it;
+      }
+
+    return;
+  }
+
   /* Interface for bccGetPragmas() */
   void getPragmas(BCCsizei* actualStringCount,
                   BCCsizei maxStringCount,
@@ -2832,7 +2886,8 @@ on_bcc_load_module_error:
 
   ~Compiler() {
     delete mModule;
-    //llvm::llvm_shutdown();
+    llvm::llvm_shutdown();
+    delete mContext;
     return;
   }
 };  /* End of Class Compiler */
@@ -2859,6 +2914,12 @@ const llvm::StringRef Compiler::PragmaMetadataName = "#pragma";
  * (should be synced with slang.cpp)
  */
 const llvm::StringRef Compiler::ExportVarMetadataName = "#rs_export_var";
+
+/*
+ * The named of metadata node that export function name resides
+ * (should be synced with slang.cpp)
+ */
+const llvm::StringRef Compiler::ExportFuncMetadataName = "#rs_export_func";
 
 struct BCCscript {
   /*
@@ -2976,6 +3037,15 @@ void bccGetExportVars(BCCscript* script,
                       BCCvoid** vars)
 {
   script->compiler.getExportVars(actualVarCount, maxVarCount, vars);
+}
+
+extern "C"
+void bccGetExportFuncs(BCCscript* script,
+                       BCCsizei* actualFuncCount,
+                       BCCsizei maxFuncCount,
+                       BCCvoid** funcs)
+{
+  script->compiler.getExportFuncs(actualFuncCount, maxFuncCount, funcs);
 }
 
 extern "C"

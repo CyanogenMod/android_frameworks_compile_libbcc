@@ -77,11 +77,17 @@ void bccGetExportVars(BCCscript* script,
                       BCCsizei maxVarCount,
                       BCCvoid** vars);
 
+void bccGetExportFuncs(BCCscript* script,
+                       BCCsizei* actualFuncCount,
+                       BCCsizei maxFuncCount,
+                       BCCvoid** funcs);
+
 void bccGetPragmas(BCCscript* script, 
                    BCCsizei* actualStringCount,
                    BCCsizei maxStringCount, 
                    BCCchar** strings);
 
+// Below two functions are for debugging
 void bccGetFunctions(BCCscript* script, 
                      BCCsizei* actualFunctionCount,
                      BCCsizei maxFunctionCount, 
@@ -91,39 +97,6 @@ void bccGetFunctionBinary(BCCscript* script,
                           BCCchar* function,
                           BCCvoid** base, 
                           BCCsizei* length);
-
-#if 0
-/* Type-reflection functions below */
-BCCuint bccGetNumTypes(BCCscript* script);
-BCCtype* bccGetTypeOfName(BCCscript* script, 
-                          BCCtype* resultType, 
-                          const BCCchar* name);
-BCCtype* bccGetTypeOfIdx(BCCscript* script, 
-                         BCCtype* resultType, 
-                         BCCuint i);
-
-/* APIs to BCCtype (all with prefix "bccType") */
-const BCCchar* bccTypeGetName(const BCCtype* type);
-
-/*
- * Depending on its usage model, a type reflection (or a type system) needs
- *  to provide both structural equivalence or name equivalence information.
- *
- * bccTypeGetStruct() provides the former, while
- * bccTypeGetFieldNames(), the latter.
- */
-const BCCchar* bccTypeGetStruct(const BCCtype* h);
-const BCCchar* bccTypeGetFieldNames(const BCCtype* h);
-
-BCCuint bccTypeGetNumFields(const BCCtype* h);
-const BCCtype* bccTypeGetFieldType(const BCCtype* type, 
-                                   BCCtype* resultType,
-                                   BCCuint i);
-BCCchar* bccTypeGetFieldName(const BCCtype* type, BCCuint i);
-
-BCCuint bccTypeGetFieldSizeInBits(const BCCtype* type, BCCuint i);
-BCCuint bccTypeGetFieldOffsetInBits(const BCCtype* type, BCCuint i);
-#endif
 
 #ifdef __cplusplus
 };
