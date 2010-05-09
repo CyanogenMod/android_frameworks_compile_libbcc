@@ -250,8 +250,6 @@ class Compiler {
   static std::string Triple;
 
   static llvm::CodeGenOpt::Level CodeGenOptLevel;
-
-  static std::string mError;
   /*
    * End of section of GlobalInitializing variables
    **********************************************/
@@ -273,9 +271,7 @@ class Compiler {
 
   static void GlobalInitialization() {
     if(GlobalInitialized) return;
-    LOGE("INIT");
 
-    llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
     //    if (!llvm::llvm_is_multithreaded())
     //      llvm::llvm_start_multithreaded();
 
@@ -387,6 +383,8 @@ class Compiler {
   static const llvm::StringRef ExportFuncMetadataName;
 
  private:
+  std::string mError;
+
   inline bool hasError() const {
     return !mError.empty();
   }
@@ -2553,6 +2551,8 @@ class Compiler {
     mContext(NULL),
     mModule(NULL)
   {
+    llvm::remove_fatal_error_handler();
+    llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
     mContext = new llvm::LLVMContext();
     return;
   }
@@ -2569,7 +2569,7 @@ class Compiler {
 
     if(bitcode == NULL || bitcodeSize <= 0)
       return 0;
-    LOGE("Before Init");
+
     GlobalInitialization();
 
     /* Package input to object MemoryBuffer */
@@ -2582,7 +2582,7 @@ class Compiler {
 
     /* Read the input Bitcode as a Module */
     mModule = llvm::ParseBitcodeFile(SB, *mContext, &mError);
-    LOGE("FINISH LOAD");
+
 on_bcc_load_module_error:
     if (SB)
       delete SB;
@@ -2604,7 +2604,6 @@ on_bcc_load_module_error:
     const llvm::NamedMDNode* ExportVarMetadata;
     const llvm::NamedMDNode* ExportFuncMetadata;
 
-    LOGE("mModule=%x", mModule);
     if(mModule == NULL) /* No module was loaded */
       return 0;
 
@@ -2906,8 +2905,6 @@ std::string Compiler::Triple;
 std::string Compiler::CPU;
 
 std::vector<std::string> Compiler::Features;
-
-std::string Compiler::mError;
 
 /*
  * The named of metadata node that pragma resides
