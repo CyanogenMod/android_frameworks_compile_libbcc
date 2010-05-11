@@ -371,11 +371,12 @@ class Compiler {
   }
 
   static void LLVMErrorHandler(void *UserData, const std::string &Message) {
-    // std::string* Error = static_cast<std::string*>(UserData);
-    // Error->assign(Message);
-    // return;
-    fprintf(stderr, "%s\n", Message.c_str());
-    exit(1);
+    std::string* Error = static_cast<std::string*>(UserData);
+    Error->assign(Message);
+    LOGE(Message.c_str());
+    return;
+    //fprintf(stderr, "%s\n", Message.c_str());
+    //exit(1);
   }
 
   static const llvm::StringRef PragmaMetadataName;
@@ -2604,6 +2605,7 @@ on_bcc_load_module_error:
     const llvm::NamedMDNode* ExportVarMetadata;
     const llvm::NamedMDNode* ExportFuncMetadata;
 
+    //LOGE("COMPILE");
     if(mModule == NULL) /* No module was loaded */
       return 0;
 
@@ -2664,6 +2666,7 @@ on_bcc_load_module_error:
       goto on_bcc_compile_error;
     }
 
+    //LOGE("Before CODEGEN");
     /*
      * Run the pass (the code emitter) on every non-declaration function
      * in the module
@@ -2671,11 +2674,20 @@ on_bcc_load_module_error:
     CodeGenPasses->doInitialization();
     for(llvm::Module::iterator I = mModule->begin();
         I != mModule->end();
-        I++)
-      if(!I->isDeclaration())
+        I++) {
+      //LOGE("CODEGEN 1.");
+      if(!I->isDeclaration()) {
+        //LOGE("CODEGEN 2.");
         CodeGenPasses->run(*I);
+        //LOGE("CODEGEN 3.");
+      }
+    }
+
+    //LOGE("Before Finalization");
 
     CodeGenPasses->doFinalization();
+
+    //LOGE("After CODEGEN");
 
     /* Copy the global address mapping from code emitter and remapping */
     ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
@@ -2763,6 +2775,7 @@ on_bcc_load_module_error:
       }
 
  on_bcc_compile_error:
+    //LOGE("on_bcc_compiler_error");
     if (CodeGenPasses) {
       delete CodeGenPasses;
     } else if (TD) {
@@ -2771,7 +2784,12 @@ on_bcc_load_module_error:
     if (TM)
       delete TM;
 
-    return hasError();
+    if (mError.empty()) {
+      return false;
+    }
+
+    //    LOGE(getErrorMessage());
+    return true;
   }
 
   /* interface for bccGetScriptInfoLog() */
