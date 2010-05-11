@@ -2577,6 +2577,7 @@ class Compiler {
     SB = llvm::MemoryBuffer::getMemBuffer(
             llvm::StringRef(bitcode, bitcodeSize));
     if(SB == NULL) {
+      LOGE("Error reading input Bitcode into memory");
       setError("Error reading input Bitcode into memory");
       goto on_bcc_load_module_error;
     }
