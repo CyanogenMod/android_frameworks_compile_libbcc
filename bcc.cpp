@@ -373,7 +373,7 @@ class Compiler {
   static void LLVMErrorHandler(void *UserData, const std::string &Message) {
     std::string* Error = static_cast<std::string*>(UserData);
     Error->assign(Message);
-    LOGE(Message.c_str());
+    LOGE("%s", Message.c_str());
     return;
     //fprintf(stderr, "%s\n", Message.c_str());
     //exit(1);
