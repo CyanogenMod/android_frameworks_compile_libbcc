@@ -30,7 +30,7 @@ LOCAL_SRC_FILES:= \
     disassem.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-    libbcc
+    libbcc libdl
 
 LOCAL_C_INCLUDES :=	\
 	$(LOCAL_PATH)/../include
