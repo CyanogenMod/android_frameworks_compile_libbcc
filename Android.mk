@@ -79,6 +79,10 @@ LOCAL_STATIC_LIBRARIES :=	\
 	$(LOCAL_STATIC_LIBRARIES)
 endif
 
+# This hides most of the symbols in the shared library and reduces the size
+# of libbcc.so by about 800k.
+LOCAL_LDFLAGS += -Wl,--exclude-libs=ALL
+
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
 
