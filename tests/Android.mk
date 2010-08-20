@@ -1,5 +1,3 @@
-ifneq ($(TARGET_SIMULATOR),true)
-
 LOCAL_PATH := $(call my-dir)
 
 # Executable for host
@@ -40,5 +38,3 @@ LOCAL_C_INCLUDES :=	\
 #LOCAL_MODULE_TAGS := tests
 
 include $(BUILD_EXECUTABLE)
-
-endif
