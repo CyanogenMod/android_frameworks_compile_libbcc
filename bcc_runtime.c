@@ -53,6 +53,7 @@
 #include "runtime/lib/subvsi3.c"
 #include "runtime/lib/ucmpdi2.c"
 #include "runtime/lib/udivdi3.c"
+#include "runtime/lib/udivsi3.c"
 #include "runtime/lib/udivmoddi4.c"
 #include "runtime/lib/umoddi3.c"
 #include "runtime/lib/eprintf.c"
