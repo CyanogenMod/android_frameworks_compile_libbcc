@@ -1,7 +1,7 @@
 ifneq ($(TARGET_SIMULATOR),true)
 
 LOCAL_PATH := $(call my-dir)
-LLVM_ROOT_PATH := external/llvm/llvm
+LLVM_ROOT_PATH := external/llvm
 
 USE_DISASSEMBLER := true
 
