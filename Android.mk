@@ -4,6 +4,7 @@ LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm
 
 USE_DISASSEMBLER := true
+LLVM_ENABLE_ASSERTION := false
 
 # Shared library for target
 # ========================================================
