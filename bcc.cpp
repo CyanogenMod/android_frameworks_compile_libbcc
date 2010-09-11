@@ -189,7 +189,7 @@
 
 // CodeGen
 #include "llvm/CodeGen/Passes.h"        /* for
-                                         * llvm::createLocalRegisterAllocator()
+                                         * llvm::createFastRegisterAllocator()
                                          * and
                                          * llvm::
                                          * createLinearScanRegisterAllocator()
@@ -358,12 +358,12 @@ class Compiler {
 
     /*
      * Register allocation policy:
-     *  createLocalRegisterAllocator: fast but bad quality
+     *  createFastRegisterAllocator: fast but bad quality
      *  createLinearScanRegisterAllocator: not so fast but good quality
      */
     llvm::RegisterRegAlloc::setDefault
         ((CodeGenOptLevel == llvm::CodeGenOpt::None) ?
-         llvm::createLocalRegisterAllocator :
+         llvm::createFastRegisterAllocator :
          llvm::createLinearScanRegisterAllocator);
 
     GlobalInitialized = true;
