@@ -17,6 +17,8 @@ LOCAL_C_INCLUDES :=	\
 
 #LOCAL_MODULE_TAGS := tests
 
+LOCAL_LDLIBS = -ldl
+
 include $(BUILD_HOST_EXECUTABLE)
 
 # Executable for target
