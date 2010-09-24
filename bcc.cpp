@@ -16,12 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 #include <cutils/hashmap.h>
-
-#if defined(__i386__)
-#include <sys/mman.h>
-#endif
 
 #if defined(__arm__)
   #define DEFAULT_ARM_CODEGEN
@@ -122,7 +119,6 @@
 #include "llvm/System/Host.h"           /* for function
                                          * llvm::sys::isLittleEndianHost()
                                          */
-#include "llvm/System/Memory.h"         /* for class llvm::sys::MemoryBlock */
 
 // ADT
 #include "llvm/ADT/APInt.h"             /* for class llvm::APInt */
@@ -430,9 +426,11 @@ class Compiler {
   class CodeMemoryManager : public llvm::JITMemoryManager {
     /* {{{ */
    private:
-    static const unsigned int MaxCodeSize = 100 * 1024; /* 100 KiB for code */
+    static const unsigned int MaxCodeSize = 128 * 1024; /* 128 KiB for code */
     static const unsigned int MaxGOTSize = 1 * 1024;    /* 1 KiB for global
                                                            offset table (GOT) */
+    static const unsigned int MaxGlobalVarSize = 128 * 1024; /* 128 KiB for global
+                                                               variable */
 
     /*
      * Our memory layout is as follows:
@@ -442,22 +440,34 @@ class Compiler {
      *
      * @mpCodeMem:
      *  +--------------------------------------------------------------+
-     *  | Function Memory ... ->                <- ... Global/Stub/GOT |
+     *  | Function Memory ... ->                <- ...        Stub/GOT |
      *  +--------------------------------------------------------------+
      *  |<------------------ Total: @MaxCodeSize KiB ----------------->|
      *
      *  Where size of GOT is @MaxGOTSize KiB.
      *
+     * @mpGVMem:
+     *  +--------------------------------------------------------------+
+     *  | Global variable ... ->                                       |
+     *  +--------------------------------------------------------------+
+     *  |<--------------- Total: @MaxGlobalVarSize KiB --------------->|
+     *
+     *
      * @mCurFuncMemIdx: The current index (starting from 0) of the last byte
-     *                    of function code's memoey usage
-     * @mCurGSGMemIdx: The current index (starting from 0) of the last byte
-     *                    of Global Stub/GOT's memory usage
+     *                    of function code's memory usage
+     * @mCurSGMemIdx: The current index (starting from tail) of the last byte
+     *                    of stub/GOT's memory usage
+     * @mCurGVMemIdx: The current index (starting from tail) of the last byte
+     *                    of global variable's memory usage
      *
      */
 
     uintptr_t mCurFuncMemIdx;
-    uintptr_t mCurGSGMemIdx;
-    llvm::sys::MemoryBlock* mpCodeMem;
+    uintptr_t mCurSGMemIdx;
+    uintptr_t mCurGVMemIdx;
+    void* mpCodeMem;
+    void* mpGVMem;
+
 
     /* GOT Base */
     uint8_t* mpGOTBase;
@@ -467,42 +477,57 @@ class Compiler {
                      > FunctionMapTy;
     FunctionMapTy mFunctionMap;
 
-    inline uintptr_t getFreeMemSize() const {
-      return mCurGSGMemIdx - mCurFuncMemIdx;
+    inline uintptr_t getFreeCodeMemSize() const {
+      return mCurSGMemIdx - mCurFuncMemIdx;
     }
     inline uint8_t* getCodeMemBase() const {
-      return static_cast<uint8_t*>(mpCodeMem->base());
+      return reinterpret_cast<uint8_t*>(mpCodeMem);
     }
 
-    uint8_t* allocateGSGMemory(uintptr_t Size,
-                               unsigned Alignment = 1 /* no alignment */)
+    uint8_t* allocateSGMemory(uintptr_t Size,
+                              unsigned Alignment = 1 /* no alignment */)
     {
-      if(getFreeMemSize() < Size)
+      if(getFreeCodeMemSize() < Size)
         /* The code size excesses our limit */
         return NULL;
 
       if(Alignment == 0)
         Alignment = 1;
 
-      uint8_t* result = getCodeMemBase() + mCurGSGMemIdx - Size;
+      uint8_t* result = getCodeMemBase() + mCurSGMemIdx - Size;
       result = (uint8_t*) (((intptr_t) result) & ~(intptr_t) (Alignment - 1));
 
-      mCurGSGMemIdx = result - getCodeMemBase();
+      mCurSGMemIdx = result - getCodeMemBase();
 
       return result;
     }
 
+    inline uintptr_t getFreeGVMemSize() const {
+      return MaxGlobalVarSize - mCurGVMemIdx;
+    }
+    inline uint8_t* getGVMemBase() const {
+      return reinterpret_cast<uint8_t*>(mpGVMem);
+    }
+
    public:
-    CodeMemoryManager() : mpCodeMem(NULL), mpGOTBase(NULL) {
+    CodeMemoryManager() : mpCodeMem(NULL), mpGVMem(NULL), mpGOTBase(NULL) {
       reset();
       std::string ErrMsg;
-      llvm::sys::MemoryBlock B = llvm::sys::Memory::
-          AllocateRWX(MaxCodeSize, NULL, &ErrMsg);
-      if(B.base() == 0)
+
+      mpCodeMem = ::mmap(NULL, MaxCodeSize, PROT_READ | PROT_WRITE | PROT_EXEC,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+      if (mpCodeMem == MAP_FAILED)
         llvm::report_fatal_error(
-            "Failed to allocate Memory for code emitter\n" + ErrMsg
+            "Failed to allocate memory for emitting function codes\n" + ErrMsg
                                 );
-      mpCodeMem = new llvm::sys::MemoryBlock(B.base(), B.size());
+
+      mpGVMem = ::mmap(mpCodeMem, MaxGlobalVarSize,
+                       PROT_READ | PROT_WRITE | PROT_EXEC,
+                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+      if (mpGVMem == MAP_FAILED)
+        llvm::report_fatal_error(
+            "Failed to allocate memory for emitting global variables\n" + ErrMsg
+                                );
 
       return;
     }
@@ -512,7 +537,7 @@ class Compiler {
      *  the code pages may need permissions changed.
      */
     void setMemoryWritable() {
-      llvm::sys::Memory::setWritable(*mpCodeMem);
+      ::mprotect(mpCodeMem, MaxCodeSize, PROT_READ | PROT_WRITE | PROT_EXEC);
       return;
     }
 
@@ -521,7 +546,7 @@ class Compiler {
      *  start execution, the code pages may need permissions changed.
      */
     void setMemoryExecutable() {
-      llvm::sys::Memory::setExecutable(*mpCodeMem);
+      ::mprotect(mpCodeMem, MaxCodeSize, PROT_READ | PROT_EXEC);
       return;
     }
 
@@ -544,7 +569,7 @@ class Compiler {
      */
     void AllocateGOT() {
       assert(mpGOTBase != NULL && "Cannot allocate the GOT multiple times");
-      mpGOTBase = allocateGSGMemory(MaxGOTSize);
+      mpGOTBase = allocateSGMemory(MaxGOTSize);
       HasGOT = true;
       return;
     }
@@ -571,11 +596,11 @@ class Compiler {
      *  not write more than the returned ActualSize bytes of memory.
      */
     uint8_t* startFunctionBody(const llvm::Function *F, uintptr_t &ActualSize) {
-      if(getFreeMemSize() < ActualSize)
+      if(getFreeCodeMemSize() < ActualSize)
         /* The code size excesses our limit */
         return NULL;
 
-      ActualSize = getFreeMemSize();
+      ActualSize = getFreeCodeMemSize();
       return (getCodeMemBase() + mCurFuncMemIdx);
     }
 
@@ -592,7 +617,7 @@ class Compiler {
      */
     uint8_t* allocateStub(const llvm::GlobalValue* F, unsigned StubSize,
                           unsigned Alignment) {
-      return allocateGSGMemory(StubSize, Alignment);
+      return allocateSGMemory(StubSize, Alignment);
     }
 
     /*
@@ -611,7 +636,7 @@ class Compiler {
 
       /* Advance the pointer */
       intptr_t FunctionCodeSize = FunctionEnd - FunctionStart;
-      assert(FunctionCodeSize <= getFreeMemSize() &&
+      assert(FunctionCodeSize <= getFreeCodeMemSize() &&
              "Code size excess the limitation!");
       mCurFuncMemIdx += FunctionCodeSize;
 
@@ -631,7 +656,7 @@ class Compiler {
      *  calls to startFunctionBody and endFunctionBody.
      */
     uint8_t* allocateSpace(intptr_t Size, unsigned Alignment) {
-      if(getFreeMemSize() < Size)
+      if(getFreeCodeMemSize() < Size)
         /* The code size excesses our limit */
         return NULL;
 
@@ -648,9 +673,25 @@ class Compiler {
       return result;
     }
 
-    /* allocateGlobal - Allocate memory for a global. */
+    /* allocateGlobal - Allocate memory for a global variable. */
     uint8_t* allocateGlobal(uintptr_t Size, unsigned Alignment) {
-      return allocateGSGMemory(Size, Alignment);
+      if (getFreeGVMemSize() < Size) {
+        /* The code size excesses our limit */
+        LOGE("No Global Memory");
+        return NULL;
+      }
+
+      if(Alignment == 0)
+        Alignment = 1;
+
+      uint8_t* result = getGVMemBase() + mCurGVMemIdx;
+      result = (uint8_t*) (((intptr_t) result + Alignment - 1) &
+                           ~(intptr_t) (Alignment - 1)
+                           );
+
+      mCurGVMemIdx = (result + Size) - getGVMemBase();
+
+      return result;
     }
 
     /*
@@ -725,7 +766,8 @@ class Compiler {
       HasGOT = false;
 
       mCurFuncMemIdx = 0;
-      mCurGSGMemIdx = MaxCodeSize - 1;
+      mCurSGMemIdx = MaxCodeSize - 1;
+      mCurGVMemIdx = 0;
 
       mFunctionMap.clear();
 
@@ -733,8 +775,12 @@ class Compiler {
     }
 
     ~CodeMemoryManager() {
-      if(mpCodeMem != NULL)
-        llvm::sys::Memory::ReleaseRWX(*mpCodeMem);
+      if(mpCodeMem != NULL) {
+        ::munmap(mpCodeMem, MaxCodeSize);
+      }
+      if(mpGVMem != NULL) {
+        ::munmap(mpGVMem, MaxGlobalVarSize);
+      }
       return;
     }
     /* }}} */
@@ -2104,7 +2150,6 @@ class Compiler {
       uintptr_t ActualSize = 0;
 
       mpMemMgr->setMemoryWritable();
-
       /*
        * BufferBegin, BufferEnd and CurBufferPtr
        *  are all inherited from class MachineCodeEmitter,
@@ -2237,15 +2282,15 @@ class Compiler {
       mRelocations.clear();
       mConstPoolAddresses.clear();
 
-      /* Mark code region readable and executable if it's not so already. */
-      mpMemMgr->setMemoryExecutable();
-
-      Disassemble(F.getFunction()->getName(), FnStart, FnEnd - FnStart, false);
-
       if(mpMMI)
         mpMMI->EndFunction();
 
       updateFunctionStub(F.getFunction());
+
+      /* Mark code region readable and executable if it's not so already. */
+      mpMemMgr->setMemoryExecutable();
+
+      Disassemble(F.getFunction()->getName(), FnStart, FnEnd - FnStart, false);
 
       return false;
     }
@@ -2606,7 +2651,6 @@ on_bcc_load_module_error:
     const llvm::NamedMDNode* ExportVarMetadata;
     const llvm::NamedMDNode* ExportFuncMetadata;
 
-    //LOGE("COMPILE");
     if(mModule == NULL) /* No module was loaded */
       return 0;
 
@@ -2667,7 +2711,6 @@ on_bcc_load_module_error:
       goto on_bcc_compile_error;
     }
 
-    //LOGE("Before CODEGEN");
     /*
      * Run the pass (the code emitter) on every non-declaration function
      * in the module
@@ -2676,19 +2719,12 @@ on_bcc_load_module_error:
     for(llvm::Module::iterator I = mModule->begin();
         I != mModule->end();
         I++) {
-      //LOGE("CODEGEN 1.");
       if(!I->isDeclaration()) {
-        //LOGE("CODEGEN 2.");
         CodeGenPasses->run(*I);
-        //LOGE("CODEGEN 3.");
       }
     }
 
-    //LOGE("Before Finalization");
-
     CodeGenPasses->doFinalization();
-
-    //LOGE("After CODEGEN");
 
     /* Copy the global address mapping from code emitter and remapping */
     ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
