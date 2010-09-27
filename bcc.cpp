@@ -514,7 +514,7 @@ class Compiler {
       reset();
       std::string ErrMsg;
 
-      mpCodeMem = ::mmap(NULL, MaxCodeSize, PROT_READ | PROT_WRITE | PROT_EXEC,
+      mpCodeMem = ::mmap(NULL, MaxCodeSize, PROT_READ | PROT_EXEC,
                          MAP_PRIVATE | MAP_ANON, -1, 0);
       if (mpCodeMem == MAP_FAILED)
         llvm::report_fatal_error(
@@ -522,7 +522,7 @@ class Compiler {
                                 );
 
       mpGVMem = ::mmap(mpCodeMem, MaxGlobalVarSize,
-                       PROT_READ | PROT_WRITE | PROT_EXEC,
+                       PROT_READ | PROT_WRITE,
                        MAP_PRIVATE | MAP_ANON, -1, 0);
       if (mpGVMem == MAP_FAILED)
         llvm::report_fatal_error(
