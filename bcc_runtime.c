@@ -1,3 +1,19 @@
+/*
+ * Copyright 2010, The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "runtime/lib/absvdi2.c"
 #include "runtime/lib/absvsi2.c"
 #include "runtime/lib/addvdi3.c"
@@ -63,17 +79,17 @@
 #include <assert.h>
 
 typedef struct {
-  const char* mName; 
-  void* mPtr;
+  const char *mName;
+  void *mPtr;
 } RuntimeFunction;
 
 #define USE_VFP_RUNTIME 1
 
 #if defined(__arm__)
   #define DEF_GENERIC_RUNTIME(func)   \
-    extern void* func;
+    extern void *func;
   #define DEF_VFP_RUNTIME(func) \
-    extern void* func ## vfp;
+    extern void *func ## vfp;
   #define DEF_LLVM_RUNTIME(func)
   #define DEF_BCC_RUNTIME(func)
 #include "bcc_runtime.def"
@@ -98,33 +114,32 @@ static const RuntimeFunction gRuntimes[] = {
 #include "bcc_runtime.def"
 };
 
-static int CompareRuntimeFunction(const void* a, const void* b) {
-  return strcmp(((const RuntimeFunction*) a)->mName, 
+static int CompareRuntimeFunction(const void *a, const void *b) {
+  return strcmp(((const RuntimeFunction*) a)->mName,
                ((const RuntimeFunction*) b)->mName);
 }
 
-void* FindRuntimeFunction(const char* Name) {
-  /* binary search */
+void *FindRuntimeFunction(const char *Name) {
+  // binary search
   const RuntimeFunction Key = { Name, NULL };
-  const RuntimeFunction* R = 
-      bsearch(&Key, 
-              gRuntimes, 
-              sizeof(gRuntimes) / sizeof(RuntimeFunction), 
+  const RuntimeFunction *R =
+      bsearch(&Key,
+              gRuntimes,
+              sizeof(gRuntimes) / sizeof(RuntimeFunction),
               sizeof(RuntimeFunction),
               CompareRuntimeFunction);
-  if(R)
-    return R->mPtr;
-  else
-    return NULL;
+
+  return ((R) ? R->mPtr : NULL);
 }
 
 void VerifyRuntimesTable() {
-  int N = sizeof(gRuntimes) / sizeof(RuntimeFunction), i;
-  for(i=0;i<N;i++) {
-    const char* Name = gRuntimes[i].mName;
-    int* Ptr = FindRuntimeFunction(Name);
+  unsigned N = sizeof(gRuntimes) / sizeof(RuntimeFunction), i;
+  for(i = 0; i < N; i++) {
+    const char *Name = gRuntimes[i].mName;
+    int *Ptr = FindRuntimeFunction(Name);
 
-    assert((Ptr == (int*) gRuntimes[i].mPtr) && 
-      "Table is corrupted (runtime name should be sorted in bcc_runtime.def).");
+    if (Ptr != (int*) gRuntimes[i].mPtr)
+      assert(false && "Table is corrupted (runtime name should be sorted in "
+                      "bcc_runtime.def).");
   }
 }

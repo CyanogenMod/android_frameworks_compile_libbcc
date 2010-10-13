@@ -1,3 +1,19 @@
+/*
+ * Copyright 2010, The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <ctype.h>
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -94,53 +110,6 @@ static int disassemble(BCCscript* script, FILE* out) {
   return 1;
 }
 #endif // PROVIDE_ARM_DISASSEMBLY
-
-static int reflection(BCCscript* script, FILE* out) {
-#if 0
-  moduleHandle m = bccGetModuleHandle(script);
-
-  fprintf(out, "#types = %d\n", bccGetNumTypes(m));
-
-  for (int i = 0; i < bccGetNumTypes(m); i++) {
-    typeHandle h = bccGetTypeHandleOf(m, i);
-
-    const char *str = bccGetTypeName(m, h);
-    fprintf(out, "Type #%d:\n -Name: %s\n", i, str);
-
-    // Double-check using bccGetTypeHandle
-    if (h != bccGetTypeHandle(m, str)) {
-      fprintf(out, "typeHandle <-> nameHandle not 1:1\n");
-    }
-
-    fprintf(out, " -Structural: %s\n", bccGetTypeStruct(h));
-
-    fprintf(out, " -FieldNames: %s\n",
-            bccGetTypeFieldNames(m, h));
-
-    unsigned j = bccGetNumFields(h);
-    fprintf(out, " -#fields: %d\n", j);
-
-    if (j > 1) {
-      unsigned k;
-      for (k = 0; k < j; k++) {
-        typeHandle f = bccGetFieldType(h, k);
-        fprintf(out, "  Field #%d:\n   -Structural: %s\n   -Name: %s\n",
-                k,
-                bccGetTypeStruct(f),
-                bccGetFieldName(m, h, k));
-
-        fprintf(out, "   -Size: %d\n   -Offst: %d\n",
-                bccGetFieldSizeInBits(m, h, k),
-                bccGetFieldOffsetInBits(m, h, k));
-      }
-    }
-  }
-
-  bccDeleteModuleHandle(m);
-#endif
-
-  return 1;
-}
 
 const char* inFile = NULL;
 bool printTypeInformation = false;
@@ -297,11 +266,13 @@ int main(int argc, char** argv)
     goto exit;
   }
 
+#if 0
   if(printTypeInformation && !reflection(script, stderr)) {
     result = 3;
     fprintf(stderr, "failed to retrieve type information\n");
     goto exit;
   }
+#endif
 
   if(!compile(script)) {
     result = 4;

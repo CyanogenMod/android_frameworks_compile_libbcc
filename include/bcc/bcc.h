@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,58 +45,58 @@ typedef struct BCCtype              BCCtype;
 extern "C" {
 #endif
 
-BCCscript* bccCreateScript();
+BCCscript *bccCreateScript();
 
-void bccDeleteScript(BCCscript* script);
+void bccDeleteScript(BCCscript *script);
 
-typedef BCCvoid* (*BCCSymbolLookupFn)(BCCvoid* pContext, const BCCchar* name);
+typedef BCCvoid *(*BCCSymbolLookupFn)(BCCvoid *pContext, const BCCchar *name);
 
-void bccRegisterSymbolCallback(BCCscript* script, 
+void bccRegisterSymbolCallback(BCCscript *script,
                                BCCSymbolLookupFn pFn,
-                               BCCvoid* pContext);
+                               BCCvoid *pContext);
 
-BCCenum bccGetError( BCCscript* script );
+BCCenum bccGetError( BCCscript *script );
 
-void bccScriptBitcode(BCCscript* script,
-                 const BCCchar* bitcode,
+void bccScriptBitcode(BCCscript *script,
+                 const BCCchar *bitcode,
                  BCCint size);
 
-void bccCompileScript(BCCscript* script);
+void bccCompileScript(BCCscript *script);
 
-void bccGetScriptInfoLog(BCCscript* script,
+void bccGetScriptInfoLog(BCCscript *script,
                          BCCsizei maxLength,
-                         BCCsizei* length,
-                         BCCchar* infoLog);
+                         BCCsizei *length,
+                         BCCchar *infoLog);
 
-void bccGetScriptLabel(BCCscript* script, 
-                       const BCCchar* name,
-                       BCCvoid** address);
+void bccGetScriptLabel(BCCscript *script,
+                       const BCCchar *name,
+                       BCCvoid **address);
 
-void bccGetExportVars(BCCscript* script,
-                      BCCsizei* actualVarCount,
+void bccGetExportVars(BCCscript *script,
+                      BCCsizei *actualVarCount,
                       BCCsizei maxVarCount,
-                      BCCvoid** vars);
+                      BCCvoid **vars);
 
-void bccGetExportFuncs(BCCscript* script,
-                       BCCsizei* actualFuncCount,
+void bccGetExportFuncs(BCCscript *script,
+                       BCCsizei *actualFuncCount,
                        BCCsizei maxFuncCount,
-                       BCCvoid** funcs);
+                       BCCvoid **funcs);
 
-void bccGetPragmas(BCCscript* script, 
-                   BCCsizei* actualStringCount,
-                   BCCsizei maxStringCount, 
-                   BCCchar** strings);
+void bccGetPragmas(BCCscript *script,
+                   BCCsizei *actualStringCount,
+                   BCCsizei maxStringCount,
+                   BCCchar **strings);
 
 // Below two functions are for debugging
-void bccGetFunctions(BCCscript* script, 
-                     BCCsizei* actualFunctionCount,
-                     BCCsizei maxFunctionCount, 
-                     BCCchar** functions);
+void bccGetFunctions(BCCscript *script,
+                     BCCsizei *actualFunctionCount,
+                     BCCsizei maxFunctionCount,
+                     BCCchar **functions);
 
-void bccGetFunctionBinary(BCCscript* script, 
-                          BCCchar* function,
-                          BCCvoid** base, 
-                          BCCsizei* length);
+void bccGetFunctionBinary(BCCscript *script,
+                          BCCchar *function,
+                          BCCvoid **base,
+                          BCCsizei *length);
 
 #ifdef __cplusplus
 };
