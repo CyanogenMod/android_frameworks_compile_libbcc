@@ -58,8 +58,13 @@ void bccRegisterSymbolCallback(BCCscript *script,
 BCCenum bccGetError( BCCscript *script );
 
 void bccScriptBitcode(BCCscript *script,
-                 const BCCchar *bitcode,
-                 BCCint size);
+                      const BCCchar *bitcode,
+                      BCCint size);
+
+// Interface for llvm::Module input. @module should be a valid llvm::Module
+// instance.
+void bccScriptModule(BCCscript *script,
+                     BCCvoid *module);
 
 void bccCompileScript(BCCscript *script);
 

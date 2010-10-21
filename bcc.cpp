@@ -2343,6 +2343,12 @@ class Compiler {
     return;
   }
 
+  int loadModule(llvm::Module *module) {
+    GlobalInitialization();
+    mModule = module;
+    return hasError();
+  }
+
   int loadModule(const char *bitcode, size_t bitcodeSize) {
     llvm::MemoryBuffer *SB = NULL;
 
@@ -2755,6 +2761,12 @@ void bccRegisterSymbolCallback(BCCscript *script,
                                BCCSymbolLookupFn pFn,
                                BCCvoid *pContext) {
   script->registerSymbolCallback(pFn, pContext);
+}
+
+extern "C"
+void bccScriptModule(BCCscript *script,
+                     BCCvoid *module) {
+  script->compiler.loadModule(reinterpret_cast<llvm::Module*>(module));
 }
 
 extern "C"
