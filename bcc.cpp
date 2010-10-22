@@ -110,6 +110,7 @@
 // VMCore
 #include "llvm/Use.h"
 #include "llvm/User.h"
+#include "llvm/Linker.h"
 #include "llvm/Module.h"
 #include "llvm/Function.h"
 #include "llvm/Constant.h"
@@ -2350,7 +2351,7 @@ class Compiler {
   }
 
   int loadModule(const char *bitcode, size_t bitcodeSize) {
-    llvm::MemoryBuffer *SB = NULL;
+    llvm::OwningPtr<llvm::MemoryBuffer> SB;
 
     if (bitcode == NULL || bitcodeSize <= 0)
       return 0;
@@ -2358,20 +2359,47 @@ class Compiler {
     GlobalInitialization();
 
     // Package input to object MemoryBuffer
-    SB = llvm::MemoryBuffer::getMemBuffer(
-            llvm::StringRef(bitcode, bitcodeSize));
-    if (SB == NULL) {
-      LOGE("Error reading input Bitcode into memory");
-      setError("Error reading input Bitcode into memory");
-      goto on_bcc_load_module_error;
+    SB.reset(llvm::MemoryBuffer::getMemBuffer(
+                llvm::StringRef(bitcode, bitcodeSize)));
+
+    if (SB.get() == NULL) {
+      setError("Error reading input program bitcode into memory");
+      return hasError();
     }
 
     // Read the input Bitcode as a Module
-    mModule = llvm::ParseBitcodeFile(SB, *mContext, &mError);
+    mModule = llvm::ParseBitcodeFile(SB.get(), *mContext, &mError);
+    SB.reset();
+    return hasError();
+  }
 
- on_bcc_load_module_error:
-    if (SB)
-      delete SB;
+  int linkModule(const char *bitcode, size_t bitcodeSize) {
+    llvm::OwningPtr<llvm::MemoryBuffer> SB;
+
+    if (bitcode == NULL || bitcodeSize <= 0)
+      return 0;
+
+    if (mModule == NULL) {
+      setError("No module presents for linking");
+      return hasError();
+    }
+
+    SB.reset(llvm::MemoryBuffer::getMemBuffer(
+                llvm::StringRef(bitcode, bitcodeSize)));
+
+    if (SB.get() == NULL) {
+      setError("Error reading input library bitcode into memory");
+      return hasError();
+    }
+
+    llvm::OwningPtr<llvm::Module> Lib(llvm::ParseBitcodeFile(SB.get(),
+                                                             *mContext,
+                                                             &mError));
+    if (Lib.get() == NULL)
+      return hasError();
+
+    if (llvm::Linker::LinkModules(mModule, Lib.take(), &mError))
+      return hasError();
 
     return hasError();
   }
@@ -2774,6 +2802,13 @@ void bccScriptBitcode(BCCscript *script,
                       const BCCchar *bitcode,
                       BCCint size) {
   script->compiler.loadModule(bitcode, size);
+}
+
+extern "C"
+void bccLinkBitcode(BCCscript *script,
+                    const BCCchar *bitcode,
+                    BCCint size) {
+  script->compiler.linkModule(bitcode, size);
 }
 
 extern "C"

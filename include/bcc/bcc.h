@@ -66,6 +66,10 @@ void bccScriptBitcode(BCCscript *script,
 void bccScriptModule(BCCscript *script,
                      BCCvoid *module);
 
+void bccLinkModule(BCCscript *script,
+                   const BCCchar *bitcode,
+                   BCCint size);
+
 void bccCompileScript(BCCscript *script);
 
 void bccGetScriptInfoLog(BCCscript *script,

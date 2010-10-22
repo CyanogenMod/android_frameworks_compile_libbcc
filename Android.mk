@@ -73,6 +73,7 @@ LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMSelectionDAG	\
 	libLLVMAsmPrinter	\
 	libLLVMCodeGen	\
+	libLLVMLinker	\
 	libLLVMJIT	\
 	libLLVMTarget	\
 	libLLVMMC	\
@@ -121,6 +122,7 @@ LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMAsmPrinter	\
 	libLLVMMCParser	\
 	libLLVMCodeGen	\
+	libLLVMLinker	\
 	libLLVMJIT	\
 	libLLVMTarget	\
 	libLLVMMC	\
