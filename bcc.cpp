@@ -2324,13 +2324,15 @@ class Compiler {
 
   bool mTypeInformationPrepared;
   std::vector<const llvm::Type*> mTypes;
+  bool mHasLinked;
 
  public:
   Compiler()
       : mpSymbolLookupFn(NULL),
         mpSymbolLookupContext(NULL),
         mContext(NULL),
-        mModule(NULL) {
+        mModule(NULL),
+        mHasLinked(NULL) {
     llvm::remove_fatal_error_handler();
     llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
     mContext = new llvm::LLVMContext();
@@ -2401,6 +2403,8 @@ class Compiler {
     if (llvm::Linker::LinkModules(mModule, Lib.take(), &mError))
       return hasError();
 
+    // Everything for linking should be settled down here with no error occurs
+    mHasLinked = true;
     return hasError();
   }
 
@@ -2468,6 +2472,19 @@ class Compiler {
 
     // Get target data from Module
     TD = new llvm::TargetData(mModule);
+
+    // Create LTO passes and run them on the mModule
+    if (mHasLinked) {
+      llvm::PassManager LTOPasses;
+      LTOPasses.add(TD);
+
+      llvm::createStandardLTOPasses(&LTOPasses,
+                                    /* Internalize = */false,
+                                    /* RunInliner = */true,
+                                    /* VerifyEach = */false);
+      LTOPasses.run(*mModule);
+    }
+
     // Create code-gen pass to run the code emitter
     CodeGenPasses = new llvm::FunctionPassManager(mModule);
     CodeGenPasses->add(TD);  // Will take the ownership of TD

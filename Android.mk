@@ -78,6 +78,9 @@ LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMTarget	\
 	libLLVMMC	\
 	libLLVMScalarOpts	\
+	libLLVMInstCombine	\
+	libLLVMipo	\
+	libLLVMipa	\
 	libLLVMTransformUtils	\
 	libLLVMCore	\
 	libLLVMSupport	\
@@ -127,6 +130,9 @@ LOCAL_STATIC_LIBRARIES :=	\
 	libLLVMTarget	\
 	libLLVMMC	\
 	libLLVMScalarOpts	\
+	libLLVMInstCombine	\
+	libLLVMipo	\
+	libLLVMipa	\
 	libLLVMTransformUtils	\
 	libLLVMCore	\
 	libLLVMSupport	\
