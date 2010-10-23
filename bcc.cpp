@@ -2322,8 +2322,6 @@ class Compiler {
   llvm::LLVMContext *mContext;
   llvm::Module *mModule;
 
-  bool mTypeInformationPrepared;
-  std::vector<const llvm::Type*> mTypes;
   bool mHasLinked;
 
  public:
@@ -2473,10 +2471,53 @@ class Compiler {
     // Get target data from Module
     TD = new llvm::TargetData(mModule);
 
+    // Load named metadata
+    ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
+    ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
+    PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
+
     // Create LTO passes and run them on the mModule
     if (mHasLinked) {
+      llvm::TimePassesIsEnabled = true;
       llvm::PassManager LTOPasses;
-      LTOPasses.add(TD);
+      LTOPasses.add(new llvm::TargetData(*TD));
+
+      std::vector<const char*> ExportSymbols;
+
+      // A workaround for getting export variable and function name. Will refine
+      // it soon.
+      if (ExportVarMetadata) {
+        for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
+          llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
+          if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
+            llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
+            if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
+              llvm::StringRef ExportVarName =
+                  static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
+              ExportSymbols.push_back(ExportVarName.data());
+            }
+          }
+        }
+      }
+
+      if (ExportFuncMetadata) {
+        for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
+          llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
+          if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
+            llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
+            if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
+              llvm::StringRef ExportFuncName =
+                  static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
+              ExportSymbols.push_back(ExportFuncName.data());
+            }
+          }
+        }
+      }
+      // root() and init() are born to be exported
+      ExportSymbols.push_back("root");
+      ExportSymbols.push_back("init");
+
+      LTOPasses.add(llvm::createInternalizePass(ExportSymbols));
 
       llvm::createStandardLTOPasses(&LTOPasses,
                                     /* Internalize = */false,
@@ -2509,7 +2550,6 @@ class Compiler {
     CodeGenPasses->doFinalization();
 
     // Copy the global address mapping from code emitter and remapping
-    ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
     if (ExportVarMetadata) {
       for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
         llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
@@ -2542,7 +2582,6 @@ class Compiler {
               "Number of slots doesn't match the number of export variables!");
     }
 
-    ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
     if (ExportFuncMetadata) {
       for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
         llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
@@ -2563,7 +2602,6 @@ class Compiler {
 
     // Finally, read pragma information from the metadata node of the @Module if
     // any.
-    PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
     if (PragmaMetadata)
       for (int i = 0, e = PragmaMetadata->getNumOperands(); i != e; i++) {
         llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
@@ -2710,10 +2748,6 @@ class Compiler {
 
   inline const llvm::Module *getModule() const {
     return mModule;
-  }
-
-  inline const std::vector<const llvm::Type*> &getTypes() const {
-    return mTypes;
   }
 
   ~Compiler() {
