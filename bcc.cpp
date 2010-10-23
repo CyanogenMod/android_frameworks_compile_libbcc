@@ -2517,12 +2517,83 @@ class Compiler {
       ExportSymbols.push_back("root");
       ExportSymbols.push_back("init");
 
+      // We now create passes list performing LTO. These are copied from
+      // (including comments) llvm::createStandardLTOPasses().
+
+      // Internalize all other symbols not listed in ExportSymbols
       LTOPasses.add(llvm::createInternalizePass(ExportSymbols));
 
-      llvm::createStandardLTOPasses(&LTOPasses,
-                                    /* Internalize = */false,
-                                    /* RunInliner = */true,
-                                    /* VerifyEach = */false);
+      // Propagate constants at call sites into the functions they call. This
+      // opens opportunities for globalopt (and inlining) by substituting
+      // function pointers passed as arguments to direct uses of functions.
+      LTOPasses.add(llvm::createIPSCCPPass());
+
+      // Now that we internalized some globals, see if we can hack on them!
+      LTOPasses.add(llvm::createGlobalOptimizerPass());
+
+      // Linking modules together can lead to duplicated global constants, only
+      // keep one copy of each constant...
+      LTOPasses.add(llvm::createConstantMergePass());
+
+      // Remove unused arguments from functions...
+      LTOPasses.add(llvm::createDeadArgEliminationPass());
+
+      // Reduce the code after globalopt and ipsccp. Both can open up
+      // significant simplification opportunities, and both can propagate
+      // functions through function pointers. When this happens, we often have
+      // to resolve varargs calls, etc, so let instcombine do this.
+      LTOPasses.add(llvm::createInstructionCombiningPass());
+
+      // Inline small functions
+      LTOPasses.add(llvm::createFunctionInliningPass());
+
+      // Remove dead EH info.
+      LTOPasses.add(llvm::createPruneEHPass());
+
+      // Internalize the globals again after inlining
+      LTOPasses.add(llvm::createGlobalOptimizerPass());
+
+      // Remove dead functions.
+      LTOPasses.add(llvm::createGlobalDCEPass());
+
+      // If we didn't decide to inline a function, check to see if we can
+      // transform it to pass arguments by value instead of by reference.
+      LTOPasses.add(llvm::createArgumentPromotionPass());
+
+      // The IPO passes may leave cruft around.  Clean up after them.
+      LTOPasses.add(llvm::createInstructionCombiningPass());
+      LTOPasses.add(llvm::createJumpThreadingPass());
+
+      // Break up allocas
+      LTOPasses.add(llvm::createScalarReplAggregatesPass());
+
+      // Run a few AA driven optimizations here and now, to cleanup the code.
+      LTOPasses.add(llvm::createFunctionAttrsPass());  // Add nocapture.
+      LTOPasses.add(llvm::createGlobalsModRefPass());  // IP alias analysis.
+
+      // Hoist loop invariants.
+      LTOPasses.add(llvm::createLICMPass());
+
+      // Remove redundancies.
+      LTOPasses.add(llvm::createGVNPass());
+
+      // Remove dead memcpys.
+      LTOPasses.add(llvm::createMemCpyOptPass());
+
+      // Nuke dead stores.
+      LTOPasses.add(llvm::createDeadStoreEliminationPass());
+
+      // Cleanup and simplify the code after the scalar optimizations.
+      LTOPasses.add(llvm::createInstructionCombiningPass());
+
+      LTOPasses.add(llvm::createJumpThreadingPass());
+
+      // Delete basic blocks, which optimization passes may have killed.
+      LTOPasses.add(llvm::createCFGSimplificationPass());
+
+      // Now that we have optimized the program, discard unreachable functions.
+      LTOPasses.add(llvm::createGlobalDCEPass());
+
       LTOPasses.run(*mModule);
     }
 
