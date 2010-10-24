@@ -261,7 +261,7 @@ class Compiler {
      // -O1: llvm::CodeGenOpt::Less
      // -O2: llvm::CodeGenOpt::Default
      // -O3: llvm::CodeGenOpt::Aggressive
-    CodeGenOptLevel = llvm::CodeGenOpt::Aggressive;
+    CodeGenOptLevel = llvm::CodeGenOpt::None;
 
     // Below are the global settings to LLVM
 
