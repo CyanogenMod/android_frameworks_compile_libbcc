@@ -228,6 +228,7 @@ class Compiler {
     // Features.push_back("+vmlx");
     // Features.push_back("+neonfp");
     Features.push_back("+vfp3");
+    Features.push_back("+d16");
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
     LLVMInitializeARMTargetInfo();
