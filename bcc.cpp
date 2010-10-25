@@ -174,6 +174,7 @@
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 
+extern "C" void LLVMInitializeARMDisassembler();
 
 //
 // Compilation class that suits Android's needs.

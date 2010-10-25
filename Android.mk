@@ -114,12 +114,18 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
-LOCAL_SRC_FILES := bcc.cpp bcc_runtime.c
+LOCAL_SRC_FILES :=   \
+	bcc.cpp	     \
+	hashmap.c    \
+	logd_write.c \
+	bcc_runtime.c
 
 LOCAL_STATIC_LIBRARIES :=	\
 	libcutils	\
 	libLLVMX86CodeGen	\
 	libLLVMX86Info	\
+	libLLVMARMCodeGen	\
+	libLLVMARMInfo	\
 	libLLVMBitReader	\
 	libLLVMSelectionDAG	\
 	libLLVMAsmPrinter	\
@@ -144,11 +150,15 @@ LOCAL_LDLIBS := -ldl -lpthread
 LOCAL_C_INCLUDES :=	\
 	$(LOCAL_PATH)/include
 
+# definitions for LLVM
+LOCAL_CFLAGS += -DHAVE_PTHREADS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DUSE_DISASSEMBLER=1 -DFORCE_ARM_CODEGEN=1 -DDEBUG_CODEGEN=1
+
 ifeq ($(USE_DISASSEMBLER),true)
 LOCAL_CFLAGS += -DUSE_DISASSEMBLER
 LOCAL_STATIC_LIBRARIES :=	\
-	libLLVMX86Disassembler	\
-	libLLVMX86AsmPrinter	\
+	libLLVMARMDisassembler	\
+	libLLVMARMAsmPrinter	\
+	libLLVMMCParser	\
 	$(LOCAL_STATIC_LIBRARIES)
 endif
 
