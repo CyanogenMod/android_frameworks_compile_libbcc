@@ -17,6 +17,8 @@
 // Bitcode compiler (bcc) for Android:
 //    This is an eager-compilation JIT running on Android.
 
+//#define BCC_CODE_ADDR 0x7e00000
+
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
 
@@ -27,11 +29,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <cutils/hashmap.h>
+#include <utils/StopWatch.h>
 
 #if defined(__arm__)
 #   define DEFAULT_ARM_CODEGEN
@@ -176,6 +183,93 @@
 
 extern "C" void LLVMInitializeARMDisassembler();
 
+// For caching
+struct oBCCHeader {
+  uint8_t magic[4];             // includes version number
+  uint8_t magicVersion[4];
+
+  uint32_t sourceWhen;
+  uint32_t rslibWhen;
+  uint32_t libRSWhen;
+  uint32_t libbccWhen;
+
+  uint32_t cachedCodeDataAddr;
+  uint32_t rootAddr;
+  uint32_t initAddr;
+
+  uint32_t relocOffset;         // offset of reloc table.
+  uint32_t relocCount;
+  uint32_t exportVarsOffset;    // offset of export var table
+  uint32_t exportVarsCount;
+  uint32_t exportFuncsOffset;   // offset of export func table
+  uint32_t exportFuncsCount;
+  uint32_t exportPragmasOffset; // offset of export pragma table
+  uint32_t exportPragmasCount;
+
+  uint32_t codeOffset;          // offset of code: 64-bit alignment
+  uint32_t codeSize;
+  uint32_t dataOffset;          // offset of data section
+  uint32_t dataSize;
+
+  //  uint32_t flags;           // some info flags
+  uint32_t checksum;            // adler32 checksum covering deps/opt
+};
+
+/* oBCCHeader Offset Table */
+#define k_magic                 offsetof(oBCCHeader, magic)
+#define k_magicVersion          offsetof(oBCCHeader, magicVersion)
+#define k_sourceWhen            offsetof(oBCCHeader, sourceWhen)
+#define k_rslibWhen             offsetof(oBCCHeader, rslibWhen)
+#define k_libRSWhen             offsetof(oBCCHeader, libRSWhen)
+#define k_libbccWhen            offsetof(oBCCHeader, libbccWhen)
+#define k_cachedCodeDataAddr    offsetof(oBCCHeader, cachedCodeDataAddr)
+#define k_rootAddr              offsetof(oBCCHeader, rootAddr)
+#define k_initAddr              offsetof(oBCCHeader, initAddr)
+#define k_relocOffset           offsetof(oBCCHeader, relocOffset)
+#define k_relocCount            offsetof(oBCCHeader, relocCount)
+#define k_exportVarsOffset      offsetof(oBCCHeader, exportVarsOffset)
+#define k_exportVarsCount       offsetof(oBCCHeader, exportVarsCount)
+#define k_exportFuncsOffset     offsetof(oBCCHeader, exportFuncsOffset)
+#define k_exportFuncsCount      offsetof(oBCCHeader, exportFuncsCount)
+#define k_exportPragmasOffset   offsetof(oBCCHeader, exportPragmasOffset)
+#define k_exportPragmasCount    offsetof(oBCCHeader, exportPragmasCount)
+#define k_codeOffset            offsetof(oBCCHeader, codeOffset)
+#define k_codeSize              offsetof(oBCCHeader, codeSize)
+#define k_dataOffset            offsetof(oBCCHeader, dataOffset)
+#define k_dataSize              offsetof(oBCCHeader, dataSize)
+#define k_checksum              offsetof(oBCCHeader, checksum)
+
+/* oBCC file magic number */
+#define OBCC_MAGIC       "bcc\n"
+/* version, encoded in 4 bytes of ASCII */
+#define OBCC_MAGIC_VERS  "001\0"
+
+#define TEMP_FAILURE_RETRY1(exp) ({         \
+    typeof (exp) _rc;                      \
+    do {                                   \
+        _rc = (exp);                       \
+    } while (_rc == -1 && errno == EINTR); \
+    _rc; })
+
+static int sysWriteFully(int fd, const void* buf, size_t count, const char* logMsg)
+{
+    while (count != 0) {
+        ssize_t actual = TEMP_FAILURE_RETRY1(write(fd, buf, count));
+        if (actual < 0) {
+            int err = errno;
+            LOGE("%s: write failed: %s\n", logMsg, strerror(err));
+            return err;
+        } else if (actual != (ssize_t) count) {
+            LOGD("%s: partial write (will retry): (%d of %zd)\n",
+                logMsg, (int) actual, count);
+            buf = (const void*) (((const uint8_t*) buf) + actual);
+        }
+        count -= actual;
+    }
+
+    return 0;
+}
+
 //
 // Compilation class that suits Android's needs.
 // (Support: no argument passed, ...)
@@ -271,7 +365,7 @@ class Compiler {
 
      // Use hardfloat ABI
      //
-     // FIXME: Need to detect the CPU capability and decide whether to use
+     // TODO(all): Need to detect the CPU capability and decide whether to use
      // softfp. To use softfp, change following 2 lines to
      //
      // llvm::FloatABIType = llvm::FloatABI::Soft;
@@ -334,6 +428,15 @@ class Compiler {
     return;
   }
 
+  bool mNeverCache;       // Set by readBC()
+  bool mCacheNew;         // Set by readBC()
+  int mCacheFd;           // Set by readBC()
+  char *mCacheMapAddr;    // Set by loader() if mCacheNew is false
+  oBCCHeader *mCacheHdr;  // Set by loader()
+  ptrdiff_t mCacheDiff;   // Set by loader()
+  char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
+                          // Used by genCacheFile() for dumping
+
   typedef std::list< std::pair<std::string, std::string> > PragmaList;
   PragmaList mPragmas;
 
@@ -363,16 +466,16 @@ class Compiler {
   // So once the whole emission is done, if there's a buffer overflow,
   // it re-allocates the buffer with enough size (based on the
   //  counter from previous emission) and re-emit again.
-  //
+
+  // 128 KiB for code
+  static const unsigned int MaxCodeSize = 128 * 1024;
+  // 1 KiB for global offset table (GOT)
+  static const unsigned int MaxGOTSize = 1 * 1024;
+  // 128 KiB for global variable
+  static const unsigned int MaxGlobalVarSize = 128 * 1024;
+
   class CodeMemoryManager : public llvm::JITMemoryManager {
    private:
-    // 128 KiB for code
-    static const unsigned int MaxCodeSize = 128 * 1024;
-    // 1 KiB for global offset table (GOT)
-    static const unsigned int MaxGOTSize = 1 * 1024;
-    // 128 KiB for global variable
-    static const unsigned int MaxGlobalVarSize = 128 * 1024;
-
     //
     // Our memory layout is as follows:
     //
@@ -418,9 +521,6 @@ class Compiler {
     inline intptr_t getFreeCodeMemSize() const {
       return mCurSGMemIdx - mCurFuncMemIdx;
     }
-    inline uint8_t *getCodeMemBase() const {
-      return reinterpret_cast<uint8_t*>(mpCodeMem);
-    }
 
     uint8_t *allocateSGMemory(uintptr_t Size,
                               unsigned Alignment = 1 /* no alignment */) {
@@ -452,20 +552,46 @@ class Compiler {
       reset();
       std::string ErrMsg;
 
-      mpCodeMem = ::mmap(NULL, MaxCodeSize, PROT_READ | PROT_EXEC,
+#ifdef BCC_CODE_ADDR
+      mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
+                       MaxCodeSize + MaxGlobalVarSize,
+                       PROT_READ | PROT_EXEC | PROT_WRITE,
+                       MAP_PRIVATE | MAP_ANON | MAP_FIXED,
+                       -1,
+                       0);
+#else
+      mpCodeMem = mmap(NULL,
+                       MaxCodeSize + MaxGlobalVarSize,
+                       PROT_READ | PROT_EXEC | PROT_WRITE,
+                       MAP_PRIVATE | MAP_ANON,
+                       -1,
+                       0);
+#endif
+
+      if (mpCodeMem == MAP_FAILED) {
+        llvm::report_fatal_error("Failed to allocate memory for emitting "
+                                 "codes\n" + ErrMsg);
+      }
+      mpGVMem = (void *) ((int) mpCodeMem + MaxCodeSize);
+
+      /*      mpCodeMem = mmap(NULL, MaxCodeSize, PROT_READ | PROT_EXEC,
                          MAP_PRIVATE | MAP_ANON, -1, 0);
       if (mpCodeMem == MAP_FAILED)
         llvm::report_fatal_error("Failed to allocate memory for emitting "
                                  "function codes\n" + ErrMsg);
 
-      mpGVMem = ::mmap(mpCodeMem, MaxGlobalVarSize,
-                       PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANON, -1, 0);
+      mpGVMem = mmap(mpCodeMem, MaxGlobalVarSize,
+                     PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANON, -1, 0);
       if (mpGVMem == MAP_FAILED)
         llvm::report_fatal_error("Failed to allocate memory for emitting "
                                  "global variables\n" + ErrMsg);
-
+      */
       return;
+    }
+
+    inline uint8_t *getCodeMemBase() const {
+      return reinterpret_cast<uint8_t*>(mpCodeMem);
     }
 
     // setMemoryWritable - When code generation is in progress, the code pages
@@ -704,6 +830,8 @@ class Compiler {
     typedef llvm::DenseMap<const llvm::GlobalValue*, void*> GlobalAddressMapTy;
     typedef GlobalAddressMapTy::const_iterator global_addresses_const_iterator;
 
+    GlobalAddressMapTy mGlobalAddressMap;
+
    private:
     CodeMemoryManager *mpMemMgr;
 
@@ -765,8 +893,6 @@ class Compiler {
 
     // Machine module info for exception informations
     llvm::MachineModuleInfo *mpMMI;
-
-    GlobalAddressMapTy mGlobalAddressMap;
 
     // Replace an existing mapping for GV with a new address. This updates both
     // maps as required. If Addr is null, the entry for the global is removed
@@ -884,13 +1010,13 @@ class Compiler {
             return;
           }
           case llvm::Instruction::FPTrunc: {
-            // FIXME: long double
+            // TODO(all): fixme: long double
             GetConstantValue(Op0, Result);
             Result.FloatVal = static_cast<float>(Result.DoubleVal);
             return;
           }
           case llvm::Instruction::FPExt: {
-            // FIXME: long double
+            // TODO(all): fixme: long double
             GetConstantValue(Op0, Result);
             Result.DoubleVal = static_cast<double>(Result.FloatVal);
             return;
@@ -1509,8 +1635,11 @@ class Compiler {
 #if !defined(__x86_64__)
             // If this is an external function pointer, we can force the JIT
             // to 'compile' it, which really just adds it to the map.
-            if (F->isDeclaration() || F->hasAvailableExternallyLinkage())
-              return GetPointerToFunction(F, /* AbortOnFailure = */true);
+            if (F->isDeclaration() || F->hasAvailableExternallyLinkage()) {
+              return GetPointerToFunction(F, /* AbortOnFailure = */false);
+              // Changing to false because wanting to allow later calls to
+              // mpTJI->relocate() without aborting. For caching purpose
+            }
 #endif
           }
 
@@ -1529,11 +1658,13 @@ class Compiler {
 
           switch (GV->getValueID()) {
             case llvm::Value::FunctionVal: {
-              // FIXME: is there's any possibility that the function is not
+              // TODO(all): is there's any possibility that the function is not
               // code-gen'd?
               return GetPointerToFunction(
                   static_cast<const llvm::Function*>(GV),
-                  /* AbortOnFailure = */true);
+                  /* AbortOnFailure = */false);
+              // Changing to false because wanting to allow later calls to
+              // mpTJI->relocate() without aborting. For caching purpose
               break;
             }
             case llvm::Value::GlobalVariableVal: {
@@ -1590,8 +1721,11 @@ class Compiler {
       // In any cases, we should NOT resolve function at runtime (though we are
       // able to). We resolve this right now.
       void *Actual = NULL;
-      if (F->isDeclaration() || F->hasAvailableExternallyLinkage())
-        Actual = GetPointerToFunction(F, /* AbortOnFailure = */true);
+      if (F->isDeclaration() || F->hasAvailableExternallyLinkage()) {
+        Actual = GetPointerToFunction(F, /* AbortOnFailure = */false);
+        // Changing to false because wanting to allow later calls to
+        // mpTJI->relocate() without aborting. For caching purpose
+      }
 
       // Codegen a new stub, calling the actual address of the external
       // function, if it was resolved.
@@ -2328,11 +2462,18 @@ class Compiler {
 
  public:
   Compiler()
-      : mpSymbolLookupFn(NULL),
+      : mNeverCache(true),
+        mCacheNew(false),
+        mCacheFd(-1),
+        mCacheMapAddr(NULL),
+        mCacheHdr(NULL),
+        mCacheDiff(0),
+        mCodeDataAddr(NULL),
+        mpSymbolLookupFn(NULL),
         mpSymbolLookupContext(NULL),
         mContext(NULL),
         mModule(NULL),
-        mHasLinked(NULL) {
+        mHasLinked(false) /* Turn off linker */ {
     llvm::remove_fatal_error_handler();
     llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
     mContext = new llvm::LLVMContext();
@@ -2346,37 +2487,54 @@ class Compiler {
     return;
   }
 
-  int loadModule(llvm::Module *module) {
+  int readModule(llvm::Module *module) {
     GlobalInitialization();
     mModule = module;
     return hasError();
   }
 
-  int loadModule(const char *bitcode, size_t bitcodeSize) {
-    llvm::OwningPtr<llvm::MemoryBuffer> SB;
+  int readBC(const char *bitcode,
+                 size_t bitcodeSize,
+                 const BCCchar *resName) {
+    GlobalInitialization();
+
+    if (resName) {
+      // Turn off the default NeverCaching mode
+      mNeverCache = false;
+
+      // TODO(sliao):
+      mNeverCache = true;
+#if 0
+
+      mCacheFd = openCacheFile(resName, true /* createIfMissing */);
+      if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
+        return -mCacheFd;
+      }
+#endif
+    }
+
+    llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
     if (bitcode == NULL || bitcodeSize <= 0)
       return 0;
 
-    GlobalInitialization();
-
     // Package input to object MemoryBuffer
-    SB.reset(llvm::MemoryBuffer::getMemBuffer(
+    MEM.reset(llvm::MemoryBuffer::getMemBuffer(
                 llvm::StringRef(bitcode, bitcodeSize)));
 
-    if (SB.get() == NULL) {
+    if (MEM.get() == NULL) {
       setError("Error reading input program bitcode into memory");
       return hasError();
     }
 
     // Read the input Bitcode as a Module
-    mModule = llvm::ParseBitcodeFile(SB.get(), *mContext, &mError);
-    SB.reset();
+    mModule = llvm::ParseBitcodeFile(MEM.get(), *mContext, &mError);
+    MEM.reset();
     return hasError();
   }
 
-  int linkModule(const char *bitcode, size_t bitcodeSize) {
-    llvm::OwningPtr<llvm::MemoryBuffer> SB;
+  int linkBC(const char *bitcode, size_t bitcodeSize) {
+    llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
     if (bitcode == NULL || bitcodeSize <= 0)
       return 0;
@@ -2386,15 +2544,15 @@ class Compiler {
       return hasError();
     }
 
-    SB.reset(llvm::MemoryBuffer::getMemBuffer(
+    MEM.reset(llvm::MemoryBuffer::getMemBuffer(
                 llvm::StringRef(bitcode, bitcodeSize)));
 
-    if (SB.get() == NULL) {
+    if (MEM.get() == NULL) {
       setError("Error reading input library bitcode into memory");
       return hasError();
     }
 
-    llvm::OwningPtr<llvm::Module> Lib(llvm::ParseBitcodeFile(SB.get(),
+    llvm::OwningPtr<llvm::Module> Lib(llvm::ParseBitcodeFile(MEM.get(),
                                                              *mContext,
                                                              &mError));
     if (Lib.get() == NULL)
@@ -2408,7 +2566,193 @@ class Compiler {
     return hasError();
   }
 
-  // interace for bccCompileScript()
+
+  // interface for bccLoadBinary()
+  int loader() {
+    // Check File Descriptor
+    if (mCacheFd < 0) {
+      LOGE("loading cache from invalid mCacheFd = %d\n", (int)mCacheFd);
+      goto giveup;
+    }
+
+
+    // Check File Size
+    struct stat statCacheFd;
+    if (fstat(mCacheFd, &statCacheFd) < 0) {
+      LOGE("unable to stat mCacheFd = %d\n", (int)mCacheFd);
+      goto giveup;
+    }
+
+    if (statCacheFd.st_size < sizeof(oBCCHeader) ||
+        statCacheFd.st_size <= MaxCodeSize + MaxGlobalVarSize) {
+      LOGE("mCacheFd %d is too small to be correct\n", (int)mCacheFd);
+      goto giveup;
+    }
+
+
+    // Read File Content
+    {
+#ifdef BCC_CODE_ADDR
+      off_t heuristicCodeOffset =
+                    statCacheFd.st_size - MaxCodeSize - MaxGlobalVarSize;
+
+      mCodeDataAddr = (char *) mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
+                                    MaxCodeSize + MaxGlobalVarSize,
+                                    PROT_READ | PROT_EXEC | PROT_WRITE,
+                                    MAP_PRIVATE | MAP_FIXED,
+                                    mCacheFd, heuristicCodeOffset);
+
+      if (mCodeDataAddr == MAP_FAILED) {
+        LOGE("unable to mmap .oBBC cache code/data: %s\n", strerror(errno));
+        flock(mCacheFd, LOCK_UN);
+        goto giveup;
+      }
+
+      mCacheMapAddr = (char *)malloc(heuristicCodeOffset);
+
+      if (!mCacheMapAddr) {
+        flock(mCacheFd, LOCK_UN);
+        LOGE("allocation failed.\n");
+        // TODO(all)
+        goto bail;
+      }
+
+      size_t nread = TEMP_FAILURE_RETRY1(read(mCacheFd, mCacheMapAddr,
+                                              heuristicCodeOffset));
+
+      flock(mCacheFd, LOCK_UN);
+
+      if (nread != (size_t)heuristicCodeOffset) {
+        LOGE("read(mCacheFd) failed\n");
+        free(mCacheMapAddr);
+        goto bail;
+      }
+
+      mCacheHdr = reinterpret_cast<oBCCHeader *>(mCacheMapAddr);
+
+      if (mCacheHdr->codeOffset != (uint32_t)heuristicCodeOffset) {
+        LOGE("assertion failed: heuristic code offset is not correct.\n");
+        goto bail;
+      }
+#else
+      mCacheMapAddr = (char *) mmap(0, statCacheFd.st_size,
+                                    PROT_READ | PROT_EXEC | PROT_WRITE,
+                                    MAP_PRIVATE, mCacheFd, 0);
+
+      if (mCodeDataAddr == MAP_FAILED) {
+        LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
+        flock(mCacheFd, LOCK_UN);
+        goto giveup;
+      }
+
+      flock(mCacheFd, LOCK_UN);
+
+      mCacheHdr = reinterpret_cast<oBCCHeader *>(mCacheMapAddr);
+
+      mCodeDataAddr = mCacheMapAddr + mCacheHdr->codeOffset;
+#endif
+    }
+
+
+    // Verify the Cache File
+    if (memcmp(mCacheHdr->magic, OBCC_MAGIC, 4) != 0) {
+      LOGE("bad magic word\n");
+      goto bail;
+    }
+
+    if (memcmp(mCacheHdr->magicVersion, OBCC_MAGIC_VERS, 4) != 0) {
+      LOGE("bad oBCC version 0x%08x\n",
+               *reinterpret_cast<uint32_t *>(mCacheHdr->magicVersion));
+      goto bail;
+    }
+
+    if (statCacheFd.st_size < mCacheHdr->relocOffset +
+                              mCacheHdr->relocCount * sizeof(uint32_t) * 2) {
+      LOGE("relocate table overflow\n");
+      goto bail;
+    }
+
+    if (statCacheFd.st_size < mCacheHdr->exportVarsOffset +
+                              mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
+      LOGE("export variables table overflow\n");
+      goto bail;
+    }
+
+    if (statCacheFd.st_size < mCacheHdr->exportFuncsOffset +
+                              mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
+      LOGE("export functions table overflow\n");
+      goto bail;
+    }
+
+    if (statCacheFd.st_size <
+                    mCacheHdr->exportPragmasOffset +
+                    mCacheHdr->exportPragmasCount * sizeof(uint32_t)) {
+      LOGE("export pragmas table overflow\n");
+      goto bail;
+    }
+
+    if (statCacheFd.st_size < mCacheHdr->codeOffset + mCacheHdr->codeSize) {
+      LOGE("code cache overflow\n");
+      goto bail;
+    }
+
+    if (statCacheFd.st_size < mCacheHdr->dataOffset + mCacheHdr->dataSize) {
+      LOGE("data (global variable) cache overflow\n");
+      goto bail;
+    }
+
+
+    // Relocate
+    {
+      mCacheDiff = mCodeDataAddr -
+                   reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
+
+#ifdef BCC_CODE_ADDR
+      if (mCacheDiff != 0) {
+        LOGE("mCacheDiff should be zero but mCacheDiff = %d\n", mCacheDiff);
+        goto bail;
+      }
+#else
+      mCacheHdr->rootAddr += mCacheDiff;
+      mCacheHdr->initAddr += mCacheDiff;
+
+      uint32_t *relocTable =
+        reinterpret_cast<uint32_t *>(mCacheMapAddr + mCacheHdr->relocOffset);
+
+      // Read in the relocs
+      for (size_t i = 0; i < mCacheHdr->relocCount; i++) {
+        // TODO(all): Patch the hole
+
+        //char *holeAddr = reinterpret_cast<char *>(*relocTable++) + mCacheDiff;
+        //uint32_t holeTy = *relocTable++;
+
+        //patch(...); I.e., holeAddr += mCacheDiff
+      }
+#endif
+    }
+
+    return 0;
+
+  bail:
+#ifdef BCC_CODE_ADDR
+    if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
+      LOGE("munmap failed: %s\n", strerror(errno));
+    }
+
+    if (mCacheMapAddr) {
+      free(mCacheMapAddr);
+    }
+#else
+    if (munmap(mCacheMapAddr, statCacheFd.st_size) != 0) {
+      LOGE("munmap failed: %s\n", strerror(errno));
+    }
+#endif
+
+  giveup:
+    return 1;
+  }
+
+  // interace for bccCompileBC()
   int compile() {
     llvm::TargetData *TD = NULL;
 
@@ -2453,6 +2797,7 @@ class Compiler {
       setError("Failed to startup memory management for further compilation");
       goto on_bcc_compile_error;
     }
+    mCodeDataAddr = (char *) (mCodeMemMgr.get()->getCodeMemBase());
 
     // Create code emitter
     if (!mCodeEmitter.get()) {
@@ -2480,7 +2825,7 @@ class Compiler {
 
     // Create LTO passes and run them on the mModule
     if (mHasLinked) {
-      llvm::TimePassesIsEnabled = true;
+      llvm::TimePassesIsEnabled = true;  // TODO(all)
       llvm::PassManager LTOPasses;
       LTOPasses.add(new llvm::TargetData(*TD));
 
@@ -2647,8 +2992,8 @@ class Compiler {
               continue;  // found
           }
         }
-        // if here, the global variable record in metadata is not found, make an
-        // empty slot
+        // if reaching here, we know the global variable record in metadata is
+        // not found. So we make an empty slot
         mExportVars.push_back(NULL);
       }
       assert((mExportVars.size() == ExportVarMetadata->getNumOperands()) &&
@@ -2710,6 +3055,11 @@ class Compiler {
       delete TM;
 
     if (mError.empty()) {
+      if (!mNeverCache && mCacheFd >= 0 && mCacheNew) {
+        genCacheFile();
+        flock(mCacheFd, LOCK_UN);
+      }
+
       return false;
     }
 
@@ -2725,6 +3075,15 @@ class Compiler {
   // interface for bccGetScriptLabel()
   void *lookup(const char *name) {
     void *addr = NULL;
+    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+      if (!strcmp(name, "root")) {
+        addr = reinterpret_cast<void *>(mCacheHdr->rootAddr);
+      } else if (!strcmp(name, "init")) {
+        addr = reinterpret_cast<void *>(mCacheHdr->initAddr);
+      }
+      return addr;
+    }
+
     if (mCodeEmitter.get())
       // Find function pointer
       addr = mCodeEmitter->lookup(name);
@@ -2735,18 +3094,40 @@ class Compiler {
   void getExportVars(BCCsizei *actualVarCount,
                      BCCsizei maxVarCount,
                      BCCvoid **vars) {
-    int varCount = mExportVars.size();
+    int varCount;
 
+    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+      varCount = static_cast<int>(mCacheHdr->exportVarsCount);
+      if (actualVarCount)
+        *actualVarCount = varCount;
+      if (varCount > maxVarCount)
+        varCount = maxVarCount;
+      if (vars) {
+        uint32_t *cachedVars = (uint32_t *)(mCacheMapAddr +
+                                            mCacheHdr->exportVarsOffset);
+
+        for (int i = 0; i < varCount; i++) {
+          *vars++ = (BCCvoid *)(reinterpret_cast<char *>(*cachedVars) +
+                                mCacheDiff);
+          cachedVars++;
+        }
+      }
+      return;
+    }
+
+    varCount = mExportVars.size();
     if (actualVarCount)
       *actualVarCount = varCount;
     if (varCount > maxVarCount)
       varCount = maxVarCount;
-    if (vars)
+    if (vars) {
       for (ExportVarList::const_iterator I = mExportVars.begin(),
               E = mExportVars.end();
            I != E;
-           I++)
+           I++) {
         *vars++ = *I;
+      }
+    }
 
     return;
   }
@@ -2755,18 +3136,40 @@ class Compiler {
   void getExportFuncs(BCCsizei *actualFuncCount,
                       BCCsizei maxFuncCount,
                       BCCvoid **funcs) {
-    int funcCount = mExportFuncs.size();
+    int funcCount;
 
+    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+      funcCount = static_cast<int>(mCacheHdr->exportFuncsCount);
+      if (actualFuncCount)
+        *actualFuncCount = funcCount;
+      if (funcCount > maxFuncCount)
+        funcCount = maxFuncCount;
+      if (funcs) {
+        uint32_t *cachedFuncs = (uint32_t *)(mCacheMapAddr +
+                                             mCacheHdr->exportFuncsOffset);
+
+        for (int i = 0; i < funcCount; i++) {
+          *funcs++ = (BCCvoid *)(reinterpret_cast<char *>(*cachedFuncs) +
+                                 mCacheDiff);
+          cachedFuncs++;
+        }
+      }
+      return;
+    }
+
+    funcCount = mExportFuncs.size();
     if (actualFuncCount)
       *actualFuncCount = funcCount;
     if (funcCount > maxFuncCount)
       funcCount = maxFuncCount;
-    if (funcs)
+    if (funcs) {
       for (ExportFuncList::const_iterator I = mExportFuncs.begin(),
               E = mExportFuncs.end();
            I != E;
-           I++)
+           I++) {
         *funcs++ = *I;
+      }
+    }
 
     return;
   }
@@ -2775,19 +3178,27 @@ class Compiler {
   void getPragmas(BCCsizei *actualStringCount,
                   BCCsizei maxStringCount,
                   BCCchar **strings) {
-    int stringCount = mPragmas.size() * 2;
+    int stringCount;
+    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+      if (actualStringCount)
+        *actualStringCount = 0;  // XXX
+      return;
+    }
+
+    stringCount = mPragmas.size() * 2;
 
     if (actualStringCount)
       *actualStringCount = stringCount;
     if (stringCount > maxStringCount)
       stringCount = maxStringCount;
-    if (strings)
+    if (strings) {
       for (PragmaList::const_iterator it = mPragmas.begin();
            stringCount > 0;
            stringCount -= 2, it++) {
         *strings++ = const_cast<BCCchar*>(it->first.c_str());
         *strings++ = const_cast<BCCchar*>(it->second.c_str());
       }
+    }
 
     return;
   }
@@ -2829,6 +3240,532 @@ class Compiler {
     delete mContext;
     return;
   }
+
+ private:
+  // Note: loader() and genCacheFile() go hand in hand
+  void genCacheFile() {
+    if (lseek(mCacheFd, 0, SEEK_SET) != 0) {
+      LOGE("Unable to seek to 0: %s\n", strerror(errno));
+      return;
+    }
+
+    bool codeOffsetNeedPadding = false;
+
+    uint32_t offset = sizeof(oBCCHeader);
+
+    // BCC Cache File Header
+    oBCCHeader *hdr = (oBCCHeader *)malloc(sizeof(oBCCHeader));
+
+    if (!hdr) {
+      LOGE("Unable to allocate oBCCHeader.\n");
+      return;
+    }
+
+    // Magic Words
+    memcpy(hdr->magic, OBCC_MAGIC, 4);
+    memcpy(hdr->magicVersion, OBCC_MAGIC_VERS, 4);
+
+    // Timestamp
+    hdr->sourceWhen = 0; // TODO(all)
+    hdr->rslibWhen = 0; // TODO(all)
+    hdr->libRSWhen = 0; // TODO(all)
+    hdr->libbccWhen = 0; // TODO(all)
+
+    // Current Memory Address (Saved for Recalculation)
+    hdr->cachedCodeDataAddr = reinterpret_cast<uint32_t>(mCodeDataAddr);
+    hdr->rootAddr = reinterpret_cast<uint32_t>(lookup("root"));
+    hdr->initAddr = reinterpret_cast<uint32_t>(lookup("init"));
+
+    // Relocation Table Offset and Entry Count
+    hdr->relocOffset = sizeof(oBCCHeader);
+    hdr->relocCount = mCodeEmitter->mGlobalAddressMap.size();
+
+    offset += hdr->relocCount * (sizeof(uint32_t) * 2);
+                            // Note: each reloc has 2 entries: addr & relocTy
+
+    // Export Variable Table Offset and Entry Count
+    hdr->exportVarsOffset = offset;
+    hdr->exportVarsCount = mExportVars.size();
+
+    offset += hdr->exportVarsCount * sizeof(uint32_t);
+
+    // Export Function Table Offset and Entry Count
+    hdr->exportFuncsOffset = offset;
+    hdr->exportFuncsCount = mExportFuncs.size();
+
+    offset += hdr->exportFuncsCount * sizeof(uint32_t);
+
+    // Export Pragmas Table Offset and Entry Count
+    hdr->exportPragmasOffset = offset;
+    hdr->exportPragmasCount = 0; // TODO(all): mPragmas.size();
+
+    offset += hdr->exportPragmasCount * sizeof(uint32_t);
+
+    // Code Offset and Size
+
+#ifdef BCC_CODE_ADDR
+    {
+      long pagesize = sysconf(_SC_PAGESIZE);
+
+      if (offset % pagesize > 0) {
+        codeOffsetNeedPadding = true;
+        offset += pagesize - (offset % pagesize);
+      }
+    }
+#else
+    if (offset & 0x07) { // Ensure that offset aligned to 64-bit (8 byte).
+      codeOffsetNeedPadding = true;
+      offset += 0x08 - (offset & 0x07);
+    }
+#endif
+
+    hdr->codeOffset = offset;
+    hdr->codeSize = MaxCodeSize;
+
+    offset += hdr->codeSize;
+
+    // Data (Global Variable) Offset and Size
+    hdr->dataOffset = offset;
+    hdr->dataSize = MaxGlobalVarSize;
+
+    offset += hdr->dataSize;
+
+    // Checksum
+    hdr->checksum = 0; // Set Field checksum. TODO(all)
+
+    // Write Header
+    sysWriteFully(mCacheFd, reinterpret_cast<char const *>(hdr),
+                  sizeof(oBCCHeader), "Write oBCC header");
+
+    // TODO(all): This Code is Not Working.  Fix This ASAP.
+#if 0
+    int *itemList = (int *) calloc(buf[k_relocCount], sizeof(void *));
+    int *tmp = itemList;
+
+    CodeEmitter::global_addresses_const_iterator I, E;
+    for (I = mCodeEmitter->global_address_begin(),
+             E = mCodeEmitter->global_address_end();
+         I != E;
+         I++) {
+      //      *tmp++ = (int) I->second;
+      //      *tmp++ = 0; //XXX Output fixup_type. Assume fixup type is 0 for now.
+    }
+    if (tmp - itemList != buf[k_relocCount] * 4) {
+      LOGE("reloc corrupted");
+      goto bail;
+    }
+    sysWriteFully(mCacheFd,
+                  itemList,
+                  buf[k_relocCount]*sizeof(void*),
+                  "Write relocs");
+#else
+
+    // Note: As long as we have comment out relocation code, we have to
+    // seek the position to correct offset.
+
+    lseek(mCacheFd, hdr->exportVarsOffset, SEEK_SET);
+#endif
+
+    // Write Export Variables Table
+    {
+      uint32_t *record, *ptr;
+
+      record = (uint32_t *)calloc(hdr->exportVarsCount, sizeof(uint32_t));
+      ptr = record;
+
+      if (!record) {
+        goto bail;
+      }
+
+      for (ExportVarList::const_iterator I = mExportVars.begin(),
+               E = mExportVars.end(); I != E; I++) {
+        *ptr++ = reinterpret_cast<uint32_t>(*I);
+      }
+
+      sysWriteFully(mCacheFd, reinterpret_cast<char const *>(record),
+                    hdr->exportVarsCount * sizeof(uint32_t),
+                    "Write ExportVars");
+
+      free(record);
+    }
+
+    // Write Export Functions Table
+    {
+      uint32_t *record, *ptr;
+
+      record = (uint32_t *)calloc(hdr->exportFuncsCount, sizeof(uint32_t));
+      ptr = record;
+
+      if (!record) {
+        goto bail;
+      }
+
+      for (ExportFuncList::const_iterator I = mExportFuncs.begin(),
+               E = mExportFuncs.end(); I != E; I++) {
+        *ptr++ = reinterpret_cast<uint32_t>(*I);
+      }
+
+      sysWriteFully(mCacheFd, reinterpret_cast<char const *>(record),
+                    hdr->exportFuncsCount * sizeof(uint32_t),
+                    "Write ExportFuncs");
+
+      free(record);
+    }
+
+
+    // TODO(all): Write Export Pragmas Table
+#if 0
+#else
+    // Note: As long as we have comment out export pragmas table code,
+    // we have to seek the position to correct offset.
+
+    lseek(mCacheFd, hdr->codeOffset, SEEK_SET);
+#endif
+
+    if (codeOffsetNeedPadding) {
+      // requires additional padding
+      lseek(mCacheFd, hdr->codeOffset, SEEK_SET);
+    }
+
+    // Write Generated Code and Global Variable
+    sysWriteFully(mCacheFd, mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize,
+                  "Write code and global variable");
+
+    goto close_return;
+
+  bail:
+    if (ftruncate(mCacheFd, 0) != 0) {
+      LOGW("Warning: unable to truncate cache file: %s\n", strerror(errno));
+    }
+
+  close_return:
+    free(hdr);
+    close(mCacheFd);
+    mCacheFd = -1;
+    return;
+  }
+
+  // OpenCacheFile() returns fd of the cache file.
+  // Input:
+  //   BCCchar *resName: Used to genCacheFileName()
+  //   bool createIfMissing: If false, turn off caching
+  // Output:
+  //   returns fd: If -1: Failed
+  //   mCacheNew: If true, the returned fd is new. Otherwise, the fd is the
+  //              cache file's file descriptor
+  //              Note: openCacheFile() will check the cache file's validity,
+  //              such as Magic number, sourceWhen... dependencies.
+  int openCacheFile(const BCCchar *resName, bool createIfMissing) {
+    int fd, cc;
+    struct stat fdStat, fileStat;
+    bool readOnly = false;
+
+    char *cacheFileName = genCacheFileName(resName, ".oBCC");
+
+    mCacheNew = false;
+
+ retry:
+    /*
+     * Try to open the cache file.  If we've been asked to,
+     * create it if it doesn't exist.
+     */
+    fd = createIfMissing ? open(cacheFileName, O_CREAT|O_RDWR, 0644) : -1;
+    if (fd < 0) {
+      fd = open(cacheFileName, O_RDONLY, 0);
+      if (fd < 0) {
+        if (createIfMissing) {
+          LOGE("Can't open bcc-cache '%s': %s\n",
+               cacheFileName, strerror(errno));
+          mCacheNew = true;
+        }
+        return fd;
+      }
+      readOnly = true;
+    }
+
+    /*
+     * Grab an exclusive lock on the cache file.  If somebody else is
+     * working on it, we'll block here until they complete.
+     */
+    LOGV("bcc: locking cache file %s (fd=%d, boot=%d)\n",
+         cacheFileName, fd);
+
+    cc = flock(fd, LOCK_EX | LOCK_NB);
+    if (cc != 0) {
+      LOGD("bcc: sleeping on flock(%s)\n", cacheFileName);
+      cc = flock(fd, LOCK_EX);
+    }
+
+    if (cc != 0) {
+      LOGE("Can't lock bcc cache '%s': %d\n", cacheFileName, cc);
+      close(fd);
+      return -1;
+    }
+    LOGV("bcc:  locked cache file\n");
+
+    /*
+     * Check to see if the fd we opened and locked matches the file in
+     * the filesystem.  If they don't, then somebody else unlinked ours
+     * and created a new file, and we need to use that one instead.  (If
+     * we caught them between the unlink and the create, we'll get an
+     * ENOENT from the file stat.)
+     */
+    cc = fstat(fd, &fdStat);
+    if (cc != 0) {
+      LOGE("Can't stat open file '%s'\n", cacheFileName);
+      LOGV("bcc: unlocking cache file %s\n", cacheFileName);
+      goto close_fail;
+    }
+    cc = stat(cacheFileName, &fileStat);
+    if (cc != 0 ||
+        fdStat.st_dev != fileStat.st_dev || fdStat.st_ino != fileStat.st_ino) {
+      LOGD("bcc: our open cache file is stale; sleeping and retrying\n");
+      LOGV("bcc: unlocking cache file %s\n", cacheFileName);
+      flock(fd, LOCK_UN);
+      close(fd);
+      usleep(250 * 1000);     // if something is hosed, don't peg machine
+      goto retry;
+    }
+
+    /*
+     * We have the correct file open and locked.  If the file size is zero,
+     * then it was just created by us, and we want to fill in some fields
+     * in the "bcc" header and set "mCacheNew".  Otherwise, we want to
+     * verify that the fields in the header match our expectations, and
+     * reset the file if they don't.
+     */
+    if (fdStat.st_size == 0) {
+      if (readOnly) {  // The device is readOnly --> close_fail
+        LOGW("bcc: file has zero length and isn't writable\n");
+        goto close_fail;
+      }
+      /*cc = createEmptyHeader(fd);
+      if (cc != 0)
+        goto close_fail;
+      */
+      mCacheNew = true;
+      LOGV("bcc: successfully initialized new cache file\n");
+    } else {
+      // Calculate sourceWhen
+      // XXX
+      uint32_t sourceWhen = 0;
+      uint32_t rslibWhen = 0;
+      uint32_t libRSWhen = 0;
+      uint32_t libbccWhen = 0;
+      if (!checkHeaderAndDependencies(fd,
+                                      sourceWhen,
+                                      rslibWhen,
+                                      libRSWhen,
+                                      libbccWhen)) {
+        // If checkHeaderAndDependencies returns 0: FAILED
+        // Will truncate the file and retry to createIfMissing the file
+
+        if (readOnly) {  // Shouldn't be readonly.
+          /*
+           * We could unlink and rewrite the file if we own it or
+           * the "sticky" bit isn't set on the directory.  However,
+           * we're not able to truncate it, which spoils things.  So,
+           * give up now.
+           */
+          if (createIfMissing) {
+            LOGW("Cached file %s is stale and not writable\n",
+                 cacheFileName);
+          }
+          goto close_fail;
+        }
+
+        /*
+         * If we truncate the existing file before unlinking it, any
+         * process that has it mapped will fail when it tries to touch
+         * the pages? Probably OK because we use MAP_PRIVATE.
+         */
+        LOGD("oBCC file is stale or bad; removing and retrying (%s)\n",
+             cacheFileName);
+        if (ftruncate(fd, 0) != 0) {
+          LOGW("Warning: unable to truncate cache file '%s': %s\n",
+               cacheFileName, strerror(errno));
+          /* keep going */
+        }
+        if (unlink(cacheFileName) != 0) {
+          LOGW("Warning: unable to remove cache file '%s': %d %s\n",
+               cacheFileName, errno, strerror(errno));
+          /* keep going; permission failure should probably be fatal */
+        }
+        LOGV("bcc: unlocking cache file %s\n", cacheFileName);
+        flock(fd, LOCK_UN);
+        close(fd);
+        goto retry;
+      } else {
+        // Got cacheFile! Good to go.
+        LOGV("Good cache file\n");
+      }
+    }
+
+    assert(fd >= 0);
+    return fd;
+
+ close_fail:
+    flock(fd, LOCK_UN);
+    close(fd);
+    return -1;
+  }  // End of openCacheFile()
+
+  char *genCacheFileName(const char *fileName, const char *subFileName) {
+    char nameBuf[512];
+    static const char kCachePath[] = "bcc-cache";
+    char absoluteFile[sizeof(nameBuf)];
+    const size_t kBufLen = sizeof(nameBuf) - 1;
+    const char *dataRoot;
+    char *cp;
+
+    // Get the absolute path of the raw/***.bc file.
+    absoluteFile[0] = '\0';
+    if (fileName[0] != '/') {
+      /*
+       * Generate the absolute path.  This doesn't do everything it
+       * should, e.g. if filename is "./out/whatever" it doesn't crunch
+       * the leading "./" out, but it'll do.
+       */
+      if (getcwd(absoluteFile, kBufLen) == NULL) {
+        LOGE("Can't get CWD while opening raw/***.bc file\n");
+        return NULL;
+      }
+      // TODO(srhines): strncat() is a bit dangerous
+      strncat(absoluteFile, "/", kBufLen);
+    }
+    strncat(absoluteFile, fileName, kBufLen);
+
+    if (subFileName != NULL) {
+      strncat(absoluteFile, "/", kBufLen);
+      strncat(absoluteFile, subFileName, kBufLen);
+    }
+
+    /* Turn the path into a flat filename by replacing
+     * any slashes after the first one with '@' characters.
+     */
+    cp = absoluteFile + 1;
+    while (*cp != '\0') {
+      if (*cp == '/') {
+        *cp = '@';
+      }
+      cp++;
+    }
+
+    /* Build the name of the cache directory.
+     */
+    dataRoot = getenv("ANDROID_DATA");
+    if (dataRoot == NULL)
+      dataRoot = "/data";
+    snprintf(nameBuf, kBufLen, "%s/%s", dataRoot, kCachePath);
+
+    /* Tack on the file name for the actual cache file path.
+     */
+    strncat(nameBuf, absoluteFile, kBufLen);
+
+    LOGV("Cache file for '%s' '%s' is '%s'\n", fileName, subFileName, nameBuf);
+    return strdup(nameBuf);
+  }
+
+  /*
+   * Read the oBCC header, verify it, then read the dependent section
+   * and verify that data as well.
+   *
+   * On successful return, the file will be seeked immediately past the
+   * oBCC header.
+   */
+  bool checkHeaderAndDependencies(int fd,
+                                  uint32_t sourceWhen,
+                                  uint32_t rslibWhen,
+                                  uint32_t libRSWhen,
+                                  uint32_t libbccWhen) {
+    ssize_t actual;
+    oBCCHeader optHdr;
+    uint32_t val;
+    uint8_t const *magic, *magicVer;
+
+    /*
+     * Start at the start.  The "bcc" header, when present, will always be
+     * the first thing in the file.
+     */
+    if (lseek(fd, 0, SEEK_SET) != 0) {
+      LOGE("bcc: failed to seek to start of file: %s\n", strerror(errno));
+      goto bail;
+    }
+
+    /*
+     * Read and do trivial verification on the bcc header.  The header is
+     * always in host byte order.
+     */
+    actual = read(fd, &optHdr, sizeof(optHdr));
+    if (actual < 0) {
+      LOGE("bcc: failed reading bcc header: %s\n", strerror(errno));
+      goto bail;
+    } else if (actual != sizeof(optHdr)) {
+      LOGE("bcc: failed reading bcc header (got %d of %zd)\n",
+           (int) actual, sizeof(optHdr));
+      goto bail;
+    }
+
+    magic = optHdr.magic;
+    if (memcmp(magic, OBCC_MAGIC, 4) != 0) {
+      /* not an oBCC file, or previous attempt was interrupted */
+      LOGD("bcc: incorrect opt magic number (0x%02x %02x %02x %02x)\n",
+           magic[0], magic[1], magic[2], magic[3]);
+      goto bail;
+    }
+
+    magicVer = optHdr.magicVersion;
+    if (memcmp(magic+4, OBCC_MAGIC_VERS, 4) != 0) {
+      LOGW("bcc: stale oBCC version (0x%02x %02x %02x %02x)\n",
+           magicVer[0], magicVer[1], magicVer[2], magicVer[3]);
+      goto bail;
+    }
+
+    /*
+     * Do the header flags match up with what we want?
+     *
+     * This is useful because it allows us to automatically regenerate
+     * a file when settings change (e.g. verification is now mandatory),
+     * but can cause difficulties if the thing we depend upon
+     * were handled differently than the current options specify.
+     *
+     * So, for now, we essentially ignore "expectVerify" and "expectOpt"
+     * by limiting the match mask.
+     *
+     * The only thing we really can't handle is incorrect byte-ordering.
+     */
+
+    val = optHdr.sourceWhen;
+    if (val && (val != sourceWhen)) {
+      LOGI("bcc: source file mod time mismatch (%08x vs %08x)\n",
+           val, sourceWhen);
+      goto bail;
+    }
+    val = optHdr.rslibWhen;
+    if (val && (val != rslibWhen)) {
+      LOGI("bcc: rslib file mod time mismatch (%08x vs %08x)\n",
+           val, rslibWhen);
+      goto bail;
+    }
+    val = optHdr.libRSWhen;
+    if (val && (val != libRSWhen)) {
+      LOGI("bcc: libRS file mod time mismatch (%08x vs %08x)\n",
+           val, libRSWhen);
+      goto bail;
+    }
+    val = optHdr.libbccWhen;
+    if (val && (val != libbccWhen)) {
+      LOGI("bcc: libbcc file mod time mismatch (%08x vs %08x)\n",
+           val, libbccWhen);
+      goto bail;
+    }
+
+    return true;
+
+ bail:
+    return false;
+ }
+
 };
 // End of Class Compiler
 ////////////////////////////////////////////////////////////////////////////////
@@ -2916,30 +3853,43 @@ void bccRegisterSymbolCallback(BCCscript *script,
 }
 
 extern "C"
-void bccScriptModule(BCCscript *script,
+int bccReadModule(BCCscript *script,
                      BCCvoid *module) {
-  script->compiler.loadModule(reinterpret_cast<llvm::Module*>(module));
+  return script->compiler.readModule(reinterpret_cast<llvm::Module*>(module));
 }
 
 extern "C"
-void bccScriptBitcode(BCCscript *script,
-                      const BCCchar *bitcode,
-                      BCCint size) {
-  script->compiler.loadModule(bitcode, size);
+int bccReadBC(BCCscript *script,
+              const BCCchar *bitcode,
+              BCCint size,
+              const BCCchar *resName) {
+  return script->compiler.readBC(bitcode, size, resName);
 }
 
 extern "C"
-void bccLinkBitcode(BCCscript *script,
+void bccLinkBC(BCCscript *script,
                     const BCCchar *bitcode,
                     BCCint size) {
-  script->compiler.linkModule(bitcode, size);
+  script->compiler.linkBC(bitcode, size);
 }
 
 extern "C"
-void bccCompileScript(BCCscript *script) {
-  int result = script->compiler.compile();
+void bccLoadBinary(BCCscript *script) {
+  int result = script->compiler.loader();
   if (result)
     script->setError(BCC_INVALID_OPERATION);
+}
+
+extern "C"
+void bccCompileBC(BCCscript *script) {
+  {
+#if defined(__arm__)
+    android::StopWatch compileTimer("RenderScript compile time");
+#endif
+    int result = script->compiler.compile();
+    if (result)
+      script->setError(BCC_INVALID_OPERATION);
+  }
 }
 
 extern "C"

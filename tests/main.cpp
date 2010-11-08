@@ -186,7 +186,7 @@ static BCCscript* loadScript() {
   BCCscript* script = bccCreateScript();
 
   bitcode[codeSize] = '\0'; /* must be null-terminated */
-  bccScriptBitcode(script, bitcode, codeSize);
+  bccReadBC(script, bitcode, codeSize, "file");
   delete [] bitcode;
 
   return script;
@@ -195,7 +195,7 @@ static BCCscript* loadScript() {
 static int compile(BCCscript* script) {
   bccRegisterSymbolCallback(script, symbolLookup, NULL);
 
-  bccCompileScript(script);
+  bccCompileBC(script);
 
   int result = bccGetError(script);
   if (result != 0) {

@@ -57,20 +57,23 @@ void bccRegisterSymbolCallback(BCCscript *script,
 
 BCCenum bccGetError( BCCscript *script );
 
-void bccScriptBitcode(BCCscript *script,
-                      const BCCchar *bitcode,
-                      BCCint size);
+int bccReadBC(BCCscript *script,
+              const BCCchar *bitcode,
+              BCCint size,
+              const BCCchar *resName);
+
+int bccLoadBinary(BCCscript *script);
 
 // Interface for llvm::Module input. @module should be a valid llvm::Module
 // instance.
-void bccScriptModule(BCCscript *script,
-                     BCCvoid *module);
+int bccReadModule(BCCscript *script,
+                  BCCvoid *module);
 
-void bccLinkBitcode(BCCscript *script,
-                    const BCCchar *bitcode,
-                    BCCint size);
+void bccLinkBC(BCCscript *script,
+               const BCCchar *bitcode,
+               BCCint size);
 
-void bccCompileScript(BCCscript *script);
+void bccCompileBC(BCCscript *script);
 
 void bccGetScriptInfoLog(BCCscript *script,
                          BCCsizei maxLength,
