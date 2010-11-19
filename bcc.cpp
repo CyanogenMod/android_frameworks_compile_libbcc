@@ -2672,7 +2672,7 @@ class Compiler {
                                     PROT_READ | PROT_EXEC | PROT_WRITE,
                                     MAP_PRIVATE, mCacheFd, 0);
 
-      if (mCodeDataAddr == MAP_FAILED) {
+      if (mCacheMapAddr == MAP_FAILED) {
         LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
         flock(mCacheFd, LOCK_UN);
         goto giveup;
