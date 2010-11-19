@@ -1,0 +1,143 @@
+Welcome to libbcc, Android's bitcode JIT. Note that bitcode refers to LLVM bitcode.
+
+------------------------------------------------------------------------------
+A. Highlights:
+------------------------------------------------------------------------------
+
+* libbcc supports bitcode from various language frontends (E.g. RenderScript,
+  GLSL).
+
+* libbcc strives to balance between library size, launch time and steady-state
+  performance:
+
+  ** The size of libbcc is aggressively reduced for a mobile device. We customize
+     and we don't use Execution Engine.
+
+  ** To reduce launch time, we support caching of binaries.
+
+  ** For steady-state performance, we enable VFP3 and aggressive optimizations.
+
+* Currently we disable Lazy JITting.
+
+
+------------------------------------------------------------------------------
+B. The following APIs are provided:
+------------------------------------------------------------------------------
+
+Basic end-to-end usage:
+* bccReadBC(): Read bitcode and convert it to LLVM module.
+* bccReadModule(): Read LLVM module, which has 1-1 mapping with bitcode format.
+* bccReadExe(): Read cached binary. No need to compiling the bitcode later.
+
+* bccLinkBC(): On-device linking of bitcodes.
+* bccCompileBC(): Compiling bitcode.
+
+* bccRegisterSymbolCallback(): Tell libbcc the function address of "dlsym"
+* bccGetError(): Get compilation... error
+
+Reflection:
+* bccGetExportFuncs()
+* bccGetExportVars()
+* bccGetPragmas()
+
+For debugging:
+* bccGetFunctions()
+* bccGetFunctionBinary()
+
+RenderScript-specific:
+* bccCreateScript()
+* bccDeleteScript()
+* bccGetScriptInfoLog()
+  Note that Bitcode JIT is invoked when a script is loaded.
+
+
+------------------------------------------------------------------------------
+C. Calling conventions:
+------------------------------------------------------------------------------
+
+Case 1. Calls from Execution Environment or from/to within script:
+  On ARM, the first 4 arguments will go into r0, r1, r2, and r3, in that order.
+  The remaining (if any) will go through stack.
+
+  For ext_vec_types such as float2, a set of registers will be used. In the case
+  of float2, a register pair will be used. Specifically, if float2 is the first
+  argument in the function prototype, float2.x will go into r0, and float2.y,
+  r1.
+  Note: stack will be aligned to the coarsest-grained argument. In the case of
+  float2 above as an argument, parameter stack will be aligned to an 8-byte
+  boundary (if the sizes of other arguments are no greater than 8.)
+
+Case 2. Calls from/to a separate compilation unit: (E.g., calls to Execution
+  Environment if those runtime library callees are not compiled using LLVM.)
+  On ARM, we use hardfp.
+  Note that double will be placed in a register pair.
+
+
+------------------------------------------------------------------------------
+D. BCC Cache File Format
+------------------------------------------------------------------------------
+
+The structure of BCC cache file consists of three sections:
+
+1) Header Section: Information about this cache file
+2) Relocation Info Section: Information to relocate a global variable
+3) Exported Var Info Section: Information for RenderScript
+   Exported Function Info Section: Information for RenderScript
+   Exported Pragma Info Section: Information for RenderScript
+4) Code Section: The jit'ed code on this platform
+5) Data Section: The global variable
+
+
+--------------------------------------------------
+D.1 Header Section
+--------------------------------------------------
+
+struct oBCCHeader {
+  uint8_t magic[4];             // includes version number
+  uint8_t magicVersion[4];
+
+  uint32_t sourceWhen;
+  uint32_t rslibWhen;
+  uint32_t libRSWhen;
+  uint32_t libbccWhen;
+
+  uint32_t cachedCodeMapAddr;
+  uint32_t rootAddr;
+  uint32_t initAddr;
+
+  uint32_t relocOffset;         // offset of reloc table.
+  uint32_t relocCount;
+  uint32_t exportVarsOffset;    // offset of export var table
+  uint32_t exportVarsCount;
+  uint32_t exportFuncsOffset;   // offset of export func table
+  uint32_t exportFuncsCount;
+  uint32_t exportPragmasOffset; // offset of export pragma table
+  uint32_t exportPragmasCount;
+
+  uint32_t codeOffset;          // offset of code: 64-bit alignment
+  uint32_t codeSize;
+  uint32_t dataOffset;          // offset of data section
+  uint32_t dataSize;
+
+  //  uint32_t flags;           // some info flags
+  uint32_t checksum;            // adler32 checksum covering deps/opt
+};
+
+Note: Both "offset" and "size" are in the unit of bytes. However, "count" is
+in the unit of entities.
+
+
+--------------------------------------------------
+D.2 Relocation Section
+--------------------------------------------------
+
+There may be many entries in the relocation section. Each entry has two
+uint32_t. One for address, and the other for fixup_type.
+
+
+--------------------------------------------------
+D.3 Code Section
+--------------------------------------------------
+
+This section should align to 64-bit, i.e. the address must be an multiple of 8.
+
