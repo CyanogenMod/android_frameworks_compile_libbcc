@@ -433,6 +433,7 @@ class Compiler {
   int mCacheFd;           // Set by readBC()
   char *mCacheMapAddr;    // Set by loader() if mCacheNew is false
   oBCCHeader *mCacheHdr;  // Set by loader()
+  size_t mCacheSize;      // Set by loader()
   ptrdiff_t mCacheDiff;   // Set by loader()
   char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                           // Used by genCacheFile() for dumping
@@ -2467,6 +2468,7 @@ class Compiler {
         mCacheFd(-1),
         mCacheMapAddr(NULL),
         mCacheHdr(NULL),
+        mCacheSize(0),
         mCacheDiff(0),
         mCodeDataAddr(NULL),
         mpSymbolLookupFn(NULL),
@@ -2505,7 +2507,6 @@ class Compiler {
       // TODO(sliao):
       mNeverCache = true;
 #if 0
-
       mCacheFd = openCacheFile(resName, true /* createIfMissing */);
       if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
         return -mCacheFd;
@@ -2583,8 +2584,10 @@ class Compiler {
       goto giveup;
     }
 
-    if (statCacheFd.st_size < sizeof(oBCCHeader) ||
-        statCacheFd.st_size <= MaxCodeSize + MaxGlobalVarSize) {
+    mCacheSize = statCacheFd.st_size;
+
+    if (mCacheSize < sizeof(oBCCHeader) ||
+        mCacheSize <= MaxCodeSize + MaxGlobalVarSize) {
       LOGE("mCacheFd %d is too small to be correct\n", (int)mCacheFd);
       goto giveup;
     }
@@ -2593,8 +2596,7 @@ class Compiler {
     // Read File Content
     {
 #ifdef BCC_CODE_ADDR
-      off_t heuristicCodeOffset =
-                    statCacheFd.st_size - MaxCodeSize - MaxGlobalVarSize;
+      off_t heuristicCodeOffset = mCacheSize - MaxCodeSize - MaxGlobalVarSize;
 
       mCodeDataAddr = (char *) mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
                                     MaxCodeSize + MaxGlobalVarSize,
@@ -2635,7 +2637,7 @@ class Compiler {
         goto bail;
       }
 #else
-      mCacheMapAddr = (char *) mmap(0, statCacheFd.st_size,
+      mCacheMapAddr = (char *) mmap(0, mCacheSize,
                                     PROT_READ | PROT_EXEC | PROT_WRITE,
                                     MAP_PRIVATE, mCacheFd, 0);
 
@@ -2666,37 +2668,36 @@ class Compiler {
       goto bail;
     }
 
-    if (statCacheFd.st_size < mCacheHdr->relocOffset +
-                              mCacheHdr->relocCount * sizeof(uint32_t) * 2) {
+    if (mCacheSize < mCacheHdr->relocOffset +
+                     mCacheHdr->relocCount * sizeof(uint32_t) * 2) {
       LOGE("relocate table overflow\n");
       goto bail;
     }
 
-    if (statCacheFd.st_size < mCacheHdr->exportVarsOffset +
-                              mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
+    if (mCacheSize < mCacheHdr->exportVarsOffset +
+                     mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
       LOGE("export variables table overflow\n");
       goto bail;
     }
 
-    if (statCacheFd.st_size < mCacheHdr->exportFuncsOffset +
-                              mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
+    if (mCacheSize < mCacheHdr->exportFuncsOffset +
+                     mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
       LOGE("export functions table overflow\n");
       goto bail;
     }
 
-    if (statCacheFd.st_size <
-                    mCacheHdr->exportPragmasOffset +
-                    mCacheHdr->exportPragmasCount * sizeof(uint32_t)) {
+    if (mCacheSize < mCacheHdr->exportPragmasOffset +
+                     mCacheHdr->exportPragmasCount * sizeof(uint32_t)) {
       LOGE("export pragmas table overflow\n");
       goto bail;
     }
 
-    if (statCacheFd.st_size < mCacheHdr->codeOffset + mCacheHdr->codeSize) {
+    if (mCacheSize < mCacheHdr->codeOffset + mCacheHdr->codeSize) {
       LOGE("code cache overflow\n");
       goto bail;
     }
 
-    if (statCacheFd.st_size < mCacheHdr->dataOffset + mCacheHdr->dataSize) {
+    if (mCacheSize < mCacheHdr->dataOffset + mCacheHdr->dataSize) {
       LOGE("data (global variable) cache overflow\n");
       goto bail;
     }
@@ -2743,7 +2744,7 @@ class Compiler {
       free(mCacheMapAddr);
     }
 #else
-    if (munmap(mCacheMapAddr, statCacheFd.st_size) != 0) {
+    if (munmap(mCacheMapAddr, mCacheSize) != 0) {
       LOGE("munmap failed: %s\n", strerror(errno));
     }
 #endif
@@ -3235,6 +3236,24 @@ class Compiler {
   }
 
   ~Compiler() {
+#ifdef BCC_CODE_ADDR
+    if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
+      if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) < 0) {
+        LOGE("munmap failed while releasing mCodeDataAddr\n");
+      }
+    }
+
+    if (mCacheMapAddr) {
+      free(mCacheMapAddr);
+    }
+#else
+    if (mCacheMapAddr != 0 && mCacheMapAddr != MAP_FAILED) {
+      if (munmap(mCacheMapAddr, mCacheSize) < 0) {
+        LOGE("munmap failed while releasing mCacheMapAddr\n");
+      }
+    }
+#endif
+
     delete mModule;
     // llvm::llvm_shutdown();
     delete mContext;
