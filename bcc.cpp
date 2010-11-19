@@ -1949,6 +1949,7 @@ class Compiler {
       }
     };
 
+   public:
     void Disassemble(const llvm::StringRef &Name, uint8_t *Start,
                      size_t Length, bool IsStub) {
       llvm::raw_fd_ostream *OS;
@@ -2015,6 +2016,7 @@ class Compiler {
     }
 #endif  // defined(USE_DISASSEMBLER)
 
+   private:
     // Resolver to undefined symbol in CodeEmitter
     BCCSymbolLookupFn mpSymbolLookupFn;
     void *mpSymbolLookupContext;
@@ -2825,6 +2827,13 @@ class Compiler {
         TM->getJITInfo()->relocate(mCodeDataAddr,
                                    &relocations[0], relocations.size(),
                                    (unsigned char *)mCodeDataAddr+MaxCodeSize);
+
+        if (mCodeEmitter.get()) {
+          mCodeEmitter->Disassemble(llvm::StringRef("cache"),
+                                    reinterpret_cast<uint8_t*>(mCodeDataAddr),
+                                    2 * 1024 /*MaxCodeSize*/,
+                                    false);
+        }
 
         delete TM;
       }
