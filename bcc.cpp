@@ -215,6 +215,18 @@ struct oBCCHeader {
   uint32_t checksum;            // adler32 checksum covering deps/opt
 };
 
+struct oBCCRelocEntry {
+  uint32_t relocType;           // target instruction relocation type
+  uint32_t relocOffset;         // offset of hole (holeAddr - codeAddr)
+  uint32_t cachedResultAddr;    // address resolved at compile time
+
+  oBCCRelocEntry(uintptr_t off, uint32_t ty, void *addr)
+    : relocType(ty),
+      relocOffset(static_cast<uint32_t>(off)),
+      cachedResultAddr(reinterpret_cast<uint32_t>(addr)) {
+  }
+};
+
 /* oBCCHeader Offset Table */
 #define k_magic                 offsetof(oBCCHeader, magic)
 #define k_magicVersion          offsetof(oBCCHeader, magicVersion)
@@ -888,6 +900,8 @@ class Compiler {
 
     // These are the relocations that the function needs, as emitted.
     std::vector<llvm::MachineRelocation> mRelocations;
+
+    std::vector<oBCCRelocEntry> mCachingRelocations;
 
     // This vector is a mapping from Label ID's to their address.
     llvm::DenseMap<llvm::MCSymbol*, uintptr_t> mLabelLocations;
@@ -2033,6 +2047,10 @@ class Compiler {
       return mGlobalAddressMap.end();
     }
 
+    std::vector<oBCCRelocEntry> const &getCachingRelocations() const {
+      return mCachingRelocations;
+    }
+
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
       mpSymbolLookupFn = pFn;
       mpSymbolLookupContext = pContext;
@@ -2122,6 +2140,8 @@ class Compiler {
       uint8_t *FnEnd = CurBufferPtr;
 
       if (!mRelocations.empty()) {
+        ptrdiff_t BufferOffset = BufferBegin - mpMemMgr->getCodeMemBase();
+
         // Resolve the relocations to concrete pointers.
         for (int i = 0, e = mRelocations.size(); i != e; i++) {
           llvm::MachineRelocation &MR = mRelocations[i];
@@ -2130,8 +2150,11 @@ class Compiler {
           if (!MR.letTargetResolve()) {
             if (MR.isExternalSymbol()) {
               ResultPtr = GetPointerToNamedSymbol(MR.getExternalSymbol(), true);
-              if (MR.mayNeedFarStub())
+
+              if (MR.mayNeedFarStub()) {
                 ResultPtr = GetExternalFunctionStub(ResultPtr);
+              }
+
             } else if (MR.isGlobalValue()) {
               ResultPtr = GetPointerToGlobal(MR.getGlobalValue(),
                                              BufferBegin
@@ -2152,6 +2175,18 @@ class Compiler {
               assert(MR.isJumpTableIndex() && "Unknown type of relocation");
               ResultPtr =
                   (void*) getJumpTableEntryAddress(MR.getJumpTableIndex());
+            }
+
+            if (!MR.isExternalSymbol() || MR.mayNeedFarStub()) {
+              // TODO(logan): Cache external symbol relocation entry.
+              // Currently, we are not caching them.  But since Android
+              // system is using prelink, it is not a problem.
+
+              // Cache the relocation result address
+              mCachingRelocations.push_back(
+                oBCCRelocEntry(MR.getMachineCodeOffset() + BufferOffset,
+                               MR.getRelocationType(),
+                               ResultPtr));
             }
 
             MR.setResultPointer(ResultPtr);
@@ -2669,7 +2704,7 @@ class Compiler {
     }
 
     if (mCacheSize < mCacheHdr->relocOffset +
-                     mCacheHdr->relocCount * sizeof(uint32_t) * 2) {
+                     mCacheHdr->relocCount * sizeof(oBCCRelocEntry)) {
       LOGE("relocate table overflow\n");
       goto bail;
     }
@@ -2717,17 +2752,58 @@ class Compiler {
       mCacheHdr->rootAddr += mCacheDiff;
       mCacheHdr->initAddr += mCacheDiff;
 
-      uint32_t *relocTable =
-        reinterpret_cast<uint32_t *>(mCacheMapAddr + mCacheHdr->relocOffset);
+      oBCCRelocEntry *cachedRelocTable =
+        reinterpret_cast<oBCCRelocEntry *>(mCacheMapAddr +
+                                           mCacheHdr->relocOffset);
+
+      std::vector<llvm::MachineRelocation> relocations;
 
       // Read in the relocs
       for (size_t i = 0; i < mCacheHdr->relocCount; i++) {
-        // TODO(all): Patch the hole
+        oBCCRelocEntry *entry = &cachedRelocTable[i];
 
-        //char *holeAddr = reinterpret_cast<char *>(*relocTable++) + mCacheDiff;
-        //uint32_t holeTy = *relocTable++;
+        llvm::MachineRelocation reloc =
+          llvm::MachineRelocation::getGV((uintptr_t)entry->relocOffset,
+                                         (unsigned)entry->relocType, 0, 0);
 
-        //patch(...); I.e., holeAddr += mCacheDiff
+        reloc.setResultPointer(
+          reinterpret_cast<char *>(entry->cachedResultAddr) + mCacheDiff);
+
+        relocations.push_back(reloc);
+      }
+
+      // Rewrite machine code using llvm::TargetJITInfo relocate
+      {
+        llvm::TargetMachine *TM = NULL;
+        const llvm::Target *Target;
+        std::string FeaturesStr;
+
+        // Create TargetMachine
+        Target = llvm::TargetRegistry::lookupTarget(Triple, mError);
+        if (hasError())
+          goto bail;
+
+        if (!CPU.empty() || !Features.empty()) {
+          llvm::SubtargetFeatures F;
+          F.setCPU(CPU);
+          for (std::vector<std::string>::const_iterator I = Features.begin(),
+                  E = Features.end(); I != E; I++)
+            F.AddFeature(*I);
+          FeaturesStr = F.getString();
+        }
+
+        TM = Target->createTargetMachine(Triple, FeaturesStr);
+        if (TM == NULL) {
+          setError("Failed to create target machine implementation for the"
+                   " specified triple '" + Triple + "'");
+          goto bail;
+        }
+
+        TM->getJITInfo()->relocate(mCodeDataAddr,
+                                   &relocations[0], relocations.size(),
+                                   (unsigned char *)mCodeDataAddr+MaxCodeSize);
+
+        delete TM;
       }
 #endif
     }
@@ -3297,10 +3373,9 @@ class Compiler {
 
     // Relocation Table Offset and Entry Count
     hdr->relocOffset = sizeof(oBCCHeader);
-    hdr->relocCount = mCodeEmitter->mGlobalAddressMap.size();
+    hdr->relocCount = mCodeEmitter->getCachingRelocations().size();
 
-    offset += hdr->relocCount * (sizeof(uint32_t) * 2);
-                            // Note: each reloc has 2 entries: addr & relocTy
+    offset += hdr->relocCount * (sizeof(oBCCRelocEntry));
 
     // Export Variable Table Offset and Entry Count
     hdr->exportVarsOffset = offset;
@@ -3356,34 +3431,15 @@ class Compiler {
     sysWriteFully(mCacheFd, reinterpret_cast<char const *>(hdr),
                   sizeof(oBCCHeader), "Write oBCC header");
 
-    // TODO(all): This Code is Not Working.  Fix This ASAP.
-#if 0
-    int *itemList = (int *) calloc(buf[k_relocCount], sizeof(void *));
-    int *tmp = itemList;
+    // Write Relocation Entry Table
+    {
+      size_t allocSize = hdr->relocCount * sizeof(oBCCRelocEntry);
 
-    CodeEmitter::global_addresses_const_iterator I, E;
-    for (I = mCodeEmitter->global_address_begin(),
-             E = mCodeEmitter->global_address_end();
-         I != E;
-         I++) {
-      //      *tmp++ = (int) I->second;
-      //      *tmp++ = 0; //XXX Output fixup_type. Assume fixup type is 0 for now.
+      oBCCRelocEntry const*records = &mCodeEmitter->getCachingRelocations()[0];
+
+      sysWriteFully(mCacheFd, reinterpret_cast<char const *>(records),
+                    allocSize, "Write Relocation Entries");
     }
-    if (tmp - itemList != buf[k_relocCount] * 4) {
-      LOGE("reloc corrupted");
-      goto bail;
-    }
-    sysWriteFully(mCacheFd,
-                  itemList,
-                  buf[k_relocCount]*sizeof(void*),
-                  "Write relocs");
-#else
-
-    // Note: As long as we have comment out relocation code, we have to
-    // seek the position to correct offset.
-
-    lseek(mCacheFd, hdr->exportVarsOffset, SEEK_SET);
-#endif
 
     // Write Export Variables Table
     {

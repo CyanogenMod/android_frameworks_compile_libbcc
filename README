@@ -131,8 +131,14 @@ in the unit of entities.
 D.2 Relocation Section
 --------------------------------------------------
 
-There may be many entries in the relocation section. Each entry has two
-uint32_t. One for address, and the other for fixup_type.
+There may be many entries in the relocation section.  Each entry has following
+structure:
+
+struct oBCCRelocEntry {
+  uint32_t relocType;           // target instruction relocation type
+  uint32_t relocOffset;         // offset of hole (holeAddr - codeAddr)
+  uint32_t cachedResultAddr;    // address resolved at compile time
+};
 
 
 --------------------------------------------------
