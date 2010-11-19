@@ -2749,8 +2749,13 @@ class Compiler {
         goto bail;
       }
 #else
-      mCacheHdr->rootAddr += mCacheDiff;
-      mCacheHdr->initAddr += mCacheDiff;
+      if (mCacheHdr->rootAddr) {
+        mCacheHdr->rootAddr += mCacheDiff;
+      }
+
+      if (mCacheHdr->initAddr) {
+        mCacheHdr->initAddr += mCacheDiff;
+      }
 
       oBCCRelocEntry *cachedRelocTable =
         reinterpret_cast<oBCCRelocEntry *>(mCacheMapAddr +
