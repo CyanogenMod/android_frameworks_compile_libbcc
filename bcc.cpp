@@ -2539,14 +2539,10 @@ class Compiler {
       // Turn off the default NeverCaching mode
       mNeverCache = false;
 
-      // TODO(sliao):
-      mNeverCache = true;
-#if 0
       mCacheFd = openCacheFile(resName, true /* createIfMissing */);
       if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
         return -mCacheFd;
       }
-#endif
     }
 
     llvm::OwningPtr<llvm::MemoryBuffer> MEM;
