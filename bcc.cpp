@@ -220,7 +220,7 @@ struct oBCCRelocEntry {
   uint32_t relocOffset;         // offset of hole (holeAddr - codeAddr)
   uint32_t cachedResultAddr;    // address resolved at compile time
 
-  oBCCRelocEntry(uintptr_t off, uint32_t ty, void *addr)
+  oBCCRelocEntry(uint32_t ty, uintptr_t off, void *addr)
     : relocType(ty),
       relocOffset(static_cast<uint32_t>(off)),
       cachedResultAddr(reinterpret_cast<uint32_t>(addr)) {
@@ -2153,6 +2153,13 @@ class Compiler {
 
               if (MR.mayNeedFarStub()) {
                 ResultPtr = GetExternalFunctionStub(ResultPtr);
+                fprintf(stderr, "reloc: external sym + far\t\toff=%d\taddr=%p\n",
+                        MR.getMachineCodeOffset() + BufferOffset,
+                        ResultPtr);
+              } else {
+                fprintf(stderr, "reloc: external sym\t\toff=%d\taddr=%p\n",
+                        MR.getMachineCodeOffset() + BufferOffset,
+                        ResultPtr);
               }
 
             } else if (MR.isGlobalValue()) {
@@ -2160,21 +2167,36 @@ class Compiler {
                                              BufferBegin
                                                + MR.getMachineCodeOffset(),
                                              MR.mayNeedFarStub());
+              fprintf(stderr, "reloc: is global var\t\toff=%d\taddr=%p\n",
+                      MR.getMachineCodeOffset() + BufferOffset,
+                      ResultPtr);
             } else if (MR.isIndirectSymbol()) {
               ResultPtr =
                   GetPointerToGVIndirectSym(
                       MR.getGlobalValue(),
                       BufferBegin + MR.getMachineCodeOffset());
+              fprintf(stderr, "reloc: is indirect symbol\t\toff=%d\taddr=%p\n",
+                      MR.getMachineCodeOffset() + BufferOffset,
+                      ResultPtr);
             } else if (MR.isBasicBlock()) {
               ResultPtr =
                   (void*) getMachineBasicBlockAddress(MR.getBasicBlock());
+              fprintf(stderr, "reloc: is basic block\t\toff=%d\taddr=%p\n",
+                      MR.getMachineCodeOffset() + BufferOffset,
+                      ResultPtr);
             } else if (MR.isConstantPoolIndex()) {
               ResultPtr =
                  (void*) getConstantPoolEntryAddress(MR.getConstantPoolIndex());
+              fprintf(stderr, "reloc: is const pool entry\t\toff=%d\taddr=%p\n",
+                      MR.getMachineCodeOffset() + BufferOffset,
+                      ResultPtr);
             } else {
               assert(MR.isJumpTableIndex() && "Unknown type of relocation");
               ResultPtr =
                   (void*) getJumpTableEntryAddress(MR.getJumpTableIndex());
+              fprintf(stderr, "reloc: is jump table\t\toff=%d\taddr=%p\n",
+                      MR.getMachineCodeOffset() + BufferOffset,
+                      ResultPtr);
             }
 
             if (!MR.isExternalSymbol() || MR.mayNeedFarStub()) {
@@ -2184,8 +2206,8 @@ class Compiler {
 
               // Cache the relocation result address
               mCachingRelocations.push_back(
-                oBCCRelocEntry(MR.getMachineCodeOffset() + BufferOffset,
-                               MR.getRelocationType(),
+                oBCCRelocEntry(MR.getRelocationType(),
+                               MR.getMachineCodeOffset() + BufferOffset,
                                ResultPtr));
             }
 
