@@ -17,7 +17,9 @@
 // Bitcode compiler (bcc) for Android:
 //    This is an eager-compilation JIT running on Android.
 
-//#define BCC_CODE_ADDR 0x7e00000
+// Fixed BCC_CODE_ADDR here only works for 1 cached EXE.
+// So when mLoaded == 1, will set mCacheNever to true.
+#define BCC_CODE_ADDR 0x7e00000
 
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
@@ -2625,6 +2627,10 @@ class Compiler {
       goto giveup;
     }
 
+    if (lseek(mCacheFd, 0, SEEK_SET) != 0) {
+      LOGE("Unable to seek to 0: %s\n", strerror(errno));
+      goto giveup;
+    }
 
     // Read File Content
     {
@@ -2636,6 +2642,8 @@ class Compiler {
                                     PROT_READ | PROT_EXEC | PROT_WRITE,
                                     MAP_PRIVATE | MAP_FIXED,
                                     mCacheFd, heuristicCodeOffset);
+      LOGE("sliao@Loader: mCacheSize=%x, heuristicCodeOffset=%x", mCacheSize, heuristicCodeOffset);
+      LOGE("sliao@Loader: mCodeDataAddr=%x", mCodeDataAddr);
 
       if (mCodeDataAddr == MAP_FAILED) {
         LOGE("unable to mmap .oBBC cache code/data: %s\n", strerror(errno));
@@ -2664,6 +2672,11 @@ class Compiler {
       }
 
       mCacheHdr = reinterpret_cast<oBCCHeader *>(mCacheMapAddr);
+      LOGE("sliao: mCacheHdr->cachedCodeDataAddr=%x", mCacheHdr->cachedCodeDataAddr);
+      LOGE("mCacheHdr->rootAddr=%x", mCacheHdr->rootAddr);
+      LOGE("mCacheHdr->initAddr=%x", mCacheHdr->initAddr);
+      LOGE("mCacheHdr->codeOffset=%x", mCacheHdr->codeOffset);
+      LOGE("mCacheHdr->codeSize=%x", mCacheHdr->codeSize);
 
       if (mCacheHdr->codeOffset != (uint32_t)heuristicCodeOffset) {
         LOGE("assertion failed: heuristic code offset is not correct.\n");
