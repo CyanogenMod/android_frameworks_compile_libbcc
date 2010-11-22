@@ -107,6 +107,7 @@ static int disassemble(BCCscript* script, FILE* out) {
 }
 #else
 static int disassemble(BCCscript* script, FILE* out) {
+  fprintf(stderr, "Disassembler not supported on this build.\n");
   return 1;
 }
 #endif // PROVIDE_ARM_DISASSEMBLY
