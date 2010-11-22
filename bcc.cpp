@@ -570,23 +570,24 @@ class Compiler {
       std::string ErrMsg;
 
       //      if (!Compiler::BccCodeAddrTaken) {  // Use BCC_CODE_ADDR
-      mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
+      /* TODO(sliao):
+         mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
                        MaxCodeSize + MaxGlobalVarSize,
                        PROT_READ | PROT_EXEC | PROT_WRITE,
                        MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                        -1,
                        0);
 
-      if (mpCodeMem == MAP_FAILED) {
+                       if (mpCodeMem == MAP_FAILED) {*/
         mpCodeMem = mmap(NULL,
                          MaxCodeSize + MaxGlobalVarSize,
                          PROT_READ | PROT_EXEC | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANON,
                          -1,
                          0);
-      } else {
+        //      } else {
         //        mBccCodeAddrTaken = true;
-      }
+        //}
 
       if (mpCodeMem == MAP_FAILED) {
         llvm::report_fatal_error("Failed to allocate memory for emitting "
@@ -3562,9 +3563,9 @@ class Compiler {
       fd = open(cacheFileName, O_RDONLY, 0);
       if (fd < 0) {
         if (createIfMissing) {
-          LOGE("Can't open bcc-cache '%s': %s\n",
+          LOGW("Can't open bcc-cache '%s': %s\n",
                cacheFileName, strerror(errno));
-          mCacheNew = true;
+          mNeverCache = true;
         }
         return fd;
       }
