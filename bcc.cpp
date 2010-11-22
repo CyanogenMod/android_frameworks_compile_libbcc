@@ -18,7 +18,7 @@
 //    This is an eager-compilation JIT running on Android.
 
 // Fixed BCC_CODE_ADDR here only works for 1 cached EXE.
-// At most 1 live Compiler object will have set mBccCodeAddrTaken
+// At most 1 live Compiler object will have set BccCodeAddrTaken
 #define BCC_CODE_ADDR 0x7e00000
 
 #define LOG_TAG "bcc"
@@ -299,7 +299,7 @@ class Compiler {
   // is initialized in GlobalInitialization()
   //
   static bool GlobalInitialized;
-  //sliao  static bool BccCodeAddrTaken;
+  static bool BccCodeAddrTaken;
 
   // If given, this will be the name of the target triple to compile for.
   // If not given, the initial values defined in this file will be used.
@@ -452,7 +452,6 @@ class Compiler {
   ptrdiff_t mCacheDiff;   // Set by loader()
   char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                           // Used by genCacheFile() for dumping
-  bool mBccCodeAddrTaken;
 
   typedef std::list< std::pair<std::string, std::string> > PragmaList;
   PragmaList mPragmas;
@@ -569,45 +568,44 @@ class Compiler {
       reset();
       std::string ErrMsg;
 
-      //      if (!Compiler::BccCodeAddrTaken) {  // Use BCC_CODE_ADDR
-      /* TODO(sliao):
-         mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
-                       MaxCodeSize + MaxGlobalVarSize,
-                       PROT_READ | PROT_EXEC | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANON | MAP_FIXED,
-                       -1,
-                       0);
+      if (!Compiler::BccCodeAddrTaken) {  // Try to use BCC_CODE_ADDR
+        mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
+                         MaxCodeSize + MaxGlobalVarSize,
+                         PROT_READ | PROT_EXEC | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANON | MAP_FIXED,
+                         -1, 0);
 
-                       if (mpCodeMem == MAP_FAILED) {*/
+        if (mpCodeMem == MAP_FAILED) {
+          LOGE("Mmap mpCodeMem at %p failed with reason: %s.\n",
+               reinterpret_cast<void *>(BCC_CODE_ADDR), strerror(errno));
+          LOGE("Retry to mmap mpCodeMem at arbitary address\n");
+        }
+      }
+
+      if (Compiler::BccCodeAddrTaken || mpCodeMem == MAP_FAILED) {
+        // If BCC_CODE_ADDR has been occuppied, or we can't allocate
+        // mpCodeMem in previous mmap, then allocate them in arbitary
+        // location.
+
         mpCodeMem = mmap(NULL,
                          MaxCodeSize + MaxGlobalVarSize,
                          PROT_READ | PROT_EXEC | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANON,
-                         -1,
-                         0);
-        //      } else {
-        //        mBccCodeAddrTaken = true;
-        //}
+                         -1, 0);
 
-      if (mpCodeMem == MAP_FAILED) {
-        llvm::report_fatal_error("Failed to allocate memory for emitting "
-                                 "codes\n" + ErrMsg);
+        if (mpCodeMem == MAP_FAILED) {
+          LOGE("Unable to mmap mpCodeMem with reason: %s.\n", strerror(errno));
+          llvm::report_fatal_error("Failed to allocate memory for emitting "
+                                   "codes\n" + ErrMsg);
+        }
       }
-      mpGVMem = (void *) ((int) mpCodeMem + MaxCodeSize);
 
-      /*      mpCodeMem = mmap(NULL, MaxCodeSize, PROT_READ | PROT_EXEC,
-                         MAP_PRIVATE | MAP_ANON, -1, 0);
-      if (mpCodeMem == MAP_FAILED)
-        llvm::report_fatal_error("Failed to allocate memory for emitting "
-                                 "function codes\n" + ErrMsg);
+      // One instance of script is occupping BCC_CODE_ADDR
+      Compiler::BccCodeAddrTaken = true;
 
-      mpGVMem = mmap(mpCodeMem, MaxGlobalVarSize,
-                     PROT_READ | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANON, -1, 0);
-      if (mpGVMem == MAP_FAILED)
-        llvm::report_fatal_error("Failed to allocate memory for emitting "
-                                 "global variables\n" + ErrMsg);
-      */
+      // Set global variable pool
+      mpGVMem = (void *) ((char *)mpCodeMem + MaxCodeSize);
+
       return;
     }
 
@@ -827,10 +825,8 @@ class Compiler {
     }
 
     ~CodeMemoryManager() {
-      if (mpCodeMem != NULL)
-        ::munmap(mpCodeMem, MaxCodeSize);
-      if (mpGVMem != NULL)
-        ::munmap(mpGVMem, MaxGlobalVarSize);
+      if (mpCodeMem != NULL && mpCodeMem != MAP_FAILED)
+        munmap(mpCodeMem, MaxCodeSize + MaxGlobalVarSize);
       return;
     }
   };
@@ -2516,7 +2512,6 @@ class Compiler {
         mCacheSize(0),
         mCacheDiff(0),
         mCodeDataAddr(NULL),
-        mBccCodeAddrTaken(false),
         mpSymbolLookupFn(NULL),
         mpSymbolLookupContext(NULL),
         mContext(NULL),
@@ -2547,12 +2542,16 @@ class Compiler {
     GlobalInitialization();
 
     if (resName) {
-      // Turn off the default NeverCaching mode
-      mNeverCache = false;
+      if (!BccCodeAddrTaken) {
+        // Turn off the default NeverCaching mode
+        mNeverCache = false;
 
-      mCacheFd = openCacheFile(resName, true /* createIfMissing */);
-      if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
-        return -mCacheFd;
+        mCacheFd = openCacheFile(resName, true /* createIfMissing */);
+        if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
+          return -mCacheFd;
+        }
+      } else {
+        mNeverCache = true;
       }
     }
 
@@ -2642,7 +2641,9 @@ class Compiler {
     {
       // Part 1. Deal with the non-codedata section first
       off_t heuristicCodeOffset = mCacheSize - MaxCodeSize - MaxGlobalVarSize;
-      LOGE("sliao@Loader: mCacheSize=%x, heuristicCodeOffset=%x", mCacheSize, heuristicCodeOffset);
+      LOGE("sliao@Loader: mCacheSize=%x, heuristicCodeOffset=%llx",
+           (unsigned int)mCacheSize,
+           (unsigned long long int)heuristicCodeOffset);
 
       mCacheMapAddr = (char *)malloc(heuristicCodeOffset);
       if (!mCacheMapAddr) {
@@ -2655,7 +2656,6 @@ class Compiler {
                                               heuristicCodeOffset));
       if (nread != (size_t)heuristicCodeOffset) {
         LOGE("read(mCacheFd) failed\n");
-        free(mCacheMapAddr);
         goto bail;
       }
 
@@ -2727,7 +2727,7 @@ class Compiler {
           mCodeDataAddr ==
           reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr)) {
         // relocate is avoidable
-        mBccCodeAddrTaken = true;
+        BccCodeAddrTaken = true;
 
         flock(mCacheFd, LOCK_UN);
       } else {
@@ -2753,7 +2753,7 @@ class Compiler {
       mCacheDiff = mCodeDataAddr -
                    reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
-      if (!mBccCodeAddrTaken) {  // To relocate
+      if (!BccCodeAddrTaken) {  // To relocate
         if (mCacheHdr->rootAddr) {
           mCacheHdr->rootAddr += mCacheDiff;
         }
@@ -2822,7 +2822,7 @@ class Compiler {
 
           delete TM;
         }
-      }  // End of if (!mBccCodeAddrTaken)
+      }  // End of if (!BccCodeAddrTaken)
     }
 
     return 0;
@@ -2830,15 +2830,14 @@ class Compiler {
  bail:
     if (mCacheMapAddr) {
       free(mCacheMapAddr);
+      mCacheMapAddr = 0;
     }
-    if (mBccCodeAddrTaken) {
+
+    if (BccCodeAddrTaken) {
       if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
         LOGE("munmap failed: %s\n", strerror(errno));
       }
-    } else {
-      if (munmap(mCacheMapAddr, mCacheSize) != 0) {
-        LOGE("munmap failed: %s\n", strerror(errno));
-      }
+      mCodeDataAddr = 0;
     }
 
  giveup:
@@ -3328,19 +3327,12 @@ class Compiler {
   }
 
   ~Compiler() {
-    // #ifdef BCC_CODE_ADDR
     if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
       if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) < 0) {
         LOGE("munmap failed while releasing mCodeDataAddr\n");
       }
       if (mCacheMapAddr) {
         free(mCacheMapAddr);
-      }
-    } else {
-      if (mCacheMapAddr != 0 && mCacheMapAddr != MAP_FAILED) {
-        if (munmap(mCacheMapAddr, mCacheSize) < 0) {
-          LOGE("munmap failed while releasing mCacheMapAddr\n");
-        }
       }
     }
 
@@ -3861,6 +3853,8 @@ class Compiler {
 
 
 bool Compiler::GlobalInitialized = false;
+
+bool Compiler::BccCodeAddrTaken = false;
 
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
