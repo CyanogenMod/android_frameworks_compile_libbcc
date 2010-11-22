@@ -18,7 +18,7 @@
 //    This is an eager-compilation JIT running on Android.
 
 // Fixed BCC_CODE_ADDR here only works for 1 cached EXE.
-// So when mLoaded == 1, will set mCacheNever to true.
+// At most 1 live Compiler object will have set mBccCodeAddrTaken
 #define BCC_CODE_ADDR 0x7e00000
 
 #define LOG_TAG "bcc"
@@ -299,6 +299,7 @@ class Compiler {
   // is initialized in GlobalInitialization()
   //
   static bool GlobalInitialized;
+  //sliao  static bool BccCodeAddrTaken;
 
   // If given, this will be the name of the target triple to compile for.
   // If not given, the initial values defined in this file will be used.
@@ -451,6 +452,7 @@ class Compiler {
   ptrdiff_t mCacheDiff;   // Set by loader()
   char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                           // Used by genCacheFile() for dumping
+  bool mBccCodeAddrTaken;
 
   typedef std::list< std::pair<std::string, std::string> > PragmaList;
   PragmaList mPragmas;
@@ -567,21 +569,24 @@ class Compiler {
       reset();
       std::string ErrMsg;
 
-#ifdef BCC_CODE_ADDR
+      //      if (!Compiler::BccCodeAddrTaken) {  // Use BCC_CODE_ADDR
       mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
                        MaxCodeSize + MaxGlobalVarSize,
                        PROT_READ | PROT_EXEC | PROT_WRITE,
                        MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                        -1,
                        0);
-#else
-      mpCodeMem = mmap(NULL,
-                       MaxCodeSize + MaxGlobalVarSize,
-                       PROT_READ | PROT_EXEC | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANON,
-                       -1,
-                       0);
-#endif
+
+      if (mpCodeMem == MAP_FAILED) {
+        mpCodeMem = mmap(NULL,
+                         MaxCodeSize + MaxGlobalVarSize,
+                         PROT_READ | PROT_EXEC | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANON,
+                         -1,
+                         0);
+      } else {
+        //        mBccCodeAddrTaken = true;
+      }
 
       if (mpCodeMem == MAP_FAILED) {
         llvm::report_fatal_error("Failed to allocate memory for emitting "
@@ -2510,6 +2515,7 @@ class Compiler {
         mCacheSize(0),
         mCacheDiff(0),
         mCodeDataAddr(NULL),
+        mBccCodeAddrTaken(false),
         mpSymbolLookupFn(NULL),
         mpSymbolLookupContext(NULL),
         mContext(NULL),
@@ -2611,7 +2617,6 @@ class Compiler {
       goto giveup;
     }
 
-
     // Check File Size
     struct stat statCacheFd;
     if (fstat(mCacheFd, &statCacheFd) < 0) {
@@ -2634,37 +2639,19 @@ class Compiler {
 
     // Read File Content
     {
-#ifdef BCC_CODE_ADDR
+      // Part 1. Deal with the non-codedata section first
       off_t heuristicCodeOffset = mCacheSize - MaxCodeSize - MaxGlobalVarSize;
-
-      mCodeDataAddr = (char *) mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
-                                    MaxCodeSize + MaxGlobalVarSize,
-                                    PROT_READ | PROT_EXEC | PROT_WRITE,
-                                    MAP_PRIVATE | MAP_FIXED,
-                                    mCacheFd, heuristicCodeOffset);
       LOGE("sliao@Loader: mCacheSize=%x, heuristicCodeOffset=%x", mCacheSize, heuristicCodeOffset);
-      LOGE("sliao@Loader: mCodeDataAddr=%x", mCodeDataAddr);
-
-      if (mCodeDataAddr == MAP_FAILED) {
-        LOGE("unable to mmap .oBBC cache code/data: %s\n", strerror(errno));
-        flock(mCacheFd, LOCK_UN);
-        goto giveup;
-      }
 
       mCacheMapAddr = (char *)malloc(heuristicCodeOffset);
-
       if (!mCacheMapAddr) {
-        flock(mCacheFd, LOCK_UN);
-        LOGE("allocation failed.\n");
-        // TODO(all)
-        goto bail;
+          flock(mCacheFd, LOCK_UN);
+          LOGE("allocation failed.\n");
+          goto bail;
       }
 
       size_t nread = TEMP_FAILURE_RETRY1(read(mCacheFd, mCacheMapAddr,
                                               heuristicCodeOffset));
-
-      flock(mCacheFd, LOCK_UN);
-
       if (nread != (size_t)heuristicCodeOffset) {
         LOGE("read(mCacheFd) failed\n");
         free(mCacheMapAddr);
@@ -2672,183 +2659,188 @@ class Compiler {
       }
 
       mCacheHdr = reinterpret_cast<oBCCHeader *>(mCacheMapAddr);
+      // Sanity check
+      if (mCacheHdr->codeOffset != (uint32_t)heuristicCodeOffset) {
+        LOGE("assertion failed: heuristic code offset is not correct.\n");
+        goto bail;
+      }
       LOGE("sliao: mCacheHdr->cachedCodeDataAddr=%x", mCacheHdr->cachedCodeDataAddr);
       LOGE("mCacheHdr->rootAddr=%x", mCacheHdr->rootAddr);
       LOGE("mCacheHdr->initAddr=%x", mCacheHdr->initAddr);
       LOGE("mCacheHdr->codeOffset=%x", mCacheHdr->codeOffset);
       LOGE("mCacheHdr->codeSize=%x", mCacheHdr->codeSize);
 
-      if (mCacheHdr->codeOffset != (uint32_t)heuristicCodeOffset) {
-        LOGE("assertion failed: heuristic code offset is not correct.\n");
+      // Verify the Cache File
+      if (memcmp(mCacheHdr->magic, OBCC_MAGIC, 4) != 0) {
+        LOGE("bad magic word\n");
         goto bail;
       }
-#else
-      mCacheMapAddr = (char *) mmap(0, mCacheSize,
-                                    PROT_READ | PROT_EXEC | PROT_WRITE,
-                                    MAP_PRIVATE, mCacheFd, 0);
 
-      if (mCacheMapAddr == MAP_FAILED) {
-        LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
-        flock(mCacheFd, LOCK_UN);
-        goto giveup;
+      if (memcmp(mCacheHdr->magicVersion, OBCC_MAGIC_VERS, 4) != 0) {
+        LOGE("bad oBCC version 0x%08x\n",
+             *reinterpret_cast<uint32_t *>(mCacheHdr->magicVersion));
+        goto bail;
       }
 
-      flock(mCacheFd, LOCK_UN);
+      if (mCacheSize < mCacheHdr->relocOffset +
+          mCacheHdr->relocCount * sizeof(oBCCRelocEntry)) {
+        LOGE("relocate table overflow\n");
+        goto bail;
+      }
 
-      mCacheHdr = reinterpret_cast<oBCCHeader *>(mCacheMapAddr);
+      if (mCacheSize < mCacheHdr->exportVarsOffset +
+          mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
+        LOGE("export variables table overflow\n");
+        goto bail;
+      }
 
-      mCodeDataAddr = mCacheMapAddr + mCacheHdr->codeOffset;
-#endif
+      if (mCacheSize < mCacheHdr->exportFuncsOffset +
+          mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
+        LOGE("export functions table overflow\n");
+        goto bail;
+      }
+
+      if (mCacheSize < mCacheHdr->exportPragmasOffset +
+          mCacheHdr->exportPragmasCount * sizeof(uint32_t)) {
+        LOGE("export pragmas table overflow\n");
+        goto bail;
+      }
+
+      if (mCacheSize < mCacheHdr->codeOffset + mCacheHdr->codeSize) {
+        LOGE("code cache overflow\n");
+        goto bail;
+      }
+
+      if (mCacheSize < mCacheHdr->dataOffset + mCacheHdr->dataSize) {
+        LOGE("data (global variable) cache overflow\n");
+        goto bail;
+      }
+
+      // Part 2. Deal with the codedata section
+      mCodeDataAddr = (char *) mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
+                                    MaxCodeSize + MaxGlobalVarSize,
+                                    PROT_READ | PROT_EXEC | PROT_WRITE,
+                                    MAP_PRIVATE | MAP_FIXED,
+                                    mCacheFd, heuristicCodeOffset);
+      if (mCodeDataAddr != MAP_FAILED &&
+          mCodeDataAddr ==
+          reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr)) {
+        // relocate is avoidable
+        mBccCodeAddrTaken = true;
+
+        flock(mCacheFd, LOCK_UN);
+      } else {
+        mCacheMapAddr = (char *) mmap(0,
+                                      mCacheSize,
+                                      PROT_READ | PROT_EXEC | PROT_WRITE,
+                                      MAP_PRIVATE,
+                                      mCacheFd,
+                                      0);
+        if (mCacheMapAddr == MAP_FAILED) {
+          LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
+          flock(mCacheFd, LOCK_UN);
+          goto giveup;
+        }
+
+        flock(mCacheFd, LOCK_UN);
+        mCodeDataAddr = mCacheMapAddr + mCacheHdr->codeOffset;
+      }
     }
-
-
-    // Verify the Cache File
-    if (memcmp(mCacheHdr->magic, OBCC_MAGIC, 4) != 0) {
-      LOGE("bad magic word\n");
-      goto bail;
-    }
-
-    if (memcmp(mCacheHdr->magicVersion, OBCC_MAGIC_VERS, 4) != 0) {
-      LOGE("bad oBCC version 0x%08x\n",
-               *reinterpret_cast<uint32_t *>(mCacheHdr->magicVersion));
-      goto bail;
-    }
-
-    if (mCacheSize < mCacheHdr->relocOffset +
-                     mCacheHdr->relocCount * sizeof(oBCCRelocEntry)) {
-      LOGE("relocate table overflow\n");
-      goto bail;
-    }
-
-    if (mCacheSize < mCacheHdr->exportVarsOffset +
-                     mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
-      LOGE("export variables table overflow\n");
-      goto bail;
-    }
-
-    if (mCacheSize < mCacheHdr->exportFuncsOffset +
-                     mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
-      LOGE("export functions table overflow\n");
-      goto bail;
-    }
-
-    if (mCacheSize < mCacheHdr->exportPragmasOffset +
-                     mCacheHdr->exportPragmasCount * sizeof(uint32_t)) {
-      LOGE("export pragmas table overflow\n");
-      goto bail;
-    }
-
-    if (mCacheSize < mCacheHdr->codeOffset + mCacheHdr->codeSize) {
-      LOGE("code cache overflow\n");
-      goto bail;
-    }
-
-    if (mCacheSize < mCacheHdr->dataOffset + mCacheHdr->dataSize) {
-      LOGE("data (global variable) cache overflow\n");
-      goto bail;
-    }
-
 
     // Relocate
     {
       mCacheDiff = mCodeDataAddr -
                    reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
-#ifdef BCC_CODE_ADDR
-      if (mCacheDiff != 0) {
-        LOGE("mCacheDiff should be zero but mCacheDiff = %d\n", mCacheDiff);
-        goto bail;
-      }
-#else
-      if (mCacheHdr->rootAddr) {
-        mCacheHdr->rootAddr += mCacheDiff;
-      }
-
-      if (mCacheHdr->initAddr) {
-        mCacheHdr->initAddr += mCacheDiff;
-      }
-
-      oBCCRelocEntry *cachedRelocTable =
-        reinterpret_cast<oBCCRelocEntry *>(mCacheMapAddr +
-                                           mCacheHdr->relocOffset);
-
-      std::vector<llvm::MachineRelocation> relocations;
-
-      // Read in the relocs
-      for (size_t i = 0; i < mCacheHdr->relocCount; i++) {
-        oBCCRelocEntry *entry = &cachedRelocTable[i];
-
-        llvm::MachineRelocation reloc =
-          llvm::MachineRelocation::getGV((uintptr_t)entry->relocOffset,
-                                         (unsigned)entry->relocType, 0, 0);
-
-        reloc.setResultPointer(
-          reinterpret_cast<char *>(entry->cachedResultAddr) + mCacheDiff);
-
-        relocations.push_back(reloc);
-      }
-
-      // Rewrite machine code using llvm::TargetJITInfo relocate
-      {
-        llvm::TargetMachine *TM = NULL;
-        const llvm::Target *Target;
-        std::string FeaturesStr;
-
-        // Create TargetMachine
-        Target = llvm::TargetRegistry::lookupTarget(Triple, mError);
-        if (hasError())
-          goto bail;
-
-        if (!CPU.empty() || !Features.empty()) {
-          llvm::SubtargetFeatures F;
-          F.setCPU(CPU);
-          for (std::vector<std::string>::const_iterator I = Features.begin(),
-                  E = Features.end(); I != E; I++)
-            F.AddFeature(*I);
-          FeaturesStr = F.getString();
+      if (!mBccCodeAddrTaken) {  // To relocate
+        if (mCacheHdr->rootAddr) {
+          mCacheHdr->rootAddr += mCacheDiff;
         }
 
-        TM = Target->createTargetMachine(Triple, FeaturesStr);
-        if (TM == NULL) {
-          setError("Failed to create target machine implementation for the"
-                   " specified triple '" + Triple + "'");
-          goto bail;
+        if (mCacheHdr->initAddr) {
+          mCacheHdr->initAddr += mCacheDiff;
         }
 
-        TM->getJITInfo()->relocate(mCodeDataAddr,
-                                   &relocations[0], relocations.size(),
-                                   (unsigned char *)mCodeDataAddr+MaxCodeSize);
+        oBCCRelocEntry *cachedRelocTable =
+            reinterpret_cast<oBCCRelocEntry *>(mCacheMapAddr +
+                                               mCacheHdr->relocOffset);
 
-        if (mCodeEmitter.get()) {
-          mCodeEmitter->Disassemble(llvm::StringRef("cache"),
-                                    reinterpret_cast<uint8_t*>(mCodeDataAddr),
-                                    2 * 1024 /*MaxCodeSize*/,
-                                    false);
+        std::vector<llvm::MachineRelocation> relocations;
+
+        // Read in the relocs
+        for (size_t i = 0; i < mCacheHdr->relocCount; i++) {
+          oBCCRelocEntry *entry = &cachedRelocTable[i];
+
+          llvm::MachineRelocation reloc =
+              llvm::MachineRelocation::getGV((uintptr_t)entry->relocOffset,
+                                             (unsigned)entry->relocType, 0, 0);
+
+          reloc.setResultPointer(
+              reinterpret_cast<char *>(entry->cachedResultAddr) + mCacheDiff);
+
+          relocations.push_back(reloc);
         }
 
-        delete TM;
-      }
-#endif
+        // Rewrite machine code using llvm::TargetJITInfo relocate
+        {
+          llvm::TargetMachine *TM = NULL;
+          const llvm::Target *Target;
+          std::string FeaturesStr;
+
+          // Create TargetMachine
+          Target = llvm::TargetRegistry::lookupTarget(Triple, mError);
+          if (hasError())
+            goto bail;
+
+          if (!CPU.empty() || !Features.empty()) {
+            llvm::SubtargetFeatures F;
+            F.setCPU(CPU);
+            for (std::vector<std::string>::const_iterator I = Features.begin(),
+                     E = Features.end(); I != E; I++)
+              F.AddFeature(*I);
+            FeaturesStr = F.getString();
+          }
+
+          TM = Target->createTargetMachine(Triple, FeaturesStr);
+          if (TM == NULL) {
+            setError("Failed to create target machine implementation for the"
+                     " specified triple '" + Triple + "'");
+            goto bail;
+          }
+
+          TM->getJITInfo()->relocate(mCodeDataAddr,
+                                     &relocations[0], relocations.size(),
+                                     (unsigned char *)mCodeDataAddr+MaxCodeSize);
+
+          if (mCodeEmitter.get()) {
+            mCodeEmitter->Disassemble(llvm::StringRef("cache"),
+                                      reinterpret_cast<uint8_t*>(mCodeDataAddr),
+                                      2 * 1024 /*MaxCodeSize*/,
+                                      false);
+          }
+
+          delete TM;
+        }
+      }  // End of if (!mBccCodeAddrTaken)
     }
 
     return 0;
 
-  bail:
-#ifdef BCC_CODE_ADDR
-    if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
-      LOGE("munmap failed: %s\n", strerror(errno));
-    }
-
+ bail:
     if (mCacheMapAddr) {
       free(mCacheMapAddr);
     }
-#else
-    if (munmap(mCacheMapAddr, mCacheSize) != 0) {
-      LOGE("munmap failed: %s\n", strerror(errno));
+    if (mBccCodeAddrTaken) {
+      if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
+        LOGE("munmap failed: %s\n", strerror(errno));
+      }
+    } else {
+      if (munmap(mCacheMapAddr, mCacheSize) != 0) {
+        LOGE("munmap failed: %s\n", strerror(errno));
+      }
     }
-#endif
 
-  giveup:
+ giveup:
     return 1;
   }
 
@@ -3335,23 +3327,21 @@ class Compiler {
   }
 
   ~Compiler() {
-#ifdef BCC_CODE_ADDR
+    // #ifdef BCC_CODE_ADDR
     if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
       if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) < 0) {
         LOGE("munmap failed while releasing mCodeDataAddr\n");
       }
-    }
-
-    if (mCacheMapAddr) {
-      free(mCacheMapAddr);
-    }
-#else
-    if (mCacheMapAddr != 0 && mCacheMapAddr != MAP_FAILED) {
-      if (munmap(mCacheMapAddr, mCacheSize) < 0) {
-        LOGE("munmap failed while releasing mCacheMapAddr\n");
+      if (mCacheMapAddr) {
+        free(mCacheMapAddr);
+      }
+    } else {
+      if (mCacheMapAddr != 0 && mCacheMapAddr != MAP_FAILED) {
+        if (munmap(mCacheMapAddr, mCacheSize) < 0) {
+          LOGE("munmap failed while releasing mCacheMapAddr\n");
+        }
       }
     }
-#endif
 
     delete mModule;
     // llvm::llvm_shutdown();
@@ -3420,8 +3410,8 @@ class Compiler {
 
     // Code Offset and Size
 
-#ifdef BCC_CODE_ADDR
-    {
+    //#ifdef BCC_CODE_ADDR
+    {  // Always pad to the page boundary for now
       long pagesize = sysconf(_SC_PAGESIZE);
 
       if (offset % pagesize > 0) {
@@ -3429,12 +3419,12 @@ class Compiler {
         offset += pagesize - (offset % pagesize);
       }
     }
-#else
+    /*#else
     if (offset & 0x07) { // Ensure that offset aligned to 64-bit (8 byte).
       codeOffsetNeedPadding = true;
       offset += 0x08 - (offset & 0x07);
     }
-#endif
+    #endif*/
 
     hdr->codeOffset = offset;
     hdr->codeSize = MaxCodeSize;
