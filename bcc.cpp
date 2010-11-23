@@ -3349,12 +3349,21 @@ class Compiler {
   }
 
   ~Compiler() {
-    if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
-      if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) < 0) {
-        LOGE("munmap failed while releasing mCodeDataAddr\n");
+    if (!mCodeMemMgr.get()) {
+      // mCodeDataAddr and mCacheMapAddr are from loader and not
+      // managed by CodeMemoryManager.
+
+      if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
+        if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) < 0) {
+          LOGE("munmap failed while releasing mCodeDataAddr\n");
+        }
+
+        mCodeDataAddr = 0;
       }
+
       if (mCacheMapAddr) {
         free(mCacheMapAddr);
+        mCacheMapAddr = 0;
       }
     }
 
