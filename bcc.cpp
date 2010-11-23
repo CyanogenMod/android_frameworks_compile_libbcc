@@ -17,9 +17,31 @@
 // Bitcode compiler (bcc) for Android:
 //    This is an eager-compilation JIT running on Android.
 
-// Fixed BCC_CODE_ADDR here only works for 1 cached EXE.
-// At most 1 live Compiler object will have set BccCodeAddrTaken
+// Beginning of mmap region to generate EXE to and to load EXE from disk cache
 #define BCC_CODE_ADDR 0x7e00000
+
+// Design of caching EXE
+// 1. Each process will have virtual address available starting at 0x7e00000.
+//    E.g., Books and Youtube all have its own 0x7e00000. Next, we should
+//    minimize the chance of needing to do relocation INSIDE an app too.
+//
+// 2. Each process will have ONE class static variable called BccCodeAddr.
+//    I.e., even though the Compiler class will have multiple Compiler objects,
+//    e.g, one object for carousel.rs and the other for pageturn.rs,
+//    both Compiler objects will share 1 static variable called BccCodeAddr.
+//
+// Key observation: Every app (process) initiates, say 3, scripts (which
+// correspond to 3 Compiler objects) in the same order, usually.
+//
+// So, we should mmap to, e.g., 0x7e00000, 0x7e40000, 0x7e80000 for the 3
+// scripts, respectively. Each time, BccCodeAddr should be updated after
+// JITTing a script. BTW, in ~Compiler(), BccCodeAddr should NOT be
+// decremented back by CodeDataSize. I.e., for 3 scripts: A, B, C,
+// even if it's A -> B -> ~B -> C -> ~C -> B -> C ... no relocation will
+// ever be needed.)
+//
+// If we are lucky, then we don't need relocation ever, since next time the
+// application gets run, the 3 scripts are likely created in the SAME order.
 
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
