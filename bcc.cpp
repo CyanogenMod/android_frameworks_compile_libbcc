@@ -2814,33 +2814,43 @@ class Compiler {
         LOGE("data (global variable) cache overflow\n");
         goto bail;
       }
+
+      long pagesize = sysconf(_SC_PAGESIZE);
+      if (mCacheHdr->codeOffset % pagesize != 0) {
+        LOGE("code offset must aligned to pagesize\n");
+        goto bail;
+      }
     }
 
     // Part 2. Deal with the codedata section
     {
-      void *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
+      long pagesize = sysconf(_SC_PAGESIZE);
 
-      // Try to mmap at cached address directly.
-      mCodeDataAddr = (char *) mmap(addr, BCC_MMAP_IMG_SIZE,
-                                    PROT_READ | PROT_EXEC | PROT_WRITE,
-                                    MAP_PRIVATE | MAP_FIXED,
-                                    mCacheFd, mCacheHdr->codeOffset);
+      if (mCacheHdr->cachedCodeDataAddr % pagesize == 0) {
+        void *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
-      if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
-        // Cheers!  Mapped at the cached address successfully.
+        // Try to mmap at cached address directly.
+        mCodeDataAddr = (char *) mmap(addr, BCC_MMAP_IMG_SIZE,
+                                      PROT_READ | PROT_EXEC | PROT_WRITE,
+                                      MAP_PRIVATE | MAP_FIXED,
+                                      mCacheFd, mCacheHdr->codeOffset);
 
-        if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
-          size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
+        if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
+          // Cheers!  Mapped at the cached address successfully.
 
-          if ((offset % BCC_MMAP_IMG_SIZE) == 0 &&
-              (offset / BCC_MMAP_IMG_SIZE) < BCC_MMAP_IMG_COUNT) {
-            // Update the BccMmapImgAddrTaken table (if required)
-            Compiler::BccMmapImgAddrTaken[offset / BCC_MMAP_IMG_SIZE] = true;
+          if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
+            size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
+
+            if ((offset % BCC_MMAP_IMG_SIZE) == 0 &&
+                (offset / BCC_MMAP_IMG_SIZE) < BCC_MMAP_IMG_COUNT) {
+              // Update the BccMmapImgAddrTaken table (if required)
+              Compiler::BccMmapImgAddrTaken[offset / BCC_MMAP_IMG_SIZE] = true;
+            }
           }
-        }
 
-        flock(mCacheFd, LOCK_UN);
-        return 0; // loadCacheFile succeed!
+          flock(mCacheFd, LOCK_UN);
+          return 0; // loadCacheFile succeed!
+        }
       }
     }
 
