@@ -19,7 +19,7 @@ ifneq ($(TARGET_SIMULATOR),true)
 LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm
 
-USE_CACHE := true 
+USE_CACHE := true
 USE_RELOCATE := false
 
 USE_DISASSEMBLER := true
