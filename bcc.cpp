@@ -2830,10 +2830,12 @@ class Compiler {
         void *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
         // Try to mmap at cached address directly.
-        mCodeDataAddr = (char *) mmap(addr, BCC_MMAP_IMG_SIZE,
+        mCodeDataAddr = (char *) mmap(addr,
+                                      BCC_MMAP_IMG_SIZE,
                                       PROT_READ | PROT_EXEC | PROT_WRITE,
                                       MAP_PRIVATE | MAP_FIXED,
-                                      mCacheFd, mCacheHdr->codeOffset);
+                                      mCacheFd,
+                                      mCacheHdr->codeOffset);
 
         if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
           // Cheers!  Mapped at the cached address successfully.
@@ -2872,9 +2874,12 @@ class Compiler {
 #if 0
     {
       // Try to allocate at arbitary address.  And perform relocation.
-      mCacheMapAddr = (char *) mmap(0, mCacheSize,
+      mCacheMapAddr = (char *) mmap(0,
+                                    mCacheSize,
                                     PROT_READ | PROT_EXEC | PROT_WRITE,
-                                    MAP_PRIVATE, mCacheFd, 0);
+                                    MAP_PRIVATE,
+                                    mCacheFd,
+                                    0);
 
       if (mCacheMapAddr == MAP_FAILED) {
         LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
