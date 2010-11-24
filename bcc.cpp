@@ -17,16 +17,13 @@
 // Bitcode compiler (bcc) for Android:
 //    This is an eager-compilation JIT running on Android.
 
-// BCC_CODE_ADDR == Beginning of mmap region to generate EXE onto and
-//                  to load EXE from disk cache
-// Note: The static variable Compiler::BccCodeAddr = BCC_CODE_ADDR
-// I.e., Compiler::BccCodeAddr is used as "Compiler::UseCache"
-//
-#if (USE_CACHE)
-#   define BCC_CODE_ADDR 0x7e000000
-#else
-#   define BCC_CODE_ADDR 0
-#endif
+#define BCC_MMAP_IMG_BEGIN 0x7e000000
+#define BCC_MMAP_IMG_COUNT 5
+
+#define BCC_MMAP_IMG_CODE_SIZE (128 * 1024)
+#define BCC_MMAP_IMG_DATA_SIZE (128 * 1024)
+#define BCC_MMAP_IMG_SIZE (BCC_MMAP_IMG_CODE_SIZE + BCC_MMAP_IMG_DATA_SIZE)
+
 
 // Design of caching EXE:
 // ======================
@@ -366,7 +363,7 @@ class Compiler {
   // is initialized in GlobalInitialization()
   //
   static bool GlobalInitialized;
-  static char *BccCodeAddr;
+  static bool BccMmapImgAddrTaken[BCC_MMAP_IMG_COUNT];
 
   // If given, this will be the name of the target triple to compile for.
   // If not given, the initial values defined in this file will be used.
@@ -551,11 +548,11 @@ class Compiler {
   //  counter from previous emission) and re-emit again.
 
   // 128 KiB for code
-  static const unsigned int MaxCodeSize = 128 * 1024;
+  static const unsigned int MaxCodeSize = BCC_MMAP_IMG_CODE_SIZE;
   // 1 KiB for global offset table (GOT)
   static const unsigned int MaxGOTSize = 1 * 1024;
   // 128 KiB for global variable
-  static const unsigned int MaxGlobalVarSize = 128 * 1024;
+  static const unsigned int MaxGlobalVarSize = BCC_MMAP_IMG_DATA_SIZE;
 
   class CodeMemoryManager : public llvm::JITMemoryManager {
    private:
@@ -635,33 +632,46 @@ class Compiler {
       reset();
       std::string ErrMsg;
 
-      if (Compiler::BccCodeAddr) {  // Try to use BccCodeAddr
-        mpCodeMem = mmap(reinterpret_cast<void*>(Compiler::BccCodeAddr),
-                         MaxCodeSize + MaxGlobalVarSize,
+      // Try to use fixed address
+
+      // Note: If we failed to allocate mpCodeMem at fixed address,
+      // the caching mechanism has to either perform relocation or
+      // give up.  If the caching mechanism gives up, then we have to
+      // recompile the bitcode and wasting a lot of time.
+
+      for (size_t i = 0; i < BCC_MMAP_IMG_COUNT; ++i) {
+        if (Compiler::BccMmapImgAddrTaken[i]) {
+          // The address BCC_MMAP_IMG_BEGIN + i * BCC_MMAP_IMG_SIZE has
+          // been taken.
+          continue;
+        }
+
+        // Occupy the mmap image address first (No matter allocation
+        // success or not.  Keep occupying if succeed; otherwise,
+        // keep occupying as a mark of failure.)
+        Compiler::BccMmapImgAddrTaken[i] = true;
+
+        void *currMmapImgAddr =
+          reinterpret_cast<void *>(BCC_MMAP_IMG_BEGIN + i * BCC_MMAP_IMG_SIZE);
+
+        mpCodeMem = mmap(currMmapImgAddr, BCC_MMAP_IMG_SIZE,
                          PROT_READ | PROT_EXEC | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                          -1, 0);
 
         if (mpCodeMem == MAP_FAILED) {
-          LOGE("Mmap mpCodeMem at %p failed with reason: %s.\n",
-               reinterpret_cast<void *>(BCC_CODE_ADDR), strerror(errno));
-          LOGE("Retry to mmap mpCodeMem at arbitary address\n");
-          // TODO(sliao): Future: Should we retry at
-          // BccCodeAddr + MaxCodeSize + MaxGlobalVarSize?
-
+          LOGE("Mmap mpCodeMem at %p failed with reason: %s. Retrying ..\n",
+               currMmapImgAddr, strerror(errno));
         } else {
-          Compiler::BccCodeAddr += MaxCodeSize + MaxGlobalVarSize;
+          // Good, we have got one mmap image address.
+          break;
         }
       }
 
-      if (!Compiler::BccCodeAddr || mpCodeMem == MAP_FAILED) {
-        // If no BccCodeAddr specified, or we can't allocate
-        // mpCodeMem in previous mmap, then allocate them in arbitary
-        // location and rely on relocation.
-        // Note: Will incur time overhead in relocating when reloading from disk
+      if (!mpCodeMem || mpCodeMem == MAP_FAILED) {
+        LOGE("Try to allocate mpCodeMem at arbitary address.\n");
 
-        mpCodeMem = mmap(NULL,
-                         MaxCodeSize + MaxGlobalVarSize,
+        mpCodeMem = mmap(NULL, BCC_MMAP_IMG_SIZE,
                          PROT_READ | PROT_EXEC | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANON,
                          -1, 0);
@@ -672,6 +682,8 @@ class Compiler {
                                    "codes\n" + ErrMsg);
         }
       }
+
+      LOGE("Mmap mpCodeMem at %p successfully.\n", mpCodeMem);
 
       // Set global variable pool
       mpGVMem = (void *) ((char *)mpCodeMem + MaxCodeSize);
@@ -895,8 +907,12 @@ class Compiler {
     }
 
     ~CodeMemoryManager() {
-      if (mpCodeMem != NULL && mpCodeMem != MAP_FAILED)
+      if (mpCodeMem != NULL && mpCodeMem != MAP_FAILED) {
         munmap(mpCodeMem, MaxCodeSize + MaxGlobalVarSize);
+
+        // TODO(logan): Reset Compiler::BccMmapImgAddrTaken[i] to false, so
+        // that the address can be reused.
+      }
       return;
     }
   };
@@ -2607,11 +2623,11 @@ class Compiler {
   }
 
   int readBC(const char *bitcode,
-                 size_t bitcodeSize,
-                 const BCCchar *resName) {
+             size_t bitcodeSize,
+             const BCCchar *resName) {
     GlobalInitialization();
 
-    if (Compiler::BccCodeAddr /* USE_CACHE */ && resName) {
+    if (resName) {
       // Turn on mUseCache mode iff
       // 1. Has resName
       // and, assuming USE_RELOCATE is false:
@@ -2714,9 +2730,10 @@ class Compiler {
       goto giveup;
     }
 
-    // Read File Content
+    // Part 1. Deal with the non-codedata section first
     {
-      // Part 1. Deal with the non-codedata section first
+      // Read cached file and perform quick integrity check
+
       off_t heuristicCodeOffset = mCacheSize - MaxCodeSize - MaxGlobalVarSize;
       LOGW("TODO(sliao)@loadCacheFile: mCacheSize=%x, heuristicCodeOffset=%llx",
            (unsigned int)mCacheSize,
@@ -2793,46 +2810,67 @@ class Compiler {
         LOGE("data (global variable) cache overflow\n");
         goto bail;
       }
+    }
 
-      // Part 2. Deal with the codedata section
-      mCodeDataAddr = (char *) mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
-                                    MaxCodeSize + MaxGlobalVarSize,
+    // Part 2. Deal with the codedata section
+    {
+      void *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
+
+      // Try to mmap at cached address directly.
+      mCodeDataAddr = (char *) mmap(addr, BCC_MMAP_IMG_SIZE,
                                     PROT_READ | PROT_EXEC | PROT_WRITE,
                                     MAP_PRIVATE | MAP_FIXED,
-                                    mCacheFd, heuristicCodeOffset);
-      if (mCodeDataAddr != MAP_FAILED &&
-          mCodeDataAddr ==
-          reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr)) {
-        // relocate is avoidable
+                                    mCacheFd, mCacheHdr->codeOffset);
 
+      if (mCodeDataAddr != MAP_FAILED && mCodeDataAddr == addr) {
+        // Cheers!  Mapped at the cached address successfully.
 
-        flock(mCacheFd, LOCK_UN);
-      } else {
-#if (USE_RELOCATE)
-        mCacheMapAddr = (char *) mmap(0,
-                                      mCacheSize,
-                                      PROT_READ | PROT_EXEC | PROT_WRITE,
-                                      MAP_PRIVATE,
-                                      mCacheFd,
-                                      0);
-        if (mCacheMapAddr == MAP_FAILED) {
-          LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
-          flock(mCacheFd, LOCK_UN);
-          goto giveup;
+        if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
+          size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
+
+          if (offset % BCC_MMAP_IMG_SIZE == 0) {
+            // Update the BccMmapImgAddrTaken table (if required)
+            Compiler::BccMmapImgAddrTaken[offset / BCC_MMAP_IMG_SIZE] = true;
+          }
         }
 
         flock(mCacheFd, LOCK_UN);
-        mCodeDataAddr = mCacheMapAddr + mCacheHdr->codeOffset;
-#else
-        // TODO(sliao): XXX: Call Compile();
-        flock(mCacheFd, LOCK_UN);
-#endif
+        return 0; // loadCacheFile succeed!
       }
     }
 
-#if (USE_RELOCATE)
-    // Relocate
+#if !USE_RELOCATE
+    // Note: Since this build does not support relocation, we have no
+    // choose but give up to load the cached file, and recompile the
+    // code.
+
+    flock(mCacheFd, LOCK_UN);
+    goto bail;
+#else
+
+    // Note: Currently, relocation code is not working.  Give up now.
+    flock(mCacheFd, LOCK_UN);
+    goto bail;
+
+    // TODO(logan): Following code is not working.  Don't use them.
+    // And rewrite them asap.
+#if 0
     {
+      // Try to allocate at arbitary address.  And perform relocation.
+      mCacheMapAddr = (char *) mmap(0, mCacheSize,
+                                    PROT_READ | PROT_EXEC | PROT_WRITE,
+                                    MAP_PRIVATE, mCacheFd, 0);
+
+      if (mCacheMapAddr == MAP_FAILED) {
+        LOGE("unable to mmap .oBBC cache: %s\n", strerror(errno));
+        flock(mCacheFd, LOCK_UN);
+        goto giveup;
+      }
+
+      flock(mCacheFd, LOCK_UN);
+      mCodeDataAddr = mCacheMapAddr + mCacheHdr->codeOffset;
+
+      // Relocate
       mCacheDiff = mCodeDataAddr -
                    reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
@@ -2906,11 +2944,11 @@ class Compiler {
           delete TM;
         }
       }  // End of if (mCacheDiff)
+
+      return 0; // Success!
     }
-#else
-    // TODO(sliao): XXX: Call Compile();
-#endif  // End of USE_RELOCATE
-    return 0;
+#endif
+#endif
 
  bail:
     if (mCacheMapAddr) {
@@ -2918,12 +2956,13 @@ class Compiler {
       mCacheMapAddr = 0;
     }
 
-    //    if (BccCodeAddrTaken) {
-    if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
-      LOGE("munmap failed: %s\n", strerror(errno));
+    if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
+      if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
+        LOGE("munmap failed: %s\n", strerror(errno));
+      }
+
+      mCodeDataAddr = 0;
     }
-    mCodeDataAddr = 0;
-    //}
 
  giveup:
     return 1;
@@ -3232,14 +3271,11 @@ class Compiler {
       delete TM;
 
     if (mError.empty()) {
-#if !USE_RELOCATE
       if (mUseCache && mCacheFd >= 0 && mCacheNew) {
         genCacheFile();
         flock(mCacheFd, LOCK_UN);
       }
-#else
-      // TODO(sliao)
-#endif
+
       return false;
     }
 
@@ -3951,7 +3987,7 @@ class Compiler {
 
 bool Compiler::GlobalInitialized = false;
 
-char *Compiler::BccCodeAddr = BCC_CODE_ADDR;
+bool Compiler::BccMmapImgAddrTaken[BCC_MMAP_IMG_COUNT];
 
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
