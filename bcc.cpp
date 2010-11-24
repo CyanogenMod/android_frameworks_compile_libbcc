@@ -17,10 +17,19 @@
 // Bitcode compiler (bcc) for Android:
 //    This is an eager-compilation JIT running on Android.
 
-// Beginning of mmap region to generate EXE to and to load EXE from disk cache
-#define BCC_CODE_ADDR 0x7e00000
+// BCC_CODE_ADDR == Beginning of mmap region to generate EXE onto and
+//                  to load EXE from disk cache
+// Note: The static variable Compiler::BccCodeAddr = BCC_CODE_ADDR
+// I.e., Compiler::BccCodeAddr is used as "Compiler::UseCache"
+//
+#if (USE_CACHE)
+#   define BCC_CODE_ADDR 0x7e000000
+#else
+#   define BCC_CODE_ADDR 0
+#endif
 
-// Design of caching EXE
+// Design of caching EXE:
+// ======================
 // 1. Each process will have virtual address available starting at 0x7e00000.
 //    E.g., Books and Youtube all have its own 0x7e00000. Next, we should
 //    minimize the chance of needing to do relocation INSIDE an app too.
@@ -42,6 +51,42 @@
 //
 // If we are lucky, then we don't need relocation ever, since next time the
 // application gets run, the 3 scripts are likely created in the SAME order.
+//
+//
+// End-to-end algorithm on when to caching and when to JIT:
+// ========================================================
+// Prologue:
+// ---------
+// Assertion: bccReadBC() is always called and is before bccCompileBC(),
+// bccLoadBinary(), ...
+//
+// Key variable definitions: Normally,
+//  Compiler::BccCodeAddr: non-zero if (USE_CACHE)
+//  | (Stricter, because currently relocation doesn't work. So mUseCache only
+//  |  when BccCodeAddr is nonzero.)
+//  V
+//  mUseCache: In addition to (USE_CACHE), resName is non-zero
+//  Note: mUseCache will be set to false later on whenever we find that caching
+//        won't work. E.g., when mCodeDataAddr != mCacheHdr->cachedCodeDataAddr.
+//        This is because currently relocation doesn't work.
+//  | (Stricter, initially)
+//  V
+//  mCacheFd: In addition, >= 0 if openCacheFile() returns >= 0
+//  | (Stricter)
+//  V
+//  mCacheNew: In addition, mCacheFd's size is 0, so need to call genCacheFile()
+//             at the end of compile()
+//
+//
+// Main algorithm:
+// ---------------
+// #if !USE_RELOCATE
+// Case 1. ReadBC() doesn't detect a cache file:
+//   compile(), which calls genCacheFile() at the end.
+//   Note: mCacheNew will guard the invocation of genCacheFile()
+// Case 2. ReadBC() find a cache file
+//   loadCacheFile(). But if loadCacheFile() failed, should go to Case 1.
+// #endif
 
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
@@ -321,7 +366,7 @@ class Compiler {
   // is initialized in GlobalInitialization()
   //
   static bool GlobalInitialized;
-  static bool BccCodeAddrTaken;
+  static char *BccCodeAddr;
 
   // If given, this will be the name of the target triple to compile for.
   // If not given, the initial values defined in this file will be used.
@@ -355,7 +400,7 @@ class Compiler {
     // Set Triple, CPU and Features here
     Triple = TARGET_TRIPLE_STRING;
 
-    // TODO(zonr): NEON for JIT
+    // TODO(sliao): NEON for JIT
     // Features.push_back("+neon");
     // Features.push_back("+vmlx");
     // Features.push_back("+neonfp");
@@ -465,13 +510,13 @@ class Compiler {
     return;
   }
 
-  bool mNeverCache;       // Set by readBC()
+  bool mUseCache;       // Set by readBC()
   bool mCacheNew;         // Set by readBC()
   int mCacheFd;           // Set by readBC()
-  char *mCacheMapAddr;    // Set by loader() if mCacheNew is false
-  oBCCHeader *mCacheHdr;  // Set by loader()
-  size_t mCacheSize;      // Set by loader()
-  ptrdiff_t mCacheDiff;   // Set by loader()
+  char *mCacheMapAddr;    // Set by loadCacheFile() if mCacheNew is false
+  oBCCHeader *mCacheHdr;  // Set by loadCacheFile()
+  size_t mCacheSize;      // Set by loadCacheFile()
+  ptrdiff_t mCacheDiff;   // Set by loadCacheFile()
   char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                           // Used by genCacheFile() for dumping
 
@@ -590,8 +635,8 @@ class Compiler {
       reset();
       std::string ErrMsg;
 
-      if (!Compiler::BccCodeAddrTaken) {  // Try to use BCC_CODE_ADDR
-        mpCodeMem = mmap(reinterpret_cast<void*>(BCC_CODE_ADDR),
+      if (Compiler::BccCodeAddr) {  // Try to use BccCodeAddr
+        mpCodeMem = mmap(reinterpret_cast<void*>(Compiler::BccCodeAddr),
                          MaxCodeSize + MaxGlobalVarSize,
                          PROT_READ | PROT_EXEC | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANON | MAP_FIXED,
@@ -601,13 +646,19 @@ class Compiler {
           LOGE("Mmap mpCodeMem at %p failed with reason: %s.\n",
                reinterpret_cast<void *>(BCC_CODE_ADDR), strerror(errno));
           LOGE("Retry to mmap mpCodeMem at arbitary address\n");
+          // TODO(sliao): Future: Should we retry at
+          // BccCodeAddr + MaxCodeSize + MaxGlobalVarSize?
+
+        } else {
+          Compiler::BccCodeAddr += MaxCodeSize + MaxGlobalVarSize;
         }
       }
 
-      if (Compiler::BccCodeAddrTaken || mpCodeMem == MAP_FAILED) {
-        // If BCC_CODE_ADDR has been occuppied, or we can't allocate
+      if (!Compiler::BccCodeAddr || mpCodeMem == MAP_FAILED) {
+        // If no BccCodeAddr specified, or we can't allocate
         // mpCodeMem in previous mmap, then allocate them in arbitary
-        // location.
+        // location and rely on relocation.
+        // Note: Will incur time overhead in relocating when reloading from disk
 
         mpCodeMem = mmap(NULL,
                          MaxCodeSize + MaxGlobalVarSize,
@@ -621,9 +672,6 @@ class Compiler {
                                    "codes\n" + ErrMsg);
         }
       }
-
-      // One instance of script is occupping BCC_CODE_ADDR
-      Compiler::BccCodeAddrTaken = true;
 
       // Set global variable pool
       mpGVMem = (void *) ((char *)mpCodeMem + MaxCodeSize);
@@ -2526,7 +2574,7 @@ class Compiler {
 
  public:
   Compiler()
-      : mNeverCache(true),
+      : mUseCache(false),
         mCacheNew(false),
         mCacheFd(-1),
         mCacheMapAddr(NULL),
@@ -2563,17 +2611,25 @@ class Compiler {
                  const BCCchar *resName) {
     GlobalInitialization();
 
-    if (resName) {
-      if (!BccCodeAddrTaken) {
-        // Turn off the default NeverCaching mode
-        mNeverCache = false;
+    if (Compiler::BccCodeAddr /* USE_CACHE */ && resName) {
+      // Turn on mUseCache mode iff
+      // 1. Has resName
+      // and, assuming USE_RELOCATE is false:
+      // 2. Later running code doesn't violate the following condition:
+      //    mCodeDataAddr (set in loadCacheFile()) ==
+      //        mCacheHdr->cachedCodeDataAddr
+      //
+      //    BTW, this condition is achievable only when in the earlier
+      //    cache-generating run,
+      //      mpCodeMem == BccCodeAddr - MaxCodeSize - MaxGlobalVarSize,
+      //      which means the mmap'ed is in the reserved area,
+      //
+      //    Note: Upon violation, mUseCache will be set back to false.
+      mUseCache = true;
 
-        mCacheFd = openCacheFile(resName, true /* createIfMissing */);
-        if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
-          return -mCacheFd;
-        }
-      } else {
-        mNeverCache = true;
+      mCacheFd = openCacheFile(resName, true /* createIfMissing */);
+      if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
+        return -mCacheFd;
       }
     }
 
@@ -2630,9 +2686,8 @@ class Compiler {
     return hasError();
   }
 
-
   // interface for bccLoadBinary()
-  int loader() {
+  int loadCacheFile() {
     // Check File Descriptor
     if (mCacheFd < 0) {
       LOGE("loading cache from invalid mCacheFd = %d\n", (int)mCacheFd);
@@ -2663,7 +2718,7 @@ class Compiler {
     {
       // Part 1. Deal with the non-codedata section first
       off_t heuristicCodeOffset = mCacheSize - MaxCodeSize - MaxGlobalVarSize;
-      LOGE("sliao@Loader: mCacheSize=%x, heuristicCodeOffset=%llx",
+      LOGW("TODO(sliao)@loadCacheFile: mCacheSize=%x, heuristicCodeOffset=%llx",
            (unsigned int)mCacheSize,
            (unsigned long long int)heuristicCodeOffset);
 
@@ -2687,11 +2742,11 @@ class Compiler {
         LOGE("assertion failed: heuristic code offset is not correct.\n");
         goto bail;
       }
-      LOGE("sliao: mCacheHdr->cachedCodeDataAddr=%x", mCacheHdr->cachedCodeDataAddr);
-      LOGE("mCacheHdr->rootAddr=%x", mCacheHdr->rootAddr);
-      LOGE("mCacheHdr->initAddr=%x", mCacheHdr->initAddr);
-      LOGE("mCacheHdr->codeOffset=%x", mCacheHdr->codeOffset);
-      LOGE("mCacheHdr->codeSize=%x", mCacheHdr->codeSize);
+      LOGW("TODO(sliao): mCacheHdr->cachedCodeDataAddr=%x", mCacheHdr->cachedCodeDataAddr);
+      LOGW("mCacheHdr->rootAddr=%x", mCacheHdr->rootAddr);
+      LOGW("mCacheHdr->initAddr=%x", mCacheHdr->initAddr);
+      LOGW("mCacheHdr->codeOffset=%x", mCacheHdr->codeOffset);
+      LOGW("mCacheHdr->codeSize=%x", mCacheHdr->codeSize);
 
       // Verify the Cache File
       if (memcmp(mCacheHdr->magic, OBCC_MAGIC, 4) != 0) {
@@ -2749,10 +2804,11 @@ class Compiler {
           mCodeDataAddr ==
           reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr)) {
         // relocate is avoidable
-        BccCodeAddrTaken = true;
+
 
         flock(mCacheFd, LOCK_UN);
       } else {
+#if (USE_RELOCATE)
         mCacheMapAddr = (char *) mmap(0,
                                       mCacheSize,
                                       PROT_READ | PROT_EXEC | PROT_WRITE,
@@ -2767,15 +2823,20 @@ class Compiler {
 
         flock(mCacheFd, LOCK_UN);
         mCodeDataAddr = mCacheMapAddr + mCacheHdr->codeOffset;
+#else
+        // TODO(sliao): XXX: Call Compile();
+        flock(mCacheFd, LOCK_UN);
+#endif
       }
     }
 
+#if (USE_RELOCATE)
     // Relocate
     {
       mCacheDiff = mCodeDataAddr -
                    reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
-      if (!BccCodeAddrTaken) {  // To relocate
+      if (mCacheDiff) {  // To relocate
         if (mCacheHdr->rootAddr) {
           mCacheHdr->rootAddr += mCacheDiff;
         }
@@ -2844,9 +2905,11 @@ class Compiler {
 
           delete TM;
         }
-      }  // End of if (!BccCodeAddrTaken)
+      }  // End of if (mCacheDiff)
     }
-
+#else
+    // TODO(sliao): XXX: Call Compile();
+#endif  // End of USE_RELOCATE
     return 0;
 
  bail:
@@ -2855,12 +2918,12 @@ class Compiler {
       mCacheMapAddr = 0;
     }
 
-    if (BccCodeAddrTaken) {
-      if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
-        LOGE("munmap failed: %s\n", strerror(errno));
-      }
-      mCodeDataAddr = 0;
+    //    if (BccCodeAddrTaken) {
+    if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
+      LOGE("munmap failed: %s\n", strerror(errno));
     }
+    mCodeDataAddr = 0;
+    //}
 
  giveup:
     return 1;
@@ -3169,11 +3232,14 @@ class Compiler {
       delete TM;
 
     if (mError.empty()) {
-      if (!mNeverCache && mCacheFd >= 0 && mCacheNew) {
+#if !USE_RELOCATE
+      if (mUseCache && mCacheFd >= 0 && mCacheNew) {
         genCacheFile();
         flock(mCacheFd, LOCK_UN);
       }
-
+#else
+      // TODO(sliao)
+#endif
       return false;
     }
 
@@ -3189,7 +3255,7 @@ class Compiler {
   // interface for bccGetScriptLabel()
   void *lookup(const char *name) {
     void *addr = NULL;
-    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+    if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
       if (!strcmp(name, "root")) {
         addr = reinterpret_cast<void *>(mCacheHdr->rootAddr);
       } else if (!strcmp(name, "init")) {
@@ -3210,7 +3276,7 @@ class Compiler {
                      BCCvoid **vars) {
     int varCount;
 
-    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+    if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
       varCount = static_cast<int>(mCacheHdr->exportVarsCount);
       if (actualVarCount)
         *actualVarCount = varCount;
@@ -3252,7 +3318,7 @@ class Compiler {
                       BCCvoid **funcs) {
     int funcCount;
 
-    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+    if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
       funcCount = static_cast<int>(mCacheHdr->exportFuncsCount);
       if (actualFuncCount)
         *actualFuncCount = funcCount;
@@ -3293,7 +3359,7 @@ class Compiler {
                   BCCsizei maxStringCount,
                   BCCchar **strings) {
     int stringCount;
-    if (!mNeverCache && mCacheFd >= 0 && !mCacheNew) {
+    if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
       if (actualStringCount)
         *actualStringCount = 0;  // XXX
       return;
@@ -3350,7 +3416,7 @@ class Compiler {
 
   ~Compiler() {
     if (!mCodeMemMgr.get()) {
-      // mCodeDataAddr and mCacheMapAddr are from loader and not
+      // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
       // managed by CodeMemoryManager.
 
       if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
@@ -3374,7 +3440,7 @@ class Compiler {
   }
 
  private:
-  // Note: loader() and genCacheFile() go hand in hand
+  // Note: loadCacheFile() and genCacheFile() go hand in hand
   void genCacheFile() {
     if (lseek(mCacheFd, 0, SEEK_SET) != 0) {
       LOGE("Unable to seek to 0: %s\n", strerror(errno));
@@ -3588,7 +3654,7 @@ class Compiler {
         if (createIfMissing) {
           LOGW("Can't open bcc-cache '%s': %s\n",
                cacheFileName, strerror(errno));
-          mNeverCache = true;
+          mUseCache = false;
         }
         return fd;
       }
@@ -3885,7 +3951,7 @@ class Compiler {
 
 bool Compiler::GlobalInitialized = false;
 
-bool Compiler::BccCodeAddrTaken = false;
+char *Compiler::BccCodeAddr = BCC_CODE_ADDR;
 
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
@@ -3989,7 +4055,7 @@ void bccLinkBC(BCCscript *script,
 
 extern "C"
 void bccLoadBinary(BCCscript *script) {
-  int result = script->compiler.loader();
+  int result = script->compiler.loadCacheFile();
   if (result)
     script->setError(BCC_INVALID_OPERATION);
 }
