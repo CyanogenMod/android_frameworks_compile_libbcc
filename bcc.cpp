@@ -907,12 +907,16 @@ class Compiler {
     }
 
     ~CodeMemoryManager() {
-      if (mpCodeMem != NULL && mpCodeMem != MAP_FAILED) {
-        munmap(mpCodeMem, MaxCodeSize + MaxGlobalVarSize);
+      if (mpCodeMem && mpCodeMem != MAP_FAILED) {
+        munmap(mpCodeMem, BCC_MMAP_IMG_SIZE);
 
         // TODO(logan): Reset Compiler::BccMmapImgAddrTaken[i] to false, so
         // that the address can be reused.
       }
+
+      mpCodeMem = 0;
+      mpGVMem = 0;
+
       return;
     }
   };
@@ -2822,13 +2826,14 @@ class Compiler {
                                     MAP_PRIVATE | MAP_FIXED,
                                     mCacheFd, mCacheHdr->codeOffset);
 
-      if (mCodeDataAddr != MAP_FAILED && mCodeDataAddr == addr) {
+      if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
         // Cheers!  Mapped at the cached address successfully.
 
         if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
           size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
 
-          if (offset % BCC_MMAP_IMG_SIZE == 0) {
+          if ((offset % BCC_MMAP_IMG_SIZE) == 0 &&
+              (offset / BCC_MMAP_IMG_SIZE) < BCC_MMAP_IMG_COUNT) {
             // Update the BccMmapImgAddrTaken table (if required)
             Compiler::BccMmapImgAddrTaken[offset / BCC_MMAP_IMG_SIZE] = true;
           }
@@ -2953,16 +2958,16 @@ class Compiler {
  bail:
     if (mCacheMapAddr) {
       free(mCacheMapAddr);
-      mCacheMapAddr = 0;
     }
 
     if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
-      if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) != 0) {
+      if (munmap(mCodeDataAddr, BCC_MMAP_IMG_SIZE) != 0) {
         LOGE("munmap failed: %s\n", strerror(errno));
       }
-
-      mCodeDataAddr = 0;
     }
+
+    mCacheMapAddr = 0;
+    mCodeDataAddr = 0;
 
  giveup:
     return 1;
@@ -3456,17 +3461,17 @@ class Compiler {
       // managed by CodeMemoryManager.
 
       if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
-        if (munmap(mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize) < 0) {
+        if (munmap(mCodeDataAddr, BCC_MMAP_IMG_SIZE) < 0) {
           LOGE("munmap failed while releasing mCodeDataAddr\n");
         }
-
-        mCodeDataAddr = 0;
       }
 
       if (mCacheMapAddr) {
         free(mCacheMapAddr);
-        mCacheMapAddr = 0;
       }
+
+      mCodeDataAddr = 0;
+      mCacheMapAddr = 0;
     }
 
     delete mModule;
