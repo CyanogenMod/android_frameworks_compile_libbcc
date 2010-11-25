@@ -2864,6 +2864,8 @@ class Compiler {
               LOGE("Checksum check failed\n");
               goto bail;
             }
+
+            LOGE("Passed checksum even parity verification.\n");
           }
 #endif
 
