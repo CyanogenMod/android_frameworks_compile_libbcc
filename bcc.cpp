@@ -2981,8 +2981,9 @@ class Compiler {
       }
     }
 
-    mCacheMapAddr = 0;
-    mCodeDataAddr = 0;
+    mCacheMapAddr = NULL;
+    mCacheHdr = NULL;
+    mCodeDataAddr = NULL;
 
  giveup:
     return 1;
