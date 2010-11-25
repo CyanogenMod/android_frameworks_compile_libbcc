@@ -2840,15 +2840,32 @@ class Compiler {
         if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
           // Cheers!  Mapped at the cached address successfully.
 
+          // Update the BccMmapImgAddrTaken table (if required)
           if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
             size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
 
             if ((offset % BCC_MMAP_IMG_SIZE) == 0 &&
                 (offset / BCC_MMAP_IMG_SIZE) < BCC_MMAP_IMG_COUNT) {
-              // Update the BccMmapImgAddrTaken table (if required)
               Compiler::BccMmapImgAddrTaken[offset / BCC_MMAP_IMG_SIZE] = true;
             }
           }
+
+#if 1
+          // Check the checksum of code and data
+          {
+            uint32_t sum = mCacheHdr->checksum;
+            uint32_t *ptr = (uint32_t *)mCodeDataAddr;
+
+            for (size_t i = 0; i < BCC_MMAP_IMG_SIZE / sizeof(uint32_t); ++i) {
+              sum ^= *ptr++;
+            }
+
+            if (sum != 0) {
+              LOGE("Checksum check failed\n");
+              goto bail;
+            }
+          }
+#endif
 
           flock(mCacheFd, LOCK_UN);
           return 0; // loadCacheFile succeed!
@@ -3585,7 +3602,23 @@ class Compiler {
     offset += hdr->dataSize;
 
     // Checksum
+#if 1
+    {
+      // Note: This is an simple checksum implementation that are using xor
+      // to calculate even parity (for code and data only).
+
+      uint32_t sum = 0;
+      uint32_t *ptr = (uint32_t *)mCodeDataAddr;
+
+      for (size_t i = 0; i < BCC_MMAP_IMG_SIZE / sizeof(uint32_t); ++i) {
+        sum ^= *ptr++;
+      }
+
+      hdr->checksum = sum;
+    }
+#else
     hdr->checksum = 0; // Set Field checksum. TODO(all)
+#endif
 
     // Write Header
     sysWriteFully(mCacheFd, reinterpret_cast<char const *>(hdr),
