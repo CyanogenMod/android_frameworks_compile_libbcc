@@ -154,6 +154,7 @@
 
 #include <bcc/bcc.h>
 #include "bcc_runtime.h"
+#include "bcc_emitted_func_code.h"
 
 #define LOG_API(...) do {} while (0)
 // #define LOG_API(...) fprintf (stderr, __VA_ARGS__)
@@ -949,19 +950,6 @@ class Compiler {
 
     const llvm::TargetData *mpTD;
 
-    class EmittedFunctionCode {
-     public:
-      // Beginning of the function's allocation.
-      void *FunctionBody;
-
-      // The address the function's code actually starts at.
-      void *Code;
-
-      // The size of the function code
-      int Size;
-
-      EmittedFunctionCode() : FunctionBody(NULL), Code(NULL) { return; }
-    };
     EmittedFunctionCode *mpCurEmitFunction;
 
     typedef std::map<const std::string,
