@@ -35,6 +35,12 @@
 
 namespace bcc {
 
+
+const unsigned int MaxCodeSize = BCC_MMAP_IMG_CODE_SIZE;
+const unsigned int MaxGOTSize = 1 * 1024;
+const unsigned int MaxGlobalVarSize = BCC_MMAP_IMG_DATA_SIZE;
+
+
 CodeMemoryManager::CodeMemoryManager()
   : mpCodeMem(NULL), mpGVMem(NULL), mpGOTBase(NULL) {
 

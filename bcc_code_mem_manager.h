@@ -17,6 +17,8 @@
 #ifndef BCC_CODE_MEM_MANAGER_H
 #define BCC_CODE_MEM_MANAGER_H
 
+#include "bcc_compiler.h"
+
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 
 #include <map>
@@ -25,75 +27,6 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-
-
-#define BCC_MMAP_IMG_BEGIN 0x7e000000
-#define BCC_MMAP_IMG_COUNT 5
-
-#define BCC_MMAP_IMG_CODE_SIZE (128 * 1024)
-#define BCC_MMAP_IMG_DATA_SIZE (128 * 1024)
-#define BCC_MMAP_IMG_SIZE (BCC_MMAP_IMG_CODE_SIZE + BCC_MMAP_IMG_DATA_SIZE)
-
-
-// Design of caching EXE:
-// ======================
-// 1. Each process will have virtual address available starting at 0x7e00000.
-//    E.g., Books and Youtube all have its own 0x7e00000. Next, we should
-//    minimize the chance of needing to do relocation INSIDE an app too.
-//
-// 2. Each process will have ONE class static variable called BccCodeAddr.
-//    I.e., even though the Compiler class will have multiple Compiler objects,
-//    e.g, one object for carousel.rs and the other for pageturn.rs,
-//    both Compiler objects will share 1 static variable called BccCodeAddr.
-//
-// Key observation: Every app (process) initiates, say 3, scripts (which
-// correspond to 3 Compiler objects) in the same order, usually.
-//
-// So, we should mmap to, e.g., 0x7e00000, 0x7e40000, 0x7e80000 for the 3
-// scripts, respectively. Each time, BccCodeAddr should be updated after
-// JITTing a script. BTW, in ~Compiler(), BccCodeAddr should NOT be
-// decremented back by CodeDataSize. I.e., for 3 scripts: A, B, C,
-// even if it's A -> B -> ~B -> C -> ~C -> B -> C ... no relocation will
-// ever be needed.)
-//
-// If we are lucky, then we don't need relocation ever, since next time the
-// application gets run, the 3 scripts are likely created in the SAME order.
-//
-//
-// End-to-end algorithm on when to caching and when to JIT:
-// ========================================================
-// Prologue:
-// ---------
-// Assertion: bccReadBC() is always called and is before bccCompileBC(),
-// bccLoadBinary(), ...
-//
-// Key variable definitions: Normally,
-//  Compiler::BccCodeAddr: non-zero if (USE_CACHE)
-//  | (Stricter, because currently relocation doesn't work. So mUseCache only
-//  |  when BccCodeAddr is nonzero.)
-//  V
-//  mUseCache: In addition to (USE_CACHE), resName is non-zero
-//  Note: mUseCache will be set to false later on whenever we find that caching
-//        won't work. E.g., when mCodeDataAddr != mCacheHdr->cachedCodeDataAddr.
-//        This is because currently relocation doesn't work.
-//  | (Stricter, initially)
-//  V
-//  mCacheFd: In addition, >= 0 if openCacheFile() returns >= 0
-//  | (Stricter)
-//  V
-//  mCacheNew: In addition, mCacheFd's size is 0, so need to call genCacheFile()
-//             at the end of compile()
-//
-//
-// Main algorithm:
-// ---------------
-// #if !USE_RELOCATE
-// Case 1. ReadBC() doesn't detect a cache file:
-//   compile(), which calls genCacheFile() at the end.
-//   Note: mCacheNew will guard the invocation of genCacheFile()
-// Case 2. ReadBC() find a cache file
-//   loadCacheFile(). But if loadCacheFile() failed, should go to Case 1.
-// #endif
 
 
 namespace llvm {
@@ -126,12 +59,9 @@ namespace bcc {
   // it re-allocates the buffer with enough size (based on the
   //  counter from previous emission) and re-emit again.
 
-  // 128 KiB for code
-  static const unsigned int MaxCodeSize = BCC_MMAP_IMG_CODE_SIZE;
-  // 1 KiB for global offset table (GOT)
-  static const unsigned int MaxGOTSize = 1 * 1024;
-  // 128 KiB for global variable
-  static const unsigned int MaxGlobalVarSize = BCC_MMAP_IMG_DATA_SIZE;
+  extern const unsigned int MaxCodeSize;
+  extern const unsigned int MaxGOTSize;
+  extern const unsigned int MaxGlobalVarSize;
 
 
   class CodeMemoryManager : public llvm::JITMemoryManager {
