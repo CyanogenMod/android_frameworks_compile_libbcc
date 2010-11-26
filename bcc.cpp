@@ -165,6 +165,7 @@
 // #define PROVIDE_TRACE_CODEGEN
 
 #if defined(USE_DISASSEMBLER)
+#   include "bcc_buff_mem_object.h"
 #   include "llvm/MC/MCInst.h"
 #   include "llvm/MC/MCAsmInfo.h"
 #   include "llvm/MC/MCInstPrinter.h"
@@ -2010,26 +2011,6 @@ class Compiler {
     const llvm::MCAsmInfo *mpAsmInfo;
     const llvm::MCDisassembler *mpDisassmbler;
     llvm::MCInstPrinter *mpIP;
-
-    class BufferMemoryObject : public llvm::MemoryObject {
-    private:
-      const uint8_t *mBytes;
-      uint64_t mLength;
-
-    public:
-      BufferMemoryObject(const uint8_t *Bytes, uint64_t Length) :
-        mBytes(Bytes), mLength(Length) { }
-
-      uint64_t getBase() const { return 0; }
-      uint64_t getExtent() const { return mLength; }
-
-      int readByte(uint64_t Addr, uint8_t *Byte) const {
-        if (Addr > getExtent())
-          return -1;
-        *Byte = mBytes[Addr];
-        return 0;
-      }
-    };
 
    public:
     void Disassemble(const llvm::StringRef &Name, uint8_t *Start,
