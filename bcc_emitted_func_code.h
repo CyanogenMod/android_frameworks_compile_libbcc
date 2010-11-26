@@ -37,6 +37,6 @@ namespace bcc {
 
   };
 
-}
+} // end namespace bcc
 
 #endif // BCC_EMITTED_FUNC_CODE_H
