@@ -31,10 +31,10 @@ namespace bcc {
       : mBytes(Bytes), mLength(Length) {
     }
 
-    uint64_t getBase() const { return 0; }
-    uint64_t getExtent() const { return mLength; }
+    virtual uint64_t getBase() const { return 0; }
+    virtual uint64_t getExtent() const { return mLength; }
 
-    int readByte(uint64_t Addr, uint8_t *Byte) const {
+    virtual int readByte(uint64_t Addr, uint8_t *Byte) const {
       if (Addr > getExtent())
         return -1;
       *Byte = mBytes[Addr];

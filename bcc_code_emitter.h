@@ -239,13 +239,13 @@ namespace bcc {
     // Will take the ownership of @MemMgr
     explicit CodeEmitter(CodeMemoryManager *pMemMgr);
 
-    ~CodeEmitter();
+    virtual ~CodeEmitter();
 
-    inline global_addresses_const_iterator global_address_begin() const {
+    global_addresses_const_iterator global_address_begin() const {
       return mGlobalAddressMap.begin();
     }
 
-    inline global_addresses_const_iterator global_address_end() const {
+    global_addresses_const_iterator global_address_end() const {
       return mGlobalAddressMap.end();
     }
 
@@ -262,12 +262,12 @@ namespace bcc {
 
     // This callback is invoked when the specified function is about to be code
     // generated.  This initializes the BufferBegin/End/Ptr fields.
-    void startFunction(llvm::MachineFunction &F);
+    virtual void startFunction(llvm::MachineFunction &F);
 
     // This callback is invoked when the specified function has finished code
     // generation. If a buffer overflow has occurred, this method returns true
     // (the callee is required to try again).
-    bool finishFunction(llvm::MachineFunction &F);
+    virtual bool finishFunction(llvm::MachineFunction &F);
 
     void startGVStub(const llvm::GlobalValue *GV, unsigned StubSize,
                      unsigned Alignment);
@@ -278,9 +278,9 @@ namespace bcc {
 
     // Allocates and fills storage for an indirect GlobalValue, and returns the
     // address.
-    void *allocIndirectGV(const llvm::GlobalValue *GV,
-                          const uint8_t *Buffer, size_t Size,
-                          unsigned Alignment);
+    virtual void *allocIndirectGV(const llvm::GlobalValue *GV,
+                                  const uint8_t *Buffer, size_t Size,
+                                  unsigned Alignment);
 
     // Emits a label
     void emitLabel(llvm::MCSymbol *Label) {
@@ -290,22 +290,22 @@ namespace bcc {
     // Allocate memory for a global. Unlike allocateSpace, this method does not
     // allocate memory in the current output buffer, because a global may live
     // longer than the current function.
-    void *allocateGlobal(uintptr_t Size, unsigned Alignment);
+    virtual void *allocateGlobal(uintptr_t Size, unsigned Alignment);
 
     // This should be called by the target when a new basic block is about to be
     // emitted. This way the MCE knows where the start of the block is, and can
     // implement getMachineBasicBlockAddress.
-    void StartMachineBasicBlock(llvm::MachineBasicBlock *MBB);
+    virtual void StartMachineBasicBlock(llvm::MachineBasicBlock *MBB);
 
     // Whenever a relocatable address is needed, it should be noted with this
     // interface.
-    void addRelocation(const llvm::MachineRelocation &MR) {
+    virtual void addRelocation(const llvm::MachineRelocation &MR) {
       mRelocations.push_back(MR);
     }
 
     // Return the address of the @Index entry in the constant pool that was
     // last emitted with the emitConstantPool method.
-    uintptr_t getConstantPoolEntryAddress(unsigned Index) const {
+    virtual uintptr_t getConstantPoolEntryAddress(unsigned Index) const {
       assert(Index < mpConstantPool->getConstants().size() &&
              "Invalid constant pool index!");
       return mConstPoolAddresses[Index];
@@ -313,22 +313,23 @@ namespace bcc {
 
     // Return the address of the jump table with index @Index in the function
     // that last called initJumpTableInfo.
-    uintptr_t getJumpTableEntryAddress(unsigned Index) const;
+    virtual uintptr_t getJumpTableEntryAddress(unsigned Index) const;
 
     // Return the address of the specified MachineBasicBlock, only usable after
     // the label for the MBB has been emitted.
-    uintptr_t getMachineBasicBlockAddress(llvm::MachineBasicBlock *MBB) const;
+    virtual uintptr_t getMachineBasicBlockAddress(
+                                        llvm::MachineBasicBlock *MBB) const;
 
     // Return the address of the specified LabelID, only usable after the
     // LabelID has been emitted.
-    uintptr_t getLabelAddress(llvm::MCSymbol *Label) const {
+    virtual uintptr_t getLabelAddress(llvm::MCSymbol *Label) const {
       assert(mLabelLocations.count(Label) && "Label not emitted!");
       return mLabelLocations.find(Label)->second;
     }
 
     // Specifies the MachineModuleInfo object. This is used for exception
     // handling purposes.
-    void setModuleInfo(llvm::MachineModuleInfo *Info) {
+    virtual void setModuleInfo(llvm::MachineModuleInfo *Info) {
       mpMMI = Info;
     }
 

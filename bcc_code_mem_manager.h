@@ -109,52 +109,53 @@ namespace bcc {
 
     FunctionMapTy mFunctionMap;
 
-    inline intptr_t getFreeCodeMemSize() const {
+    intptr_t getFreeCodeMemSize() const {
       return mCurSGMemIdx - mCurFuncMemIdx;
     }
 
     uint8_t *allocateSGMemory(uintptr_t Size,
                               unsigned Alignment = 1 /* no alignment */);
 
-    inline uintptr_t getFreeGVMemSize() const {
+    uintptr_t getFreeGVMemSize() const {
       return MaxGlobalVarSize - mCurGVMemIdx;
     }
-    inline uint8_t *getGVMemBase() const {
+
+    uint8_t *getGVMemBase() const {
       return reinterpret_cast<uint8_t*>(mpGVMem);
     }
 
   public:
 
     CodeMemoryManager();
-    ~CodeMemoryManager();
+    virtual ~CodeMemoryManager();
 
-    inline uint8_t *getCodeMemBase() const {
+    uint8_t *getCodeMemBase() const {
       return reinterpret_cast<uint8_t*>(mpCodeMem);
     }
 
     // setMemoryWritable - When code generation is in progress, the code pages
     //                     may need permissions changed.
-    void setMemoryWritable();
+    virtual void setMemoryWritable();
 
     // When code generation is done and we're ready to start execution, the
     // code pages may need permissions changed.
-    void setMemoryExecutable();
+    virtual void setMemoryExecutable();
 
     // Setting this flag to true makes the memory manager garbage values over
     // freed memory.  This is useful for testing and debugging, and is to be
     // turned on by default in debug mode.
-    void setPoisonMemory(bool poison);
+    virtual void setPoisonMemory(bool poison);
 
 
     // Global Offset Table Management
 
     // If the current table requires a Global Offset Table, this method is
     // invoked to allocate it.  This method is required to set HasGOT to true.
-    void AllocateGOT();
+    virtual void AllocateGOT();
 
     // If this is managing a Global Offset Table, this method should return a
     // pointer to its base.
-    uint8_t *getGOTBase() const {
+    virtual uint8_t *getGOTBase() const {
       return mpGOTBase;
     }
 
@@ -169,7 +170,8 @@ namespace bcc {
     // case, this method is required to pass back the size of the allocated
     // block through ActualSize. The JIT will be careful to not write more than
     // the returned ActualSize bytes of memory.
-    uint8_t *startFunctionBody(const llvm::Function *F, uintptr_t &ActualSize);
+    virtual uint8_t *startFunctionBody(const llvm::Function *F,
+                                       uintptr_t &ActualSize);
 
     // This method is called by the JIT to allocate space for a function stub
     // (used to handle limited branch displacements) while it is JIT compiling a
@@ -178,8 +180,9 @@ namespace bcc {
     // call site to work, this method will be used to make a thunk for it. The
     // stub should be "close" to the current function body, but should not be
     // included in the 'actualsize' returned by startFunctionBody.
-    uint8_t *allocateStub(const llvm::GlobalValue *F, unsigned StubSize,
-                          unsigned Alignment) {
+    virtual uint8_t *allocateStub(const llvm::GlobalValue *F,
+                                  unsigned StubSize,
+                                  unsigned Alignment) {
       return allocateSGMemory(StubSize, Alignment);
     }
 
@@ -189,32 +192,33 @@ namespace bcc {
     // method) and FunctionEnd which is a pointer to the actual end of the
     // function. This method should mark the space allocated and remember where
     // it is in case the client wants to deallocate it.
-    void endFunctionBody(const llvm::Function *F, uint8_t *FunctionStart,
-                         uint8_t *FunctionEnd);
+    virtual void endFunctionBody(const llvm::Function *F,
+                                 uint8_t *FunctionStart,
+                                 uint8_t *FunctionEnd);
 
     // Allocate a (function code) memory block of the given size. This method
     // cannot be called between calls to startFunctionBody and endFunctionBody.
-    uint8_t *allocateSpace(intptr_t Size, unsigned Alignment);
+    virtual uint8_t *allocateSpace(intptr_t Size, unsigned Alignment);
 
     // Allocate memory for a global variable.
-    uint8_t *allocateGlobal(uintptr_t Size, unsigned Alignment);
+    virtual uint8_t *allocateGlobal(uintptr_t Size, unsigned Alignment);
 
     // Free the specified function body. The argument must be the return value
     // from a call to startFunctionBody() that hasn't been deallocated yet. This
     // is never called when the JIT is currently emitting a function.
-    void deallocateFunctionBody(void *Body);
+    virtual void deallocateFunctionBody(void *Body);
 
     // When we finished JITing the function, if exception handling is set, we
     // emit the exception table.
-    uint8_t *startExceptionTable(const llvm::Function *F,
-                                 uintptr_t &ActualSize) {
+    virtual uint8_t *startExceptionTable(const llvm::Function *F,
+                                         uintptr_t &ActualSize) {
       assert(false && "Exception is not allowed in our language specification");
       return NULL;
     }
 
     // This method is called when the JIT is done emitting the exception table.
-    void endExceptionTable(const llvm::Function *F, uint8_t *TableStart,
-                           uint8_t *TableEnd, uint8_t *FrameRegister) {
+    virtual void endExceptionTable(const llvm::Function *F, uint8_t *TableStart,
+                                   uint8_t *TableEnd, uint8_t *FrameRegister) {
       assert(false && "Exception is not allowed in our language specification");
     }
 
@@ -222,7 +226,7 @@ namespace bcc {
     // return value from a call to startExceptionTable() that hasn't been
     // deallocated yet. This is never called when the JIT is currently emitting
     // an exception table.
-    void deallocateExceptionTable(void *ET) {
+    virtual void deallocateExceptionTable(void *ET) {
       assert(false && "Exception is not allowed in our language specification");
     }
 
