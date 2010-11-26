@@ -34,6 +34,8 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES :=	\
 	bcc.cpp	\
 	bcc_runtime.c	\
+  bcc_code_emitter.cpp \
+  bcc_code_mem_manager.cpp \
 	runtime/lib/arm/adddf3vfp.S	\
 	runtime/lib/arm/addsf3vfp.S	\
 	runtime/lib/arm/divdf3vfp.S	\
@@ -119,6 +121,8 @@ LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES :=   \
 	bcc.cpp	     \
+  bcc_code_emitter.cpp \
+  bcc_code_mem_manager.cpp \
 	hashmap.c    \
 	logd_write.c \
 	bcc_runtime.c
