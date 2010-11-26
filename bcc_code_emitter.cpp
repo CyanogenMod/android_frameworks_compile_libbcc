@@ -1161,7 +1161,7 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
       << "\n";
 
   if (mpAsmInfo == NULL)
-    mpAsmInfo = mpTarget->createAsmInfo(Triple);
+    mpAsmInfo = mpTarget->createAsmInfo(Compiler::Triple);
   if (mpDisassmbler == NULL)
     mpDisassmbler = mpTarget->createMCDisassembler();
   if (mpIP == NULL)

@@ -129,7 +129,11 @@ namespace bcc {
     // Tell the execution engine that the specified global is at the specified
     // location. This is used internally as functions are JIT'd and as global
     // variables are laid out in memory.
-    void AddGlobalMapping(const llvm::GlobalValue *GV, void *Addr);
+    void AddGlobalMapping(const llvm::GlobalValue *GV, void *Addr) {
+       void *&CurVal = mGlobalAddressMap[GV];
+       assert((CurVal == 0 || Addr == 0) && "GlobalMapping already established!");
+       CurVal = Addr;
+    }
 
     // This returns the address of the specified global value if it is has
     // already been codegen'd, otherwise it returns null.
