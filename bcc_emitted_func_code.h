@@ -17,7 +17,7 @@
 #ifndef BCC_EMITTED_FUNC_CODE_H
 #define BCC_EMITTED_FUNC_CODE_H
 
-#include <cstddef>
+#include <stddef.h>
 
 namespace bcc {
 
