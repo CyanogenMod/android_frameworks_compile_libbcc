@@ -19,6 +19,7 @@
 #include "bcc_buff_mem_object.h"
 #include "bcc_code_mem_manager.h"
 #include "bcc_emitted_func_code.h"
+#include "bcc_runtime.h"
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
