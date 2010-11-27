@@ -238,6 +238,6 @@ namespace bcc {
 
 
 
-}  // namespace bcc
+} // namespace bcc
 
 #endif // BCC_COMPILER_H

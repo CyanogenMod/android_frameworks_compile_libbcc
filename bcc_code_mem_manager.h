@@ -235,6 +235,6 @@ namespace bcc {
 
   };
 
-}  // namespace bcc
+} // namespace bcc
 
 #endif  // BCC_CODE_MEM_MANAGER_H
