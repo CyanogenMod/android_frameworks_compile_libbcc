@@ -20,8 +20,6 @@
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
 
-#include "bcc_emitted_func_entry.h"
-
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
@@ -62,6 +60,7 @@ namespace llvm {
 
 namespace bcc {
   class CodeMemoryManager;
+  class EmittedFuncEntry;
 
   class CodeEmitter : public llvm::JITCodeEmitter {
   public:
@@ -343,12 +342,7 @@ namespace bcc {
       return lookup( llvm::StringRef(Name) );
     }
 
-    void *lookup(const llvm::StringRef &Name) {
-      EmittedFunctionsMapTy::const_iterator
-        I = mEmittedFunctions.find(Name.str());
-
-      return (I == mEmittedFunctions.end()) ? NULL : I->second->Code;
-    }
+    void *lookup(const llvm::StringRef &Name);
 
     void getFunctionNames(BCCsizei *actualFunctionCount,
                           BCCsizei maxFunctionCount,

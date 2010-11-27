@@ -1531,6 +1531,14 @@ void CodeEmitter::updateFunctionStub(const llvm::Function *F) {
 }
 
 
+void *CodeEmitter::lookup(const llvm::StringRef &Name) {
+  EmittedFunctionsMapTy::const_iterator
+    I = mEmittedFunctions.find(Name.str());
+
+  return (I == mEmittedFunctions.end()) ? NULL : I->second->Code;
+}
+
+
 void CodeEmitter::getFunctionNames(BCCsizei *actualFunctionCount,
                                    BCCsizei maxFunctionCount,
                                    BCCchar **functions) {
