@@ -16,7 +16,6 @@
 
 #include "bcc_code_emitter.h"
 
-#include "bcc_buff_mem_object.h"
 #include "bcc_code_mem_manager.h"
 #include "bcc_emitted_func_code.h"
 #include "bcc_runtime.h"
@@ -48,6 +47,10 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
+#if defined(USE_DISASSEMBLER)
+#include "llvm/Support/MemoryObject.h"
+#endif
+
 #include "llvm/System/Host.h"
 
 #include "llvm/Target/TargetData.h"
@@ -71,6 +74,34 @@
 #include <string>
 
 #include <stddef.h>
+
+
+namespace {
+
+#if defined(USE_DISASSEMBLER)
+class BufferMemoryObject : public llvm::MemoryObject {
+private:
+  const uint8_t *mBytes;
+  uint64_t mLength;
+
+public:
+  BufferMemoryObject(const uint8_t *Bytes, uint64_t Length)
+    : mBytes(Bytes), mLength(Length) {
+  }
+
+  virtual uint64_t getBase() const { return 0; }
+  virtual uint64_t getExtent() const { return mLength; }
+
+  virtual int readByte(uint64_t Addr, uint8_t *Byte) const {
+    if (Addr > getExtent())
+      return -1;
+    *Byte = mBytes[Addr];
+    return 0;
+  }
+};
+#endif
+
+}; // namespace anonymous
 
 
 namespace bcc {
