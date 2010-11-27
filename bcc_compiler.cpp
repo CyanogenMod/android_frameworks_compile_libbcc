@@ -17,24 +17,6 @@
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
 
-#include <ctype.h>
-#include <errno.h>
-#include <limits.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <cutils/hashmap.h>
-#include <utils/StopWatch.h>
-
 #if defined(__arm__)
 #   define DEFAULT_ARM_CODEGEN
 #   define PROVIDE_ARM_CODEGEN
@@ -70,120 +52,62 @@
 #endif
 
 #if defined(DEFAULT_ARM_CODEGEN)
-#   define TARGET_TRIPLE_STRING    "armv7-none-linux-gnueabi"
+#   define TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
 #elif defined(DEFAULT_X86_CODEGEN)
-#   define TARGET_TRIPLE_STRING    "i686-unknown-linux"
+#   define TARGET_TRIPLE_STRING "i686-unknown-linux"
 #elif defined(DEFAULT_X64_CODEGEN)
-#   define  TARGET_TRIPLE_STRING   "x86_64-unknown-linux"
+#   define TARGET_TRIPLE_STRING "x86_64-unknown-linux"
 #endif
 
 #if (defined(__VFP_FP__) && !defined(__SOFTFP__))
 #   define ARM_USE_VFP
 #endif
 
-#include <bcc/bcc.h>
-#include <bcc/bcc_cache.h>
-#include "bcc_code_emitter.h"
-#include "bcc_code_mem_manager.h"
-#include "bcc_emitted_func_code.h"
-#include "bcc_runtime.h"
+#include "bcc_compiler.h"
 
-#define LOG_API(...) do {} while (0)
-// #define LOG_API(...) fprintf (stderr, __VA_ARGS__)
+#include "llvm/ADT/StringRef.h"
 
-#define LOG_STACK(...) do {} while (0)
-// #define LOG_STACK(...) fprintf (stderr, __VA_ARGS__)
+#include "llvm/Analysis/Passes.h"
 
-// #define PROVIDE_TRACE_CODEGEN
-
-#if defined(USE_DISASSEMBLER)
-#   include "bcc_buff_mem_object.h"
-#   include "llvm/MC/MCInst.h"
-#   include "llvm/MC/MCAsmInfo.h"
-#   include "llvm/MC/MCInstPrinter.h"
-#   include "llvm/MC/MCDisassembler.h"
-// If you want the disassemble results written to file, define this:
-#   define USE_DISASSEMBLER_FILE
-#endif
-
-#include <set>
-#include <map>
-#include <list>
-#include <cmath>
-#include <string>
-#include <cstring>
-#include <algorithm>  // for std::reverse
-
-// VMCore
-#include "llvm/Use.h"
-#include "llvm/User.h"
-#include "llvm/Linker.h"
-#include "llvm/Module.h"
-#include "llvm/Function.h"
-#include "llvm/Constant.h"
-#include "llvm/Constants.h"
-#include "llvm/Instruction.h"
-#include "llvm/PassManager.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/GlobalValue.h"
-#include "llvm/Instructions.h"
-#include "llvm/OperandTraits.h"
-#include "llvm/TypeSymbolTable.h"
-
-// System
-#include "llvm/System/Host.h"
-
-// ADT
-#include "llvm/ADT/APInt.h"
-#include "llvm/ADT/APFloat.h"
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/ValueMap.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/ADT/OwningPtr.h"
-#include "llvm/ADT/SmallString.h"
-
-// Target
-#include "llvm/Target/TargetData.h"
-#include "llvm/Target/TargetSelect.h"
-#include "llvm/Target/TargetOptions.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetJITInfo.h"
-#include "llvm/Target/TargetRegistry.h"
-#include "llvm/Target/SubtargetFeature.h"
-
-// Support
-#include "llvm/Support/Casting.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/ValueHandle.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/MemoryObject.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/StandardPasses.h"
-#include "llvm/Support/FormattedStream.h"
-
-// Bitcode
 #include "llvm/Bitcode/ReaderWriter.h"
 
-// CodeGen
 #include "llvm/CodeGen/Passes.h"
-#include "llvm/CodeGen/JITCodeEmitter.h"
-#include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/RegAllocRegistry.h"
 #include "llvm/CodeGen/SchedulerRegistry.h"
-#include "llvm/CodeGen/MachineRelocation.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
-#include "llvm/CodeGen/MachineCodeEmitter.h"
-#include "llvm/CodeGen/MachineConstantPool.h"
-#include "llvm/CodeGen/MachineJumpTableInfo.h"
 
-// ExecutionEngine
-#include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/ExecutionEngine/JITMemoryManager.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/Scalar.h"
+
+#include "llvm/Target/SubtargetFeature.h"
+#include "llvm/Target/TargetData.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Target/TargetRegistry.h"
+#include "llvm/Target/TargetSelect.h"
+
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/MemoryBuffer.h"
+
+#include "llvm/GlobalValue.h"
+#include "llvm/Linker.h"
+#include "llvm/LLVMContext.h"
+#include "llvm/Metadata.h"
+#include "llvm/Module.h"
+#include "llvm/PassManager.h"
+#include "llvm/Value.h"
+
+#include <errno.h>
+#include <sys/file.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <string>
+#include <vector>
 
 
-extern "C" void LLVMInitializeARMDisassembler();
-
+namespace {
 
 #define TEMP_FAILURE_RETRY1(exp) ({        \
     typeof (exp) _rc;                      \
@@ -193,8 +117,7 @@ extern "C" void LLVMInitializeARMDisassembler();
     _rc; })
 
 
-static int sysWriteFully(int fd, const void* buf, size_t count, const char* logMsg)
-{
+int sysWriteFully(int fd, const void* buf, size_t count, const char* logMsg) {
     while (count != 0) {
         ssize_t actual = TEMP_FAILURE_RETRY1(write(fd, buf, count));
         if (actual < 0) {
@@ -211,6 +134,8 @@ static int sysWriteFully(int fd, const void* buf, size_t count, const char* logM
 
     return 0;
 }
+
+} // namespace anonymous
 
 
 namespace bcc {
