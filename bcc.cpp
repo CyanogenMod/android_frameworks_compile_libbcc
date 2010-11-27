@@ -185,9 +185,4 @@ namespace bcc {
     script->compiler.getFunctionBinary(function, base, length);
   }
 
-  struct BCCtype {
-    const Compiler *compiler;
-    const llvm::Type *t;
-  };
-
 }  // namespace bcc

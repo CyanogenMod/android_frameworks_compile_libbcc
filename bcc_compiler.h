@@ -77,12 +77,6 @@ namespace bcc {
     // be a list of strings starting with '+' (enable) or '-' (disable).
     static std::vector<std::string> Features;
 
-    struct Runtime {
-      const char *mName;
-      void *mPtr;
-    };
-    static struct Runtime Runtimes[];
-
     static void GlobalInitialization();
 
     static void LLVMErrorHandler(void *UserData, const std::string &Message);
