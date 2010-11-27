@@ -1,3 +1,5 @@
+#include <cutils/log.h>
+
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
