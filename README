@@ -145,5 +145,5 @@ struct oBCCRelocEntry {
 D.3 Code Section
 --------------------------------------------------
 
-This section should align to 64-bit, i.e. the address must be an multiple of 8.
+This section should align to a page size.
 
