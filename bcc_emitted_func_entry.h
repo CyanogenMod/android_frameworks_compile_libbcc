@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef BCC_EMITTED_FUNC_CODE_H
-#define BCC_EMITTED_FUNC_CODE_H
+#ifndef BCC_EMITTED_FUNC_ENTRY_H
+#define BCC_EMITTED_FUNC_ENTRY_H
 
 #include <stddef.h>
 
 namespace bcc {
 
-  class EmittedFunctionCode {
+  class EmittedFuncEntry {
   public:
     // Beginning of the function's allocation.
     void *FunctionBody;
@@ -32,11 +32,11 @@ namespace bcc {
     // The size of the function code
     int Size;
 
-    EmittedFunctionCode() : FunctionBody(NULL), Code(NULL) {
+    EmittedFuncEntry() : FunctionBody(NULL), Code(NULL) {
     }
 
   };
 
-} // end namespace bcc
+} // namespace bcc
 
-#endif // BCC_EMITTED_FUNC_CODE_H
+#endif // BCC_EMITTED_FUNC_ENTRY_H

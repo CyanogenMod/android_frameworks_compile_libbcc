@@ -20,7 +20,7 @@
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
 
-#include "bcc_emitted_func_code.h"
+#include "bcc_emitted_func_entry.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
@@ -80,10 +80,10 @@ namespace bcc {
 
     const llvm::TargetData *mpTD;
 
-    EmittedFunctionCode *mpCurEmitFunction;
+    EmittedFuncEntry *mpCurEmitFunction;
 
     typedef std::map<const std::string,
-                     EmittedFunctionCode *> EmittedFunctionsMapTy;
+                     EmittedFuncEntry *> EmittedFunctionsMapTy;
     EmittedFunctionsMapTy mEmittedFunctions;
 
     // This vector is a mapping from MBB ID's to their address. It is filled in
