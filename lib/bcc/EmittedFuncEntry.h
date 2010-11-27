@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BCC_EMITTED_FUNC_ENTRY_H
-#define BCC_EMITTED_FUNC_ENTRY_H
+#ifndef BCC_EMITTEDFUNCENTRY_H
+#define BCC_EMITTEDFUNCENTRY_H
 
 #include <stddef.h>
 
@@ -39,4 +39,4 @@ namespace bcc {
 
 } // namespace bcc
 
-#endif // BCC_EMITTED_FUNC_ENTRY_H
+#endif // BCC_EMITTEDFUNCENTRY_H

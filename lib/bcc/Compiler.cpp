@@ -63,7 +63,7 @@
 #   define ARM_USE_VFP
 #endif
 
-#include "bcc_compiler.h"
+#include "Compiler.h"
 
 #include "llvm/ADT/StringRef.h"
 

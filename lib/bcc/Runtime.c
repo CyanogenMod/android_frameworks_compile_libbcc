@@ -92,7 +92,7 @@ typedef struct {
     extern void *func ## vfp;
   #define DEF_LLVM_RUNTIME(func)
   #define DEF_BCC_RUNTIME(func)
-#include "bcc_runtime.def"
+#include "Runtime.def"
 #endif
 
 static const RuntimeFunction gRuntimes[] = {
@@ -111,7 +111,7 @@ static const RuntimeFunction gRuntimes[] = {
   { #func, (void*) &func },
 #define DEF_BCC_RUNTIME(func) \
   { #func, &func ## _bcc },
-#include "bcc_runtime.def"
+#include "Runtime.def"
 };
 
 static int CompareRuntimeFunction(const void *a, const void *b) {
@@ -140,6 +140,6 @@ void VerifyRuntimesTable() {
 
     if (Ptr != (int*) gRuntimes[i].mPtr)
       assert(false && "Table is corrupted (runtime name should be sorted in "
-                      "bcc_runtime.def).");
+                      "Runtime.def).");
   }
 }

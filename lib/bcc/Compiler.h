@@ -19,8 +19,8 @@
 
 #include <bcc/bcc.h>
 
-#include "bcc_code_emitter.h"
-#include "bcc_code_mem_manager.h"
+#include "CodeEmitter.h"
+#include "CodeMemoryManager.h"
 
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"

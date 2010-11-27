@@ -17,7 +17,7 @@
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
 
-#include "bcc_code_mem_manager.h"
+#include "CodeMemoryManager.h"
 
 #include "llvm/Support/ErrorHandling.h"
 

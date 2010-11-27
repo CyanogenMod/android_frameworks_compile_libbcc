@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "bcc_code_emitter.h"
+#include "CodeEmitter.h"
 
-#include "bcc_code_mem_manager.h"
-#include "bcc_emitted_func_entry.h"
-#include "bcc_runtime.h"
+#include "CodeMemoryManager.h"
+#include "EmittedFuncEntry.h"
+#include "Runtime.h"
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>

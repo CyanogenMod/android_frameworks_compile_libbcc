@@ -17,8 +17,9 @@
 #ifndef BCC_SCRIPT_H
 #define BCC_SCRIPT_H
 
+#include "Compiler.h"
+
 #include <bcc/bcc.h>
-#include "bcc_compiler.h"
 
 namespace bcc {
 

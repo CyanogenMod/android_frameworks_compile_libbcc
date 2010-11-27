@@ -20,10 +20,10 @@
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
 
-#include <bcc/bcc.h>
+#include "Compiler.h"
+#include "Script.h"
 
-#include "bcc_script.h"
-#include "bcc_compiler.h"
+#include <bcc/bcc.h>
 
 #include <utils/StopWatch.h>
 

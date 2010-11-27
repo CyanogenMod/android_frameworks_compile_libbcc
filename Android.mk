@@ -32,11 +32,11 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
-  bcc.cpp \
-  bcc_runtime.c \
-  bcc_compiler.cpp \
-  bcc_code_emitter.cpp \
-  bcc_code_mem_manager.cpp \
+  lib/bcc/bcc.cpp \
+  lib/bcc/Compiler.cpp \
+  lib/bcc/CodeEmitter.cpp \
+  lib/bcc/CodeMemoryManager.cpp \
+  lib/bcc/Runtime.c \
   runtime/lib/arm/adddf3vfp.S \
   runtime/lib/arm/addsf3vfp.S \
   runtime/lib/arm/divdf3vfp.S \
@@ -96,7 +96,8 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
 LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/include
+  $(LOCAL_PATH)/include \
+  $(LOCAL_PATH)
 
 ifeq ($(USE_DISASSEMBLER),true)
 LOCAL_CFLAGS += -DUSE_DISASSEMBLER
@@ -121,12 +122,12 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
-  bcc.cpp \
-  bcc_compiler.cpp \
-  bcc_code_emitter.cpp \
-  bcc_code_mem_manager.cpp \
-  logd_write.c \
-  bcc_runtime.c
+  lib/bcc/bcc.cpp \
+  lib/bcc/Compiler.cpp \
+  lib/bcc/CodeEmitter.cpp \
+  lib/bcc/CodeMemoryManager.cpp \
+  lib/bcc/Runtime.c \
+  helper/logd_write.c
 
 LOCAL_STATIC_LIBRARIES := \
   libcutils \
@@ -156,7 +157,8 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_LDLIBS := -ldl -lpthread
 
 LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/include
+  $(LOCAL_PATH)/include \
+  $(LOCAL_PATH)
 
 # definitions for LLVM
 LOCAL_CFLAGS += -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DUSE_DISASSEMBLER=1 -DFORCE_ARM_CODEGEN=1 -DDEBUG_CODEGEN=1

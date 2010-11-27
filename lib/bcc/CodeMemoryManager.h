@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef BCC_CODE_MEM_MANAGER_H
-#define BCC_CODE_MEM_MANAGER_H
+#ifndef BCC_CODEMEMORYMANAGER_H
+#define BCC_CODEMEMORYMANAGER_H
 
-#include "bcc_compiler.h"
+#include "Compiler.h"
 
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 
@@ -237,4 +237,4 @@ namespace bcc {
 
 } // namespace bcc
 
-#endif  // BCC_CODE_MEM_MANAGER_H
+#endif  // BCC_CODEMEMORYMANAGER_H

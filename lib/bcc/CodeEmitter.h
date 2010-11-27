@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BCC_CODE_EMITTER_H
-#define BCC_CODE_EMITTER_H
+#ifndef BCC_CODEEMITTER_H
+#define BCC_CODEEMITTER_H
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
@@ -351,4 +351,4 @@ namespace bcc {
 
 } // namespace bcc
 
-#endif // BCC_CODE_EMITTER_H
+#endif // BCC_CODEEMITTER_H

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _BCC_RUNTIME_H_
-#   define _BCC_RUNTIME_H_
+#ifndef BCC_RUNTIME_H
+#define BCC_RUNTIME_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,4 +28,4 @@ void VerifyRuntimesTable();
 };
 #endif
 
-#endif  /* _BCC_RUNTIME_H_ */
+#endif  /* BCC_RUNTIME_H */
