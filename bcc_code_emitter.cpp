@@ -1169,9 +1169,10 @@ void *CodeEmitter::GetExternalFunctionStub(void *FnAddr) {
 }
 
 
-#if defined(USE_DISASSEMBLER)
 void CodeEmitter::Disassemble(const llvm::StringRef &Name,
                               uint8_t *Start, size_t Length, bool IsStub) {
+
+#if defined(USE_DISASSEMBLER)
   llvm::raw_ostream *OS;
 
 #if defined(USE_DISASSEMBLER_FILE)
@@ -1179,6 +1180,7 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
   OS = new llvm::raw_fd_ostream("/data/local/tmp/out.S",
                                 ErrorInfo,
                                 llvm::raw_fd_ostream::F_Append);
+
   if (!ErrorInfo.empty()) {    // some errors occurred
     // LOGE("Error in creating disassembly file");
     delete OS;
@@ -1230,9 +1232,8 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
   delete OS;
 #endif
 
-  return;
+#endif // defined(USE_DISASSEMBLER)
 }
-#endif  // defined(USE_DISASSEMBLER)
 
 
 void CodeEmitter::setTargetMachine(llvm::TargetMachine &TM) {

@@ -219,15 +219,11 @@ namespace bcc {
     const llvm::MCAsmInfo *mpAsmInfo;
     const llvm::MCDisassembler *mpDisassmbler;
     llvm::MCInstPrinter *mpIP;
+#endif
 
   public:
     void Disassemble(const llvm::StringRef &Name, uint8_t *Start,
                      size_t Length, bool IsStub);
-#else
-    void Disassemble(const llvm::StringRef &Name, uint8_t *Start,
-                     size_t Length, bool IsStub) {
-    }
-#endif  // defined(USE_DISASSEMBLER)
 
   private:
     // Resolver to undefined symbol in CodeEmitter
