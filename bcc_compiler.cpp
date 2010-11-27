@@ -718,11 +718,12 @@ int Compiler::compile() {
   if (!CPU.empty() || !Features.empty()) {
     llvm::SubtargetFeatures F;
     F.setCPU(CPU);
-    for (std::vector<std::string>::const_iterator I = Features.begin(),
-         E = Features.end();
-         I != E;
-         I++)
+
+    for (std::vector<std::string>::const_iterator
+         I = Features.begin(), E = Features.end(); I != E; I++) {
       F.AddFeature(*I);
+    }
+
     FeaturesStr = F.getString();
   }
 
@@ -1060,10 +1061,8 @@ void Compiler::getExportVars(BCCsizei *actualVarCount,
   if (varCount > maxVarCount)
     varCount = maxVarCount;
   if (vars) {
-    for (ExportVarList::const_iterator I = mExportVars.begin(),
-         E = mExportVars.end();
-         I != E;
-         I++) {
+    for (ExportVarList::const_iterator
+         I = mExportVars.begin(), E = mExportVars.end(); I != E; I++) {
       *vars++ = *I;
     }
   }
@@ -1194,9 +1193,9 @@ Compiler::~Compiler() {
   }
 
   delete mModule;
-  // llvm::llvm_shutdown();
   delete mContext;
-  return;
+
+  // llvm::llvm_shutdown();
 }
 
 
