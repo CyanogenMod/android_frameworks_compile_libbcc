@@ -51,6 +51,13 @@ namespace llvm {
 namespace bcc {
 
   class Compiler {
+  private:
+    typedef std::list< std::pair<std::string, std::string> > PragmaList;
+    typedef std::list<void*> ExportVarList;
+    typedef std::list<void*> ExportFuncList;
+
+
+  private:
     // This part is designed to be orthogonal to those exported bcc*() functions
     // implementation and internal struct BCCscript.
 
@@ -88,22 +95,10 @@ namespace bcc {
     friend class CodeEmitter;
     friend class CodeMemoryManager;
 
+
   private:
     std::string mError;
 
-    bool hasError() const {
-      return !mError.empty();
-    }
-
-    void setError(const char *Error) {
-      mError.assign(Error);  // Copying
-    }
-
-    void setError(const std::string &Error) {
-      mError = Error;
-    }
-
-  private:
     bool mUseCache;         // Set by readBC()
     bool mCacheNew;         // Set by readBC()
     int mCacheFd;           // Set by readBC()
@@ -112,24 +107,19 @@ namespace bcc {
     size_t mCacheSize;      // Set by loadCacheFile()
     ptrdiff_t mCacheDiff;   // Set by loadCacheFile()
     char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
-    // Used by genCacheFile() for dumping
+                            // Used by genCacheFile() for dumping
 
-    typedef std::list< std::pair<std::string, std::string> > PragmaList;
     PragmaList mPragmas;
 
-    typedef std::list<void*> ExportVarList;
     ExportVarList mExportVars;
 
-    typedef std::list<void*> ExportFuncList;
     ExportFuncList mExportFuncs;
 
     // The memory manager for code emitter
     llvm::OwningPtr<CodeMemoryManager> mCodeMemMgr;
-    CodeMemoryManager *createCodeMemoryManager();
 
     // The CodeEmitter
     llvm::OwningPtr<CodeEmitter> mCodeEmitter;
-    CodeEmitter *createCodeEmitter();
 
     BCCSymbolLookupFn mpSymbolLookupFn;
     void *mpSymbolLookupContext;
@@ -147,6 +137,10 @@ namespace bcc {
       mpSymbolLookupFn = pFn;
       mpSymbolLookupContext = pContext;
     }
+
+    CodeMemoryManager *createCodeMemoryManager();
+
+    CodeEmitter *createCodeEmitter();
 
     int readModule(llvm::Module *module) {
       GlobalInitialization();
@@ -233,6 +227,20 @@ namespace bcc {
                                     uint32_t rslibWhen,
                                     uint32_t libRSWhen,
                                     uint32_t libbccWhen);
+
+  private:
+
+    bool hasError() const {
+      return !mError.empty();
+    }
+
+    void setError(const char *Error) {
+      mError.assign(Error);  // Copying
+    }
+
+    void setError(const std::string &Error) {
+      mError = Error;
+    }
 
   };
 

@@ -66,6 +66,12 @@ namespace bcc {
 
   class CodeMemoryManager : public llvm::JITMemoryManager {
   private:
+    typedef std::map<const llvm::Function*,
+                     std::pair<void * /* start address */,
+                               void * /* end address */> > FunctionMapTy;
+
+
+  private:
     //
     // Our memory layout is as follows:
     //
@@ -103,30 +109,12 @@ namespace bcc {
     // GOT Base
     uint8_t *mpGOTBase;
 
-    typedef std::map<const llvm::Function*,
-                     std::pair<void * /* start address */,
-                               void * /* end address */> > FunctionMapTy;
-
     FunctionMapTy mFunctionMap;
 
-    intptr_t getFreeCodeMemSize() const {
-      return mCurSGMemIdx - mCurFuncMemIdx;
-    }
-
-    uint8_t *allocateSGMemory(uintptr_t Size,
-                              unsigned Alignment = 1 /* no alignment */);
-
-    uintptr_t getFreeGVMemSize() const {
-      return MaxGlobalVarSize - mCurGVMemIdx;
-    }
-
-    uint8_t *getGVMemBase() const {
-      return reinterpret_cast<uint8_t*>(mpGVMem);
-    }
 
   public:
-
     CodeMemoryManager();
+
     virtual ~CodeMemoryManager();
 
     uint8_t *getCodeMemBase() const {
@@ -232,6 +220,23 @@ namespace bcc {
 
     // Below are the methods we create
     void reset();
+
+
+  private:
+    intptr_t getFreeCodeMemSize() const {
+      return mCurSGMemIdx - mCurFuncMemIdx;
+    }
+
+    uint8_t *allocateSGMemory(uintptr_t Size,
+                              unsigned Alignment = 1 /* no alignment */);
+
+    uintptr_t getFreeGVMemSize() const {
+      return MaxGlobalVarSize - mCurGVMemIdx;
+    }
+
+    uint8_t *getGVMemBase() const {
+      return reinterpret_cast<uint8_t*>(mpGVMem);
+    }
 
   };
 
