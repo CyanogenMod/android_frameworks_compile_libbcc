@@ -26,8 +26,23 @@ typedef uint32_t                    BCCuint;
 typedef ssize_t                     BCCsizei;
 typedef unsigned int                BCCenum;
 typedef void                        BCCvoid;
+
+#if !defined(__cplusplus)
+
 typedef struct BCCscript            BCCscript;
 typedef struct BCCtype              BCCtype;
+
+#else
+
+namespace bcc {
+  class BCCscript;
+  class BCCtype;
+}
+
+typedef bcc::BCCscript              BCCscript;
+typedef bcc::BCCtype                BCCtype;
+
+#endif
 
 #define BCC_NO_ERROR                0x0000
 #define BCC_INVALID_ENUM            0x0500
