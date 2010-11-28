@@ -113,6 +113,7 @@ struct oBCCHeader {
   uint32_t exportFuncsCount;
   uint32_t exportPragmasOffset; // offset of export pragma table
   uint32_t exportPragmasCount;
+  uint32_t exportPragmasSize;   // size of export pragma table (in bytes)
 
   uint32_t codeOffset;          // offset of code: 64-bit alignment
   uint32_t codeSize;
@@ -142,7 +143,29 @@ struct oBCCRelocEntry {
 
 
 --------------------------------------------------
-D.3 Code Section
+D.3 Export Pragma Section
+--------------------------------------------------
+
+The export pragma section is consisted of two parts: (1) Offset and size
+table and (2) String constant pools.  Every string in constant pool should
+end with '\0', and the length of the string should obey the value of size
+in previous table.
+
+For each entry in offset and size table, they have four fields,
+see the following structure:
+
+struct oBCCPragmaEntry {
+  uint32_t pragmaNameOffset;    // offset to pragma name string
+  uint32_t pragmaNameSize;      // size of pragma name string (without '\0')
+  uint32_t pragmaValueOffset;   // offset to pragma value string
+  uint32_t pramgaValueSize;     // size of pragma value string (without '\0')
+};
+
+Note: The offset is related to the start of the export pragma section.
+
+
+--------------------------------------------------
+D.4 Code Section
 --------------------------------------------------
 
 This section should align to a page size.

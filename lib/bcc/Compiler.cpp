@@ -467,25 +467,25 @@ int Compiler::loadCacheFile() {
     }
 
     if (mCacheSize < mCacheHdr->relocOffset +
-        mCacheHdr->relocCount * sizeof(oBCCRelocEntry)) {
+                     mCacheHdr->relocCount * sizeof(oBCCRelocEntry)) {
       LOGE("relocate table overflow\n");
       goto bail;
     }
 
     if (mCacheSize < mCacheHdr->exportVarsOffset +
-        mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
+                     mCacheHdr->exportVarsCount * sizeof(uint32_t)) {
       LOGE("export variables table overflow\n");
       goto bail;
     }
 
     if (mCacheSize < mCacheHdr->exportFuncsOffset +
-        mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
+                     mCacheHdr->exportFuncsCount * sizeof(uint32_t)) {
       LOGE("export functions table overflow\n");
       goto bail;
     }
 
     if (mCacheSize < mCacheHdr->exportPragmasOffset +
-        mCacheHdr->exportPragmasCount * sizeof(uint32_t)) {
+                     mCacheHdr->exportPragmasSize) {
       LOGE("export pragmas table overflow\n");
       goto bail;
     }
@@ -1047,8 +1047,8 @@ void Compiler::getExportVars(BCCsizei *actualVarCount,
                                           mCacheHdr->exportVarsOffset);
 
       for (int i = 0; i < varCount; i++) {
-        *vars++ = (BCCvoid *)(reinterpret_cast<char *>(*cachedVars) +
-                              mCacheDiff);
+        *vars = (BCCvoid *)((char *)(*cachedVars) + mCacheDiff);
+        vars++;
         cachedVars++;
       }
     }
@@ -1066,8 +1066,6 @@ void Compiler::getExportVars(BCCsizei *actualVarCount,
       *vars++ = *I;
     }
   }
-
-  return;
 }
 
 
@@ -1088,8 +1086,8 @@ void Compiler::getExportFuncs(BCCsizei *actualFuncCount,
                                            mCacheHdr->exportFuncsOffset);
 
       for (int i = 0; i < funcCount; i++) {
-        *funcs++ = (BCCvoid *)(reinterpret_cast<char *>(*cachedFuncs) +
-                               mCacheDiff);
+        *funcs = (BCCvoid *)((char *)(*cachedFuncs) + mCacheDiff);
+        funcs++;
         cachedFuncs++;
       }
     }
@@ -1102,15 +1100,11 @@ void Compiler::getExportFuncs(BCCsizei *actualFuncCount,
   if (funcCount > maxFuncCount)
     funcCount = maxFuncCount;
   if (funcs) {
-    for (ExportFuncList::const_iterator I = mExportFuncs.begin(),
-         E = mExportFuncs.end();
-         I != E;
-         I++) {
+    for (ExportFuncList::const_iterator
+         I = mExportFuncs.begin(), E = mExportFuncs.end(); I != E; I++) {
       *funcs++ = *I;
     }
   }
-
-  return;
 }
 
 
@@ -1119,9 +1113,27 @@ void Compiler::getPragmas(BCCsizei *actualStringCount,
                           BCCsizei maxStringCount,
                           BCCchar **strings) {
   int stringCount;
+
   if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
+    stringCount = static_cast<int>(mCacheHdr->exportPragmasCount) * 2;
+
     if (actualStringCount)
-      *actualStringCount = 0;  // XXX
+      *actualStringCount = stringCount;
+
+    if (stringCount > maxStringCount)
+      stringCount = maxStringCount;
+
+    if (strings) {
+      char *pragmaTab = mCacheMapAddr + mCacheHdr->exportPragmasOffset;
+
+      oBCCPragmaEntry *cachedPragmaEntries = (oBCCPragmaEntry *)pragmaTab;
+
+      for (int i = 0; stringCount >= 2; stringCount -= 2, i++) {
+        *strings++ = pragmaTab + cachedPragmaEntries[i].pragmaNameOffset;
+        *strings++ = pragmaTab + cachedPragmaEntries[i].pragmaValueOffset;
+      }
+    }
+
     return;
   }
 
@@ -1132,9 +1144,9 @@ void Compiler::getPragmas(BCCsizei *actualStringCount,
   if (stringCount > maxStringCount)
     stringCount = maxStringCount;
   if (strings) {
+    size_t i = 0;
     for (PragmaList::const_iterator it = mPragmas.begin();
-         stringCount > 0;
-         stringCount -= 2, it++) {
+         stringCount >= 2; stringCount -= 2, it++, ++i) {
       *strings++ = const_cast<BCCchar*>(it->first.c_str());
       *strings++ = const_cast<BCCchar*>(it->second.c_str());
     }
@@ -1297,7 +1309,7 @@ void Compiler::genCacheFile() {
   hdr->relocOffset = sizeof(oBCCHeader);
   hdr->relocCount = mCodeEmitter->getCachingRelocations().size();
 
-  offset += hdr->relocCount * (sizeof(oBCCRelocEntry));
+  offset += hdr->relocCount * sizeof(oBCCRelocEntry);
 
   // Export Variable Table Offset and Entry Count
   hdr->exportVarsOffset = offset;
@@ -1313,9 +1325,17 @@ void Compiler::genCacheFile() {
 
   // Export Pragmas Table Offset and Entry Count
   hdr->exportPragmasOffset = offset;
-  hdr->exportPragmasCount = 0; // TODO(all): mPragmas.size();
+  hdr->exportPragmasCount = mPragmas.size();
+  hdr->exportPragmasSize = hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
 
-  offset += hdr->exportPragmasCount * sizeof(uint32_t);
+  offset += hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
+
+  for (PragmaList::const_iterator
+       I = mPragmas.begin(), E = mPragmas.end(); I != E; ++I) {
+    offset += I->first.size() + 1;
+    offset += I->second.size() + 1;
+    hdr->exportPragmasSize += I->first.size() + I->second.size() + 2;
+  }
 
   // Code Offset and Size
 
@@ -1419,14 +1439,35 @@ void Compiler::genCacheFile() {
   }
 
 
-  // TODO(all): Write Export Pragmas Table
-#if 0
-#else
-  // Note: As long as we have comment out export pragmas table code,
-  // we have to seek the position to correct offset.
+  // Write Export Pragmas Table
+  {
+    uint32_t pragmaEntryOffset =
+      hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
 
-  lseek(mCacheFd, hdr->codeOffset, SEEK_SET);
-#endif
+    for (PragmaList::const_iterator
+         I = mPragmas.begin(), E = mPragmas.end(); I != E; ++I) {
+      oBCCPragmaEntry entry;
+
+      entry.pragmaNameOffset = pragmaEntryOffset;
+      entry.pragmaNameSize = I->first.size();
+      pragmaEntryOffset += entry.pragmaNameSize + 1;
+
+      entry.pragmaValueOffset = pragmaEntryOffset;
+      entry.pragmaValueSize = I->second.size();
+      pragmaEntryOffset += entry.pragmaValueSize + 1;
+
+      sysWriteFully(mCacheFd, (char *)&entry, sizeof(oBCCPragmaEntry),
+                    "Write export pragma entry");
+    }
+
+    for (PragmaList::const_iterator
+         I = mPragmas.begin(), E = mPragmas.end(); I != E; ++I) {
+      sysWriteFully(mCacheFd, I->first.c_str(), I->first.size() + 1,
+                    "Write export pragma name string");
+      sysWriteFully(mCacheFd, I->second.c_str(), I->second.size() + 1,
+                    "Write export pragma value string");
+    }
+  }
 
   if (codeOffsetNeedPadding) {
     // requires additional padding

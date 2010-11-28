@@ -46,6 +46,7 @@ struct oBCCHeader {
   uint32_t exportFuncsCount;
   uint32_t exportPragmasOffset; /* offset of export pragma table */
   uint32_t exportPragmasCount;
+  uint32_t exportPragmasSize;   /* size of export pragma table (in bytes) */
 
   uint32_t codeOffset;          /* offset of code: 64-bit alignment */
   uint32_t codeSize;
@@ -68,6 +69,15 @@ struct oBCCRelocEntry {
       relocOffset(static_cast<uint32_t>(off)),
       cachedResultAddr(reinterpret_cast<uint32_t>(addr)) {
   }
+};
+
+
+/* BCC Cache Pragma Entry */
+struct oBCCPragmaEntry {
+  uint32_t pragmaNameOffset;
+  uint32_t pragmaNameSize;
+  uint32_t pragmaValueOffset;
+  uint32_t pragmaValueSize;
 };
 
 
