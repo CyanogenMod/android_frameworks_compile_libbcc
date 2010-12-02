@@ -98,7 +98,7 @@ CodeMemoryManager::CodeMemoryManager()
     }
   }
 
-  LOGE("Mmap mpCodeMem at %p successfully.\n", mpCodeMem);
+  LOGI("Mmap mpCodeMem at %p successfully.\n", mpCodeMem);
 
   // Set global variable pool
   mpGVMem = (void *) ((char *)mpCodeMem + MaxCodeSize);

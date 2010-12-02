@@ -550,7 +550,7 @@ int Compiler::loadCacheFile() {
             goto bail;
           }
 
-          LOGE("Passed checksum even parity verification.\n");
+          LOGI("Passed checksum even parity verification.\n");
         }
 #endif
 
