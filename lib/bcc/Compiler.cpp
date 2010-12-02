@@ -332,7 +332,7 @@ int Compiler::readBC(const char *bitcode,
 
     mCacheFd = openCacheFile(resName, true /* createIfMissing */);
     if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
-      return -mCacheFd;
+      return -mCacheFd - 1;
     }
   }
 
