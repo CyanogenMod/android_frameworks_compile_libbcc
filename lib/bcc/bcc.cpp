@@ -75,15 +75,16 @@ extern "C" int bccLoadBinary(BCCscript *script) {
   return result;
 }
 
-extern "C" void bccCompileBC(BCCscript *script) {
-  {
+extern "C" int bccCompileBC(BCCscript *script) {
 #if defined(__arm__)
-    android::StopWatch compileTimer("RenderScript compile time");
+  android::StopWatch compileTimer("RenderScript compile time");
 #endif
-    int result = script->compiler.compile();
-    if (result)
-      script->setError(BCC_INVALID_OPERATION);
-  }
+
+  int result = script->compiler.compile();
+  if (result)
+    script->setError(BCC_INVALID_OPERATION);
+
+  return result;
 }
 
 extern "C" void bccGetScriptInfoLog(BCCscript *script,
