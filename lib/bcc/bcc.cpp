@@ -70,8 +70,14 @@ extern "C" void bccLinkBC(BCCscript *script,
 
 extern "C" int bccLoadBinary(BCCscript *script) {
   int result = script->compiler.loadCacheFile();
-  if (result)
+
+#if defined(USE_DISASSEMBLER_FILE)
+  LOGI("[LoadBinary] result=%d", result);
+#endif
+  if (result) {
     script->setError(BCC_INVALID_OPERATION);
+  }
+
   return result;
 }
 
@@ -100,6 +106,9 @@ extern "C" void bccGetScriptInfoLog(BCCscript *script,
     int trimmedLength = maxLength < messageLength ? maxLength : messageLength;
     memcpy(infoLog, message, trimmedLength);
     infoLog[trimmedLength] = 0;
+#if defined(USE_DISASSEMBLER_FILE)
+    LOGI("[GetScriptInfoLog] %s", infoLog);
+#endif
   }
 }
 
@@ -107,10 +116,14 @@ extern "C" void bccGetScriptLabel(BCCscript *script,
                                   const BCCchar *name,
                                   BCCvoid **address) {
   void *value = script->compiler.lookup(name);
-  if (value)
+  if (value) {
     *address = value;
-  else
+#if defined(USE_DISASSEMBLER_FILE)
+    LOGI("[GetScriptLabel] %s @ 0x%x", name, value);
+#endif
+  } else {
     script->setError(BCC_INVALID_VALUE);
+  }
 }
 
 extern "C" void bccGetExportVars(BCCscript *script,
@@ -118,6 +131,17 @@ extern "C" void bccGetExportVars(BCCscript *script,
                                  BCCsizei maxVarCount,
                                  BCCvoid **vars) {
   script->compiler.getExportVars(actualVarCount, maxVarCount, vars);
+
+#if defined(USE_DISASSEMBLER_FILE)
+  int i;
+  if (actualVarCount) {
+    LOGI("[ExportVars] #=%d:", *actualVarCount);
+  } else {
+    for (i = 0; i < maxVarCount; i++) {
+      LOGI("[ExportVars] #%d=0x%x", i, vars[i]);
+    }
+  }
+#endif
 }
 
 extern "C" void bccGetExportFuncs(BCCscript *script,
@@ -125,6 +149,17 @@ extern "C" void bccGetExportFuncs(BCCscript *script,
                                   BCCsizei maxFuncCount,
                                   BCCvoid **funcs) {
   script->compiler.getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+
+#if defined(USE_DISASSEMBLER_FILE)
+  int i;
+  if (actualFuncCount) {
+    LOGI("[ExportFunc] #=%d:", *actualFuncCount);
+  } else {
+    for (i = 0; i < maxFuncCount; i++) {
+      LOGI("[ExportFunc] #%d=0x%x", i, funcs[i]);
+    }
+  }
+#endif
 }
 
 extern "C" void bccGetPragmas(BCCscript *script,
@@ -132,6 +167,14 @@ extern "C" void bccGetPragmas(BCCscript *script,
                               BCCsizei maxStringCount,
                               BCCchar **strings) {
   script->compiler.getPragmas(actualStringCount, maxStringCount, strings);
+
+#if defined(USE_DISASSEMBLER_FILE)
+  int i;
+  LOGI("[Pragma] #=%d:", *actualStringCount);
+  for (i = 0; i < *actualStringCount; i++) {
+    LOGI("  %s", strings[i]);
+  }
+#endif
 }
 
 extern "C" void bccGetFunctions(BCCscript *script,
