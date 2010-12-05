@@ -1228,7 +1228,7 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
 
 #if defined(USE_DISASSEMBLER_FILE)
   // If you want the disassemble results write to file, uncomment this.
-  OS->close();
+  ((llvm::raw_fd_ostream*)OS)->close();
   delete OS;
 #endif
 
