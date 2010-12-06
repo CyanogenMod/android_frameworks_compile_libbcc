@@ -1763,7 +1763,7 @@ bool Compiler::checkHeaderAndDependencies(int fd,
   }
 
   magicVer = optHdr.magicVersion;
-  if (memcmp(magic+4, OBCC_MAGIC_VERS, 4) != 0) {
+  if (memcmp(magicVer, OBCC_MAGIC_VERS, 4) != 0) {
     LOGW("bcc: stale oBCC version (0x%02x %02x %02x %02x)\n",
          magicVer[0], magicVer[1], magicVer[2], magicVer[3]);
     goto bail;
