@@ -106,7 +106,6 @@
 #include <string>
 #include <vector>
 
-
 namespace {
 
 #define TEMP_FAILURE_RETRY1(exp) ({        \
@@ -134,6 +133,21 @@ int sysWriteFully(int fd, const void* buf, size_t count, const char* logMsg) {
 
     return 0;
 }
+
+inline uint32_t statModifyTime(char const *filepath) {
+  struct stat st;
+
+  if (stat(filepath, &st) < 0) {
+    LOGE("Unable to stat \'%s\', with reason: %s\n", filepath, strerror(errno));
+    return 0;
+  }
+
+  return static_cast<uint32_t>(st.st_mtime);
+}
+
+static char const libRSPath[] = "/system/lib/libRS.so";
+
+static char const libBccPath[] = "/system/lib/libbcc.so";
 
 } // namespace anonymous
 
@@ -1297,8 +1311,8 @@ void Compiler::genCacheFile() {
   // Timestamp
   hdr->sourceWhen = 0; // TODO(all)
   hdr->rslibWhen = 0; // TODO(all)
-  hdr->libRSWhen = 0; // TODO(all)
-  hdr->libbccWhen = 0; // TODO(all)
+  hdr->libRSWhen = statModifyTime(libRSPath);
+  hdr->libbccWhen = statModifyTime(libBccPath);
 
   // Current Memory Address (Saved for Recalculation)
   hdr->cachedCodeDataAddr = reinterpret_cast<uint32_t>(mCodeDataAddr);
@@ -1597,8 +1611,8 @@ retry:
     // XXX
     uint32_t sourceWhen = 0;
     uint32_t rslibWhen = 0;
-    uint32_t libRSWhen = 0;
-    uint32_t libbccWhen = 0;
+    uint32_t libRSWhen = statModifyTime(libRSPath);
+    uint32_t libbccWhen = statModifyTime(libBccPath);
     if (!checkHeaderAndDependencies(fd,
                                     sourceWhen,
                                     rslibWhen,
