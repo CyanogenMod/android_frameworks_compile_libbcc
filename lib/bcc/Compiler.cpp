@@ -1309,8 +1309,13 @@ void Compiler::genCacheFile() {
   memcpy(hdr->magicVersion, OBCC_MAGIC_VERS, 4);
 
   // Timestamp
-  hdr->sourceWhen = 0; // TODO(all)
-  hdr->rslibWhen = 0; // TODO(all)
+  // TODO(sliao): Should be .bc's ModifyTime. Now just use it to store
+  //              threadable
+  hdr->sourceWhen = (uint32_t) mCodeEmitter->mpSymbolLookupFn(
+      mpSymbolLookupContext,
+      "__isThreadable");
+
+  hdr->rslibWhen = 0; // TODO(sliao)
   hdr->libRSWhen = statModifyTime(libRSPath);
   hdr->libbccWhen = statModifyTime(libBccPath);
 
@@ -1798,11 +1803,16 @@ bool Compiler::checkHeaderAndDependencies(int fd,
    */
 
   val = optHdr.sourceWhen;
-  if (val && (val != sourceWhen)) {
-    LOGI("bcc: source file mod time mismatch (%08x vs %08x)\n",
-         val, sourceWhen);
-    goto bail;
+  // TODO(sliao): Shouldn't overload sourceWhen in the future.
+  if (!val) {
+    mpSymbolLookupFn(mpSymbolLookupContext, "__clearThreadable");
   }
+  //  if (val && (val != sourceWhen)) {
+  //    LOGI("bcc: source file mod time mismatch (%08x vs %08x)\n",
+  //         val, sourceWhen);
+  //    goto bail;
+  //  }
+
   val = optHdr.rslibWhen;
   if (val && (val != rslibWhen)) {
     LOGI("bcc: rslib file mod time mismatch (%08x vs %08x)\n",

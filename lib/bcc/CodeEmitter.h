@@ -147,11 +147,11 @@ namespace bcc {
     llvm::MCInstPrinter *mpIP;
 #endif
 
+  public:
     // Resolver to undefined symbol in CodeEmitter
     BCCSymbolLookupFn mpSymbolLookupFn;
     void *mpSymbolLookupContext;
 
-  public:
     // Will take the ownership of @MemMgr
     explicit CodeEmitter(CodeMemoryManager *pMemMgr);
 
