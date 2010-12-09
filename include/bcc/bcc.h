@@ -75,7 +75,8 @@ BCCenum bccGetError( BCCscript *script );
 int bccReadBC(BCCscript *script,
               const BCCchar *bitcode,
               BCCint size,
-              const BCCchar *resName);
+              const BCCchar *resName,
+              const BCCchar *cacheDir);
 
 int bccLoadBinary(BCCscript *script);
 

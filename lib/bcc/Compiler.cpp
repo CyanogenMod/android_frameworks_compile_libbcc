@@ -325,7 +325,8 @@ Compiler::Compiler()
 
 int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
-                     const BCCchar *resName) {
+                     const BCCchar *resName,
+                     const BCCchar *cacheDir) {
   GlobalInitialization();
 
   if (resName) {
@@ -344,7 +345,7 @@ int Compiler::readBC(const char *bitcode,
     //    Note: Upon violation, mUseCache will be set back to false.
     mUseCache = true;
 
-    mCacheFd = openCacheFile(resName, true /* createIfMissing */);
+    mCacheFd = openCacheFile(resName, cacheDir, true /* createIfMissing */);
     if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
       return -mCacheFd - 1;
     }
@@ -1521,12 +1522,14 @@ close_return:
 //              cache file's file descriptor
 //              Note: openCacheFile() will check the cache file's validity,
 //              such as Magic number, sourceWhen... dependencies.
-int Compiler::openCacheFile(const BCCchar *resName, bool createIfMissing) {
+int Compiler::openCacheFile(const BCCchar *resName,
+                            const BCCchar *cacheDir,
+                            bool createIfMissing) {
   int fd, cc;
   struct stat fdStat, fileStat;
   bool readOnly = false;
 
-  char *cacheFileName = genCacheFileName(resName, ".oBCC");
+  char *cacheFileName = genCacheFileName(cacheDir, resName, ".oBCC");
 
   mCacheNew = false;
 
@@ -1676,41 +1679,50 @@ close_fail:
   return -1;
 }  // End of openCacheFile()
 
-char *Compiler::genCacheFileName(const char *fileName,
-                                 const char *subFileName) {
-  char nameBuf[512];
-  static const char kCachePath[] = "bcc-cache";
-  char absoluteFile[sizeof(nameBuf)];
-  const size_t kBufLen = sizeof(nameBuf) - 1;
-  const char *dataRoot;
-  char *cp;
+// Input: cacheDir
+// Input: resName
+// Input: extName
+//
+// Note: cacheFile = resName + extName
+//
+// Output: Returns cachePath == cacheDir + cacheFile
+char *Compiler::genCacheFileName(const char *cacheDir,
+                                 const char *resName,
+                                 const char *extName) {
+  char cachePath[512];
+  char cacheFile[sizeof(cachePath)];
+  const size_t kBufLen = sizeof(cachePath) - 1;
 
-  // Get the absolute path of the raw/***.bc file.
-  absoluteFile[0] = '\0';
-  if (fileName[0] != '/') {
-    /*
-     * Generate the absolute path.  This doesn't do everything it
-     * should, e.g. if filename is "./out/whatever" it doesn't crunch
-     * the leading "./" out, but it'll do.
-     */
-    if (getcwd(absoluteFile, kBufLen) == NULL) {
+  cacheFile[0] = '\0';
+  // Note: resName today is usually something like
+  //       "/com.android.fountain:raw/fountain"
+  if (resName[0] != '/') {
+    // Get the absolute path of the raw/***.bc file.
+
+    // Generate the absolute path.  This doesn't do everything it
+    // should, e.g. if resName is "./out/whatever" it doesn't crunch
+    // the leading "./" out because this if-block is not triggered,
+    // but it'll make do.
+    //
+    if (getcwd(cacheFile, kBufLen) == NULL) {
       LOGE("Can't get CWD while opening raw/***.bc file\n");
       return NULL;
     }
+    // Append "/" at the end of cacheFile so far.
+    strncat(cacheFile, "/", kBufLen);
+  }
+
+  // cacheFile = resName + extName
+  //
+  strncat(cacheFile, resName, kBufLen);
+  if (extName != NULL) {
     // TODO(srhines): strncat() is a bit dangerous
-    strncat(absoluteFile, "/", kBufLen);
-  }
-  strncat(absoluteFile, fileName, kBufLen);
-
-  if (subFileName != NULL) {
-    strncat(absoluteFile, "/", kBufLen);
-    strncat(absoluteFile, subFileName, kBufLen);
+    strncat(cacheFile, extName, kBufLen);
   }
 
-  /* Turn the path into a flat filename by replacing
-   * any slashes after the first one with '@' characters.
-   */
-  cp = absoluteFile + 1;
+  // Turn the path into a flat filename by replacing
+  // any slashes after the first one with '@' characters.
+  char *cp = cacheFile + 1;
   while (*cp != '\0') {
     if (*cp == '/') {
       *cp = '@';
@@ -1718,19 +1730,12 @@ char *Compiler::genCacheFileName(const char *fileName,
     cp++;
   }
 
-  /* Build the name of the cache directory.
-  */
-  dataRoot = getenv("ANDROID_DATA");
-  if (dataRoot == NULL)
-    dataRoot = "/data";
-  snprintf(nameBuf, kBufLen, "%s/%s", dataRoot, kCachePath);
+  // Tack on the file name for the actual cache file path.
+  strncpy(cachePath, cacheDir, kBufLen);
+  strncat(cachePath, cacheFile, kBufLen);
 
-  /* Tack on the file name for the actual cache file path.
-  */
-  strncat(nameBuf, absoluteFile, kBufLen);
-
-  LOGV("Cache file for '%s' '%s' is '%s'\n", fileName, subFileName, nameBuf);
-  return strdup(nameBuf);
+  LOGV("Cache file for '%s' '%s' is '%s'\n", resName, extName, cachePath);
+  return strdup(cachePath);
 }
 
 /*

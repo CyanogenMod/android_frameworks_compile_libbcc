@@ -58,8 +58,9 @@ extern "C" int bccReadModule(BCCscript *script, BCCvoid *module) {
 extern "C" int bccReadBC(BCCscript *script,
                          const BCCchar *bitcode,
                          BCCint size,
-                         const BCCchar *resName) {
-  return script->compiler.readBC(bitcode, size, resName);
+                         const BCCchar *resName,
+                         const BCCchar *cacheDir) {
+  return script->compiler.readBC(bitcode, size, resName, cacheDir);
 }
 
 extern "C" void bccLinkBC(BCCscript *script,

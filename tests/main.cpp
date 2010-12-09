@@ -187,7 +187,7 @@ static BCCscript* loadScript() {
   BCCscript* script = bccCreateScript();
 
   bitcode[codeSize] = '\0'; /* must be null-terminated */
-  if (bccReadBC(script, bitcode, codeSize, "file") < 0) {
+  if (bccReadBC(script, bitcode, codeSize, "file", "/tmp") < 0) {
     bccLoadBinary(script);
   }
   delete [] bitcode;

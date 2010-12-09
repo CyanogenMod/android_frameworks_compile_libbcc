@@ -148,7 +148,10 @@ namespace bcc {
       return hasError();
     }
 
-    int readBC(const char *bitcode, size_t bitcodeSize,const BCCchar *resName);
+    int readBC(const char *bitcode,
+               size_t bitcodeSize,
+               const BCCchar *resName,
+               const BCCchar *cacheDir);
 
     int linkBC(const char *bitcode, size_t bitcodeSize);
 
@@ -211,9 +214,13 @@ namespace bcc {
     //              cache file's file descriptor
     //              Note: openCacheFile() will check the cache file's validity,
     //              such as Magic number, sourceWhen... dependencies.
-    int openCacheFile(const BCCchar *resName, bool createIfMissing);
+    int openCacheFile(const BCCchar *resName,
+                      const BCCchar *cacheDir,
+                      bool createIfMissing);
 
-    char *genCacheFileName(const char *fileName, const char *subFileName);
+    char *genCacheFileName(const char *cacheDir,
+                           const char *fileName,
+                           const char *subFileName);
 
     /*
      * Read the oBCC header, verify it, then read the dependent section
