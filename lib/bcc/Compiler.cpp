@@ -236,7 +236,7 @@ void Compiler::GlobalInitialization() {
   // -O1: llvm::CodeGenOpt::Less
   // -O2: llvm::CodeGenOpt::Default
   // -O3: llvm::CodeGenOpt::Aggressive
-  CodeGenOptLevel = llvm::CodeGenOpt::None;
+  CodeGenOptLevel = llvm::CodeGenOpt::Aggressive;
 
   // Below are the global settings to LLVM
 
