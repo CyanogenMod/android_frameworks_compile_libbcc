@@ -543,10 +543,15 @@ int Compiler::loadCacheFile() {
         // Update the BccMmapImgAddrTaken table (if required)
         if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
           size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
+          size_t scriptId = offset / BCC_MMAP_IMG_SIZE;
 
           if ((offset % BCC_MMAP_IMG_SIZE) == 0 &&
-              (offset / BCC_MMAP_IMG_SIZE) < BCC_MMAP_IMG_COUNT) {
-            Compiler::BccMmapImgAddrTaken[offset / BCC_MMAP_IMG_SIZE] = true;
+              scriptId < BCC_MMAP_IMG_COUNT) {
+            if (Compiler::BccMmapImgAddrTaken[scriptId] == true) {
+              mCodeDataAddr = (char *) MAP_FAILED;
+            } else {
+              Compiler::BccMmapImgAddrTaken[scriptId] = true;
+            }
           }
         }
 
