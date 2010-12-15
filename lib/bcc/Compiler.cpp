@@ -250,7 +250,7 @@ void Compiler::GlobalInitialization() {
   // llvm::FloatABIType = llvm::FloatABI::Soft;
   // llvm::UseSoftFloat = true;
   //
-  llvm::FloatABIType = llvm::FloatABI::Hard;
+  llvm::FloatABIType = llvm::FloatABI::Soft;
   llvm::UseSoftFloat = false;
 
   // BCC needs all unknown symbols resolved at JIT/compilation time.
