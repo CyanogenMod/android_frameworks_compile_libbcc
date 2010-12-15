@@ -65,6 +65,8 @@
 
 #include "Compiler.h"
 
+#include "ContextManager.h"
+
 #include "llvm/ADT/StringRef.h"
 
 #include "llvm/Analysis/Passes.h"
@@ -98,7 +100,6 @@
 
 #include <errno.h>
 #include <sys/file.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -159,8 +160,6 @@ namespace bcc {
 //////////////////////////////////////////////////////////////////////////////
 
 bool Compiler::GlobalInitialized = false;
-
-bool Compiler::BccMmapImgAddrTaken[BCC_MMAP_IMG_COUNT];
 
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
@@ -527,56 +526,38 @@ int Compiler::loadCacheFile() {
     long pagesize = sysconf(_SC_PAGESIZE);
 
     if (mCacheHdr->cachedCodeDataAddr % pagesize == 0) {
-      void *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
+      char *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
-      // Try to mmap at cached address directly.
-      mCodeDataAddr = (char *) mmap(addr,
-                                    BCC_MMAP_IMG_SIZE,
-                                    PROT_READ | PROT_EXEC | PROT_WRITE,
-                                    MAP_PRIVATE | MAP_FIXED,
-                                    mCacheFd,
-                                    mCacheHdr->codeOffset);
+      // Try to allocate context at cached address directly.
+      mCodeDataAddr = allocateContext(addr, mCacheFd, mCacheHdr->codeOffset);
 
-      if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
-        // Cheers!  Mapped at the cached address successfully.
-
-        // Update the BccMmapImgAddrTaken table (if required)
-        if (mCacheHdr->cachedCodeDataAddr >= BCC_MMAP_IMG_BEGIN) {
-          size_t offset = mCacheHdr->cachedCodeDataAddr - BCC_MMAP_IMG_BEGIN;
-          size_t scriptId = offset / BCC_MMAP_IMG_SIZE;
-
-          if ((offset % BCC_MMAP_IMG_SIZE) == 0 &&
-              scriptId < BCC_MMAP_IMG_COUNT) {
-            if (Compiler::BccMmapImgAddrTaken[scriptId] == true) {
-              mCodeDataAddr = (char *) MAP_FAILED;
-            } else {
-              Compiler::BccMmapImgAddrTaken[scriptId] = true;
-            }
-          }
-        }
+      if (!mCodeDataAddr) {
+        // Unable to allocate at cached address.  Give up.
+        flock(mCacheFd, LOCK_UN);
+        goto bail;
+      }
 
 #if 1
-        // Check the checksum of code and data
-        {
-          uint32_t sum = mCacheHdr->checksum;
-          uint32_t *ptr = (uint32_t *)mCodeDataAddr;
+      // Check the checksum of code and data
+      {
+        uint32_t sum = mCacheHdr->checksum;
+        uint32_t *ptr = (uint32_t *)mCodeDataAddr;
 
-          for (size_t i = 0; i < BCC_MMAP_IMG_SIZE / sizeof(uint32_t); ++i) {
-            sum ^= *ptr++;
-          }
-
-          if (sum != 0) {
-            LOGE("Checksum check failed\n");
-            goto bail;
-          }
-
-          LOGI("Passed checksum even parity verification.\n");
+        for (size_t i = 0; i < BCC_CONTEXT_SIZE / sizeof(uint32_t); ++i) {
+          sum ^= *ptr++;
         }
+
+        if (sum != 0) {
+          LOGE("Checksum check failed\n");
+          goto bail;
+        }
+
+        LOGI("Passed checksum even parity verification.\n");
+      }
 #endif
 
-        flock(mCacheFd, LOCK_UN);
-        return 0; // loadCacheFile succeed!
-      }
+      flock(mCacheFd, LOCK_UN);
+      return 0; // loadCacheFile succeed!
     }
   }
 
@@ -699,10 +680,8 @@ bail:
     free(mCacheMapAddr);
   }
 
-  if (mCodeDataAddr && mCodeDataAddr != MAP_FAILED) {
-    if (munmap(mCodeDataAddr, BCC_MMAP_IMG_SIZE) != 0) {
-      LOGE("munmap failed: %s\n", strerror(errno));
-    }
+  if (mCodeDataAddr) {
+    deallocateContext(mCodeDataAddr);
   }
 
   mCacheMapAddr = NULL;
@@ -1210,10 +1189,8 @@ Compiler::~Compiler() {
     // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
     // managed by CodeMemoryManager.
 
-    if (mCodeDataAddr != 0 && mCodeDataAddr != MAP_FAILED) {
-      if (munmap(mCodeDataAddr, BCC_MMAP_IMG_SIZE) < 0) {
-        LOGE("munmap failed while releasing mCodeDataAddr\n");
-      }
+    if (mCodeDataAddr) {
+      deallocateContext(mCodeDataAddr);
     }
 
     if (mCacheMapAddr) {
@@ -1393,7 +1370,7 @@ void Compiler::genCacheFile() {
     uint32_t sum = 0;
     uint32_t *ptr = (uint32_t *)mCodeDataAddr;
 
-    for (size_t i = 0; i < BCC_MMAP_IMG_SIZE / sizeof(uint32_t); ++i) {
+    for (size_t i = 0; i < BCC_CONTEXT_SIZE / sizeof(uint32_t); ++i) {
       sum ^= *ptr++;
     }
 

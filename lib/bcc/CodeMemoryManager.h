@@ -103,8 +103,8 @@ namespace bcc {
     uintptr_t mCurFuncMemIdx;
     uintptr_t mCurSGMemIdx;
     uintptr_t mCurGVMemIdx;
-    void *mpCodeMem;
-    void *mpGVMem;
+    char *mpCodeMem;
+    char *mpGVMem;
 
     // GOT Base
     uint8_t *mpGOTBase;

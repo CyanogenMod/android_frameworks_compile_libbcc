@@ -18,15 +18,14 @@
 #include <cutils/log.h>
 
 #include "CodeMemoryManager.h"
+#include "ContextManager.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
-#include <errno.h>
 #include <sys/mman.h>
 
 #include <assert.h>
 #include <stddef.h>
-#include <string.h>
 
 #include <map>
 #include <string>
@@ -36,9 +35,9 @@
 namespace bcc {
 
 
-const unsigned int MaxCodeSize = BCC_MMAP_IMG_CODE_SIZE;
+const unsigned int MaxCodeSize = BCC_CONTEXT_CODE_SIZE;
 const unsigned int MaxGOTSize = 1 * 1024;
-const unsigned int MaxGlobalVarSize = BCC_MMAP_IMG_DATA_SIZE;
+const unsigned int MaxGlobalVarSize = BCC_CONTEXT_DATA_SIZE;
 
 
 CodeMemoryManager::CodeMemoryManager()
@@ -47,72 +46,26 @@ CodeMemoryManager::CodeMemoryManager()
   reset();
   std::string ErrMsg;
 
-  // Try to use fixed address
+  mpCodeMem = allocateContext();
 
-  // Note: If we failed to allocate mpCodeMem at fixed address,
-  // the caching mechanism has to either perform relocation or
-  // give up.  If the caching mechanism gives up, then we have to
-  // recompile the bitcode and wasting a lot of time.
-
-  for (size_t i = 0; i < BCC_MMAP_IMG_COUNT; ++i) {
-    if (Compiler::BccMmapImgAddrTaken[i]) {
-      // The address BCC_MMAP_IMG_BEGIN + i * BCC_MMAP_IMG_SIZE has
-      // been taken.
-      continue;
-    }
-
-    // Occupy the mmap image address first (No matter allocation
-    // success or not.  Keep occupying if succeed; otherwise,
-    // keep occupying as a mark of failure.)
-    Compiler::BccMmapImgAddrTaken[i] = true;
-
-    void *currMmapImgAddr =
-      reinterpret_cast<void *>(BCC_MMAP_IMG_BEGIN + i * BCC_MMAP_IMG_SIZE);
-
-    mpCodeMem = mmap(currMmapImgAddr, BCC_MMAP_IMG_SIZE,
-                     PROT_READ | PROT_EXEC | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANON | MAP_FIXED,
-                     -1, 0);
-
-    if (mpCodeMem == MAP_FAILED) {
-      LOGE("Mmap mpCodeMem at %p failed with reason: %s. Retrying ..\n",
-           currMmapImgAddr, strerror(errno));
-    } else {
-      // Good, we have got one mmap image address.
-      break;
-    }
+  if (!mpCodeMem) {
+    LOGE("Unable to allocate mpCodeMem\n");
+    llvm::report_fatal_error("Failed to allocate memory for emitting "
+                             "codes\n" + ErrMsg);
   }
 
-  if (!mpCodeMem || mpCodeMem == MAP_FAILED) {
-    LOGE("Try to allocate mpCodeMem at arbitary address.\n");
-
-    mpCodeMem = mmap(NULL, BCC_MMAP_IMG_SIZE,
-                     PROT_READ | PROT_EXEC | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANON,
-                     -1, 0);
-
-    if (mpCodeMem == MAP_FAILED) {
-      LOGE("Unable to mmap mpCodeMem with reason: %s.\n", strerror(errno));
-      llvm::report_fatal_error("Failed to allocate memory for emitting "
-                               "codes\n" + ErrMsg);
-    }
-  }
-
-  LOGI("Mmap mpCodeMem at %p successfully.\n", mpCodeMem);
+  LOGI("Allocate mpCodeMem at %p successfully.\n", mpCodeMem);
 
   // Set global variable pool
-  mpGVMem = (void *) ((char *)mpCodeMem + MaxCodeSize);
+  mpGVMem = mpCodeMem + MaxCodeSize;
 
   return;
 }
 
 
 CodeMemoryManager::~CodeMemoryManager() {
-  if (mpCodeMem && mpCodeMem != MAP_FAILED) {
-    munmap(mpCodeMem, BCC_MMAP_IMG_SIZE);
-
-    // TODO(logan): Reset Compiler::BccMmapImgAddrTaken[i] to false, so
-    // that the address can be reused.
+  if (mpCodeMem) {
+    deallocateContext(mpCodeMem);
   }
 
   mpCodeMem = 0;

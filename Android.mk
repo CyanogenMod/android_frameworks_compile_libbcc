@@ -33,9 +33,10 @@ LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
   lib/bcc/bcc.cpp \
-  lib/bcc/Compiler.cpp \
   lib/bcc/CodeEmitter.cpp \
   lib/bcc/CodeMemoryManager.cpp \
+  lib/bcc/Compiler.cpp \
+  lib/bcc/ContextManager.cpp \
   lib/bcc/Runtime.c \
   runtime/lib/arm/adddf3vfp.S \
   runtime/lib/arm/addsf3vfp.S \
@@ -123,9 +124,10 @@ LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
   lib/bcc/bcc.cpp \
-  lib/bcc/Compiler.cpp \
   lib/bcc/CodeEmitter.cpp \
   lib/bcc/CodeMemoryManager.cpp \
+  lib/bcc/Compiler.cpp \
+  lib/bcc/ContextManager.cpp \
   lib/bcc/Runtime.c \
   helper/logd_write.c
 

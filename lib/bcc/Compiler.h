@@ -34,14 +34,6 @@
 #include <utility>
 
 
-#define BCC_MMAP_IMG_BEGIN 0x7e000000
-#define BCC_MMAP_IMG_COUNT 5
-
-#define BCC_MMAP_IMG_CODE_SIZE (128 * 1024)
-#define BCC_MMAP_IMG_DATA_SIZE (128 * 1024)
-#define BCC_MMAP_IMG_SIZE (BCC_MMAP_IMG_CODE_SIZE + BCC_MMAP_IMG_DATA_SIZE)
-
-
 namespace llvm {
   class LLVMContext;
   class Module;
@@ -66,8 +58,6 @@ namespace bcc {
     // is initialized in GlobalInitialization()
     //
     static bool GlobalInitialized;
-
-    static bool BccMmapImgAddrTaken[BCC_MMAP_IMG_COUNT];
 
     // If given, this will be the name of the target triple to compile for.
     // If not given, the initial values defined in this file will be used.
