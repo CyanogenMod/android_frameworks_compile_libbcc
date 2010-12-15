@@ -23,7 +23,7 @@
 
 
 #define BCC_CONTEXT_FIXED_ADDR (reinterpret_cast<char *>(0x7e000000))
-#define BCC_CONTEXT_SLOT_COUNT 8 
+#define BCC_CONTEXT_SLOT_COUNT 8
 
 #define BCC_CONTEXT_CODE_SIZE (128 * 1024)
 #define BCC_CONTEXT_DATA_SIZE (128 * 1024)
