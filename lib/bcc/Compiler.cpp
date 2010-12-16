@@ -104,6 +104,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cutils/properties.h>
+
 #include <string>
 #include <vector>
 
@@ -325,6 +327,13 @@ Compiler::Compiler()
 }
 
 
+static bool getProp(const char *str) {
+    char buf[PROPERTY_VALUE_MAX];
+    property_get(str, buf, "0");
+    return 0 != strcmp(buf, "0");
+}
+
+
 int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
                      const BCCchar *resName,
@@ -358,6 +367,11 @@ int Compiler::readBC(const char *bitcode,
     resName = NULL;  // Force the turn-off of caching
   } else {
     mResId = i;
+  }
+
+  this->props.mNoCache = getProp("debug.bcc.nocache");
+  if (this->props.mNoCache) {
+    resName = NULL;
   }
 
   if (resName) {

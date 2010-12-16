@@ -228,6 +228,12 @@ namespace bcc {
                                     uint32_t libRSWhen,
                                     uint32_t libbccWhen);
 
+
+    struct {
+      bool mNoCache;
+    } props;
+
+
   private:
 
     bool hasError() const {
@@ -242,9 +248,7 @@ namespace bcc {
       mError = Error;
     }
 
-  };
-
-
+  };  // End of class Compiler
 
 } // namespace bcc
 
