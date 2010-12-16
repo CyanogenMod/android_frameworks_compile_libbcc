@@ -58,6 +58,8 @@ namespace bcc {
     // is initialized in GlobalInitialization()
     //
     static bool GlobalInitialized;
+    static const char *resNames[64];
+    static int resNamesMmaped[64];
 
     // If given, this will be the name of the target triple to compile for.
     // If not given, the initial values defined in this file will be used.
@@ -89,6 +91,7 @@ namespace bcc {
   private:
     std::string mError;
 
+    int mResId;             // Set by readBC()
     bool mUseCache;         // Set by readBC()
     bool mCacheNew;         // Set by readBC()
     int mCacheFd;           // Set by readBC()

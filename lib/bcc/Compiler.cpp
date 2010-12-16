@@ -160,6 +160,8 @@ namespace bcc {
 //////////////////////////////////////////////////////////////////////////////
 
 bool Compiler::GlobalInitialized = false;
+const char *Compiler::resNames[64];
+int Compiler::resNamesMmaped[64];
 
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
@@ -302,7 +304,8 @@ CodeEmitter *Compiler::createCodeEmitter() {
 
 
 Compiler::Compiler()
-  : mUseCache(false),
+  : mResId(-1),
+    mUseCache(false),
     mCacheNew(false),
     mCacheFd(-1),
     mCacheMapAddr(NULL),
@@ -327,6 +330,35 @@ int Compiler::readBC(const char *bitcode,
                      const BCCchar *resName,
                      const BCCchar *cacheDir) {
   GlobalInitialization();
+
+  int i = 0;
+  for ( ; i < 64; i++) {
+    if (!Compiler::resNames[i]) {
+      // First encounter of resName
+      //
+      resNames[i] = strdup(resName);
+      resNamesMmaped[i] = 1;
+      break;
+    }
+
+    if (!strcmp(resName, Compiler::resNames[i])) {  // Cache hit
+
+      // Cache hit and some Script instance is still using this cache
+      if (Compiler::resNamesMmaped[i]) {
+        resName = NULL;  // Force the turn-off of caching
+      }
+      Compiler::resNamesMmaped[i]++;
+
+      break;
+    }
+  }
+
+  if (i == 64) {
+    LOGE("resNames[] full");
+    resName = NULL;  // Force the turn-off of caching
+  } else {
+    mResId = i;
+  }
 
   if (resName) {
     // Turn on mUseCache mode iff
@@ -528,8 +560,9 @@ int Compiler::loadCacheFile() {
     if (mCacheHdr->cachedCodeDataAddr % pagesize == 0) {
       char *addr = reinterpret_cast<char *>(mCacheHdr->cachedCodeDataAddr);
 
-      // Try to allocate context at cached address directly.
+      // Try to allocate context (i.e., mmap) at cached address directly.
       mCodeDataAddr = allocateContext(addr, mCacheFd, mCacheHdr->codeOffset);
+      // LOGI("mCodeDataAddr=%x", mCodeDataAddr);
 
       if (!mCodeDataAddr) {
         // Unable to allocate at cached address.  Give up.
@@ -537,7 +570,24 @@ int Compiler::loadCacheFile() {
         goto bail;
       }
 
-#if 1
+      // Above: Already checked some cache-hit conditions:
+      //        mCodeDataAddr && mCodeDataAddr != MAP_FAILED
+      // Next: Check cache-hit conditions when USE_RELOCATE == false:
+      //       mCodeDataAddr == addr
+      //       (When USE_RELOCATE == true, we still don't need to relocate
+      //        if mCodeDataAddr == addr. But if mCodeDataAddr != addr,
+      //        that means "addr" is taken by previous mmap and we need
+      //        to relocate the cache file content to mcodeDataAddr.)
+
+#if !USE_RELOCATE
+      if (mCodeDataAddr != addr) {
+        flock(mCacheFd, LOCK_UN);
+        goto bail;
+      }
+#else     // USE_RELOCATE == true
+
+#endif    // End of #if #else !USE_RELOCATE
+
       // Check the checksum of code and data
       {
         uint32_t sum = mCacheHdr->checksum;
@@ -554,28 +604,30 @@ int Compiler::loadCacheFile() {
 
         LOGI("Passed checksum even parity verification.\n");
       }
-#endif
 
       flock(mCacheFd, LOCK_UN);
       return 0; // loadCacheFile succeed!
-    }
-  }
+    }  // End of "if(mCacheHdr->cachedCodeDataAddr % pagesize == 0)"
+  }  // End of Part 2. Deal with the codedata section
+
+// Execution will reach here only if (mCacheHdr->cachedCodeDataAddr % pagesize != 0)
 
 #if !USE_RELOCATE
-  // Note: Since this build does not support relocation, we have no
-  // choose but give up to load the cached file, and recompile the
-  // code.
+  // Note: If Android.mk set USE_RELOCATE to false, we are not allowed to
+  // relocate to the new mCodeDataAddr. That is, we got no
+  // choice but give up this cache-hit case: go ahead and recompile the code
 
   flock(mCacheFd, LOCK_UN);
   goto bail;
+
 #else
 
   // Note: Currently, relocation code is not working.  Give up now.
   flock(mCacheFd, LOCK_UN);
   goto bail;
 
-  // TODO(logan): Following code is not working.  Don't use them.
-  // And rewrite them asap.
+  // The following code is not working. Don't use them.
+  // Rewrite them asap.
 #if 0
   {
     // Try to allocate at arbitary address.  And perform relocation.
@@ -672,8 +724,9 @@ int Compiler::loadCacheFile() {
 
     return 0; // Success!
   }
-#endif
-#endif
+#endif  // End of #if 0
+
+#endif  // End of #if #else USE_RELOCATE
 
 bail:
   if (mCacheMapAddr) {
@@ -999,6 +1052,7 @@ on_bcc_compile_error:
   if (mError.empty()) {
     if (mUseCache && mCacheFd >= 0 && mCacheNew) {
       genCacheFile();
+      // LOGI("DONE generating cache file");
       flock(mCacheFd, LOCK_UN);
     }
 
@@ -1185,6 +1239,10 @@ void Compiler::getFunctionBinary(BCCchar *function,
 
 
 Compiler::~Compiler() {
+  if (mResId >= 0) {
+    Compiler::resNamesMmaped[mResId]--;
+  }
+
   if (!mCodeMemMgr.get()) {
     // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
     // managed by CodeMemoryManager.

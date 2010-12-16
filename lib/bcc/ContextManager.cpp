@@ -101,14 +101,16 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
     // Invalid Slot Address (Not aligned or overflow)
     return NULL;
   }
-
+  // LOGI("BEFORE slot[%d] checking", slot);
   if (ContextSlotTaken[slot]) {
     // Slot has been taken.
     return NULL;
   }
+  // LOGI("AFTER slot checking");
 
   ContextSlotTaken[slot] = true;
 
+  // LOGI("addr=%x, imageFd=%d, imageOffset=%x", addr, imageFd, imageOffset);
   void *result = mmap(addr, BCC_CONTEXT_SIZE,
                       PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE, imageFd, imageOffset);
