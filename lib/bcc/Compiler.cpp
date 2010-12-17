@@ -369,7 +369,7 @@ int Compiler::readBC(const char *bitcode,
     mResId = i;
   }
 
-  this->props.mNoCache = getProp("debug.bcc.nocache");
+  this->props.mNoCache = !getProp("debug.bcc.cache");
   if (this->props.mNoCache) {
     resName = NULL;
   }
