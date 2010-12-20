@@ -1894,7 +1894,7 @@ bool Compiler::checkHeaderAndDependencies(int fd,
     return false;
   }
 
-  // Check the cache file has __isThreadable or not.  If it is present,
+  // Check the cache file has __isThreadable or not.  If it is set,
   // then we have to call mpSymbolLookupFn for __clearThreadable.
   if (optHdr.libRSThreadable && mpSymbolLookupFn) {
     mpSymbolLookupFn(mpSymbolLookupContext, "__clearThreadable");
