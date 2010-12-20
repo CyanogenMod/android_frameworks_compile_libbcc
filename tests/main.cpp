@@ -23,9 +23,11 @@
 #include <string.h>
 #include <getopt.h>
 
-#if defined(__arm__)
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <unistd.h>
-#endif
 
 #if defined(__arm__)
 #define PROVIDE_ARM_DISASSEMBLY
@@ -161,24 +163,29 @@ static int parseOption(int argc, char** argv)
 }
 
 static BCCscript* loadScript() {
-  FILE* in = stdin;
-
   if (!inFile) {
     fprintf(stderr, "input file required\n");
     return NULL;
   }
 
-  if (inFile) {
-    in = fopen(inFile, "r");
-    if (!in) {
-      fprintf(stderr, "Could not open input file %s\n", inFile);
-      return NULL;
-    }
+  struct stat statInFile;
+  if (stat(inFile, &statInFile) < 0) {
+    fprintf(stderr, "Unable to stat input file: %s\n", strerror(errno));
+    return NULL;
   }
 
-  fseek(in, 0, SEEK_END);
-  size_t codeSize = (size_t) ftell(in);
-  rewind(in);
+  if (!S_ISREG(statInFile.st_mode)) {
+    fprintf(stderr, "Input file should be a regular file.\n");
+    return NULL;
+  }
+
+  FILE *in = fopen(inFile, "r");
+  if (!in) {
+    fprintf(stderr, "Could not open input file %s\n", inFile);
+    return NULL;
+  }
+
+  size_t codeSize = (size_t)statInFile.st_size;
   BCCchar* bitcode = new BCCchar[codeSize + 1];
   size_t bytesRead = fread(bitcode, 1, codeSize, in);
   if (bytesRead != codeSize)
@@ -187,7 +194,8 @@ static BCCscript* loadScript() {
   BCCscript* script = bccCreateScript();
 
   bitcode[codeSize] = '\0'; /* must be null-terminated */
-  if (bccReadBC(script, bitcode, codeSize, "file", "/tmp") < 0) {
+  if (bccReadBC(script, bitcode, codeSize,
+                statInFile.st_mtime, 0, "file", "/tmp") < 0) {
     bccLoadBinary(script);
   }
   delete [] bitcode;

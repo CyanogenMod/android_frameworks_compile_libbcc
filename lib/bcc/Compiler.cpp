@@ -310,6 +310,8 @@ Compiler::Compiler()
     mUseCache(false),
     mCacheNew(false),
     mCacheFd(-1),
+    mSourceModTime(0),
+    mSourceCRC32(0),
     mCacheMapAddr(NULL),
     mCacheHdr(NULL),
     mCacheSize(0),
@@ -336,6 +338,8 @@ static bool getProp(const char *str) {
 
 int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
+                     long bitcodeFileModTime,
+                     long bitcodeFileCRC32,
                      const BCCchar *resName,
                      const BCCchar *cacheDir) {
   GlobalInitialization();
@@ -373,6 +377,11 @@ int Compiler::readBC(const char *bitcode,
   if (this->props.mNoCache) {
     resName = NULL;
   }
+
+  // Assign bitcodeFileModTime to mSourceModTime, and bitcodeFileCRC32 to
+  // mSourceCRC32, so that the checkHeaderAndDependencies can use them.
+  mSourceModTime = bitcodeFileModTime;
+  mSourceCRC32 = bitcodeFileCRC32;
 
   if (resName) {
     // Turn on mUseCache mode iff
@@ -1364,20 +1373,27 @@ void Compiler::genCacheFile() {
   memcpy(hdr->magicVersion, OBCC_MAGIC_VERS, 4);
 
   // Timestamp
-  // TODO(sliao): Should be .bc's ModifyTime. Now just use it to store
-  //              threadable
-  hdr->sourceWhen = (uint32_t) mCodeEmitter->mpSymbolLookupFn(
-      mpSymbolLookupContext,
-      "__isThreadable");
-
+  hdr->sourceWhen = mSourceModTime;
   hdr->rslibWhen = 0; // TODO(sliao)
   hdr->libRSWhen = statModifyTime(libRSPath);
   hdr->libbccWhen = statModifyTime(libBccPath);
+
+  // Source Bitcode File CRC32
+  hdr->sourceCRC32 = mSourceCRC32;
 
   // Current Memory Address (Saved for Recalculation)
   hdr->cachedCodeDataAddr = reinterpret_cast<uint32_t>(mCodeDataAddr);
   hdr->rootAddr = reinterpret_cast<uint32_t>(lookup("root"));
   hdr->initAddr = reinterpret_cast<uint32_t>(lookup("init"));
+
+  // Check libRS isThreadable
+  if (!mCodeEmitter) {
+    hdr->libRSThreadable = 0;
+  } else {
+    hdr->libRSThreadable =
+      (uint32_t) mCodeEmitter->mpSymbolLookupFn(mpSymbolLookupContext,
+                                                "__isThreadable");
+  }
 
   // Relocation Table Offset and Entry Count
   hdr->relocOffset = sizeof(oBCCHeader);
@@ -1671,7 +1687,7 @@ retry:
   } else {
     // Calculate sourceWhen
     // XXX
-    uint32_t sourceWhen = 0;
+    long sourceWhen = mSourceModTime;
     uint32_t rslibWhen = 0;
     uint32_t libRSWhen = statModifyTime(libRSPath);
     uint32_t libbccWhen = statModifyTime(libBccPath);
@@ -1800,101 +1816,91 @@ char *Compiler::genCacheFileName(const char *cacheDir,
  * oBCC header.
  */
 bool Compiler::checkHeaderAndDependencies(int fd,
-                                          uint32_t sourceWhen,
+                                          long sourceWhen,
                                           uint32_t rslibWhen,
                                           uint32_t libRSWhen,
                                           uint32_t libbccWhen) {
-  ssize_t actual;
   oBCCHeader optHdr;
-  uint32_t val;
-  uint8_t const *magic, *magicVer;
 
-  /*
-   * Start at the start.  The "bcc" header, when present, will always be
-   * the first thing in the file.
-   */
+  // The header is guaranteed to be at the start of the cached file.
+  // Seek to the start position.
   if (lseek(fd, 0, SEEK_SET) != 0) {
     LOGE("bcc: failed to seek to start of file: %s\n", strerror(errno));
-    goto bail;
+    return false;
   }
 
-  /*
-   * Read and do trivial verification on the bcc header.  The header is
-   * always in host byte order.
-   */
-  actual = read(fd, &optHdr, sizeof(optHdr));
-  if (actual < 0) {
+  // Read and do trivial verification on the bcc header.  The header is
+  // always in host byte order.
+  ssize_t nread = read(fd, &optHdr, sizeof(optHdr));
+  if (nread < 0) {
     LOGE("bcc: failed reading bcc header: %s\n", strerror(errno));
-    goto bail;
-  } else if (actual != sizeof(optHdr)) {
+    return false;
+  } else if (nread != sizeof(optHdr)) {
     LOGE("bcc: failed reading bcc header (got %d of %zd)\n",
-         (int) actual, sizeof(optHdr));
-    goto bail;
+         (int) nread, sizeof(optHdr));
+    return false;
   }
 
-  magic = optHdr.magic;
+  uint8_t const *magic = optHdr.magic;
   if (memcmp(magic, OBCC_MAGIC, 4) != 0) {
     /* not an oBCC file, or previous attempt was interrupted */
     LOGD("bcc: incorrect opt magic number (0x%02x %02x %02x %02x)\n",
          magic[0], magic[1], magic[2], magic[3]);
-    goto bail;
+    return false;
   }
 
-  magicVer = optHdr.magicVersion;
+  uint8_t const *magicVer = optHdr.magicVersion;
   if (memcmp(magicVer, OBCC_MAGIC_VERS, 4) != 0) {
     LOGW("bcc: stale oBCC version (0x%02x %02x %02x %02x)\n",
          magicVer[0], magicVer[1], magicVer[2], magicVer[3]);
-    goto bail;
+    return false;
   }
 
-  /*
-   * Do the header flags match up with what we want?
-   *
-   * This is useful because it allows us to automatically regenerate
-   * a file when settings change (e.g. verification is now mandatory),
-   * but can cause difficulties if the thing we depend upon
-   * were handled differently than the current options specify.
-   *
-   * So, for now, we essentially ignore "expectVerify" and "expectOpt"
-   * by limiting the match mask.
-   *
-   * The only thing we really can't handle is incorrect byte-ordering.
-   */
+  // Check the file dependencies
 
-  val = optHdr.sourceWhen;
-  // TODO(sliao): Shouldn't overload sourceWhen in the future.
-  if (!val) {
-    mpSymbolLookupFn(mpSymbolLookupContext, "__clearThreadable");
+  if (optHdr.sourceWhen && (optHdr.sourceWhen != sourceWhen)) {
+    LOGI("bcc: source file mod time mismatch (%08lx vs %08lx)\n",
+         (unsigned long)optHdr.sourceWhen, (unsigned long)sourceWhen);
+    return false;
   }
-  //  if (val && (val != sourceWhen)) {
-  //    LOGI("bcc: source file mod time mismatch (%08x vs %08x)\n",
-  //         val, sourceWhen);
-  //    goto bail;
-  //  }
+
+  uint32_t val;
 
   val = optHdr.rslibWhen;
   if (val && (val != rslibWhen)) {
     LOGI("bcc: rslib file mod time mismatch (%08x vs %08x)\n",
          val, rslibWhen);
-    goto bail;
+    return false;
   }
+
   val = optHdr.libRSWhen;
   if (val && (val != libRSWhen)) {
     LOGI("bcc: libRS file mod time mismatch (%08x vs %08x)\n",
          val, libRSWhen);
-    goto bail;
+    return false;
   }
+
   val = optHdr.libbccWhen;
   if (val && (val != libbccWhen)) {
     LOGI("bcc: libbcc file mod time mismatch (%08x vs %08x)\n",
          val, libbccWhen);
-    goto bail;
+    return false;
+  }
+
+  // Check the CRC32 of the file
+  if (optHdr.sourceCRC32 && optHdr.sourceCRC32 != mSourceCRC32) {
+    LOGI("bcc: libbcc bitcode file crc32 mismatch (%08lx vs %08lx)\n",
+         optHdr.sourceCRC32, mSourceCRC32);
+    return false;
+  }
+
+  // Check the cache file has __isThreadable or not.  If it is present,
+  // then we have to call mpSymbolLookupFn for __clearThreadable.
+  if (optHdr.libRSThreadable && mpSymbolLookupFn) {
+    mpSymbolLookupFn(mpSymbolLookupContext, "__clearThreadable");
   }
 
   return true;
-
-bail:
-  return false;
 }
 
 }  // namespace bcc

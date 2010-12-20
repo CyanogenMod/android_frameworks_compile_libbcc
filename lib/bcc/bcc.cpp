@@ -57,10 +57,14 @@ extern "C" int bccReadModule(BCCscript *script, BCCvoid *module) {
 
 extern "C" int bccReadBC(BCCscript *script,
                          const BCCchar *bitcode,
-                         BCCint size,
+                         BCCint bitcodeSize,
+                         long bitcodeFileModTime,
+                         long bitcodeFileCRC32,
                          const BCCchar *resName,
                          const BCCchar *cacheDir) {
-  return script->compiler.readBC(bitcode, size, resName, cacheDir);
+  return script->compiler.readBC(bitcode, bitcodeSize,
+                                 bitcodeFileModTime, bitcodeFileCRC32,
+                                 resName, cacheDir);
 }
 
 extern "C" void bccLinkBC(BCCscript *script,
