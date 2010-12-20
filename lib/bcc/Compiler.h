@@ -95,6 +95,8 @@ namespace bcc {
     bool mUseCache;         // Set by readBC()
     bool mCacheNew;         // Set by readBC()
     int mCacheFd;           // Set by readBC()
+    long mSourceModTime;    // Set by readBC()
+    long mSourceCRC32;      // Set by readBC();
     char *mCacheMapAddr;    // Set by loadCacheFile() if mCacheNew is false
     oBCCHeader *mCacheHdr;  // Set by loadCacheFile()
     size_t mCacheSize;      // Set by loadCacheFile()
@@ -143,6 +145,8 @@ namespace bcc {
 
     int readBC(const char *bitcode,
                size_t bitcodeSize,
+               long bitcodeFileModTime,
+               long bitcodeFileCRC32,
                const BCCchar *resName,
                const BCCchar *cacheDir);
 
@@ -223,7 +227,7 @@ namespace bcc {
      * oBCC header.
      */
     bool checkHeaderAndDependencies(int fd,
-                                    uint32_t sourceWhen,
+                                    long sourceWhen,
                                     uint32_t rslibWhen,
                                     uint32_t libRSWhen,
                                     uint32_t libbccWhen);

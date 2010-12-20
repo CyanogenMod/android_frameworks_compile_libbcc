@@ -29,7 +29,9 @@ struct oBCCHeader {
   uint8_t magic[4];             /* includes version number */
   uint8_t magicVersion[4];
 
-  uint32_t sourceWhen;
+  long sourceWhen;
+  long sourceCRC32;
+
   uint32_t rslibWhen;
   uint32_t libRSWhen;
   uint32_t libbccWhen;
@@ -37,6 +39,9 @@ struct oBCCHeader {
   uint32_t cachedCodeDataAddr;
   uint32_t rootAddr;
   uint32_t initAddr;
+
+  uint32_t libRSThreadable;     /* TODO: This is an hack. Should be fixed
+                                   in the long term. */
 
   uint32_t relocOffset;         /* offset of reloc table. */
   uint32_t relocCount;

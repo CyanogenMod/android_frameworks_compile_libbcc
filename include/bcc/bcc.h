@@ -74,7 +74,9 @@ BCCenum bccGetError( BCCscript *script );
 
 int bccReadBC(BCCscript *script,
               const BCCchar *bitcode,
-              BCCint size,
+              BCCint bitcodeSize,
+              long bitcodeFileModTime,
+              long bitcodeFileCRC32,
               const BCCchar *resName,
               const BCCchar *cacheDir);
 
