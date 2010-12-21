@@ -1928,7 +1928,7 @@ bool Compiler::checkHeaderAndDependencies(int fd,
 
 #undef PRINT_SHA1SUM
 
-    goto bail;
+    return false;
   }
 
   // Check the cache file has __isThreadable or not.  If it is set,
