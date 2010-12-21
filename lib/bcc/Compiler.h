@@ -104,6 +104,8 @@ namespace bcc {
     char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                             // Used by genCacheFile() for dumping
 
+    unsigned char mSourceSHA1[20];  // Set by readBC()
+
     PragmaList mPragmas;
 
     ExportVarList mExportVars;
@@ -198,6 +200,8 @@ namespace bcc {
     ~Compiler();
 
   private:
+    void computeSourceSHA1(char const *bitcode, size_t size);
+
     // Note: loadCacheFile() and genCacheFile() go hand in hand
     void genCacheFile();
 

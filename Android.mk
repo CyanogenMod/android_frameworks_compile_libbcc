@@ -38,6 +38,7 @@ LOCAL_SRC_FILES := \
   lib/bcc/Compiler.cpp \
   lib/bcc/ContextManager.cpp \
   lib/bcc/Runtime.c \
+  helper/sha1.c \
   runtime/lib/arm/adddf3vfp.S \
   runtime/lib/arm/addsf3vfp.S \
   runtime/lib/arm/divdf3vfp.S \
@@ -97,6 +98,7 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
 LOCAL_C_INCLUDES := \
+  $(LOCAL_PATH)/helper \
   $(LOCAL_PATH)/include \
   $(LOCAL_PATH)
 
@@ -129,7 +131,8 @@ LOCAL_SRC_FILES := \
   lib/bcc/Compiler.cpp \
   lib/bcc/ContextManager.cpp \
   lib/bcc/Runtime.c \
-  helper/logd_write.c
+  helper/logd_write.c \
+  helper/sha1.c
 
 LOCAL_STATIC_LIBRARIES := \
   libcutils \
@@ -159,6 +162,7 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_LDLIBS := -ldl -lpthread
 
 LOCAL_C_INCLUDES := \
+  $(LOCAL_PATH)/helper \
   $(LOCAL_PATH)/include \
   $(LOCAL_PATH)
 

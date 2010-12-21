@@ -106,6 +106,8 @@
 
 #include <cutils/properties.h>
 
+#include <sha1.h>
+
 #include <string>
 #include <vector>
 
@@ -382,6 +384,10 @@ int Compiler::readBC(const char *bitcode,
   // mSourceCRC32, so that the checkHeaderAndDependencies can use them.
   mSourceModTime = bitcodeFileModTime;
   mSourceCRC32 = bitcodeFileCRC32;
+
+  // Compute the SHA1 hash of the input bitcode.  So that we can use the hash
+  // to decide rather to update the cache or not.
+  computeSourceSHA1(bitcode, bitcodeSize);
 
   if (resName) {
     // Turn on mUseCache mode iff
@@ -1289,6 +1295,18 @@ Compiler::~Compiler() {
 }
 
 
+void Compiler::computeSourceSHA1(char const *bitcode, size_t bitcodeSize) {
+  SHA1_CTX hashContext;
+
+  SHA1Init(&hashContext);
+  SHA1Update(&hashContext,
+             reinterpret_cast<const unsigned char *>(bitcode),
+             static_cast<unsigned long>(bitcodeSize));
+  SHA1Final(mSourceSHA1, &hashContext);
+
+}
+
+
 // Design of caching EXE:
 // ======================
 // 1. Each process will have virtual address available starting at 0x7e00000.
@@ -1380,6 +1398,9 @@ void Compiler::genCacheFile() {
 
   // Source Bitcode File CRC32
   hdr->sourceCRC32 = mSourceCRC32;
+
+  // Copy the hash checksum
+  memcpy(hdr->sourceSHA1, mSourceSHA1, 20);
 
   // Current Memory Address (Saved for Recalculation)
   hdr->cachedCodeDataAddr = reinterpret_cast<uint32_t>(mCodeDataAddr);
@@ -1857,7 +1878,6 @@ bool Compiler::checkHeaderAndDependencies(int fd,
   }
 
   // Check the file dependencies
-
   if (optHdr.sourceWhen && (optHdr.sourceWhen != sourceWhen)) {
     LOGI("bcc: source file mod time mismatch (%08lx vs %08lx)\n",
          (unsigned long)optHdr.sourceWhen, (unsigned long)sourceWhen);
@@ -1892,6 +1912,23 @@ bool Compiler::checkHeaderAndDependencies(int fd,
     LOGI("bcc: libbcc bitcode file crc32 mismatch (%08lx vs %08lx)\n",
          optHdr.sourceCRC32, mSourceCRC32);
     return false;
+  }
+
+  if (memcmp(optHdr.sourceSHA1, mSourceSHA1, 20) != 0) {
+    LOGE("Bitcode SHA1 mismatch. Cache is outdated.\n");
+
+#define PRINT_SHA1SUM(PREFIX, POSTFIX, D) \
+    LOGE(PREFIX "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" \
+                "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" POSTFIX, \
+         D[0], D[1], D[2], D[3], D[4], D[5], D[6], D[7], D[8], D[9], \
+         D[10], D[11], D[12], D[13], D[14], D[15], D[16], D[17], D[18], D[19]);
+
+    PRINT_SHA1SUM("Note: Bitcode sha1sum: ", "\n", mSourceSHA1);
+    PRINT_SHA1SUM("Note: Cached sha1sum:  ", "\n", optHdr.sourceSHA1);
+
+#undef PRINT_SHA1SUM
+
+    goto bail;
   }
 
   // Check the cache file has __isThreadable or not.  If it is set,

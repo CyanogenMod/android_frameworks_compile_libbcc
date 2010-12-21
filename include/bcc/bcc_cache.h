@@ -36,6 +36,8 @@ struct oBCCHeader {
   uint32_t libRSWhen;
   uint32_t libbccWhen;
 
+  unsigned char sourceSHA1[20];
+
   uint32_t cachedCodeDataAddr;
   uint32_t rootAddr;
   uint32_t initAddr;
