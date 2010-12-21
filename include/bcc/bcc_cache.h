@@ -22,7 +22,7 @@
 #define OBCC_MAGIC       "bcc\n"
 
 /* BCC Cache File Version, encoded in 4 bytes of ASCII */
-#define OBCC_MAGIC_VERS  "001\0"
+#define OBCC_MAGIC_VERS  "002\0"
 
 /* BCC Cache Header Structure */
 struct oBCCHeader {
