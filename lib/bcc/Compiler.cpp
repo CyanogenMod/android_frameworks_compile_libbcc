@@ -360,7 +360,7 @@ int Compiler::readBC(const char *bitcode,
 
       // Cache hit and some Script instance is still using this cache
       if (Compiler::resNamesMmaped[i]) {
-        resName = NULL;  // Force the turn-off of caching
+        resName = NULL;  // Force the turn-off of caching for this resName
       }
       Compiler::resNamesMmaped[i]++;
 
@@ -1881,7 +1881,7 @@ bool Compiler::checkHeaderAndDependencies(int fd,
   if (optHdr.sourceWhen && (optHdr.sourceWhen != sourceWhen)) {
     LOGI("bcc: source file mod time mismatch (%08lx vs %08lx)\n",
          (unsigned long)optHdr.sourceWhen, (unsigned long)sourceWhen);
-    return false;
+    //return false;
   }
 
   uint32_t val;
