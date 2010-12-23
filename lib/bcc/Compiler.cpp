@@ -337,7 +337,13 @@ static bool getProp(const char *str) {
     return 0 != strcmp(buf, "0");
 }
 
-
+// Compiler::readBC
+// Parameters:
+//   resName: NULL means don't use cache.
+//   Note: If "cache-hit but bccLoadBinary fails for some reason", still
+//         pass in the resName.
+//         Rationale: So we may have future cache-hit.
+//
 int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
                      long bitcodeFileModTime,
@@ -346,33 +352,35 @@ int Compiler::readBC(const char *bitcode,
                      const BCCchar *cacheDir) {
   GlobalInitialization();
 
-  int i = 0;
-  for ( ; i < 64; i++) {
-    if (!Compiler::resNames[i]) {
-      // First encounter of resName
-      //
-      resNames[i] = strdup(resName);
-      resNamesMmaped[i] = 1;
-      break;
-    }
-
-    if (!strcmp(resName, Compiler::resNames[i])) {  // Cache hit
-
-      // Cache hit and some Script instance is still using this cache
-      if (Compiler::resNamesMmaped[i]) {
-        resName = NULL;  // Force the turn-off of caching for this resName
+  if (resName) {
+    int i = 0;
+    for ( ; i < 64; i++) {
+      if (!Compiler::resNames[i]) {
+        // First encounter of resName
+        //
+        resNames[i] = strdup(resName);
+        resNamesMmaped[i] = 1;
+        break;
       }
-      Compiler::resNamesMmaped[i]++;
 
-      break;
+      if (!strcmp(resName, Compiler::resNames[i])) {  // Cache hit
+
+        // Cache hit and some Script instance is still using this cache
+        if (Compiler::resNamesMmaped[i]) {
+          resName = NULL;  // Force the turn-off of caching for this resName
+        }
+        Compiler::resNamesMmaped[i]++;
+
+        break;
+      }
     }
-  }
 
-  if (i == 64) {
-    LOGE("resNames[] full");
-    resName = NULL;  // Force the turn-off of caching
-  } else {
-    mResId = i;
+    if (i == 64) {
+      LOGE("resNames[] full");
+      resName = NULL;  // Force the turn-off of caching
+    } else {
+      mResId = i;
+    }
   }
 
   this->props.mNoCache = getProp("debug.bcc.nocache");
@@ -380,9 +388,7 @@ int Compiler::readBC(const char *bitcode,
     resName = NULL;
   }
 
-  // LOGE("mNoCache=%d, resName=%s", this->props.mNoCache, resName); sliao
-
-  // Assign bitcodeFileModTime to mSourceModTime, and bitcodeFileCRC32 to
+   // Assign bitcodeFileModTime to mSourceModTime, and bitcodeFileCRC32 to
   // mSourceCRC32, so that the checkHeaderAndDependencies can use them.
   mSourceModTime = bitcodeFileModTime;
   mSourceCRC32 = bitcodeFileCRC32;
@@ -501,7 +507,7 @@ int Compiler::loadCacheFile() {
     // Read cached file and perform quick integrity check
 
     off_t heuristicCodeOffset = mCacheSize - MaxCodeSize - MaxGlobalVarSize;
-    LOGW("TODO(sliao)@loadCacheFile: mCacheSize=%x, heuristicCodeOffset=%llx",
+    LOGW("@loadCacheFile: mCacheSize=%x, heuristicCodeOffset=%llx",
          (unsigned int)mCacheSize,
          (unsigned long long int)heuristicCodeOffset);
 
@@ -525,7 +531,7 @@ int Compiler::loadCacheFile() {
       LOGE("assertion failed: heuristic code offset is not correct.\n");
       goto bail;
     }
-    LOGW("TODO(sliao): mCacheHdr->cachedCodeDataAddr=%x", mCacheHdr->cachedCodeDataAddr);
+    LOGW("mCacheHdr->cachedCodeDataAddr=%x", mCacheHdr->cachedCodeDataAddr);
     LOGW("mCacheHdr->rootAddr=%x", mCacheHdr->rootAddr);
     LOGW("mCacheHdr->initAddr=%x", mCacheHdr->initAddr);
     LOGW("mCacheHdr->codeOffset=%x", mCacheHdr->codeOffset);
