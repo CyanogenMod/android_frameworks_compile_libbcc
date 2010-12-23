@@ -360,8 +360,7 @@ int Compiler::readBC(const char *bitcode,
 
       // Cache hit and some Script instance is still using this cache
       if (Compiler::resNamesMmaped[i]) {
-        LOGE("Cache hit and some Script instance is still using this cache. Assuming only one instance.");
-        // resName = NULL;  // Force the turn-off of caching for this resName
+        resName = NULL;  // Force the turn-off of caching for this resName
       }
       Compiler::resNamesMmaped[i]++;
 
