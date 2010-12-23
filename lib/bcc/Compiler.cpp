@@ -360,7 +360,8 @@ int Compiler::readBC(const char *bitcode,
 
       // Cache hit and some Script instance is still using this cache
       if (Compiler::resNamesMmaped[i]) {
-        resName = NULL;  // Force the turn-off of caching for this resName
+        LOGE("Cache hit and some Script instance is still using this cache. Assuming only one instance.");
+        // resName = NULL;  // Force the turn-off of caching for this resName
       }
       Compiler::resNamesMmaped[i]++;
 
@@ -379,6 +380,8 @@ int Compiler::readBC(const char *bitcode,
   if (this->props.mNoCache) {
     resName = NULL;
   }
+
+  // LOGE("mNoCache=%d, resName=%s", this->props.mNoCache, resName); sliao
 
   // Assign bitcodeFileModTime to mSourceModTime, and bitcodeFileCRC32 to
   // mSourceCRC32, so that the checkHeaderAndDependencies can use them.
@@ -1081,7 +1084,7 @@ on_bcc_compile_error:
   if (mError.empty()) {
     if (mUseCache && mCacheFd >= 0 && mCacheNew) {
       genCacheFile();
-      // LOGI("DONE generating cache file");
+      //LOGI("DONE generating cache file");  //sliao
       flock(mCacheFd, LOCK_UN);
     }
 
@@ -1275,7 +1278,7 @@ Compiler::~Compiler() {
   if (!mCodeMemMgr.get()) {
     // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
     // managed by CodeMemoryManager.
-
+    //LOGE("~Compiler(): mCodeDataAddr = %x", mCodeDataAddr); sliao
     if (mCodeDataAddr) {
       deallocateContext(mCodeDataAddr);
     }

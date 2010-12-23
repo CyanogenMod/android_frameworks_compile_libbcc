@@ -42,6 +42,7 @@ extern "C" BCCenum bccGetError(BCCscript *script) {
 }
 
 extern "C" void bccDeleteScript(BCCscript *script) {
+  //LOGE("Script deleted"); sliao
   delete script;
 }
 
