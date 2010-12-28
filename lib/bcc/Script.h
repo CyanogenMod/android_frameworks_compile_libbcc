@@ -24,6 +24,9 @@
 namespace bcc {
 
   class Script {
+  private:
+    BCCenum mErrorCode;
+
   public:
     //////////////////////////////////////////////////////////////////////////
     // Part I. Compiler
@@ -38,25 +41,23 @@ namespace bcc {
     // Part II. Logistics & Error handling
     //////////////////////////////////////////////////////////////////////////
     Script() {
-      bccError = BCC_NO_ERROR;
+      mErrorCode = BCC_NO_ERROR;
     }
 
     ~Script() {
     }
 
     void setError(BCCenum error) {
-      if (bccError == BCC_NO_ERROR && error != BCC_NO_ERROR) {
-        bccError = error;
+      if (mErrorCode == BCC_NO_ERROR && error != BCC_NO_ERROR) {
+        mErrorCode = error;
       }
     }
 
     BCCenum getError() {
-      BCCenum result = bccError;
-      bccError = BCC_NO_ERROR;
+      BCCenum result = mErrorCode;
+      mErrorCode = BCC_NO_ERROR;
       return result;
     }
-
-    BCCenum bccError;
   };
 
 } // namespace bcc
