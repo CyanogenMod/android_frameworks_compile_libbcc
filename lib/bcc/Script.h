@@ -23,7 +23,7 @@
 
 namespace bcc {
 
-  class BCCscript {
+  class Script {
   public:
     //////////////////////////////////////////////////////////////////////////
     // Part I. Compiler
@@ -37,11 +37,11 @@ namespace bcc {
     //////////////////////////////////////////////////////////////////////////
     // Part II. Logistics & Error handling
     //////////////////////////////////////////////////////////////////////////
-    BCCscript() {
+    Script() {
       bccError = BCC_NO_ERROR;
     }
 
-    ~BCCscript() {
+    ~Script() {
     }
 
     void setError(BCCenum error) {

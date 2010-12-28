@@ -30,17 +30,14 @@ typedef void                        BCCvoid;
 #if !defined(__cplusplus)
 
 typedef struct BCCscript            BCCscript;
-typedef struct BCCtype              BCCtype;
 
 #else
 
 namespace bcc {
-  class BCCscript;
-  class BCCtype;
+  class Script;
 }
 
-typedef bcc::BCCscript              BCCscript;
-typedef bcc::BCCtype                BCCtype;
+typedef bcc::Script                 BCCscript;
 
 #endif
 
