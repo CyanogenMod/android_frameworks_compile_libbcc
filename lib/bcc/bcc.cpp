@@ -103,7 +103,7 @@ extern "C" void bccGetScriptInfoLog(BCCscript *script,
                                     BCCsizei maxLength,
                                     BCCsizei *length,
                                     BCCchar *infoLog) {
-  char *message = script->compiler.getErrorMessage();
+  char const *message = script->compiler.getErrorMessage();
   int messageLength = strlen(message) + 1;
   if (length)
     *length = messageLength;
