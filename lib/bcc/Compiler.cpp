@@ -197,6 +197,8 @@ void Compiler::GlobalInitialization() {
   if (GlobalInitialized)
     return;
 
+  LOGI("LIBBCC BUILD: %s %s\n", __DATE__, __TIME__);
+
   // if (!llvm::llvm_is_multithreaded())
   //   llvm::llvm_start_multithreaded();
 
