@@ -25,6 +25,16 @@ USE_RELOCATE := false
 USE_DISASSEMBLER := true
 LLVM_ENABLE_ASSERTION := false
 
+libbcc_SRC_FILES := \
+  lib/bcc/bcc.cpp \
+  lib/bcc/CodeEmitter.cpp \
+  lib/bcc/CodeMemoryManager.cpp \
+  lib/bcc/Compiler.cpp \
+  lib/bcc/ContextManager.cpp \
+  lib/bcc/Runtime.c \
+  lib/bcc/Script.cpp \
+  helper/sha1.c
+
 # Shared library for target
 # ========================================================
 include $(CLEAR_VARS)
@@ -32,13 +42,7 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
-  lib/bcc/bcc.cpp \
-  lib/bcc/CodeEmitter.cpp \
-  lib/bcc/CodeMemoryManager.cpp \
-  lib/bcc/Compiler.cpp \
-  lib/bcc/ContextManager.cpp \
-  lib/bcc/Runtime.c \
-  helper/sha1.c \
+  $(libbcc_SRC_FILES) \
   runtime/lib/arm/adddf3vfp.S \
   runtime/lib/arm/addsf3vfp.S \
   runtime/lib/arm/divdf3vfp.S \
@@ -125,14 +129,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
-  lib/bcc/bcc.cpp \
-  lib/bcc/CodeEmitter.cpp \
-  lib/bcc/CodeMemoryManager.cpp \
-  lib/bcc/Compiler.cpp \
-  lib/bcc/ContextManager.cpp \
-  lib/bcc/Runtime.c \
-  helper/logd_write.c \
-  helper/sha1.c
+  $(libbcc_SRC_FILES) \
+  helper/logd_write.c
 
 LOCAL_STATIC_LIBRARIES := \
   libcutils \
