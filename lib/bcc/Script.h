@@ -21,31 +21,103 @@
 
 #include <bcc/bcc.h>
 
+namespace llvm {
+  class Module;
+}
+
 namespace bcc {
 
   class Script {
   private:
     BCCenum mErrorCode;
 
+    Compiler mCompiler;
+
   public:
-    //////////////////////////////////////////////////////////////////////////
-    // Part I. Compiler
-    //////////////////////////////////////////////////////////////////////////
-    Compiler compiler;
-
-    void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
-      compiler.registerSymbolCallback(pFn, pContext);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Part II. Logistics & Error handling
-    //////////////////////////////////////////////////////////////////////////
     Script() {
       mErrorCode = BCC_NO_ERROR;
     }
 
     ~Script() {
     }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Part I. Compiler
+    //////////////////////////////////////////////////////////////////////////
+
+    int readBC(const char *bitcode,
+               size_t bitcodeSize,
+               long bitcodeFileModTime,
+               long bitcodeFileCRC32,
+               const BCCchar *resName,
+               const BCCchar *cacheDir) {
+      return mCompiler.readBC(bitcode, bitcodeSize,
+                              bitcodeFileModTime, bitcodeFileCRC32,
+                              resName, cacheDir);
+    }
+
+    int linkBC(const char *bitcode, size_t bitcodeSize) {
+      return mCompiler.linkBC(bitcode, bitcodeSize);
+    }
+
+    int loadCacheFile() {
+      return mCompiler.loadCacheFile();
+    }
+
+    int compile() {
+      return mCompiler.compile();
+    }
+
+    char const *getCompilerErrorMessage() {
+      return mCompiler.getErrorMessage();
+    }
+
+    void *lookup(const char *name) {
+      return mCompiler.lookup(name);
+    }
+
+    void getExportVars(BCCsizei *actualVarCount,
+                       BCCsizei maxVarCount,
+                       BCCvoid **vars) {
+      mCompiler.getExportVars(actualVarCount, maxVarCount, vars);
+    }
+
+    void getExportFuncs(BCCsizei *actualFuncCount,
+                        BCCsizei maxFuncCount,
+                        BCCvoid **funcs) {
+      mCompiler.getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+    }
+
+    void getPragmas(BCCsizei *actualStringCount,
+                    BCCsizei maxStringCount,
+                    BCCchar **strings) {
+      mCompiler.getPragmas(actualStringCount, maxStringCount, strings);
+    }
+
+    void getFunctions(BCCsizei *actualFunctionCount,
+                      BCCsizei maxFunctionCount,
+                      BCCchar **functions) {
+      mCompiler.getFunctions(actualFunctionCount, maxFunctionCount, functions);
+    }
+
+    void getFunctionBinary(BCCchar *function,
+                           BCCvoid **base,
+                           BCCsizei *length) {
+      mCompiler.getFunctionBinary(function, base, length);
+    }
+
+    void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
+      mCompiler.registerSymbolCallback(pFn, pContext);
+    }
+
+    int readModule(llvm::Module *module) {
+      return mCompiler.readModule(module);
+    }
+
+
+    //////////////////////////////////////////////////////////////////////////
+    // Error handling
+    //////////////////////////////////////////////////////////////////////////
 
     void setError(BCCenum error) {
       if (mErrorCode == BCC_NO_ERROR && error != BCC_NO_ERROR) {
