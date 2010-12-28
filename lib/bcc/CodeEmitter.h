@@ -60,14 +60,14 @@ namespace llvm {
 
 namespace bcc {
   class CodeMemoryManager;
-  class EmittedFuncEntry;
+  class EmittedFuncInfo;
 
   class CodeEmitter : public llvm::JITCodeEmitter {
   private:
     typedef llvm::DenseMap<const llvm::GlobalValue *, void *>
       GlobalAddressMapTy;
 
-    typedef std::map<const std::string, EmittedFuncEntry *>
+    typedef std::map<const std::string, EmittedFuncInfo *>
       EmittedFunctionsMapTy;
 
     typedef llvm::DenseMap<const llvm::Function *, void*>
@@ -91,7 +91,7 @@ namespace bcc {
     const llvm::TargetData *mpTD;
 
 
-    EmittedFuncEntry *mpCurEmitFunction;
+    EmittedFuncInfo *mpCurEmitFunction;
 
     EmittedFunctionsMapTy mEmittedFunctions;
 

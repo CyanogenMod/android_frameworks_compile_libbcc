@@ -17,7 +17,7 @@
 #include "CodeEmitter.h"
 
 #include "CodeMemoryManager.h"
-#include "EmittedFuncEntry.h"
+#include "EmittedFuncInfo.h"
 #include "Runtime.h"
 
 #include <bcc/bcc.h>
@@ -1274,7 +1274,7 @@ void CodeEmitter::startFunction(llvm::MachineFunction &F) {
   BufferEnd = BufferBegin + ActualSize;
 
   if (mpCurEmitFunction == NULL)
-    mpCurEmitFunction = new EmittedFuncEntry();
+    mpCurEmitFunction = new EmittedFuncInfo();
   mpCurEmitFunction->FunctionBody = BufferBegin;
 
   // Ensure the constant pool/jump table info is at least 4-byte aligned.
