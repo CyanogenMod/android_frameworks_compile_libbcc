@@ -127,7 +127,6 @@ CodeEmitter::CodeEmitter(CodeMemoryManager *pMemMgr)
 
 
 CodeEmitter::~CodeEmitter() {
-  delete mpMemMgr;
 #if defined(USE_DISASSEMBLER)
   delete mpAsmInfo;
   delete mpDisassmbler;

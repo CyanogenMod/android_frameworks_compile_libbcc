@@ -304,7 +304,7 @@ CodeMemoryManager *Compiler::createCodeMemoryManager() {
 
 
 CodeEmitter *Compiler::createCodeEmitter() {
-  mCodeEmitter.reset(new CodeEmitter(mCodeMemMgr.take()));
+  mCodeEmitter.reset(new CodeEmitter(mCodeMemMgr.get()));
   return mCodeEmitter.get();
 }
 
