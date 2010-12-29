@@ -50,16 +50,17 @@ char *allocateContext() {
                         PROT_READ | PROT_WRITE | PROT_EXEC,
                         MAP_PRIVATE | MAP_ANON, -1, 0);
 
-    if (result == addr) { // Allocated successfully
-      return (char *)result;
+    if (result == addr) {
+      LOGI("Allocate bcc context. addr=%p\n", result);
+      return static_cast<char *>(result);
     }
 
     if (result && result != MAP_FAILED) {
-      LOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
+      LOGE("Unable to allocate. suggested=%p, result=%p\n", addr, result);
       munmap(result, BCC_CONTEXT_SIZE);
     }
 
-    LOGE("Unable to allocate at %p.  Retry ...\n", addr);
+    LOGE("Unable to allocate. addr=%p.  Retry ...\n", addr);
   }
 
   // No slot available, allocate at arbitary address.
@@ -69,10 +70,11 @@ char *allocateContext() {
                       MAP_PRIVATE | MAP_ANON, -1, 0);
 
   if (!result || result == MAP_FAILED) {
-    LOGE("Unable to mmap.  (reason: %s)\n", strerror(errno));
+    LOGE("Unable to mmap. (reason: %s)\n", strerror(errno));
     return NULL;
   }
 
+  LOGI("Allocate bcc context. addr=%p\n", result);
   return (char *)result;
 }
 
@@ -83,19 +85,19 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
 
   if (imageFd < 0) {
     // Invalid file descriptor.
+    LOGE("Invalid file descriptor for bcc context image\n");
     return NULL;
   }
 
   unsigned long pagesize = (unsigned long)sysconf(_SC_PAGESIZE);
 
   if (imageOffset % pagesize > 0) {
-    // Image is not aligned in the cache file.
+    LOGE("BCC context image offset is not aligned to page size\n");
     return NULL;
   }
 
   if (addr < BCC_CONTEXT_FIXED_ADDR) {
-    // If the suggest address is not at the context slot, then return
-    // NULL as error.
+    LOGE("Suggested address is not a bcc context slot address\n");
     return NULL;
   }
 
@@ -103,15 +105,14 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
   size_t slot = offset / BCC_CONTEXT_SIZE;
 
   if (offset % BCC_CONTEXT_SIZE != 0 || slot >= BCC_CONTEXT_SLOT_COUNT) {
-    // Invalid Slot Address (Not aligned or overflow)
+    LOGE("Suggested address is not a bcc context slot address\n");
     return NULL;
   }
-  // LOGI("BEFORE slot[%d] checking", slot);
+
   if (ContextSlotTaken[slot]) {
-    // Slot has been taken.
+    LOGE("Suggested bcc context slot has been occupied.\n");
     return NULL;
   }
-  // LOGI("AFTER slot checking");
 
   ContextSlotTaken[slot] = true;
 
@@ -120,13 +121,19 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
                       PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE, imageFd, imageOffset);
 
+  if (!result || result == MAP_FAILED) {
+    LOGE("Unable to allocate. addr=%p\n", addr);
+    return NULL;
+  }
+
   if (result != addr) {
     LOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
     munmap(result, BCC_CONTEXT_SIZE);
     return NULL;
   }
 
-  return (result && result != MAP_FAILED) ? (char *)result : NULL;
+  LOGI("Allocate bcc context. addr=%p\n", addr);
+  return static_cast<char *>(result);
 }
 
 
@@ -135,11 +142,11 @@ void deallocateContext(char *addr) {
     return;
   }
 
-  LOGI("Deallocate bcc context %p\n", addr);
+  LOGI("Deallocate bcc context. addr=%p\n", addr);
 
   // Unmap
   if (munmap(addr, BCC_CONTEXT_SIZE) < 0) {
-    LOGE("Unable to unmap addr %p (reason: %s)\n", addr, strerror(errno));
+    LOGE("Unable to unmap. addr=%p (reason: %s)\n", addr, strerror(errno));
     return;
   }
 

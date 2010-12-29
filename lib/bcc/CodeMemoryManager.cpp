@@ -54,8 +54,6 @@ CodeMemoryManager::CodeMemoryManager()
                              "codes\n" + ErrMsg);
   }
 
-  LOGI("Allocate mpCodeMem at %p successfully.\n", mpCodeMem);
-
   // Set global variable pool
   mpGVMem = mpCodeMem + MaxCodeSize;
 
