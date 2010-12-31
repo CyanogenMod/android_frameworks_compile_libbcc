@@ -48,13 +48,18 @@ char *allocateContext() {
     // Try to mmap
     void *result = mmap(addr, BCC_CONTEXT_SIZE,
                         PROT_READ | PROT_WRITE | PROT_EXEC,
-                        MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+                        MAP_PRIVATE | MAP_ANON, -1, 0);
 
-    if (result && result != MAP_FAILED) { // Allocated successfully
+    if (result == addr) { // Allocated successfully
       return (char *)result;
     }
 
-    LOGE("Unable to mmap at %p.  Retry ...\n", addr);
+    if (result && result != MAP_FAILED) {
+      LOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
+      munmap(result, BCC_CONTEXT_SIZE);
+    }
+
+    LOGE("Unable to allocate at %p.  Retry ...\n", addr);
   }
 
   // No slot available, allocate at arbitary address.
@@ -114,6 +119,12 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
   void *result = mmap(addr, BCC_CONTEXT_SIZE,
                       PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE, imageFd, imageOffset);
+
+  if (result != addr) {
+    LOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
+    munmap(result, BCC_CONTEXT_SIZE);
+    return NULL;
+  }
 
   return (result && result != MAP_FAILED) ? (char *)result : NULL;
 }
