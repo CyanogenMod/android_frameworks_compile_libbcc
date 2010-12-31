@@ -749,10 +749,12 @@ bail:
   mCodeDataAddr = NULL;
 
 giveup:
-  close(mCacheFd);
+  if (mCacheFd >= 0) {
+    close(mCacheFd);
+    mCacheFd = -1;
+  }
 
   mUseCache = false;
-  mCacheFd = 0;
   mCacheLoadFailed = true;
 
   return 1;
