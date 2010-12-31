@@ -27,6 +27,24 @@
 
 #include <utils/StopWatch.h>
 
+namespace bcc {
+  class FuncLogger {
+  private:
+    char const *mFuncName;
+
+  public:
+    FuncLogger(char const *name) : mFuncName(name) {
+      LOGI("---> BEGIN: libbcc [ %s ]\n", name);
+    }
+
+    ~FuncLogger() {
+      LOGI("---> END: libbcc [ %s ]\n", mFuncName);
+    }
+  };
+
+#define BCC_FUNC_LOGGER() bcc::FuncLogger XX__funcLogger(__FUNCTION__)
+} // namespace bcc
+
 
 namespace llvm {
   class Module;
@@ -34,25 +52,29 @@ namespace llvm {
 
 
 extern "C" BCCscript *bccCreateScript() {
+  BCC_FUNC_LOGGER();
   return new BCCscript();
 }
 
 extern "C" BCCenum bccGetError(BCCscript *script) {
+  BCC_FUNC_LOGGER();
   return script->getError();
 }
 
 extern "C" void bccDeleteScript(BCCscript *script) {
-  //LOGE("Script deleted"); sliao
+  BCC_FUNC_LOGGER();
   delete script;
 }
 
 extern "C" void bccRegisterSymbolCallback(BCCscript *script,
                                           BCCSymbolLookupFn pFn,
                                           BCCvoid *pContext) {
+  BCC_FUNC_LOGGER();
   script->registerSymbolCallback(pFn, pContext);
 }
 
 extern "C" int bccReadModule(BCCscript *script, BCCvoid *module) {
+  BCC_FUNC_LOGGER();
   return script->compiler.readModule(reinterpret_cast<llvm::Module*>(module));
 }
 
@@ -63,6 +85,7 @@ extern "C" int bccReadBC(BCCscript *script,
                          long bitcodeFileCRC32,
                          const BCCchar *resName,
                          const BCCchar *cacheDir) {
+  BCC_FUNC_LOGGER();
   return script->compiler.readBC(bitcode, bitcodeSize,
                                  bitcodeFileModTime, bitcodeFileCRC32,
                                  resName, cacheDir);
@@ -71,10 +94,12 @@ extern "C" int bccReadBC(BCCscript *script,
 extern "C" void bccLinkBC(BCCscript *script,
                           const BCCchar *bitcode,
                           BCCint size) {
+  BCC_FUNC_LOGGER();
   script->compiler.linkBC(bitcode, size);
 }
 
 extern "C" int bccLoadBinary(BCCscript *script) {
+  BCC_FUNC_LOGGER();
   int result = script->compiler.loadCacheFile();
 
 #if defined(USE_DISASSEMBLER_FILE)
@@ -88,6 +113,7 @@ extern "C" int bccLoadBinary(BCCscript *script) {
 }
 
 extern "C" int bccCompileBC(BCCscript *script) {
+  BCC_FUNC_LOGGER();
 #if defined(__arm__)
   android::StopWatch compileTimer("RenderScript compile time");
 #endif
@@ -103,6 +129,7 @@ extern "C" void bccGetScriptInfoLog(BCCscript *script,
                                     BCCsizei maxLength,
                                     BCCsizei *length,
                                     BCCchar *infoLog) {
+  BCC_FUNC_LOGGER();
   char const *message = script->compiler.getErrorMessage();
   int messageLength = strlen(message) + 1;
   if (length)
@@ -121,6 +148,7 @@ extern "C" void bccGetScriptInfoLog(BCCscript *script,
 extern "C" void bccGetScriptLabel(BCCscript *script,
                                   const BCCchar *name,
                                   BCCvoid **address) {
+  BCC_FUNC_LOGGER();
   void *value = script->compiler.lookup(name);
   if (value) {
     *address = value;
@@ -136,6 +164,7 @@ extern "C" void bccGetExportVars(BCCscript *script,
                                  BCCsizei *actualVarCount,
                                  BCCsizei maxVarCount,
                                  BCCvoid **vars) {
+  BCC_FUNC_LOGGER();
   script->compiler.getExportVars(actualVarCount, maxVarCount, vars);
 
 #if defined(USE_DISASSEMBLER_FILE)
@@ -154,6 +183,7 @@ extern "C" void bccGetExportFuncs(BCCscript *script,
                                   BCCsizei *actualFuncCount,
                                   BCCsizei maxFuncCount,
                                   BCCvoid **funcs) {
+  BCC_FUNC_LOGGER();
   script->compiler.getExportFuncs(actualFuncCount, maxFuncCount, funcs);
 
 #if defined(USE_DISASSEMBLER_FILE)
@@ -172,6 +202,7 @@ extern "C" void bccGetPragmas(BCCscript *script,
                               BCCsizei *actualStringCount,
                               BCCsizei maxStringCount,
                               BCCchar **strings) {
+  BCC_FUNC_LOGGER();
   script->compiler.getPragmas(actualStringCount, maxStringCount, strings);
 
 #if defined(USE_DISASSEMBLER_FILE)
@@ -187,6 +218,7 @@ extern "C" void bccGetFunctions(BCCscript *script,
                                 BCCsizei *actualFunctionCount,
                                 BCCsizei maxFunctionCount,
                                 BCCchar **functions) {
+  BCC_FUNC_LOGGER();
   script->compiler.getFunctions(actualFunctionCount,
                                 maxFunctionCount,
                                 functions);
@@ -196,5 +228,6 @@ extern "C" void bccGetFunctionBinary(BCCscript *script,
                                      BCCchar *function,
                                      BCCvoid **base,
                                      BCCsizei *length) {
+  BCC_FUNC_LOGGER();
   script->compiler.getFunctionBinary(function, base, length);
 }
