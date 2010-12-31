@@ -164,8 +164,6 @@ namespace bcc {
 //////////////////////////////////////////////////////////////////////////////
 
 bool Compiler::GlobalInitialized = false;
-const char *Compiler::resNames[64];
-int Compiler::resNamesMmaped[64];
 
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
@@ -320,6 +318,7 @@ Compiler::Compiler()
     mCacheHdr(NULL),
     mCacheSize(0),
     mCacheDiff(0),
+    mCacheLoadFailed(false),
     mCodeDataAddr(NULL),
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
@@ -354,37 +353,6 @@ int Compiler::readBC(const char *bitcode,
                      const BCCchar *cacheDir) {
   GlobalInitialization();
 
-  if (resName) {
-    int i = 0;
-    for ( ; i < 64; i++) {
-      if (!Compiler::resNames[i]) {
-        // First encounter of resName
-        //
-        resNames[i] = strdup(resName);
-        resNamesMmaped[i] = 1;
-        break;
-      }
-
-      if (!strcmp(resName, Compiler::resNames[i])) {  // Cache hit
-
-        // Cache hit and some Script instance is still using this cache
-        if (Compiler::resNamesMmaped[i]) {
-          resName = NULL;  // Force the turn-off of caching for this resName
-        }
-        Compiler::resNamesMmaped[i]++;
-
-        break;
-      }
-    }
-
-    if (i == 64) {
-      LOGE("resNames[] full");
-      resName = NULL;  // Force the turn-off of caching
-    } else {
-      mResId = i;
-    }
-  }
-
   this->props.mNoCache = getProp("debug.bcc.nocache");
   if (this->props.mNoCache) {
     resName = NULL;
@@ -399,7 +367,7 @@ int Compiler::readBC(const char *bitcode,
   // to decide rather to update the cache or not.
   computeSourceSHA1(bitcode, bitcodeSize);
 
-  if (resName) {
+  if (resName && !mCacheLoadFailed) {
     // Turn on mUseCache mode iff
     // 1. Has resName
     // and, assuming USE_RELOCATE is false:
@@ -781,6 +749,12 @@ bail:
   mCodeDataAddr = NULL;
 
 giveup:
+  close(mCacheFd);
+
+  mUseCache = false;
+  mCacheFd = 0;
+  mCacheLoadFailed = true;
+
   return 1;
 }
 
@@ -1278,10 +1252,6 @@ void Compiler::getFunctionBinary(BCCchar *function,
 
 
 Compiler::~Compiler() {
-  if (mResId >= 0) {
-    Compiler::resNamesMmaped[mResId]--;
-  }
-
   if (!mCodeMemMgr.get()) {
     // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
     // managed by CodeMemoryManager.

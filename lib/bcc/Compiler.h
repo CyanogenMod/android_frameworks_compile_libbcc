@@ -101,6 +101,7 @@ namespace bcc {
     oBCCHeader *mCacheHdr;  // Set by loadCacheFile()
     size_t mCacheSize;      // Set by loadCacheFile()
     ptrdiff_t mCacheDiff;   // Set by loadCacheFile()
+    bool mCacheLoadFailed;  // Set by loadCacheFile() used by readBC()
     char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                             // Used by genCacheFile() for dumping
 
