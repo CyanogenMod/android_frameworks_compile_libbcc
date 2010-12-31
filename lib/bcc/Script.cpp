@@ -38,19 +38,21 @@ int Script::readBC(const char *bitcode,
                    long bitcodeFileCRC32,
                    const BCCchar *resName,
                    const BCCchar *cacheDir) {
-  if (mStatus != ScriptStatus::Unknown) {
+  if (mStatus == ScriptStatus::Unknown) {
+    mCompiled = new (nothrow) ScriptCompiled(this);
+
+    if (!mCompiled) {
+      mErrorCode = BCC_OUT_OF_MEMORY;
+      return 1;
+    }
+
+    mStatus = ScriptStatus::Compiled;
+  }
+
+  if (mStatus != ScriptStatus::Compiled) {
     mErrorCode = BCC_INVALID_OPERATION;
     return 1;
   }
-
-  mCompiled = new (nothrow) ScriptCompiled(this);
-
-  if (!mCompiled) {
-    mErrorCode = BCC_OUT_OF_MEMORY;
-    return 1;
-  }
-
-  mStatus = ScriptStatus::Compiled;
 
   if (mpExtSymbolLookupFn) {
     mCompiled->registerSymbolCallback(mpExtSymbolLookupFn,
