@@ -124,6 +124,8 @@ void deallocateContext(char *addr) {
     return;
   }
 
+  LOGI("Deallocate bcc context %p\n", addr);
+
   // Unmap
   if (munmap(addr, BCC_CONTEXT_SIZE) < 0) {
     LOGE("Unable to unmap addr %p (reason: %s)\n", addr, strerror(errno));
