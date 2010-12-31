@@ -312,8 +312,6 @@ Compiler::Compiler()
     mUseCache(false),
     mCacheNew(false),
     mCacheFd(-1),
-    mSourceModTime(0),
-    mSourceCRC32(0),
     mCacheMapAddr(NULL),
     mCacheHdr(NULL),
     mCacheSize(0),
@@ -357,11 +355,6 @@ int Compiler::readBC(const char *bitcode,
   if (this->props.mNoCache) {
     resName = NULL;
   }
-
-   // Assign bitcodeFileModTime to mSourceModTime, and bitcodeFileCRC32 to
-  // mSourceCRC32, so that the checkHeaderAndDependencies can use them.
-  mSourceModTime = bitcodeFileModTime;
-  mSourceCRC32 = bitcodeFileCRC32;
 
   // Compute the SHA1 hash of the input bitcode.  So that we can use the hash
   // to decide rather to update the cache or not.
@@ -1373,13 +1366,10 @@ void Compiler::genCacheFile() {
   memcpy(hdr->magicVersion, OBCC_MAGIC_VERS, 4);
 
   // Timestamp
-  hdr->sourceWhen = mSourceModTime;
+  hdr->sourceWhen = 0; // TODO(sliao)
   hdr->rslibWhen = 0; // TODO(sliao)
   hdr->libRSWhen = statModifyTime(libRSPath);
   hdr->libbccWhen = statModifyTime(libBccPath);
-
-  // Source Bitcode File CRC32
-  hdr->sourceCRC32 = mSourceCRC32;
 
   // Copy the hash checksum
   memcpy(hdr->sourceSHA1, mSourceSHA1, 20);
@@ -1690,7 +1680,7 @@ retry:
   } else {
     // Calculate sourceWhen
     // XXX
-    long sourceWhen = mSourceModTime;
+    long sourceWhen = 0;
     uint32_t rslibWhen = 0;
     uint32_t libRSWhen = statModifyTime(libRSPath);
     uint32_t libbccWhen = statModifyTime(libBccPath);
@@ -1860,12 +1850,6 @@ bool Compiler::checkHeaderAndDependencies(int fd,
   }
 
   // Check the file dependencies
-  if (optHdr.sourceWhen && (optHdr.sourceWhen != sourceWhen)) {
-    LOGI("bcc: source file mod time mismatch (%08lx vs %08lx)\n",
-         (unsigned long)optHdr.sourceWhen, (unsigned long)sourceWhen);
-    //return false;
-  }
-
   uint32_t val;
 
   val = optHdr.rslibWhen;
@@ -1886,13 +1870,6 @@ bool Compiler::checkHeaderAndDependencies(int fd,
   if (val && (val != libbccWhen)) {
     LOGI("bcc: libbcc file mod time mismatch (%08x vs %08x)\n",
          val, libbccWhen);
-    return false;
-  }
-
-  // Check the CRC32 of the file
-  if (optHdr.sourceCRC32 && optHdr.sourceCRC32 != mSourceCRC32) {
-    LOGI("bcc: libbcc bitcode file crc32 mismatch (%08lx vs %08lx)\n",
-         optHdr.sourceCRC32, mSourceCRC32);
     return false;
   }
 

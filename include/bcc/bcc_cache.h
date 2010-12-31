@@ -30,8 +30,6 @@ struct oBCCHeader {
   uint8_t magicVersion[4];
 
   long sourceWhen;
-  long sourceCRC32;
-
   uint32_t rslibWhen;
   uint32_t libRSWhen;
   uint32_t libbccWhen;

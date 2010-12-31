@@ -95,8 +95,6 @@ namespace bcc {
     bool mUseCache;         // Set by readBC()
     bool mCacheNew;         // Set by readBC()
     int mCacheFd;           // Set by readBC()
-    long mSourceModTime;    // Set by readBC()
-    long mSourceCRC32;      // Set by readBC();
     char *mCacheMapAddr;    // Set by loadCacheFile() if mCacheNew is false
     oBCCHeader *mCacheHdr;  // Set by loadCacheFile()
     size_t mCacheSize;      // Set by loadCacheFile()
