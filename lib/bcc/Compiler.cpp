@@ -1250,7 +1250,7 @@ Compiler::~Compiler() {
   if (!mCodeMemMgr.get()) {
     // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
     // managed by CodeMemoryManager.
-    //LOGE("~Compiler(): mCodeDataAddr = %x", mCodeDataAddr); sliao
+    LOGI("~Compiler(): mCodeDataAddr = %x", mCodeDataAddr); //sliao
     if (mCodeDataAddr) {
       deallocateContext(mCodeDataAddr);
     }
