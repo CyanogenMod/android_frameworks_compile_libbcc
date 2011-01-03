@@ -34,11 +34,11 @@ namespace bcc {
 
   public:
     FuncLogger(char const *name) : mFuncName(name) {
-      LOGI("---> BEGIN: libbcc [ %s ]\n", name);
+      // LOGI("---> BEGIN: libbcc [ %s ]\n", name);
     }
 
     ~FuncLogger() {
-      LOGI("---> END: libbcc [ %s ]\n", mFuncName);
+      // LOGI("---> END: libbcc [ %s ]\n", mFuncName);
     }
   };
 
