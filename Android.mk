@@ -34,6 +34,7 @@ libbcc_SRC_FILES := \
   lib/bcc/FileHandle.cpp \
   lib/bcc/Runtime.c \
   lib/bcc/Script.cpp \
+  lib/bcc/ScriptCompiled.cpp \
   helper/sha1.c
 
 # Shared library for target

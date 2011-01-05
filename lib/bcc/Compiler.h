@@ -41,14 +41,9 @@ namespace llvm {
 
 
 namespace bcc {
+  class ScriptCompiled;
 
   class Compiler {
-  private:
-    typedef std::list< std::pair<std::string, std::string> > PragmaList;
-    typedef std::list<void*> ExportVarList;
-    typedef std::list<void*> ExportFuncList;
-
-
   private:
     //////////////////////////////////////////////////////////////////////////
     // The variable section below (e.g., Triple, CodeGenOptLevel)
@@ -84,6 +79,8 @@ namespace bcc {
 
 
   private:
+    ScriptCompiled *mpResult;
+
     std::string mError;
 
     bool mUseCache;         // Set by readBC()
@@ -98,12 +95,6 @@ namespace bcc {
                             // Used by genCacheFile() for dumping
 
     unsigned char mSourceSHA1[20];  // Set by readBC()
-
-    PragmaList mPragmas;
-
-    ExportVarList mExportVars;
-
-    ExportFuncList mExportFuncs;
 
     // The memory manager for code emitter
     llvm::OwningPtr<CodeMemoryManager> mCodeMemMgr;
@@ -120,7 +111,7 @@ namespace bcc {
     bool mHasLinked;
 
   public:
-    Compiler();
+    Compiler(ScriptCompiled *result);
 
     // interface for BCCscript::registerSymbolCallback()
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {

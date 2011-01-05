@@ -29,13 +29,24 @@ namespace bcc {
   class Script;
 
   class ScriptCompiled {
+    friend class Compiler;
+
+  private:
+    typedef std::list< std::pair<std::string, std::string> > PragmaList;
+    typedef std::list<void*> ExportVarList;
+    typedef std::list<void*> ExportFuncList;
+
   private:
     Script *mpOwner;
 
     Compiler mCompiler;
 
+    PragmaList mPragmas;
+    ExportVarList mExportVars;
+    ExportFuncList mExportFuncs;
+
   public:
-    ScriptCompiled(Script *owner) : mpOwner(owner) {
+    ScriptCompiled(Script *owner) : mpOwner(owner), mCompiler(this) {
     }
 
     int readBC(const char *bitcode,
@@ -71,21 +82,15 @@ namespace bcc {
 
     void getExportVars(BCCsizei *actualVarCount,
                        BCCsizei maxVarCount,
-                       BCCvoid **vars) {
-      mCompiler.getExportVars(actualVarCount, maxVarCount, vars);
-    }
+                       BCCvoid **vars);
 
     void getExportFuncs(BCCsizei *actualFuncCount,
                         BCCsizei maxFuncCount,
-                        BCCvoid **funcs) {
-      mCompiler.getExportFuncs(actualFuncCount, maxFuncCount, funcs);
-    }
+                        BCCvoid **funcs);
 
     void getPragmas(BCCsizei *actualStringCount,
                     BCCsizei maxStringCount,
-                    BCCchar **strings) {
-      mCompiler.getPragmas(actualStringCount, maxStringCount, strings);
-    }
+                    BCCchar **strings);
 
     void getFunctions(BCCsizei *actualFunctionCount,
                       BCCsizei maxFunctionCount,

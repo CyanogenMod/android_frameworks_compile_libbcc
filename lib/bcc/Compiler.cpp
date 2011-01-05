@@ -66,6 +66,7 @@
 #include "Compiler.h"
 
 #include "ContextManager.h"
+#include "ScriptCompiled.h"
 
 #include "llvm/ADT/StringRef.h"
 
@@ -307,8 +308,9 @@ CodeEmitter *Compiler::createCodeEmitter() {
 }
 
 
-Compiler::Compiler()
-  : mUseCache(false),
+Compiler::Compiler(ScriptCompiled *result)
+  : mpResult(result),
+    mUseCache(false),
     mCacheNew(false),
     mCacheFd(-1),
     mCacheMapAddr(NULL),
@@ -359,6 +361,7 @@ int Compiler::readBC(const char *bitcode,
   // to decide rather to update the cache or not.
   computeSourceSHA1(bitcode, bitcodeSize);
 
+#if 0
   if (resName && !mCacheLoadFailed) {
     // Turn on mUseCache mode iff
     // 1. Has resName
@@ -380,6 +383,7 @@ int Compiler::readBC(const char *bitcode,
       return -mCacheFd - 1;
     }
   }
+#endif
 
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
@@ -971,6 +975,8 @@ int Compiler::compile() {
 
   // Copy the global address mapping from code emitter and remapping
   if (ExportVarMetadata) {
+    ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
+
     for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
       llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
       if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
@@ -986,7 +992,7 @@ int Compiler::compile() {
             if (I->first->getValueID() != llvm::Value::GlobalVariableVal)
               continue;
             if (ExportVarName == I->first->getName()) {
-              mExportVars.push_back(I->second);
+              varList.push_back(I->second);
               break;
             }
           }
@@ -996,13 +1002,16 @@ int Compiler::compile() {
       }
       // if reaching here, we know the global variable record in metadata is
       // not found. So we make an empty slot
-      mExportVars.push_back(NULL);
+      varList.push_back(NULL);
     }
-    assert((mExportVars.size() == ExportVarMetadata->getNumOperands()) &&
+
+    assert((varList.size() == ExportVarMetadata->getNumOperands()) &&
            "Number of slots doesn't match the number of export variables!");
   }
 
   if (ExportFuncMetadata) {
+    ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
+
     for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
       llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
       if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
@@ -1010,7 +1019,7 @@ int Compiler::compile() {
         if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
-          mExportFuncs.push_back(mCodeEmitter->lookup(ExportFuncName));
+          funcList.push_back(mCodeEmitter->lookup(ExportFuncName));
         }
       }
     }
@@ -1022,7 +1031,9 @@ int Compiler::compile() {
 
   // Finally, read pragma information from the metadata node of the @Module if
   // any.
-  if (PragmaMetadata)
+  if (PragmaMetadata) {
+    ScriptCompiled::PragmaList &pragmaList = mpResult->mPragmas;
+
     for (int i = 0, e = PragmaMetadata->getNumOperands(); i != e; i++) {
       llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
       if (Pragma != NULL &&
@@ -1037,7 +1048,7 @@ int Compiler::compile() {
           llvm::StringRef PragmaValue =
             static_cast<llvm::MDString*>(PragmaValueMDS)->getString();
 
-          mPragmas.push_back(
+          pragmaList.push_back(
             std::make_pair(std::string(PragmaName.data(),
                                        PragmaName.size()),
                            std::string(PragmaValue.data(),
@@ -1045,6 +1056,7 @@ int Compiler::compile() {
         }
       }
     }
+  }
 
 on_bcc_compile_error:
   // LOGE("on_bcc_compiler_error");
@@ -1088,133 +1100,6 @@ void *Compiler::lookup(const char *name) {
     addr = mCodeEmitter->lookup(name);
   return addr;
 }
-
-
-// Interface for bccGetExportVars()
-void Compiler::getExportVars(BCCsizei *actualVarCount,
-                             BCCsizei maxVarCount,
-                             BCCvoid **vars) {
-  int varCount;
-
-  if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
-    varCount = static_cast<int>(mCacheHdr->exportVarsCount);
-    if (actualVarCount)
-      *actualVarCount = varCount;
-    if (varCount > maxVarCount)
-      varCount = maxVarCount;
-    if (vars) {
-      uint32_t *cachedVars = (uint32_t *)(mCacheMapAddr +
-                                          mCacheHdr->exportVarsOffset);
-
-      for (int i = 0; i < varCount; i++) {
-        *vars = (BCCvoid *)((char *)(*cachedVars) + mCacheDiff);
-        vars++;
-        cachedVars++;
-      }
-    }
-    return;
-  }
-
-  varCount = mExportVars.size();
-  if (actualVarCount)
-    *actualVarCount = varCount;
-  if (varCount > maxVarCount)
-    varCount = maxVarCount;
-  if (vars) {
-    for (ExportVarList::const_iterator
-         I = mExportVars.begin(), E = mExportVars.end(); I != E; I++) {
-      *vars++ = *I;
-    }
-  }
-}
-
-
-// Interface for bccGetExportFuncs()
-void Compiler::getExportFuncs(BCCsizei *actualFuncCount,
-                              BCCsizei maxFuncCount,
-                              BCCvoid **funcs) {
-  int funcCount;
-
-  if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
-    funcCount = static_cast<int>(mCacheHdr->exportFuncsCount);
-    if (actualFuncCount)
-      *actualFuncCount = funcCount;
-    if (funcCount > maxFuncCount)
-      funcCount = maxFuncCount;
-    if (funcs) {
-      uint32_t *cachedFuncs = (uint32_t *)(mCacheMapAddr +
-                                           mCacheHdr->exportFuncsOffset);
-
-      for (int i = 0; i < funcCount; i++) {
-        *funcs = (BCCvoid *)((char *)(*cachedFuncs) + mCacheDiff);
-        funcs++;
-        cachedFuncs++;
-      }
-    }
-    return;
-  }
-
-  funcCount = mExportFuncs.size();
-  if (actualFuncCount)
-    *actualFuncCount = funcCount;
-  if (funcCount > maxFuncCount)
-    funcCount = maxFuncCount;
-  if (funcs) {
-    for (ExportFuncList::const_iterator
-         I = mExportFuncs.begin(), E = mExportFuncs.end(); I != E; I++) {
-      *funcs++ = *I;
-    }
-  }
-}
-
-
-// Interface for bccGetPragmas()
-void Compiler::getPragmas(BCCsizei *actualStringCount,
-                          BCCsizei maxStringCount,
-                          BCCchar **strings) {
-  int stringCount;
-
-  if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
-    stringCount = static_cast<int>(mCacheHdr->exportPragmasCount) * 2;
-
-    if (actualStringCount)
-      *actualStringCount = stringCount;
-
-    if (stringCount > maxStringCount)
-      stringCount = maxStringCount;
-
-    if (strings) {
-      char *pragmaTab = mCacheMapAddr + mCacheHdr->exportPragmasOffset;
-
-      oBCCPragmaEntry *cachedPragmaEntries = (oBCCPragmaEntry *)pragmaTab;
-
-      for (int i = 0; stringCount >= 2; stringCount -= 2, i++) {
-        *strings++ = pragmaTab + cachedPragmaEntries[i].pragmaNameOffset;
-        *strings++ = pragmaTab + cachedPragmaEntries[i].pragmaValueOffset;
-      }
-    }
-
-    return;
-  }
-
-  stringCount = mPragmas.size() * 2;
-
-  if (actualStringCount)
-    *actualStringCount = stringCount;
-  if (stringCount > maxStringCount)
-    stringCount = maxStringCount;
-  if (strings) {
-    size_t i = 0;
-    for (PragmaList::const_iterator it = mPragmas.begin();
-         stringCount >= 2; stringCount -= 2, it++, ++i) {
-      *strings++ = const_cast<BCCchar*>(it->first.c_str());
-      *strings++ = const_cast<BCCchar*>(it->second.c_str());
-    }
-  }
-
-  return;
-}
-
 
 // Interface for bccGetFunctions()
 void Compiler::getFunctions(BCCsizei *actualFunctionCount,
@@ -1395,25 +1280,26 @@ void Compiler::genCacheFile() {
 
   // Export Variable Table Offset and Entry Count
   hdr->exportVarsOffset = offset;
-  hdr->exportVarsCount = mExportVars.size();
+  hdr->exportVarsCount = mpResult->mExportVars.size();
 
   offset += hdr->exportVarsCount * sizeof(uint32_t);
 
   // Export Function Table Offset and Entry Count
   hdr->exportFuncsOffset = offset;
-  hdr->exportFuncsCount = mExportFuncs.size();
+  hdr->exportFuncsCount = mpResult->mExportFuncs.size();
 
   offset += hdr->exportFuncsCount * sizeof(uint32_t);
 
   // Export Pragmas Table Offset and Entry Count
   hdr->exportPragmasOffset = offset;
-  hdr->exportPragmasCount = mPragmas.size();
+  hdr->exportPragmasCount = mpResult->mPragmas.size();
   hdr->exportPragmasSize = hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
 
   offset += hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
 
-  for (PragmaList::const_iterator
-       I = mPragmas.begin(), E = mPragmas.end(); I != E; ++I) {
+  for (ScriptCompiled::PragmaList::const_iterator
+       I = mpResult->mPragmas.begin(),
+       E = mpResult->mPragmas.end(); I != E; ++I) {
     offset += I->first.size() + 1;
     offset += I->second.size() + 1;
     hdr->exportPragmasSize += I->first.size() + I->second.size() + 2;
@@ -1485,8 +1371,9 @@ void Compiler::genCacheFile() {
       goto bail;
     }
 
-    for (ExportVarList::const_iterator I = mExportVars.begin(),
-         E = mExportVars.end(); I != E; I++) {
+    for (ScriptCompiled::ExportVarList::const_iterator
+         I = mpResult->mExportVars.begin(),
+         E = mpResult->mExportVars.end(); I != E; I++) {
       *ptr++ = reinterpret_cast<uint32_t>(*I);
     }
 
@@ -1508,8 +1395,9 @@ void Compiler::genCacheFile() {
       goto bail;
     }
 
-    for (ExportFuncList::const_iterator I = mExportFuncs.begin(),
-         E = mExportFuncs.end(); I != E; I++) {
+    for (ScriptCompiled::ExportFuncList::const_iterator
+         I = mpResult->mExportFuncs.begin(),
+         E = mpResult->mExportFuncs.end(); I != E; I++) {
       *ptr++ = reinterpret_cast<uint32_t>(*I);
     }
 
@@ -1526,8 +1414,9 @@ void Compiler::genCacheFile() {
     uint32_t pragmaEntryOffset =
       hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
 
-    for (PragmaList::const_iterator
-         I = mPragmas.begin(), E = mPragmas.end(); I != E; ++I) {
+    for (ScriptCompiled::PragmaList::const_iterator
+         I = mpResult->mPragmas.begin(),
+         E = mpResult->mPragmas.end(); I != E; ++I) {
       oBCCPragmaEntry entry;
 
       entry.pragmaNameOffset = pragmaEntryOffset;
@@ -1542,8 +1431,9 @@ void Compiler::genCacheFile() {
                     "Write export pragma entry");
     }
 
-    for (PragmaList::const_iterator
-         I = mPragmas.begin(), E = mPragmas.end(); I != E; ++I) {
+    for (ScriptCompiled::PragmaList::const_iterator
+         I = mpResult->mPragmas.begin(),
+         E = mpResult->mPragmas.end(); I != E; ++I) {
       sysWriteFully(mCacheFd, I->first.c_str(), I->first.size() + 1,
                     "Write export pragma name string");
       sysWriteFully(mCacheFd, I->second.c_str(), I->second.size() + 1,
