@@ -31,6 +31,7 @@ libbcc_SRC_FILES := \
   lib/bcc/CodeMemoryManager.cpp \
   lib/bcc/Compiler.cpp \
   lib/bcc/ContextManager.cpp \
+  lib/bcc/FileHandle.cpp \
   lib/bcc/Runtime.c \
   lib/bcc/Script.cpp \
   helper/sha1.c
