@@ -61,14 +61,12 @@ namespace llvm {
 namespace bcc {
   class CodeMemoryManager;
   class EmittedFuncInfo;
+  class ScriptCompiled;
 
   class CodeEmitter : public llvm::JITCodeEmitter {
   private:
     typedef llvm::DenseMap<const llvm::GlobalValue *, void *>
       GlobalAddressMapTy;
-
-    typedef std::map<const std::string, EmittedFuncInfo *>
-      EmittedFunctionsMapTy;
 
     typedef llvm::DenseMap<const llvm::Function *, void*>
       FunctionToLazyStubMapTy;
@@ -81,6 +79,8 @@ namespace bcc {
 
 
   private:
+    ScriptCompiled *mpResult;
+
     CodeMemoryManager *mpMemMgr;
 
     // The JITInfo for the target we are compiling to
@@ -92,8 +92,6 @@ namespace bcc {
 
 
     EmittedFuncInfo *mpCurEmitFunction;
-
-    EmittedFunctionsMapTy mEmittedFunctions;
 
     GlobalAddressMapTy mGlobalAddressMap;
 
@@ -153,7 +151,7 @@ namespace bcc {
     void *mpSymbolLookupContext;
 
     // Will take the ownership of @MemMgr
-    explicit CodeEmitter(CodeMemoryManager *pMemMgr);
+    explicit CodeEmitter(ScriptCompiled *result, CodeMemoryManager *pMemMgr);
 
     virtual ~CodeEmitter();
 
@@ -248,20 +246,6 @@ namespace bcc {
     void releaseUnnecessary();
 
     void reset();
-
-    void *lookup(const char *Name) {
-      return lookup( llvm::StringRef(Name) );
-    }
-
-    void *lookup(const llvm::StringRef &Name);
-
-    void getFunctionNames(BCCsizei *actualFunctionCount,
-                          BCCsizei maxFunctionCount,
-                          BCCchar **functions);
-
-    void getFunctionBinary(BCCchar *label,
-                           BCCvoid **base,
-                           BCCsizei *length);
 
   private:
     void startGVStub(const llvm::GlobalValue *GV, unsigned StubSize,

@@ -19,6 +19,7 @@
 #include "CodeMemoryManager.h"
 #include "EmittedFuncInfo.h"
 #include "Runtime.h"
+#include "ScriptCompiled.h"
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
@@ -107,8 +108,9 @@ public:
 namespace bcc {
 
 // Will take the ownership of @MemMgr
-CodeEmitter::CodeEmitter(CodeMemoryManager *pMemMgr)
-    : mpMemMgr(pMemMgr),
+CodeEmitter::CodeEmitter(ScriptCompiled *result, CodeMemoryManager *pMemMgr)
+    : mpResult(result),
+      mpMemMgr(pMemMgr),
       mpTarget(NULL),
       mpTJI(NULL),
       mpTD(NULL),
@@ -156,19 +158,13 @@ void CodeEmitter::releaseUnnecessary() {
 void CodeEmitter::reset() {
   releaseUnnecessary();
 
+  mpResult = NULL;
+
   mpSymbolLookupFn = NULL;
   mpSymbolLookupContext = NULL;
 
   mpTJI = NULL;
   mpTD = NULL;
-
-  for (EmittedFunctionsMapTy::iterator I = mEmittedFunctions.begin(),
-          E = mEmittedFunctions.end();
-       I != E;
-       I++)
-    if (I->second != NULL)
-      delete I->second;
-  mEmittedFunctions.clear();
 
   mpMemMgr->reset();
 }
@@ -1385,9 +1381,11 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
   mpCurEmitFunction->Size = CurBufferPtr - BufferBegin;
   BufferBegin = CurBufferPtr = 0;
 
-  if (F.getFunction()->hasName())
-    mEmittedFunctions[F.getFunction()->getNameStr()] = mpCurEmitFunction;
-  mpCurEmitFunction = NULL;
+  if (F.getFunction()->hasName()) {
+    string const &name = F.getFunction()->getNameStr();
+    mpResult->mEmittedFunctions[name] = mpCurEmitFunction;
+    mpCurEmitFunction = NULL;
+  }
 
   mRelocations.clear();
   mConstPoolAddresses.clear();
@@ -1530,44 +1528,5 @@ void CodeEmitter::updateFunctionStub(const llvm::Function *F) {
   PendingFunctions.erase(I);
 }
 
-
-void *CodeEmitter::lookup(const llvm::StringRef &Name) {
-  EmittedFunctionsMapTy::const_iterator
-    I = mEmittedFunctions.find(Name.str());
-
-  return (I == mEmittedFunctions.end()) ? NULL : I->second->Code;
-}
-
-
-void CodeEmitter::getFunctionNames(BCCsizei *actualFunctionCount,
-                                   BCCsizei maxFunctionCount,
-                                   BCCchar **functions) {
-  int functionCount = mEmittedFunctions.size();
-
-  if (actualFunctionCount)
-    *actualFunctionCount = functionCount;
-  if (functionCount > maxFunctionCount)
-    functionCount = maxFunctionCount;
-  if (functions)
-    for (EmittedFunctionsMapTy::const_iterator
-         I = mEmittedFunctions.begin(), E = mEmittedFunctions.end();
-         I != E && (functionCount > 0); I++, functionCount--) {
-      *functions++ = const_cast<BCCchar*>(I->first.c_str());
-    }
-}
-
-
-void CodeEmitter::getFunctionBinary(BCCchar *label,
-                                    BCCvoid **base,
-                                    BCCsizei *length) {
-  EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(label);
-  if (I == mEmittedFunctions.end()) {
-    *base = NULL;
-    *length = 0;
-  } else {
-    *base = I->second->Code;
-    *length = I->second->Size;
-  }
-}
 
 } // namespace bcc

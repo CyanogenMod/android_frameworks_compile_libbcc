@@ -21,20 +21,29 @@
 
 #include <bcc/bcc.h>
 
+#include <list>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
+
 namespace llvm {
   class Module;
 }
 
 namespace bcc {
+  class EmittedFuncInfo;
   class Script;
 
   class ScriptCompiled {
     friend class Compiler;
+    friend class CodeEmitter;
 
   private:
-    typedef std::list< std::pair<std::string, std::string> > PragmaList;
+    typedef std::list<std::pair<std::string, std::string> > PragmaList;
     typedef std::list<void*> ExportVarList;
     typedef std::list<void*> ExportFuncList;
+    typedef std::map<std::string, EmittedFuncInfo *> EmittedFunctionsMapTy;
 
   private:
     Script *mpOwner;
@@ -44,10 +53,13 @@ namespace bcc {
     PragmaList mPragmas;
     ExportVarList mExportVars;
     ExportFuncList mExportFuncs;
+    EmittedFunctionsMapTy mEmittedFunctions;
 
   public:
     ScriptCompiled(Script *owner) : mpOwner(owner), mCompiler(this) {
     }
+
+    ~ScriptCompiled();
 
     int readBC(const char *bitcode,
                size_t bitcodeSize,
@@ -76,9 +88,7 @@ namespace bcc {
       return mCompiler.getErrorMessage();
     }
 
-    void *lookup(const char *name) {
-      return mCompiler.lookup(name);
-    }
+    void *lookup(const char *name);
 
     void getExportVars(BCCsizei *actualVarCount,
                        BCCsizei maxVarCount,
@@ -94,15 +104,11 @@ namespace bcc {
 
     void getFunctions(BCCsizei *actualFunctionCount,
                       BCCsizei maxFunctionCount,
-                      BCCchar **functions) {
-      mCompiler.getFunctions(actualFunctionCount, maxFunctionCount, functions);
-    }
+                      BCCchar **functions);
 
     void getFunctionBinary(BCCchar *function,
                            BCCvoid **base,
-                           BCCsizei *length) {
-      mCompiler.getFunctionBinary(function, base, length);
-    }
+                           BCCsizei *length);
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
       mCompiler.registerSymbolCallback(pFn, pContext);

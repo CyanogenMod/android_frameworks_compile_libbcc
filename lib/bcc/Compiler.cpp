@@ -303,7 +303,7 @@ CodeMemoryManager *Compiler::createCodeMemoryManager() {
 
 
 CodeEmitter *Compiler::createCodeEmitter() {
-  mCodeEmitter.reset(new CodeEmitter(mCodeMemMgr.get()));
+  mCodeEmitter.reset(new CodeEmitter(mpResult, mCodeMemMgr.get()));
   return mCodeEmitter.get();
 }
 
@@ -1019,7 +1019,7 @@ int Compiler::compile() {
         if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
-          funcList.push_back(mCodeEmitter->lookup(ExportFuncName));
+          funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
         }
       }
     }
@@ -1080,53 +1080,6 @@ on_bcc_compile_error:
 
   // LOGE(getErrorMessage());
   return true;
-}
-
-
-// interface for bccGetScriptLabel()
-void *Compiler::lookup(const char *name) {
-  void *addr = NULL;
-  if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
-    if (!strcmp(name, "root")) {
-      addr = reinterpret_cast<void *>(mCacheHdr->rootAddr);
-    } else if (!strcmp(name, "init")) {
-      addr = reinterpret_cast<void *>(mCacheHdr->initAddr);
-    }
-    return addr;
-  }
-
-  if (mCodeEmitter.get())
-    // Find function pointer
-    addr = mCodeEmitter->lookup(name);
-  return addr;
-}
-
-// Interface for bccGetFunctions()
-void Compiler::getFunctions(BCCsizei *actualFunctionCount,
-                            BCCsizei maxFunctionCount,
-                            BCCchar **functions) {
-  if (mCodeEmitter.get())
-    mCodeEmitter->getFunctionNames(actualFunctionCount,
-                                   maxFunctionCount,
-                                   functions);
-  else
-    *actualFunctionCount = 0;
-
-  return;
-}
-
-
-// Interface for bccGetFunctionBinary()
-void Compiler::getFunctionBinary(BCCchar *function,
-                                 BCCvoid **base,
-                                 BCCsizei *length) {
-  if (mCodeEmitter.get()) {
-    mCodeEmitter->getFunctionBinary(function, base, length);
-  } else {
-    *base = NULL;
-    *length = 0;
-  }
-  return;
 }
 
 
@@ -1260,8 +1213,8 @@ void Compiler::genCacheFile() {
 
   // Current Memory Address (Saved for Recalculation)
   hdr->cachedCodeDataAddr = reinterpret_cast<uint32_t>(mCodeDataAddr);
-  hdr->rootAddr = reinterpret_cast<uint32_t>(lookup("root"));
-  hdr->initAddr = reinterpret_cast<uint32_t>(lookup("init"));
+  hdr->rootAddr = reinterpret_cast<uint32_t>(mpResult->lookup("root"));
+  hdr->initAddr = reinterpret_cast<uint32_t>(mpResult->lookup("init"));
 
   // Check libRS isThreadable
   if (!mCodeEmitter) {

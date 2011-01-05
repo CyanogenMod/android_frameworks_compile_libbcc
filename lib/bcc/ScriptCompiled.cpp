@@ -19,7 +19,20 @@
 
 #include "ScriptCompiled.h"
 
+#include "EmittedFuncInfo.h"
+
 namespace bcc {
+
+ScriptCompiled::~ScriptCompiled() {
+  for (EmittedFunctionsMapTy::iterator I = mEmittedFunctions.begin(),
+       E = mEmittedFunctions.end(); I != E; I++) {
+    if (I->second != NULL) {
+      delete I->second;
+    }
+  }
+
+  mEmittedFunctions.clear();
+}
 
 void ScriptCompiled::getExportVars(BCCsizei *actualVarCount,
                                    BCCsizei maxVarCount,
@@ -146,5 +159,57 @@ void ScriptCompiled::getPragmas(BCCsizei *actualStringCount,
     }
   }
 }
+
+
+void *ScriptCompiled::lookup(const char *name) {
+#if 0
+  if (mUseCache && mCacheFd >= 0 && !mCacheNew) {
+    if (!strcmp(name, "root")) {
+      addr = reinterpret_cast<void *>(mCacheHdr->rootAddr);
+    } else if (!strcmp(name, "init")) {
+      addr = reinterpret_cast<void *>(mCacheHdr->initAddr);
+    }
+    return addr;
+  }
+#endif
+
+  EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(name);
+  return (I == mEmittedFunctions.end()) ? NULL : I->second->Code;
+}
+
+
+void ScriptCompiled::getFunctions(BCCsizei *actualFunctionCount,
+                                  BCCsizei maxFunctionCount,
+                                  BCCchar **functions) {
+
+  int functionCount = mEmittedFunctions.size();
+
+  if (actualFunctionCount)
+    *actualFunctionCount = functionCount;
+  if (functionCount > maxFunctionCount)
+    functionCount = maxFunctionCount;
+  if (functions) {
+    for (EmittedFunctionsMapTy::const_iterator
+         I = mEmittedFunctions.begin(), E = mEmittedFunctions.end();
+         I != E && (functionCount > 0); I++, functionCount--) {
+      *functions++ = const_cast<BCCchar*>(I->first.c_str());
+    }
+  }
+}
+
+
+void ScriptCompiled::getFunctionBinary(BCCchar *funcname,
+                                       BCCvoid **base,
+                                       BCCsizei *length) {
+  EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(funcname);
+  if (I == mEmittedFunctions.end()) {
+    *base = NULL;
+    *length = 0;
+  } else {
+    *base = I->second->Code;
+    *length = I->second->Size;
+  }
+}
+
 
 } // namespace bcc

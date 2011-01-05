@@ -149,34 +149,6 @@ namespace bcc {
       return mError.c_str();
     }
 
-    // interface for bccGetScriptLabel()
-    void *lookup(const char *name);
-
-    // Interface for bccGetExportVars()
-    void getExportVars(BCCsizei *actualVarCount,
-                       BCCsizei maxVarCount,
-                       BCCvoid **vars);
-
-    // Interface for bccGetExportFuncs()
-    void getExportFuncs(BCCsizei *actualFuncCount,
-                        BCCsizei maxFuncCount,
-                        BCCvoid **funcs);
-
-    // Interface for bccGetPragmas()
-    void getPragmas(BCCsizei *actualStringCount,
-                    BCCsizei maxStringCount,
-                    BCCchar **strings);
-
-    // Interface for bccGetFunctions()
-    void getFunctions(BCCsizei *actualFunctionCount,
-                      BCCsizei maxFunctionCount,
-                      BCCchar **functions);
-
-    // Interface for bccGetFunctionBinary()
-    void getFunctionBinary(BCCchar *function,
-                           BCCvoid **base,
-                           BCCsizei *length);
-
     const llvm::Module *getModule() const {
       return mModule;
     }
