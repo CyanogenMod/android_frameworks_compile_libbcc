@@ -53,7 +53,7 @@ namespace bcc {
     // ReadBC
     char const *sourceBC;
     char const *sourceResName;
-    int sourceSize;
+    size_t sourceSize;
 
     // ReadModule
     llvm::Module *sourceModule;
@@ -74,8 +74,6 @@ namespace bcc {
 
     int readBC(const char *bitcode,
                size_t bitcodeSize,
-               long bitcodeFileModTime,
-               long bitcodeFileCRC32,
                const BCCchar *resName,
                const BCCchar *cacheDir);
 

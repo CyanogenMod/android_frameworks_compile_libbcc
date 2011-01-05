@@ -105,8 +105,6 @@ Script::~Script() {
 
 int Script::readBC(const char *bitcode,
                    size_t bitcodeSize,
-                   long bitcodeFileModTime,
-                   long bitcodeFileCRC32,
                    const BCCchar *resName,
                    const BCCchar *cacheDir) {
   if (mStatus != ScriptStatus::Unknown) {
@@ -209,7 +207,7 @@ int Script::internalCompile() {
 
   // Setup the source bitcode / module
   if (sourceBC) {
-    if (mCompiled->readBC(sourceBC, sourceSize, 0, 0, sourceResName, 0) != 0) {
+    if (mCompiled->readBC(sourceBC, sourceSize, sourceResName, 0) != 0) {
       return 1;
     }
   } else if (sourceModule) {

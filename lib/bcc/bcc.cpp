@@ -86,7 +86,7 @@ extern "C" int bccReadBC(BCCscript *script,
                          const BCCchar *resName,
                          const BCCchar *cacheDir) {
   BCC_FUNC_LOGGER();
-  return script->readBC(bitcode, bitcodeSize, 0, 0, resName, cacheDir);
+  return script->readBC(bitcode, bitcodeSize, resName, cacheDir);
 }
 
 extern "C" void bccLinkBC(BCCscript *script,

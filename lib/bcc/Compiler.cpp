@@ -286,8 +286,6 @@ Compiler::Compiler(ScriptCompiled *result)
 //
 int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
-                     long bitcodeFileModTime,
-                     long bitcodeFileCRC32,
                      const BCCchar *resName,
                      const BCCchar *cacheDir) {
 

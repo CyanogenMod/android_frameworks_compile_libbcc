@@ -63,13 +63,9 @@ namespace bcc {
 
     int readBC(const char *bitcode,
                size_t bitcodeSize,
-               long bitcodeFileModTime,
-               long bitcodeFileCRC32,
                const BCCchar *resName,
                const BCCchar *cacheDir) {
-      return mCompiler.readBC(bitcode, bitcodeSize,
-                              bitcodeFileModTime, bitcodeFileCRC32,
-                              resName, cacheDir);
+      return mCompiler.readBC(bitcode, bitcodeSize, resName, cacheDir);
     }
 
     int linkBC(const char *bitcode, size_t bitcodeSize) {
