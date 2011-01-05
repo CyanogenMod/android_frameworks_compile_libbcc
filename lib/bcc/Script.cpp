@@ -142,12 +142,15 @@ int Script::readModule(llvm::Module *module) {
 
 
 int Script::linkBC(const char *bitcode, size_t bitcodeSize) {
-  if (mStatus != ScriptStatus::Compiled) {
+  if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
+    LOGE("Invalid operation: %s\n", __func__);
     return 1;
   }
 
-  return mCompiled->linkBC(bitcode, bitcodeSize);
+  libraryBC = bitcode;
+  librarySize = bitcodeSize;
+  return 0;
 }
 
 
@@ -233,15 +236,14 @@ int Script::internalCompile() {
     }
   }
 
-  // TODO(logan): Link source with the library
-#if 0
+  // Link the source module with the library module
   if (libraryBC) {
     if (mCompiled->linkBC(libraryBC, librarySize) != 0) {
       return 1;
     }
   }
-#endif
 
+  // Compile and JIT the code
   if (mCompiled->compile() != 0) {
     return 1;
   }

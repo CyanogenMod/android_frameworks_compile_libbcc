@@ -58,6 +58,10 @@ namespace bcc {
     // ReadModule
     llvm::Module *sourceModule;
 
+    // LinkBC
+    char const *libraryBC;
+    size_t librarySize;
+
     // Register Symbol Lookup Function
     BCCSymbolLookupFn mpExtSymbolLookupFn;
     BCCvoid *mpExtSymbolLookupFnContext;
