@@ -23,6 +23,8 @@
 
 #include <new>
 
+#include <cutils/properties.h>
+
 namespace {
 
 // Input: cacheDir
@@ -84,6 +86,12 @@ char *genCacheFileName(const char *cacheDir,
   return strdup(cachePath);
 }
 
+bool getBooleanProp(const char *str) {
+    char buf[PROPERTY_VALUE_MAX];
+    property_get(str, buf, "0");
+    return strcmp(buf, "0") != 0;
+}
+
 } // namespace anonymous
 
 namespace bcc {
@@ -107,11 +115,13 @@ int Script::readBC(const char *bitcode,
     return 1;
   }
 
-  cacheFile = genCacheFileName(cacheDir, resName, ".oBCC");
-
   sourceBC = bitcode;
   sourceResName = resName;
   sourceSize = bitcodeSize;
+
+  if (cacheDir && resName) {
+    cacheFile = genCacheFileName(cacheDir, resName, ".oBCC");
+  }
 
   return 0;
 }
@@ -147,9 +157,40 @@ int Script::compile() {
   }
 
   // Load Cache File
-  // TODO(logan): Complete this.
+  if (cacheFile && internalLoadCache() == 0) {
+    return 0;
+  }
 
-  // Compile
+  return internalCompile();
+}
+
+
+int Script::internalLoadCache() {
+  if (getBooleanProp("debug.bcc.nocache")) {
+    // Android system environment property disable the cache mechanism by
+    // setting "debug.bcc.nocache".  So we will not load the cache file any
+    // way.
+    return 1;
+  }
+
+#if 0
+  if (resName && !mCacheLoadFailed) {
+    mUseCache = true;
+
+    mCacheFd = openCacheFile(resName, cacheDir, true /* createIfMissing */);
+    if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
+      return -mCacheFd - 1;
+    }
+  }
+#endif
+  // TODO(logan): Implement this.
+
+  return 1;
+}
+
+
+int Script::internalCompile() {
+  // Create the ScriptCompiled object
   mCompiled = new (nothrow) ScriptCompiled(this);
 
   if (!mCompiled) {
@@ -160,24 +201,29 @@ int Script::compile() {
 
   mStatus = ScriptStatus::Compiled;
 
+  // Register symbol lookup function
   if (mpExtSymbolLookupFn) {
     mCompiled->registerSymbolCallback(mpExtSymbolLookupFn,
                                       mpExtSymbolLookupFnContext);
   }
 
+  // Setup the source bitcode / module
   if (sourceBC) {
-    int ret = mCompiled->readBC(sourceBC, sourceSize, 0, 0, sourceResName, 0);
-    if (ret != 0) {
-      return ret;
+    if (mCompiled->readBC(sourceBC, sourceSize, 0, 0, sourceResName, 0) != 0) {
+      return 1;
     }
   } else if (sourceModule) {
-    int ret = mCompiled->readModule(sourceModule);
-    if (ret != 0) {
-      return ret;
+    if (mCompiled->readModule(sourceModule) != 0) {
+      return 1;
     }
   }
 
-  // TODO(logan): Link
+  // TODO(logan): Link source with the library
+  //if (libraryBC) {
+  //  if (mCompiled->linkBC(libraryBC, librarySize) != 0) {
+  //    return 1;
+  //  }
+  //}
 
   return mCompiled->compile();
 }

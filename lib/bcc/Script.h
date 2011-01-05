@@ -63,7 +63,10 @@ namespace bcc {
     BCCvoid *mpExtSymbolLookupFnContext;
 
   public:
-    Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown) {
+    Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
+               cacheFile(NULL), sourceBC(NULL), sourceResName(NULL),
+               sourceSize(0), sourceModule(NULL), mpExtSymbolLookupFn(NULL),
+               mpExtSymbolLookupFnContext(NULL) {
       Compiler::GlobalInitialization();
     }
 
@@ -120,6 +123,11 @@ namespace bcc {
       mErrorCode = BCC_NO_ERROR;
       return result;
     }
+
+  private:
+    int internalLoadCache();
+    int internalCompile();
+
   };
 
 } // namespace bcc
