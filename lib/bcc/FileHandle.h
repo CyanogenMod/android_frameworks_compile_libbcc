@@ -25,8 +25,8 @@
 namespace bcc {
   namespace OpenMode {
     enum ModeType {
-      READ,
-      WRITE
+      Read = 0,
+      Write = 1,
     };
   }
 

@@ -186,7 +186,7 @@ int Script::internalLoadCache() {
 
   FileHandle file;
 
-  if (file.open(cacheFile, OpenMode::READ) < 0) {
+  if (file.open(cacheFile, OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
     return 1;
   }
@@ -253,7 +253,7 @@ int Script::internalCompile() {
   if (cacheFile && !getBooleanProp("debug.bcc.nocache")) {
     FileHandler file;
 
-    if (file.open(cacheFile, OpenMode::WRITE) >= 0) {
+    if (file.open(cacheFile, OpenMode::Write) >= 0) {
       CacheWriter writer;
       writer.writeCacheFile(&file);
     }
