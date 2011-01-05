@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "bcc"
+#include <cutils/log.h>
+
 #include "CodeEmitter.h"
 
 #include "CodeMemoryManager.h"
