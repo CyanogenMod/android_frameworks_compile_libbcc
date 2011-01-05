@@ -72,8 +72,8 @@ BCCenum bccGetError( BCCscript *script );
 int bccReadBC(BCCscript *script,
               const BCCchar *bitcode,
               BCCint bitcodeSize,
-              long bitcodeFileModTime,
-              long bitcodeFileCRC32,
+              long __DONT_USE_PARAM_1,
+              long __DONT_USE_PARAM_2,
               const BCCchar *resName,
               const BCCchar *cacheDir);
 

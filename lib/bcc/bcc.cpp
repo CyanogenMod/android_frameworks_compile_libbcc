@@ -81,14 +81,12 @@ extern "C" int bccReadModule(BCCscript *script, BCCvoid *module) {
 extern "C" int bccReadBC(BCCscript *script,
                          const BCCchar *bitcode,
                          BCCint bitcodeSize,
-                         long bitcodeFileModTime,
-                         long bitcodeFileCRC32,
+                         long __DONT_USE_PARAM_1,
+                         long __DONT_USE_PARAM_2,
                          const BCCchar *resName,
                          const BCCchar *cacheDir) {
   BCC_FUNC_LOGGER();
-  return script->readBC(bitcode, bitcodeSize,
-                        bitcodeFileModTime, bitcodeFileCRC32,
-                        resName, cacheDir);
+  return script->readBC(bitcode, bitcodeSize, 0, 0, resName, cacheDir);
 }
 
 extern "C" void bccLinkBC(BCCscript *script,
