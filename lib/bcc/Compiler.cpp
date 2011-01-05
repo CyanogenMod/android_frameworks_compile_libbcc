@@ -105,58 +105,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <cutils/properties.h>
-
 #include <sha1.h>
 
 #include <string>
 #include <vector>
-
-namespace {
-
-#define TEMP_FAILURE_RETRY1(exp) ({        \
-    typeof (exp) _rc;                      \
-    do {                                   \
-        _rc = (exp);                       \
-    } while (_rc == -1 && errno == EINTR); \
-    _rc; })
-
-
-int sysWriteFully(int fd, const void* buf, size_t count, const char* logMsg) {
-    while (count != 0) {
-        ssize_t actual = TEMP_FAILURE_RETRY1(write(fd, buf, count));
-        if (actual < 0) {
-            int err = errno;
-            LOGE("%s: write failed: %s\n", logMsg, strerror(err));
-            return err;
-        } else if (actual != (ssize_t) count) {
-            LOGD("%s: partial write (will retry): (%d of %zd)\n",
-                logMsg, (int) actual, count);
-            buf = (const void*) (((const uint8_t*) buf) + actual);
-        }
-        count -= actual;
-    }
-
-    return 0;
-}
-
-inline uint32_t statModifyTime(char const *filepath) {
-  struct stat st;
-
-  if (stat(filepath, &st) < 0) {
-    LOGE("Unable to stat \'%s\', with reason: %s\n", filepath, strerror(errno));
-    return 0;
-  }
-
-  return static_cast<uint32_t>(st.st_mtime);
-}
-
-static char const libRSPath[] = "/system/lib/libRS.so";
-
-static char const libBccPath[] = "/system/lib/libbcc.so";
-
-} // namespace anonymous
-
 
 namespace bcc {
 
@@ -325,13 +277,6 @@ Compiler::Compiler(ScriptCompiled *result)
   return;
 }
 
-
-static bool getProp(const char *str) {
-    char buf[PROPERTY_VALUE_MAX];
-    property_get(str, buf, "0");
-    return 0 != strcmp(buf, "0");
-}
-
 // Compiler::readBC
 // Parameters:
 //   resName: NULL means don't use cache.
@@ -346,40 +291,9 @@ int Compiler::readBC(const char *bitcode,
                      const BCCchar *resName,
                      const BCCchar *cacheDir) {
 
-#if 0
-  this->props.mNoCache = getProp("debug.bcc.nocache");
-  if (this->props.mNoCache) {
-    resName = NULL;
-  }
-#endif
-
   // Compute the SHA1 hash of the input bitcode.  So that we can use the hash
   // to decide rather to update the cache or not.
   computeSourceSHA1(bitcode, bitcodeSize);
-
-#if 0
-  if (resName && !mCacheLoadFailed) {
-    // Turn on mUseCache mode iff
-    // 1. Has resName
-    // and, assuming USE_RELOCATE is false:
-    // 2. Later running code doesn't violate the following condition:
-    //    mCodeDataAddr (set in loadCacheFile()) ==
-    //        mCacheHdr->cachedCodeDataAddr
-    //
-    //    BTW, this condition is achievable only when in the earlier
-    //    cache-generating run,
-    //      mpCodeMem == BccCodeAddr - MaxCodeSize - MaxGlobalVarSize,
-    //      which means the mmap'ed is in the reserved area,
-    //
-    //    Note: Upon violation, mUseCache will be set back to false.
-    mUseCache = true;
-
-    mCacheFd = openCacheFile(resName, cacheDir, true /* createIfMissing */);
-    if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
-      return -mCacheFd - 1;
-    }
-  }
-#endif
 
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
