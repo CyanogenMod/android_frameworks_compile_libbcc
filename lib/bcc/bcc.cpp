@@ -97,17 +97,8 @@ extern "C" void bccLinkBC(BCCscript *script,
 }
 
 extern "C" int bccLoadBinary(BCCscript *script) {
-  BCC_FUNC_LOGGER();
-  int result = script->loadCacheFile();
-
-#if defined(USE_DISASSEMBLER_FILE)
-  LOGI("[LoadBinary] result=%d", result);
-#endif
-  if (result) {
-    script->setError(BCC_INVALID_OPERATION);
-  }
-
-  return result;
+  LOGE("bccLoadBinary is deprecated **************************\n");
+  return 1;
 }
 
 extern "C" int bccCompileBC(BCCscript *script) {

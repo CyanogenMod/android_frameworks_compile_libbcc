@@ -76,10 +76,6 @@ namespace bcc {
       return mCompiler.linkBC(bitcode, bitcodeSize);
     }
 
-    int loadCacheFile() {
-      return mCompiler.loadCacheFile();
-    }
-
     int compile() {
       return mCompiler.compile();
     }

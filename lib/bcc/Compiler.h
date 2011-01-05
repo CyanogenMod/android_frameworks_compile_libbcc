@@ -66,8 +66,6 @@ namespace bcc {
     // be a list of strings starting with '+' (enable) or '-' (disable).
     static std::vector<std::string> Features;
 
-    static void GlobalInitialization();
-
     static void LLVMErrorHandler(void *UserData, const std::string &Message);
 
     static const llvm::StringRef PragmaMetadataName;
@@ -85,11 +83,6 @@ namespace bcc {
 
     bool mUseCache;         // Set by readBC()
     bool mCacheNew;         // Set by readBC()
-    int mCacheFd;           // Set by readBC()
-    char *mCacheMapAddr;    // Set by loadCacheFile() if mCacheNew is false
-    oBCCHeader *mCacheHdr;  // Set by loadCacheFile()
-    size_t mCacheSize;      // Set by loadCacheFile()
-    ptrdiff_t mCacheDiff;   // Set by loadCacheFile()
     bool mCacheLoadFailed;  // Set by loadCacheFile() used by readBC()
     char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
                             // Used by genCacheFile() for dumping
@@ -113,6 +106,8 @@ namespace bcc {
   public:
     Compiler(ScriptCompiled *result);
 
+    static void GlobalInitialization();
+
     // interface for BCCscript::registerSymbolCallback()
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
       mpSymbolLookupFn = pFn;
@@ -124,7 +119,6 @@ namespace bcc {
     CodeEmitter *createCodeEmitter();
 
     int readModule(llvm::Module *module) {
-      GlobalInitialization();
       mModule = module;
       return hasError();
     }
@@ -137,9 +131,6 @@ namespace bcc {
                const BCCchar *cacheDir);
 
     int linkBC(const char *bitcode, size_t bitcodeSize);
-
-    // interface for bccLoadBinary()
-    int loadCacheFile();
 
     // interace for bccCompileBC()
     int compile();
@@ -158,44 +149,10 @@ namespace bcc {
   private:
     void computeSourceSHA1(char const *bitcode, size_t size);
 
-    // Note: loadCacheFile() and genCacheFile() go hand in hand
-    void genCacheFile();
-
-    // OpenCacheFile() returns fd of the cache file.
-    // Input:
-    //   BCCchar *resName: Used to genCacheFileName()
-    //   bool createIfMissing: If false, turn off caching
-    // Output:
-    //   returns fd: If -1: Failed
-    //   mCacheNew: If true, the returned fd is new. Otherwise, the fd is the
-    //              cache file's file descriptor
-    //              Note: openCacheFile() will check the cache file's validity,
-    //              such as Magic number, sourceWhen... dependencies.
-    int openCacheFile(const BCCchar *resName,
-                      const BCCchar *cacheDir,
-                      bool createIfMissing);
 
     char *genCacheFileName(const char *cacheDir,
                            const char *fileName,
                            const char *subFileName);
-
-    /*
-     * Read the oBCC header, verify it, then read the dependent section
-     * and verify that data as well.
-     *
-     * On successful return, the file will be seeked immediately past the
-     * oBCC header.
-     */
-    bool checkHeaderAndDependencies(int fd,
-                                    long sourceWhen,
-                                    uint32_t rslibWhen,
-                                    uint32_t libRSWhen,
-                                    uint32_t libbccWhen);
-
-
-    struct {
-      bool mNoCache;
-    } props;
 
 
   private:

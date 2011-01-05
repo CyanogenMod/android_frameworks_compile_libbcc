@@ -23,6 +23,69 @@
 
 #include <new>
 
+namespace {
+
+// Input: cacheDir
+// Input: resName
+// Input: extName
+//
+// Note: cacheFile = resName + extName
+//
+// Output: Returns cachePath == cacheDir + cacheFile
+char *genCacheFileName(const char *cacheDir,
+                       const char *resName,
+                       const char *extName) {
+  char cachePath[512];
+  char cacheFile[sizeof(cachePath)];
+  const size_t kBufLen = sizeof(cachePath) - 1;
+
+  cacheFile[0] = '\0';
+  // Note: resName today is usually something like
+  //       "/com.android.fountain:raw/fountain"
+  if (resName[0] != '/') {
+    // Get the absolute path of the raw/***.bc file.
+
+    // Generate the absolute path.  This doesn't do everything it
+    // should, e.g. if resName is "./out/whatever" it doesn't crunch
+    // the leading "./" out because this if-block is not triggered,
+    // but it'll make do.
+    //
+    if (getcwd(cacheFile, kBufLen) == NULL) {
+      LOGE("Can't get CWD while opening raw/***.bc file\n");
+      return NULL;
+    }
+    // Append "/" at the end of cacheFile so far.
+    strncat(cacheFile, "/", kBufLen);
+  }
+
+  // cacheFile = resName + extName
+  //
+  strncat(cacheFile, resName, kBufLen);
+  if (extName != NULL) {
+    // TODO(srhines): strncat() is a bit dangerous
+    strncat(cacheFile, extName, kBufLen);
+  }
+
+  // Turn the path into a flat filename by replacing
+  // any slashes after the first one with '@' characters.
+  char *cp = cacheFile + 1;
+  while (*cp != '\0') {
+    if (*cp == '/') {
+      *cp = '@';
+    }
+    cp++;
+  }
+
+  // Tack on the file name for the actual cache file path.
+  strncpy(cachePath, cacheDir, kBufLen);
+  strncat(cachePath, cacheFile, kBufLen);
+
+  LOGV("Cache file for '%s' '%s' is '%s'\n", resName, extName, cachePath);
+  return strdup(cachePath);
+}
+
+} // namespace anonymous
+
 namespace bcc {
 
 Script::~Script() {
@@ -38,54 +101,31 @@ int Script::readBC(const char *bitcode,
                    long bitcodeFileCRC32,
                    const BCCchar *resName,
                    const BCCchar *cacheDir) {
-  if (mStatus == ScriptStatus::Unknown) {
-    mCompiled = new (nothrow) ScriptCompiled(this);
-
-    if (!mCompiled) {
-      mErrorCode = BCC_OUT_OF_MEMORY;
-      return 1;
-    }
-
-    mStatus = ScriptStatus::Compiled;
-  }
-
-  if (mStatus != ScriptStatus::Compiled) {
+  if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
+    LOGE("Invalid operation: %s\n", __func__);
     return 1;
   }
 
-  if (mpExtSymbolLookupFn) {
-    mCompiled->registerSymbolCallback(mpExtSymbolLookupFn,
-                                      mpExtSymbolLookupFnContext);
-  }
+  cacheFile = genCacheFileName(cacheDir, resName, ".oBCC");
 
-  return mCompiled->readBC(bitcode, bitcodeSize,
-                           bitcodeFileModTime, bitcodeFileCRC32,
-                           resName, cacheDir);
+  sourceBC = bitcode;
+  sourceResName = resName;
+  sourceSize = bitcodeSize;
+
+  return 0;
 }
 
 
 int Script::readModule(llvm::Module *module) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
+    LOGE("Invalid operation: %s\n", __func__);
     return 1;
   }
 
-  mCompiled = new (nothrow) ScriptCompiled(this);
-
-  if (!mCompiled) {
-    mErrorCode = BCC_OUT_OF_MEMORY;
-    return 1;
-  }
-
-  mStatus = ScriptStatus::Compiled;
-
-  if (mpExtSymbolLookupFn) {
-    mCompiled->registerSymbolCallback(mpExtSymbolLookupFn,
-                                      mpExtSymbolLookupFnContext);
-  }
-
-  return mCompiled->readModule(module);
+  sourceModule = module;
+  return 0;
 }
 
 
@@ -99,21 +139,45 @@ int Script::linkBC(const char *bitcode, size_t bitcodeSize) {
 }
 
 
-int Script::loadCacheFile() {
-  if (mStatus != ScriptStatus::Compiled) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    return 1;
-  }
-
-  return mCompiled->loadCacheFile();
-}
-
-
 int Script::compile() {
-  if (mStatus != ScriptStatus::Compiled) {
+  if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
+    LOGE("Invalid operation: %s\n", __func__);
     return 1;
   }
+
+  // Load Cache File
+  // TODO(logan): Complete this.
+
+  // Compile
+  mCompiled = new (nothrow) ScriptCompiled(this);
+
+  if (!mCompiled) {
+    mErrorCode = BCC_OUT_OF_MEMORY;
+    LOGE("Out of memory: %s %d\n", __FILE__, __LINE__);
+    return 1;
+  }
+
+  mStatus = ScriptStatus::Compiled;
+
+  if (mpExtSymbolLookupFn) {
+    mCompiled->registerSymbolCallback(mpExtSymbolLookupFn,
+                                      mpExtSymbolLookupFnContext);
+  }
+
+  if (sourceBC) {
+    int ret = mCompiled->readBC(sourceBC, sourceSize, 0, 0, sourceResName, 0);
+    if (ret != 0) {
+      return ret;
+    }
+  } else if (sourceModule) {
+    int ret = mCompiled->readModule(sourceModule);
+    if (ret != 0) {
+      return ret;
+    }
+  }
+
+  // TODO(logan): Link
 
   return mCompiled->compile();
 }

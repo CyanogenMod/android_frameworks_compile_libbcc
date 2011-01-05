@@ -19,6 +19,8 @@
 
 #include <bcc/bcc.h>
 
+#include "Compiler.h"
+
 namespace llvm {
   class Module;
 }
@@ -46,11 +48,23 @@ namespace bcc {
       ScriptCached *mCached;
     };
 
+    char *cacheFile;
+
+    // ReadBC
+    char const *sourceBC;
+    char const *sourceResName;
+    int sourceSize;
+
+    // ReadModule
+    llvm::Module *sourceModule;
+
+    // Register Symbol Lookup Function
     BCCSymbolLookupFn mpExtSymbolLookupFn;
     BCCvoid *mpExtSymbolLookupFnContext;
 
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown) {
+      Compiler::GlobalInitialization();
     }
 
     ~Script();
@@ -62,11 +76,11 @@ namespace bcc {
                const BCCchar *resName,
                const BCCchar *cacheDir);
 
+    int readModule(llvm::Module *module);
+
     int linkBC(const char *bitcode, size_t bitcodeSize);
 
-    int loadCacheFile();
-
-    int compile();
+    int compile(); // deprecated
 
     char const *getCompilerErrorMessage();
 
@@ -93,8 +107,6 @@ namespace bcc {
                            BCCsizei *length);
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext);
-
-    int readModule(llvm::Module *module);
 
 
     void setError(BCCenum error) {
