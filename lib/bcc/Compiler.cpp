@@ -308,8 +308,7 @@ CodeEmitter *Compiler::createCodeEmitter() {
 
 
 Compiler::Compiler()
-  : mResId(-1),
-    mUseCache(false),
+  : mUseCache(false),
     mCacheNew(false),
     mCacheFd(-1),
     mCacheMapAddr(NULL),
