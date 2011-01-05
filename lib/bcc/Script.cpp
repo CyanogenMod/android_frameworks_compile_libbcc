@@ -19,7 +19,11 @@
 
 #include "Script.h"
 
+//#include "CacheReader.h"
+//#include "CacheWriter.h"
+#include "FileHandle.h"
 #include "ScriptCompiled.h"
+//#include "ScriptCached.h"
 
 #include <new>
 
@@ -171,17 +175,30 @@ int Script::internalLoadCache() {
     return 1;
   }
 
-#if 0
-  if (resName && !mCacheLoadFailed) {
-    mUseCache = true;
-
-    mCacheFd = openCacheFile(resName, cacheDir, true /* createIfMissing */);
-    if (mCacheFd >= 0 && !mCacheNew) {  // Just use cache file
-      return -mCacheFd - 1;
-    }
+  if (!cacheFile) {
+    // The application developer has not specify resName or cacheDir, so
+    // we don't know where to open the cache file.
+    return 1;
   }
+
+  FileHandle file;
+
+  if (file.open(cacheFile, OpenMode::READ) < 0) {
+    // Unable to open the cache file in read mode.
+    return 1;
+  }
+
+#if 0
+  CacheReader reader;
+
+  ScriptCached *cached = reader.readCacheFile(&file);
+  if (!cached) {
+    return 1;
+  }
+
+  mCached = cached;
+  mStatus = ScriptStatus::Cached;
 #endif
-  // TODO(logan): Implement this.
 
   return 1;
 }
@@ -217,13 +234,31 @@ int Script::internalCompile() {
   }
 
   // TODO(logan): Link source with the library
-  //if (libraryBC) {
-  //  if (mCompiled->linkBC(libraryBC, librarySize) != 0) {
-  //    return 1;
-  //  }
-  //}
+#if 0
+  if (libraryBC) {
+    if (mCompiled->linkBC(libraryBC, librarySize) != 0) {
+      return 1;
+    }
+  }
+#endif
 
-  return mCompiled->compile();
+  if (mCompiled->compile() != 0) {
+    return 1;
+  }
+
+  // TODO(logan): Write the cache out
+#if 0
+  if (cacheFile && !getBooleanProp("debug.bcc.nocache")) {
+    FileHandler file;
+
+    if (file.open(cacheFile, OpenMode::WRITE) >= 0) {
+      CacheWriter writer;
+      writer.writeCacheFile(&file);
+    }
+  }
+#endif
+
+  return 0;
 }
 
 
