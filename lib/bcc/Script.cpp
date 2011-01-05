@@ -348,12 +348,10 @@ void Script::registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
   mpExtSymbolLookupFn = pFn;
   mpExtSymbolLookupFnContext = pContext;
 
-  if (mStatus != ScriptStatus::Compiled) {
+  if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    return;
+    LOGE("Invalid operation: %s\n", __func__);
   }
-
-  mCompiled->registerSymbolCallback(pFn, pContext);
 }
 
 } // namespace bcc
