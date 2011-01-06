@@ -84,14 +84,14 @@ struct OBCC_StringPool {
   struct OBCC_String list[];
 };
 
-struct OBCC_Dependancy {
+struct OBCC_Dependency {
   size_t resource_strp_index;
   char sha1[20];
 };
 
-struct OBCC_DependancyTable {
+struct OBCC_DependencyTable {
   size_t count;
-  struct OBCC_Dependancy table[];
+  struct OBCC_Dependency table[];
 };
 
 struct OBCC_RelocationTable {
