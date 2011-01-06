@@ -84,8 +84,14 @@ struct OBCC_StringPool {
   struct OBCC_String list[];
 };
 
+enum OBCC_ResourceType {
+  BCC_APK_RESOURCE = 0,
+  BCC_FILE_RESOURCE = 1,
+};
+
 struct OBCC_Dependency {
-  size_t resource_strp_index;
+  size_t res_name_strp_index;
+  uint32_t res_type; /* BCC_APK_RESOURCE or BCC_FILE_RESOURCE */
   char sha1[20];
 };
 
@@ -120,8 +126,8 @@ struct OBCC_PragmaList {
 
 struct OBCC_FuncInfo {
   size_t name_strp_index;
-  size_t size;
   void *cached_addr;
+  size_t size;
 };
 
 struct OBCC_FuncTable {

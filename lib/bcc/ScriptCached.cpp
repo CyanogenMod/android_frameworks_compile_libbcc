@@ -24,6 +24,8 @@
 #include "ContextManager.h"
 #include "EmittedFuncInfo.h"
 
+#include <stdlib.h>
+
 namespace bcc {
 
 ScriptCached::~ScriptCached() {

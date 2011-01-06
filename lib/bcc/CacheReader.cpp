@@ -36,12 +36,20 @@
 
 #include <new>
 
+#include <stdlib.h>
 #include <string.h>
 
 using namespace std;
 
 
 namespace bcc {
+
+CacheReader::~CacheReader() {
+  if (mpHeader) { free(mpHeader); }
+  if (mpCachedDependTable) { free(mpCachedDependTable); }
+  if (mpPragmaList) { free(mpPragmaList); }
+  if (mpFuncTable) { free(mpFuncTable); }
+}
 
 ScriptCached *CacheReader::readCacheFile(FileHandle *file) {
   // Check file handle
@@ -50,9 +58,9 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *file) {
   }
 
   // Allocate ScriptCached object
-  mResult.reset(new (nothrow) ScriptCached(mpOwner));
+  mpResult.reset(new (nothrow) ScriptCached(mpOwner));
 
-  if (!mResult) {
+  if (!mpResult) {
     LOGE("Unable to allocate ScriptCached object.\n");
     return NULL;
   }
@@ -82,12 +90,12 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *file) {
 #if 0
   // Check the cache file has __isThreadable or not.  If it is set,
   // then we have to call mpSymbolLookupFn for __clearThreadable.
-  if (mHeader->libRSThreadable && mpSymbolLookupFn) {
+  if (mpHeader->libRSThreadable && mpSymbolLookupFn) {
     mpSymbolLookupFn(mpSymbolLookupContext, "__clearThreadable");
   }
 #endif
 
-  return result ? mResult.take() : NULL;
+  return result ? mpResult.take() : NULL;
 }
 
 
@@ -116,13 +124,13 @@ bool CacheReader::readHeader() {
     return false;
   }
 
-  mHeader = (OBCC_Header *)malloc(sizeof(OBCC_Header));
-  if (!mHeader) {
+  mpHeader = (OBCC_Header *)malloc(sizeof(OBCC_Header));
+  if (!mpHeader) {
     LOGE("Unable to allocate for cache header.\n");
     return false;
   }
 
-  if (mFile->read(reinterpret_cast<char *>(mHeader), sizeof(OBCC_Header)) !=
+  if (mFile->read(reinterpret_cast<char *>(mpHeader), sizeof(OBCC_Header)) !=
       (ssize_t)sizeof(OBCC_Header)) {
     LOGE("Unable to read cache header.\n");
     return false;
@@ -133,14 +141,14 @@ bool CacheReader::readHeader() {
 
 
 bool CacheReader::checkHeader() {
-  if (memcmp(mHeader->magic, OBCC_MAGIC, 4) != 0) {
+  if (memcmp(mpHeader->magic, OBCC_MAGIC, 4) != 0) {
     LOGE("Bad magic word\n");
     return false;
   }
 
-  if (memcmp(mHeader->version, OBCC_VERSION, 4) != 0) {
+  if (memcmp(mpHeader->version, OBCC_VERSION, 4) != 0) {
     LOGE("Bad oBCC version 0x%08x\n",
-         *reinterpret_cast<uint32_t *>(mHeader->version));
+         *reinterpret_cast<uint32_t *>(mpHeader->version));
     return false;
   }
 
@@ -152,15 +160,15 @@ bool CacheReader::checkMachineIntType() {
   uint32_t number = 0x00000001;
 
   bool isLittleEndian = (*reinterpret_cast<char *>(&number) == 1);
-  if ((isLittleEndian && mHeader->endianness != 'e') ||
-      (!isLittleEndian && mHeader->endianness != 'E')) {
+  if ((isLittleEndian && mpHeader->endianness != 'e') ||
+      (!isLittleEndian && mpHeader->endianness != 'E')) {
     LOGE("Machine endianness mismatch.\n");
     return false;
   }
 
-  if ((unsigned int)mHeader->sizeof_off_t != sizeof(off_t) ||
-      (unsigned int)mHeader->sizeof_size_t != sizeof(size_t) ||
-      (unsigned int)mHeader->sizeof_ptr_t != sizeof(void *)) {
+  if ((unsigned int)mpHeader->sizeof_off_t != sizeof(off_t) ||
+      (unsigned int)mpHeader->sizeof_size_t != sizeof(size_t) ||
+      (unsigned int)mpHeader->sizeof_ptr_t != sizeof(void *)) {
     LOGE("Machine integer size mismatch.\n");
     return false;
   }
@@ -172,8 +180,8 @@ bool CacheReader::checkMachineIntType() {
 bool CacheReader::checkSectionOffsetAndSize() {
 #define CHECK_SECTION_OFFSET(NAME)                                          \
   do {                                                                      \
-    off_t offset = mHeader-> NAME##_offset;                                 \
-    off_t size = (off_t)mHeader-> NAME##_size;                              \
+    off_t offset = mpHeader-> NAME##_offset;                                \
+    off_t size = (off_t)mpHeader-> NAME##_size;                             \
                                                                             \
     if (mFileSize < offset || mFileSize < offset + size) {                  \
       LOGE(#NAME " section overflow.\n");                                   \
@@ -200,20 +208,20 @@ bool CacheReader::checkSectionOffsetAndSize() {
 
 #undef CHECK_SECTION_OFFSET
 
-  if (mFileSize < mHeader->context_offset ||
-      mFileSize < mHeader->context_offset + BCC_CONTEXT_SIZE) {
+  if (mFileSize < mpHeader->context_offset ||
+      mFileSize < mpHeader->context_offset + BCC_CONTEXT_SIZE) {
     LOGE("context section overflow.\n");
     return false;
   }
 
   long pagesize = sysconf(_SC_PAGESIZE);
-  if (mHeader->context_offset % pagesize != 0) {
+  if (mpHeader->context_offset % pagesize != 0) {
     LOGE("context offset must aligned to pagesize.\n");
     return false;
   }
 
   // TODO(logan): Move this to some where else.
-  if ((uintptr_t)mHeader->context_cached_addr % pagesize != 0) {
+  if ((uintptr_t)mpHeader->context_cached_addr % pagesize != 0) {
     LOGE("cached address is not aligned to pagesize.\n");
     return false;
   }
@@ -222,26 +230,39 @@ bool CacheReader::checkSectionOffsetAndSize() {
 }
 
 
+#define CACHE_READER_READ_SECTION(TYPE, AUTO_MANAGED_HOLDER, NAME)          \
+  TYPE *NAME##_raw = (TYPE *)malloc(mpHeader->NAME##_size);                 \
+                                                                            \
+  if (!NAME##_raw) {                                                        \
+    LOGE("Unable to allocate for " #NAME "\n");                             \
+    return false;                                                           \
+  }                                                                         \
+                                                                            \
+  /* We have to ensure that some one will deallocate NAME##_raw */          \
+  AUTO_MANAGED_HOLDER = NAME##_raw;                                         \
+                                                                            \
+  if (mFile->seek(mpHeader->NAME##_offset, SEEK_SET) == -1) {               \
+    LOGE("Unable to seek to " #NAME " section\n");                          \
+    return false;                                                           \
+  }                                                                         \
+                                                                            \
+  if (mFile->read(reinterpret_cast<char *>(NAME##_raw),                     \
+                  mpHeader->NAME##_size) != (ssize_t)mpHeader->NAME##_size) \
+  {                                                                         \
+    LOGE("Unable to read " #NAME ".\n");                                    \
+    return false;                                                           \
+  }
+
+
 bool CacheReader::readStringPool() {
-  OBCC_StringPool *poolR = (OBCC_StringPool *)malloc(mHeader->str_pool_size);
+  CACHE_READER_READ_SECTION(OBCC_StringPool,
+                            mpResult->mpStringPoolRaw, str_pool);
 
-  if (!poolR) {
-    LOGE("Unable to allocate string pool.\n");
-    return false;
-  }
+  char *str_base = reinterpret_cast<char *>(str_pool_raw);
 
-  mResult->mpStringPoolRaw = poolR; // Managed by mResult from now on.
-
-  if (mFile->read(reinterpret_cast<char *>(poolR), mHeader->str_pool_size) !=
-      (ssize_t)mHeader->str_pool_size) {
-    LOGE("Unable to read string pool.\n");
-    return false;
-  }
-
-  vector<char const *> &pool = mResult->mStringPool;
-
-  for (size_t i = 0; i < poolR->count; ++i) {
-    char *str = reinterpret_cast<char *>(poolR) + poolR->list[i].offset;
+  vector<char const *> &pool = mpResult->mStringPool;
+  for (size_t i = 0; i < str_pool_raw->count; ++i) {
+    char *str = str_base + str_pool_raw->list[i].offset;
     pool.push_back(str);
   }
 
@@ -250,8 +271,8 @@ bool CacheReader::readStringPool() {
 
 
 bool CacheReader::checkStringPool() {
-  OBCC_StringPool *poolR = mResult->mpStringPoolRaw;
-  vector<char const *> &pool = mResult->mStringPool;
+  OBCC_StringPool *poolR = mpResult->mpStringPoolRaw;
+  vector<char const *> &pool = mpResult->mStringPool;
 
   // Ensure that every c-style string is ended with '\0'
   for (size_t i = 0; i < poolR->count; ++i) {
@@ -266,92 +287,90 @@ bool CacheReader::checkStringPool() {
 
 
 bool CacheReader::readDependencyTable() {
-  // TODO(logan): Not finished.
+  CACHE_READER_READ_SECTION(OBCC_DependencyTable, mpCachedDependTable,
+                            depend_tab);
   return true;
 }
 
 
 bool CacheReader::checkDependency() {
-  // TODO(logan): Not finished.
+  if (mDependencies.size() != mpCachedDependTable->count) {
+    LOGE("Dependencies count mismatch. (%lu vs %lu)\n",
+         (unsigned long)mDependencies.size(),
+         (unsigned long)mpCachedDependTable->count);
+    return false;
+  }
+
+  vector<char const *> &strPool = mpResult->mStringPool;
+  map<string, pair<uint32_t, char const *> >::iterator dep;
+
+  dep = mDependencies.begin();
+  for (size_t i = 0; i < mpCachedDependTable->count; ++i, ++dep) {
+    string const &depName = dep->first;
+    char const *depSHA1 = dep->second.second;
+    uint32_t depType = dep->second.first;
+
+    OBCC_Dependency *depCached =&mpCachedDependTable->table[i];
+    char const *depCachedName = strPool[depCached->res_name_strp_index];
+    char const *depCachedSHA1 = depCached->sha1;
+    uint32_t depCachedType = depCached->res_type;
+
+    if (depName != depCachedName) {
+      LOGE("Cache dependency name mismatch:\n");
+      LOGE("  given:  %s\n", depName.c_str());
+      LOGE("  cached: %s\n", depCachedName);
+
+      return false;
+    }
+
+    if (memcmp(depSHA1, depCachedSHA1, 20) != 0) {
+      LOGE("Cache dependency %s sha1 mismatch:\n", depCachedName);
+
+#define PRINT_SHA1(PREFIX, X, POSTFIX) \
+      LOGE(PREFIX "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" \
+                  "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" POSTFIX, \
+           X[0], X[1], X[2], X[3], X[4], X[5], X[6], X[7], X[8], X[9], \
+           X[10],X[11],X[12],X[13],X[14],X[15],X[16],X[17],X[18],X[19]);
+
+      PRINT_SHA1("  given:  ", depSHA1, "\n");
+      PRINT_SHA1("  cached: ", depCachedSHA1, "\n");
+
+#undef PRINT_SHA1
+
+      return false;
+    }
+
+    if (depType != depCachedType) {
+      LOGE("Cache dependency %s resource type mismatch.\n", depCachedName);
+      return false;
+    }
+  }
+
   return true;
 }
 
 bool CacheReader::readExportVarList() {
-  char *varList = (char *)malloc(mHeader->export_var_list_size);
-
-  if (!varList) {
-    LOGE("Unable to allocate exported variable list.\n");
-    return false;
-  }
-
-  mResult->mpExportVars = reinterpret_cast<OBCC_ExportVarList *>(varList);
-
-  if (mFile->seek(mHeader->export_var_list_offset, SEEK_SET) == -1) {
-    LOGE("Unable to seek to exported variable list section.\n");
-    return false;
-  }
-
-  if (mFile->read(varList, mHeader->export_var_list_size) !=
-      (ssize_t)mHeader->export_var_list_size) {
-    LOGE("Unable to read exported variable list.\n");
-    return false;
-  }
-
+  CACHE_READER_READ_SECTION(OBCC_ExportVarList,
+                            mpResult->mpExportVars, export_var_list);
   return true;
 }
 
 
 bool CacheReader::readExportFuncList() {
-  char *funcList = (char *)malloc(mHeader->export_func_list_size);
-
-  if (!funcList) {
-    LOGE("Unable to allocate exported function list.\n");
-    return false;
-  }
-
-  mResult->mpExportFuncs = reinterpret_cast<OBCC_ExportFuncList *>(funcList);
-
-  if (mFile->seek(mHeader->export_func_list_offset, SEEK_SET) == -1) {
-    LOGE("Unable to seek to exported function list section.\n");
-    return false;
-  }
-
-  if (mFile->read(funcList, mHeader->export_func_list_size) !=
-      (ssize_t)mHeader->export_func_list_size) {
-    LOGE("Unable to read exported function list.\n");
-    return false;
-  }
-
+  CACHE_READER_READ_SECTION(OBCC_ExportFuncList,
+                            mpResult->mpExportFuncs, export_func_list);
   return true;
 }
 
 
 bool CacheReader::readPragmaList() {
-  OBCC_PragmaList *pragmaListRaw =
-    (OBCC_PragmaList *)malloc(mHeader->pragma_list_size);
+  CACHE_READER_READ_SECTION(OBCC_PragmaList, mpPragmaList, pragma_list);
 
-  if (!pragmaListRaw) {
-    LOGE("Unable to allocate pragma list.\n");
-    return false;
-  }
+  vector<char const *> const &strPool = mpResult->mStringPool;
+  ScriptCached::PragmaList &pragmas = mpResult->mPragmas;
 
-  if (mFile->seek(mHeader->pragma_list_offset, SEEK_SET) == -1) {
-    LOGE("Unable to seek to pragma list section.\n");
-    return false;
-  }
-
-  if (mFile->read(reinterpret_cast<char *>(pragmaListRaw),
-                  mHeader->pragma_list_size) !=
-                              (ssize_t)mHeader->pragma_list_size) {
-    LOGE("Unable to read pragma list.\n");
-    return false;
-  }
-
-  vector<char const *> const &strPool = mResult->mStringPool;
-  ScriptCached::PragmaList &pragmas = mResult->mPragmas;
-
-  for (size_t i = 0; i < pragmaListRaw->count; ++i) {
-    OBCC_Pragma *pragma = &pragmaListRaw->list[i];
+  for (size_t i = 0; i < pragma_list_raw->count; ++i) {
+    OBCC_Pragma *pragma = &pragma_list_raw->list[i];
     pragmas.push_back(make_pair(strPool[pragma->key_strp_index],
                                 strPool[pragma->value_strp_index]));
   }
@@ -361,16 +380,28 @@ bool CacheReader::readPragmaList() {
 
 
 bool CacheReader::readFuncTable() {
-  return false;
+  CACHE_READER_READ_SECTION(OBCC_FuncTable, mpFuncTable, func_table);
+
+  vector<char const *> &strPool = mpResult->mStringPool;
+  ScriptCached::FuncTable &table = mpResult->mFunctions;
+  for (size_t i = 0; i < func_table_raw->count; ++i) {
+    OBCC_FuncInfo *func = &func_table_raw->table[i];
+    table.insert(make_pair(strPool[func->name_strp_index],
+                           make_pair(func->cached_addr, func->size)));
+  }
+
+  return true;
 }
+
+#undef CACHE_READER_READ_SECTION
 
 
 bool CacheReader::readContext() {
-  mResult->mContext = allocateContext(mHeader->context_cached_addr,
+  mpResult->mContext = allocateContext(mpHeader->context_cached_addr,
                                       mFile->getFD(),
-                                      mHeader->context_offset);
+                                      mpHeader->context_offset);
 
-  if (!mResult->mContext) {
+  if (!mpResult->mContext) {
     // Unable to allocate at cached address.  Give up.
     return false;
 
@@ -383,8 +414,8 @@ bool CacheReader::readContext() {
 
 
 bool CacheReader::checkContext() {
-  uint32_t sum = mHeader->context_parity_checksum;
-  uint32_t *ptr = reinterpret_cast<uint32_t *>(mResult->mContext);
+  uint32_t sum = mpHeader->context_parity_checksum;
+  uint32_t *ptr = reinterpret_cast<uint32_t *>(mpResult->mContext);
 
   for (size_t i = 0; i < BCC_CONTEXT_SIZE / sizeof(uint32_t); ++i) {
     sum ^= *ptr++;

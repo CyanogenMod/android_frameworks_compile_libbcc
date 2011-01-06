@@ -26,6 +26,7 @@
 #include <utility>
 
 #include <stddef.h>
+#include <stdint.h>
 
 struct OBCC_Header;
 
@@ -40,19 +41,28 @@ namespace bcc {
     FileHandle *mFile;
     off_t mFileSize;
 
-    OBCC_Header *mHeader;
+    OBCC_Header *mpHeader;
+    OBCC_DependencyTable *mpCachedDependTable;
+    OBCC_PragmaList *mpPragmaList;
+    OBCC_FuncTable *mpFuncTable;
 
-    llvm::OwningPtr<ScriptCached> mResult;
+    llvm::OwningPtr<ScriptCached> mpResult;
 
-    std::map<std::string, char const *> mDependency;
+    std::map<std::string, std::pair<uint32_t, char const *> > mDependencies;
 
   public:
     CacheReader(Script *owner)
-      : mpOwner(owner), mFile(NULL), mFileSize(0), mHeader(NULL) {
+      : mpOwner(owner), mFile(NULL), mFileSize(0), mpHeader(NULL),
+        mpCachedDependTable(NULL), mpPragmaList(NULL), mpFuncTable(NULL) {
     }
 
-    void addDependency(std::string const &resName, char const *sha1) {
-      mDependency.insert(std::make_pair(resName, sha1));
+    ~CacheReader();
+
+    void addDependency(OBCC_ResourceType resType,
+                       std::string const &resName,
+                       char const *sha1) {
+      mDependencies.insert(std::make_pair(resName,
+                           std::make_pair((uint32_t)resType, sha1)));
     }
 
     ScriptCached *readCacheFile(FileHandle *file);
