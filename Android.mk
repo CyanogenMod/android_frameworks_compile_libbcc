@@ -27,6 +27,7 @@ LLVM_ENABLE_ASSERTION := false
 
 libbcc_SRC_FILES := \
   lib/bcc/bcc.cpp \
+  lib/bcc/CacheReader.cpp \
   lib/bcc/CodeEmitter.cpp \
   lib/bcc/CodeMemoryManager.cpp \
   lib/bcc/Compiler.cpp \
@@ -35,6 +36,7 @@ libbcc_SRC_FILES := \
   lib/bcc/Runtime.c \
   lib/bcc/Script.cpp \
   lib/bcc/ScriptCompiled.cpp \
+  lib/bcc/ScriptCached.cpp \
   helper/sha1.c
 
 # Shared library for target

@@ -19,97 +19,115 @@
 
 
 /* BCC Cache File Magic Word */
-#define OBCC_MAGIC       "bcc\n"
+#define OBCC_MAGIC "\0bcc"
 
 /* BCC Cache File Version, encoded in 4 bytes of ASCII */
-#define OBCC_MAGIC_VERS  "003\0"
+#define OBCC_VERSION "004\0"
 
 /* BCC Cache Header Structure */
-struct oBCCHeader {
-  uint8_t magic[4];             /* includes version number */
-  uint8_t magicVersion[4];
+struct OBCC_Header {
+  /* magic and version */
+  uint8_t magic[4];
+  uint8_t version[4];
 
-  long sourceWhen;
-  uint32_t rslibWhen;
-  uint32_t libRSWhen;
-  uint32_t libbccWhen;
+  /* machine-dependent integer type size */
+  uint8_t endianness;
+  uint8_t sizeof_off_t;
+  uint8_t sizeof_size_t;
+  uint8_t sizeof_ptr_t;
 
-  unsigned char sourceSHA1[20];
+  /* string pool section */
+  off_t str_pool_offset;
+  size_t str_pool_size;
 
-  uint32_t cachedCodeDataAddr;
-  uint32_t rootAddr;
-  uint32_t initAddr;
+  /* dependancy table */
+  off_t depend_tab_offset;
+  size_t depend_tab_size;
 
-  uint32_t libRSThreadable;     /* TODO: This is an hack. Should be fixed
-                                   in the long term. */
+  /* relocation table section */
+  off_t reloc_tab_offset;
+  size_t reloc_tab_size;
 
-  uint32_t relocOffset;         /* offset of reloc table. */
-  uint32_t relocCount;
-  uint32_t exportVarsOffset;    /* offset of export var table */
-  uint32_t exportVarsCount;
-  uint32_t exportFuncsOffset;   /* offset of export func table */
-  uint32_t exportFuncsCount;
-  uint32_t exportPragmasOffset; /* offset of export pragma table */
-  uint32_t exportPragmasCount;
-  uint32_t exportPragmasSize;   /* size of export pragma table (in bytes) */
+  /* export variable list section */
+  off_t export_var_list_offset;
+  size_t export_var_list_size;
 
-  uint32_t codeOffset;          /* offset of code: 64-bit alignment */
-  uint32_t codeSize;
-  uint32_t dataOffset;          /* offset of data section */
-  uint32_t dataSize;
+  /* export function list section */
+  off_t export_func_list_offset;
+  size_t export_func_list_size;
 
-  /* uint32_t flags; */         /* some info flags */
-  uint32_t checksum;            /* adler32 checksum covering deps/opt */
+  /* pragma list section */
+  off_t pragma_list_offset;
+  size_t pragma_list_size;
+
+  /* function table */
+  off_t func_table_offset;
+  size_t func_table_size;
+
+  /* context section */
+  off_t context_offset;
+  char *context_cached_addr;
+  uint32_t context_parity_checksum;
+
+  /* dirty hacks */
+  /* TODO: This is an hack. Should be removed. */
+  uint32_t libRS_threadable;
 };
 
-
-/* BCC Cache Relocation Entry */
-struct oBCCRelocEntry {
-  uint32_t relocType;           /* target instruction relocation type */
-  uint32_t relocOffset;         /* offset of hole (holeAddr - codeAddr) */
-  uint32_t cachedResultAddr;    /* address resolved at compile time */
-
-  oBCCRelocEntry(uint32_t ty, uintptr_t off, void *addr)
-    : relocType(ty),
-      relocOffset(static_cast<uint32_t>(off)),
-      cachedResultAddr(reinterpret_cast<uint32_t>(addr)) {
-  }
+struct OBCC_String {
+  size_t length; /* String length, without ending '\0' */
+  off_t offset; /* Note: Offset related to string_pool_offset. */
 };
 
-
-/* BCC Cache Pragma Entry */
-struct oBCCPragmaEntry {
-  uint32_t pragmaNameOffset;
-  uint32_t pragmaNameSize;
-  uint32_t pragmaValueOffset;
-  uint32_t pragmaValueSize;
+struct OBCC_StringPool {
+  size_t count;
+  struct OBCC_String list[];
 };
 
+struct OBCC_Dependancy {
+  size_t resource_strp_index;
+  char sha1[20];
+};
 
-/* BCC Cache Header Offset Table */
-/* TODO(logan): Deprecated.  Will remove this. */
-#define k_magic                 offsetof(oBCCHeader, magic)
-#define k_magicVersion          offsetof(oBCCHeader, magicVersion)
-#define k_sourceWhen            offsetof(oBCCHeader, sourceWhen)
-#define k_rslibWhen             offsetof(oBCCHeader, rslibWhen)
-#define k_libRSWhen             offsetof(oBCCHeader, libRSWhen)
-#define k_libbccWhen            offsetof(oBCCHeader, libbccWhen)
-#define k_cachedCodeDataAddr    offsetof(oBCCHeader, cachedCodeDataAddr)
-#define k_rootAddr              offsetof(oBCCHeader, rootAddr)
-#define k_initAddr              offsetof(oBCCHeader, initAddr)
-#define k_relocOffset           offsetof(oBCCHeader, relocOffset)
-#define k_relocCount            offsetof(oBCCHeader, relocCount)
-#define k_exportVarsOffset      offsetof(oBCCHeader, exportVarsOffset)
-#define k_exportVarsCount       offsetof(oBCCHeader, exportVarsCount)
-#define k_exportFuncsOffset     offsetof(oBCCHeader, exportFuncsOffset)
-#define k_exportFuncsCount      offsetof(oBCCHeader, exportFuncsCount)
-#define k_exportPragmasOffset   offsetof(oBCCHeader, exportPragmasOffset)
-#define k_exportPragmasCount    offsetof(oBCCHeader, exportPragmasCount)
-#define k_codeOffset            offsetof(oBCCHeader, codeOffset)
-#define k_codeSize              offsetof(oBCCHeader, codeSize)
-#define k_dataOffset            offsetof(oBCCHeader, dataOffset)
-#define k_dataSize              offsetof(oBCCHeader, dataSize)
-#define k_checksum              offsetof(oBCCHeader, checksum)
+struct OBCC_DependancyTable {
+  size_t count;
+  struct OBCC_Dependancy table[];
+};
+
+struct OBCC_RelocationTable {
+/* TODO: Implement relocation table. */
+};
+
+struct OBCC_ExportVarList {
+  size_t count;
+  void *cached_addr_list[];
+};
+
+struct OBCC_ExportFuncList {
+  size_t count;
+  void *cached_addr_list[];
+};
+
+struct OBCC_Pragma {
+  size_t key_strp_index;
+  size_t value_strp_index;
+};
+
+struct OBCC_PragmaList {
+  size_t count;
+  struct OBCC_Pragma list[];
+};
+
+struct OBCC_FuncInfo {
+  size_t name_strp_index;
+  size_t size;
+  void *cached_addr;
+};
+
+struct OBCC_FuncTable {
+  size_t count;
+  struct OBCC_FuncInfo table[];
+};
 
 
 #endif /* BCC_CACHE_H */

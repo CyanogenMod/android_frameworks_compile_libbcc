@@ -19,7 +19,7 @@
 
 #include "Script.h"
 
-//#include "CacheReader.h"
+#include "CacheReader.h"
 //#include "CacheWriter.h"
 #include "FileHandle.h"
 #include "ScriptCompiled.h"
@@ -191,8 +191,7 @@ int Script::internalLoadCache() {
     return 1;
   }
 
-#if 0
-  CacheReader reader;
+  CacheReader reader(this);
 
   ScriptCached *cached = reader.readCacheFile(&file);
   if (!cached) {
@@ -201,9 +200,8 @@ int Script::internalLoadCache() {
 
   mCached = cached;
   mStatus = ScriptStatus::Cached;
-#endif
 
-  return 1;
+  return 0;
 }
 
 
@@ -331,7 +329,7 @@ void Script::getFunctions(BCCsizei *actualFunctionCount,
   mCompiled->getFunctions(actualFunctionCount, maxFunctionCount, functions);
 }
 
-void const *Script::getContext() const {
+char const *Script::getContext() const {
   if (mStatus != ScriptStatus::Compiled) {
     //mErrorCode = BCC_INVALID_OPERATION;
     return NULL;

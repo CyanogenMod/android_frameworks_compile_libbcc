@@ -33,7 +33,7 @@ namespace bcc {
     enum StatusType {
       Unknown,
       Compiled,
-      //Cached,
+      Cached,
     };
   }
 
