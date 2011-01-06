@@ -84,17 +84,6 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *file) {
              //&& relocate()
              ;
 
-
-  // TODO(logan): This is the hack for libRS.  Should be turned on
-  // before caching is ready to go.
-#if 0
-  // Check the cache file has __isThreadable or not.  If it is set,
-  // then we have to call mpSymbolLookupFn for __clearThreadable.
-  if (mpHeader->libRSThreadable && mpSymbolLookupFn) {
-    mpSymbolLookupFn(mpSymbolLookupContext, "__clearThreadable");
-  }
-#endif
-
   return result ? mpResult.take() : NULL;
 }
 
@@ -112,6 +101,12 @@ bool CacheReader::checkFileSize() {
       mFileSize < (off_t)BCC_CONTEXT_SIZE) {
     LOGE("Cache file is too small to be correct.\n");
     return false;
+  }
+
+  // Dirty hack for libRS.
+  // TODO(all): This should be removed in the future.
+  if (mpHeader->libRS_threadable) {
+    mpResult->mLibRSThreadable = true;
   }
 
   return true;

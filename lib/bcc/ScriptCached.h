@@ -61,10 +61,12 @@ namespace bcc {
     OBCC_StringPool *mpStringPoolRaw;
     std::vector<char const *> mStringPool;
 
+    bool mLibRSThreadable;
+
   public:
     ScriptCached(Script *owner)
       : mpOwner(owner), mpExportVars(NULL), mpExportFuncs(NULL),
-        mContext(NULL), mpStringPoolRaw(NULL) {
+        mContext(NULL), mpStringPoolRaw(NULL), mLibRSThreadable(false) {
     }
 
     ~ScriptCached();
@@ -90,6 +92,12 @@ namespace bcc {
     void getFunctionBinary(BCCchar *function,
                            BCCvoid **base,
                            BCCsizei *length);
+
+    // Dirty hack for libRS.
+    // TODO(all): This should be removed in the future.
+    bool isLibRSThreadable() const {
+      return mLibRSThreadable;
+    }
 
 #if 0
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {

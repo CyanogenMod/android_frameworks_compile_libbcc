@@ -212,6 +212,12 @@ int Script::internalLoadCache() {
   mCached = cached;
   mStatus = ScriptStatus::Cached;
 
+  // Dirty hack for libRS.
+  // TODO(all):  This dirty hack should be removed in the future.
+  if (cached->isLibRSThreadable() && mpExtSymbolLookupFn) {
+    mpExtSymbolLookupFn(mpExtSymbolLookupFnContext, "__clearThreadable");
+  }
+
   return 0;
 }
 

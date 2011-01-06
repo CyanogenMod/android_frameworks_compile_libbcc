@@ -69,8 +69,8 @@ struct OBCC_Header {
   char *context_cached_addr;
   uint32_t context_parity_checksum;
 
-  /* dirty hacks */
-  /* TODO: This is an hack. Should be removed. */
+  /* dirty hack for libRS */
+  /* TODO: This should be removed in the future */
   uint32_t libRS_threadable;
 };
 
