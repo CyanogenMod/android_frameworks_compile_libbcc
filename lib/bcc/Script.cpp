@@ -23,7 +23,8 @@
 //#include "CacheWriter.h"
 #include "FileHandle.h"
 #include "ScriptCompiled.h"
-//#include "ScriptCached.h"
+#include "ScriptCached.h"
+#include "Sha1Helper.h"
 
 #include <new>
 
@@ -193,6 +194,16 @@ int Script::internalLoadCache() {
 
   CacheReader reader(this);
 
+  // Dependencies
+  reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
+  reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
+
+  if (sourceBC) {
+    calcSHA1(sourceSHA1, sourceBC, sourceSize);
+    reader.addDependency(BCC_APK_RESOURCE, sourceResName, sourceSHA1);
+  }
+
+  // Read cache file
   ScriptCached *cached = reader.readCacheFile(&file);
   if (!cached) {
     return 1;
