@@ -122,7 +122,9 @@ namespace bcc {
     // These are the relocations that the function needs, as emitted.
     std::vector<llvm::MachineRelocation> mRelocations;
 
+#if 0
     std::vector<oBCCRelocEntry> mCachingRelocations;
+#endif
 
     // This vector is a mapping from Label ID's to their address.
     llvm::DenseMap<llvm::MCSymbol*, uintptr_t> mLabelLocations;
@@ -166,9 +168,11 @@ namespace bcc {
       return mGlobalAddressMap.end();
     }
 
+#if 0
     std::vector<oBCCRelocEntry> const &getCachingRelocations() const {
       return mCachingRelocations;
     }
+#endif
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
       mpSymbolLookupFn = pFn;

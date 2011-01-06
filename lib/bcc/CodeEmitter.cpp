@@ -1358,12 +1358,13 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
           // TODO(logan): Cache external symbol relocation entry.
           // Currently, we are not caching them.  But since Android
           // system is using prelink, it is not a problem.
-
+#if 0
           // Cache the relocation result address
           mCachingRelocations.push_back(
             oBCCRelocEntry(MR.getRelocationType(),
                            MR.getMachineCodeOffset() + BufferOffset,
                            ResultPtr));
+#endif
         }
 
         MR.setResultPointer(ResultPtr);
