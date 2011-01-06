@@ -192,7 +192,7 @@ int Script::internalLoadCache() {
     return 1;
   }
 
-  CacheReader reader(this);
+  CacheReader reader;
 
   // Dependencies
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
@@ -204,7 +204,7 @@ int Script::internalLoadCache() {
   }
 
   // Read cache file
-  ScriptCached *cached = reader.readCacheFile(&file);
+  ScriptCached *cached = reader.readCacheFile(&file, this);
   if (!cached) {
     return 1;
   }

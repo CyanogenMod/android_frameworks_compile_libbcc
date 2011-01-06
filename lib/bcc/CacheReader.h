@@ -36,8 +36,6 @@ namespace bcc {
 
   class CacheReader {
   private:
-    Script *mpOwner;
-
     FileHandle *mFile;
     off_t mFileSize;
 
@@ -52,8 +50,8 @@ namespace bcc {
              std::pair<uint32_t, unsigned char const *> > mDependencies;
 
   public:
-    CacheReader(Script *owner)
-      : mpOwner(owner), mFile(NULL), mFileSize(0), mpHeader(NULL),
+    CacheReader()
+      : mFile(NULL), mFileSize(0), mpHeader(NULL),
         mpCachedDependTable(NULL), mpPragmaList(NULL), mpFuncTable(NULL) {
     }
 
@@ -66,7 +64,7 @@ namespace bcc {
                            std::make_pair((uint32_t)resType, sha1)));
     }
 
-    ScriptCached *readCacheFile(FileHandle *file);
+    ScriptCached *readCacheFile(FileHandle *file, Script *s);
 
   private:
     bool readHeader();

@@ -51,14 +51,14 @@ CacheReader::~CacheReader() {
   if (mpFuncTable) { free(mpFuncTable); }
 }
 
-ScriptCached *CacheReader::readCacheFile(FileHandle *file) {
+ScriptCached *CacheReader::readCacheFile(FileHandle *file, Script *S) {
   // Check file handle
   if (!file || file->getFD() < 0) {
     return NULL;
   }
 
   // Allocate ScriptCached object
-  mpResult.reset(new (nothrow) ScriptCached(mpOwner));
+  mpResult.reset(new (nothrow) ScriptCached(S));
 
   if (!mpResult) {
     LOGE("Unable to allocate ScriptCached object.\n");
