@@ -48,7 +48,8 @@ namespace bcc {
 
     llvm::OwningPtr<ScriptCached> mpResult;
 
-    std::map<std::string, std::pair<uint32_t, char const *> > mDependencies;
+    std::map<std::string,
+             std::pair<uint32_t, unsigned char const *> > mDependencies;
 
   public:
     CacheReader(Script *owner)
@@ -60,7 +61,7 @@ namespace bcc {
 
     void addDependency(OBCC_ResourceType resType,
                        std::string const &resName,
-                       char const *sha1) {
+                       unsigned char const *sha1) {
       mDependencies.insert(std::make_pair(resName,
                            std::make_pair((uint32_t)resType, sha1)));
     }

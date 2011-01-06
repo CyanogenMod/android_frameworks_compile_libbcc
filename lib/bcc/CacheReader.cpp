@@ -302,18 +302,18 @@ bool CacheReader::checkDependency() {
   }
 
   vector<char const *> &strPool = mpResult->mStringPool;
-  map<string, pair<uint32_t, char const *> >::iterator dep;
+  map<string, pair<uint32_t, unsigned char const *> >::iterator dep;
 
   dep = mDependencies.begin();
   for (size_t i = 0; i < mpCachedDependTable->count; ++i, ++dep) {
     string const &depName = dep->first;
-    char const *depSHA1 = dep->second.second;
     uint32_t depType = dep->second.first;
+    unsigned char const *depSHA1 = dep->second.second;
 
     OBCC_Dependency *depCached =&mpCachedDependTable->table[i];
     char const *depCachedName = strPool[depCached->res_name_strp_index];
-    char const *depCachedSHA1 = depCached->sha1;
     uint32_t depCachedType = depCached->res_type;
+    unsigned char const *depCachedSHA1 = depCached->sha1;
 
     if (depName != depCachedName) {
       LOGE("Cache dependency name mismatch:\n");

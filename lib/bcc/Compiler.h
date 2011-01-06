@@ -143,15 +143,6 @@ namespace bcc {
     ~Compiler();
 
   private:
-    void computeSourceSHA1(char const *bitcode, size_t size);
-
-
-    char *genCacheFileName(const char *cacheDir,
-                           const char *fileName,
-                           const char *subFileName);
-
-
-  private:
 
     bool hasError() const {
       return !mError.empty();

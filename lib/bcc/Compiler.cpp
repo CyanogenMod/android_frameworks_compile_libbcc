@@ -67,6 +67,7 @@
 
 #include "ContextManager.h"
 #include "ScriptCompiled.h"
+#include "Sha1Helper.h"
 
 #include "llvm/ADT/StringRef.h"
 
@@ -105,7 +106,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <sha1.h>
+#include <string.h>
 
 #include <string>
 #include <vector>
@@ -236,6 +237,10 @@ void Compiler::GlobalInitialization() {
      llvm::createFastRegisterAllocator :
      llvm::createLinearScanRegisterAllocator);
 
+  // Calculate the SHA1 checksum of libbcc and libRS.
+  calcFileSHA1(sha1LibBCC, pathLibBCC);
+  calcFileSHA1(sha1LibRS, pathLibRS);
+
   GlobalInitialized = true;
 }
 
@@ -287,11 +292,6 @@ int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
                      const BCCchar *resName,
                      const BCCchar *cacheDir) {
-
-  // Compute the SHA1 hash of the input bitcode.  So that we can use the hash
-  // to decide rather to update the cache or not.
-  computeSourceSHA1(bitcode, bitcodeSize);
-
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
   if (bitcode == NULL || bitcodeSize <= 0)
@@ -682,18 +682,6 @@ Compiler::~Compiler() {
   delete mContext;
 
   // llvm::llvm_shutdown();
-}
-
-
-void Compiler::computeSourceSHA1(char const *bitcode, size_t bitcodeSize) {
-  SHA1_CTX hashContext;
-
-  SHA1Init(&hashContext);
-  SHA1Update(&hashContext,
-             reinterpret_cast<const unsigned char *>(bitcode),
-             static_cast<unsigned long>(bitcodeSize));
-  SHA1Final(mSourceSHA1, &hashContext);
-
 }
 
 }  // namespace bcc

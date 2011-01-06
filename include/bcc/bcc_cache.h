@@ -92,7 +92,7 @@ enum OBCC_ResourceType {
 struct OBCC_Dependency {
   size_t res_name_strp_index;
   uint32_t res_type; /* BCC_APK_RESOURCE or BCC_FILE_RESOURCE */
-  char sha1[20];
+  unsigned char sha1[20];
 };
 
 struct OBCC_DependencyTable {

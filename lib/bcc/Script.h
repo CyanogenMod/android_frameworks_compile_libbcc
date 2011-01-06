@@ -53,6 +53,7 @@ namespace bcc {
     // ReadBC
     char const *sourceBC;
     char const *sourceResName;
+    unsigned char sourceSHA1[20];
     size_t sourceSize;
 
     // ReadModule
