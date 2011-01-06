@@ -62,10 +62,6 @@ CodeMemoryManager::CodeMemoryManager()
 
 
 CodeMemoryManager::~CodeMemoryManager() {
-  if (mpCodeMem) {
-    deallocateContext(mpCodeMem);
-  }
-
   mpCodeMem = 0;
   mpGVMem = 0;
 }

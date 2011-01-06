@@ -111,6 +111,8 @@ namespace bcc {
                            BCCvoid **base,
                            BCCsizei *length);
 
+    char const *getContext() const;
+
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext);
 
 

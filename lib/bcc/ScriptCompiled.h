@@ -50,10 +50,13 @@ namespace bcc {
 
     Compiler mCompiler;
 
-    PragmaList mPragmas;
     ExportVarList mExportVars;
     ExportFuncList mExportFuncs;
+    PragmaList mPragmas;
+
     EmittedFunctionsMapTy mEmittedFunctions;
+
+    char *mContext; // Context of BCC script (code and data)
 
   public:
     ScriptCompiled(Script *owner) : mpOwner(owner), mCompiler(this) {
@@ -101,6 +104,10 @@ namespace bcc {
     void getFunctionBinary(BCCchar *function,
                            BCCvoid **base,
                            BCCsizei *length);
+
+    char const *getContext() const {
+      return mContext;
+    }
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
       mCompiler.registerSymbolCallback(pFn, pContext);

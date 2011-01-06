@@ -331,6 +331,15 @@ void Script::getFunctions(BCCsizei *actualFunctionCount,
   mCompiled->getFunctions(actualFunctionCount, maxFunctionCount, functions);
 }
 
+void const *Script::getContext() const {
+  if (mStatus != ScriptStatus::Compiled) {
+    //mErrorCode = BCC_INVALID_OPERATION;
+    return NULL;
+  }
+
+  return mCompiled->getContext();
+}
+
 
 void Script::getFunctionBinary(BCCchar *function,
                                BCCvoid **base,

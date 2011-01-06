@@ -265,7 +265,6 @@ Compiler::Compiler(ScriptCompiled *result)
     mUseCache(false),
     mCacheNew(false),
     mCacheLoadFailed(false),
-    mCodeDataAddr(NULL),
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
     mContext(NULL),
@@ -394,7 +393,8 @@ int Compiler::compile() {
     setError("Failed to startup memory management for further compilation");
     goto on_bcc_compile_error;
   }
-  mCodeDataAddr = (char *) (mCodeMemMgr.get()->getCodeMemBase());
+
+  mpResult->mContext = (char *) (mCodeMemMgr.get()->getCodeMemBase());
 
   // Create code emitter
   if (!mCodeEmitter.get()) {
@@ -678,24 +678,6 @@ on_bcc_compile_error:
 
 
 Compiler::~Compiler() {
-#if 0
-  if (!mCodeMemMgr.get()) {
-    // mCodeDataAddr and mCacheMapAddr are from loadCacheFile and not
-    // managed by CodeMemoryManager.
-    LOGI("~Compiler(): mCodeDataAddr = %p\n", mCodeDataAddr); //sliao
-    if (mCodeDataAddr) {
-      deallocateContext(mCodeDataAddr);
-    }
-
-    if (mCacheMapAddr) {
-      free(mCacheMapAddr);
-    }
-
-    mCodeDataAddr = 0;
-    mCacheMapAddr = 0;
-  }
-#endif
-
   delete mModule;
   delete mContext;
 

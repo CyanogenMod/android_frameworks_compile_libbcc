@@ -84,8 +84,6 @@ namespace bcc {
     bool mUseCache;         // Set by readBC()
     bool mCacheNew;         // Set by readBC()
     bool mCacheLoadFailed;  // Set by loadCacheFile() used by readBC()
-    char *mCodeDataAddr;    // Set by CodeMemoryManager if mCacheNew is true.
-                            // Used by genCacheFile() for dumping
 
     unsigned char mSourceSHA1[20];  // Set by readBC()
 
