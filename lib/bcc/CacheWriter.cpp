@@ -253,6 +253,8 @@ bool CacheWriter::prepareStringPool() {
   mpStringPoolSection = pool;
   mpHeaderSection->str_pool_size = size;
 
+  pool->count = mStringPool.size();
+
   char *strPtr = reinterpret_cast<char *>(pool) + strOffset;
 
   for (size_t i = 0; i < mStringPool.size(); ++i) {
@@ -265,7 +267,7 @@ bool CacheWriter::prepareStringPool() {
     strPtr += str->length;
     *strPtr++ = '\0';
 
-    strOffset += str->length;
+    strOffset += str->length + 1;
   }
 
   return true;

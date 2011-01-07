@@ -188,6 +188,12 @@ int Script::internalLoadCache() {
     return 1;
   }
 
+  if (sourceBC) {
+    // If we are going to create cache file.  We have to calculate sha1sum
+    // first (no matter we can open the file now or not.)
+    calcSHA1(sourceSHA1, sourceBC, sourceSize);
+  }
+
   FileHandle file;
 
   if (file.open(cacheFile, OpenMode::Read) < 0) {
@@ -202,7 +208,6 @@ int Script::internalLoadCache() {
   reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
   if (sourceBC) {
-    calcSHA1(sourceSHA1, sourceBC, sourceSize);
     reader.addDependency(BCC_APK_RESOURCE, sourceResName, sourceSHA1);
   }
 
@@ -281,6 +286,14 @@ int Script::internalCompile() {
 
     if (file.open(cacheFile, OpenMode::Write) >= 0) {
       CacheWriter writer;
+
+      // Dependencies
+      writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
+      writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
+
+      if (sourceBC) {
+        writer.addDependency(BCC_APK_RESOURCE, sourceResName, sourceSHA1);
+      }
 
       // libRS is threadable dirty hack
       // TODO: This should be removed in the future

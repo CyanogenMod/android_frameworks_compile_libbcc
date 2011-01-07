@@ -57,6 +57,8 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *file, Script *S) {
     return NULL;
   }
 
+  mFile = file;
+
   // Allocate ScriptCached object
   mpResult.reset(new (nothrow) ScriptCached(S));
 
@@ -103,12 +105,6 @@ bool CacheReader::checkFileSize() {
     return false;
   }
 
-  // Dirty hack for libRS.
-  // TODO(all): This should be removed in the future.
-  if (mpHeader->libRS_threadable) {
-    mpResult->mLibRSThreadable = true;
-  }
-
   return true;
 }
 
@@ -129,6 +125,12 @@ bool CacheReader::readHeader() {
       (ssize_t)sizeof(OBCC_Header)) {
     LOGE("Unable to read cache header.\n");
     return false;
+  }
+
+  // Dirty hack for libRS.
+  // TODO(all): This should be removed in the future.
+  if (mpHeader->libRS_threadable) {
+    mpResult->mLibRSThreadable = true;
   }
 
   return true;
@@ -196,7 +198,7 @@ bool CacheReader::checkSectionOffsetAndSize() {
 
   CHECK_SECTION_OFFSET(str_pool);
   CHECK_SECTION_OFFSET(depend_tab);
-  CHECK_SECTION_OFFSET(reloc_tab);
+  //CHECK_SECTION_OFFSET(reloc_tab);
   CHECK_SECTION_OFFSET(export_var_list);
   CHECK_SECTION_OFFSET(export_func_list);
   CHECK_SECTION_OFFSET(pragma_list);
