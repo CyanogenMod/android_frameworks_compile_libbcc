@@ -105,7 +105,7 @@ namespace bcc {
                            BCCvoid **base,
                            BCCsizei *length);
 
-    char const *getContext() const {
+    char *getContext() {
       return mContext;
     }
 

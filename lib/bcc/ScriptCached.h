@@ -93,6 +93,10 @@ namespace bcc {
                            BCCvoid **base,
                            BCCsizei *length);
 
+    char *getContext() {
+      return mContext;
+    }
+
     // Dirty hack for libRS.
     // TODO(all): This should be removed in the future.
     bool isLibRSThreadable() const {

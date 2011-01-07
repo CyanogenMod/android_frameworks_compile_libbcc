@@ -28,6 +28,7 @@ LLVM_ENABLE_ASSERTION := false
 libbcc_SRC_FILES := \
   lib/bcc/bcc.cpp \
   lib/bcc/CacheReader.cpp \
+  lib/bcc/CacheWriter.cpp \
   lib/bcc/CodeEmitter.cpp \
   lib/bcc/CodeMemoryManager.cpp \
   lib/bcc/Compiler.cpp \

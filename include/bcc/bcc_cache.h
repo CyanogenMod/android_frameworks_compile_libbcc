@@ -17,6 +17,9 @@
 #ifndef BCC_CACHE_H
 #define BCC_CACHE_H
 
+#include <stdint.h>
+#include <sys/types.h>
+
 
 /* BCC Cache File Magic Word */
 #define OBCC_MAGIC "\0bcc"

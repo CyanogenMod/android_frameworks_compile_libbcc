@@ -270,8 +270,18 @@ int Script::internalCompile() {
 
     if (file.open(cacheFile, OpenMode::Write) >= 0) {
       CacheWriter writer;
-      writer.writeCacheFile(&file);
+
+      // libRS is threadable dirty hack
+      // TODO: This should be removed in the future
+      uint32_t libRS_threadable = 0;
+      if (mpExtSymbolLookupFn) {
+        libRS_threadable = mpExtSymbolLookupFn(mpExtSymbolLookupContext,
+                                               "__isThreadable");
+      }
+
+      writer.writeCacheFile(&file, this, libRS_threadable);
     }
+
   }
 #endif
 
@@ -346,13 +356,18 @@ void Script::getFunctions(BCCsizei *actualFunctionCount,
   mCompiled->getFunctions(actualFunctionCount, maxFunctionCount, functions);
 }
 
-char const *Script::getContext() const {
-  if (mStatus != ScriptStatus::Compiled) {
-    //mErrorCode = BCC_INVALID_OPERATION;
+char *Script::getContext() {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    return mCompiled->getContext();
+
+  case ScriptStatus::Cached:
+    return mCached->getContext();
+
+  default:
+    mErrorCode = BCC_INVALID_OPERATION;
     return NULL;
   }
-
-  return mCompiled->getContext();
 }
 
 
