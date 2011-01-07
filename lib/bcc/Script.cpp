@@ -246,12 +246,18 @@ int Script::internalCompile() {
   // Setup the source bitcode / module
   if (sourceBC) {
     if (mCompiled->readBC(sourceBC, sourceSize, sourceResName, 0) != 0) {
+      LOGE("Unable to readBC, bitcode=%p, size=%lu\n",
+           sourceBC, (unsigned long)sourceSize);
       return 1;
     }
+
+    LOGE("Load sourceBC\n");
   } else if (sourceModule) {
     if (mCompiled->readModule(sourceModule) != 0) {
       return 1;
     }
+
+    LOGE("Load sourceModule\n");
   }
 
   // Link the source module with the library module
@@ -259,10 +265,13 @@ int Script::internalCompile() {
     if (mCompiled->linkBC(libraryBC, librarySize) != 0) {
       return 1;
     }
+
+    LOGE("Load Library\n");
   }
 
   // Compile and JIT the code
   if (mCompiled->compile() != 0) {
+    LOGE("Unable to compile.\n");
     return 1;
   }
 

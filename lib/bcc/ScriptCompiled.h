@@ -59,7 +59,8 @@ namespace bcc {
     char *mContext; // Context of BCC script (code and data)
 
   public:
-    ScriptCompiled(Script *owner) : mpOwner(owner), mCompiler(this) {
+    ScriptCompiled(Script *owner)
+      : mpOwner(owner), mCompiler(this), mContext(NULL) {
     }
 
     ~ScriptCompiled();

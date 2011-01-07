@@ -660,20 +660,12 @@ on_bcc_compile_error:
   if (TM)
     delete TM;
 
-#if 0
   if (mError.empty()) {
-    if (mUseCache && mCacheFd >= 0 && mCacheNew) {
-      genCacheFile();
-      //LOGI("DONE generating cache file");  //sliao
-      flock(mCacheFd, LOCK_UN);
-    }
-
-    return false;
+    return 0;
   }
-#endif
 
   // LOGE(getErrorMessage());
-  return true;
+  return 1;
 }
 
 

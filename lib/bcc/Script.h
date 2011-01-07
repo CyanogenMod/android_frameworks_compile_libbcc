@@ -69,9 +69,10 @@ namespace bcc {
 
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               cacheFile(NULL), sourceBC(NULL), sourceResName(NULL),
-               sourceSize(0), sourceModule(NULL), mpExtSymbolLookupFn(NULL),
-               mpExtSymbolLookupFnContext(NULL) {
+               cacheFile(NULL),
+               sourceBC(NULL), sourceResName(NULL), sourceSize(0),
+               sourceModule(NULL), libraryBC(NULL), librarySize(0),
+               mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
       Compiler::GlobalInitialization();
     }
 
