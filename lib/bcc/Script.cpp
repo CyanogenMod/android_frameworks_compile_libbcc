@@ -20,15 +20,18 @@
 #include "Script.h"
 
 #include "CacheReader.h"
-//#include "CacheWriter.h"
+#include "CacheWriter.h"
 #include "FileHandle.h"
 #include "ScriptCompiled.h"
 #include "ScriptCached.h"
 #include "Sha1Helper.h"
 
-#include <new>
+#include <errno.h>
 
+#include <new>
+#include <string.h>
 #include <cutils/properties.h>
+
 
 namespace {
 
@@ -264,9 +267,8 @@ int Script::internalCompile() {
   }
 
   // TODO(logan): Write the cache out
-#if 0
   if (cacheFile && !getBooleanProp("debug.bcc.nocache")) {
-    FileHandler file;
+    FileHandle file;
 
     if (file.open(cacheFile, OpenMode::Write) >= 0) {
       CacheWriter writer;
@@ -275,15 +277,22 @@ int Script::internalCompile() {
       // TODO: This should be removed in the future
       uint32_t libRS_threadable = 0;
       if (mpExtSymbolLookupFn) {
-        libRS_threadable = mpExtSymbolLookupFn(mpExtSymbolLookupContext,
-                                               "__isThreadable");
+        libRS_threadable =
+          (uint32_t)mpExtSymbolLookupFn(mpExtSymbolLookupFnContext,
+                                        "__isThreadable");
       }
 
-      writer.writeCacheFile(&file, this, libRS_threadable);
-    }
+      if (!writer.writeCacheFile(&file, this, libRS_threadable)) {
+        file.truncate();
+        file.close();
 
+        if (unlink(cacheFile) != 0) {
+          LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
+               cacheFile, strerror(errno));
+        }
+      }
+    }
   }
-#endif
 
   return 0;
 }
@@ -300,60 +309,89 @@ char const *Script::getCompilerErrorMessage() {
 
 
 void *Script::lookup(const char *name) {
-  if (mStatus != ScriptStatus::Compiled) {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    return mCompiled->lookup(name);
+
+  case ScriptStatus::Cached:
+    return mCached->lookup(name);
+
+  default:
     mErrorCode = BCC_INVALID_OPERATION;
     return NULL;
   }
-
-  return mCompiled->lookup(name);
 }
 
 
 void Script::getExportVars(BCCsizei *actualVarCount,
                            BCCsizei maxVarCount,
                            BCCvoid **vars) {
-  if (mStatus != ScriptStatus::Compiled) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    return;
-  }
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    mCompiled->getExportVars(actualVarCount, maxVarCount, vars);
+    break;
 
-  mCompiled->getExportVars(actualVarCount, maxVarCount, vars);
+  case ScriptStatus::Cached:
+    mCached->getExportVars(actualVarCount, maxVarCount, vars);
+    break;
+
+  default:
+    mErrorCode = BCC_INVALID_OPERATION;
+  }
 }
 
 
 void Script::getExportFuncs(BCCsizei *actualFuncCount,
                             BCCsizei maxFuncCount,
                             BCCvoid **funcs) {
-  if (mStatus != ScriptStatus::Compiled) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    return;
-  }
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    mCompiled->getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+    break;
 
-  mCompiled->getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+  case ScriptStatus::Cached:
+    mCached->getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+    break;
+
+  default:
+    mErrorCode = BCC_INVALID_OPERATION;
+  }
 }
 
 
 void Script::getPragmas(BCCsizei *actualStringCount,
                         BCCsizei maxStringCount,
                         BCCchar **strings) {
-  if (mStatus != ScriptStatus::Compiled) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    return;
-  }
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    mCompiled->getPragmas(actualStringCount, maxStringCount, strings);
+    break;
 
-  mCompiled->getPragmas(actualStringCount, maxStringCount, strings);
+  case ScriptStatus::Cached:
+    mCached->getPragmas(actualStringCount, maxStringCount, strings);
+    break;
+
+  default:
+    mErrorCode = BCC_INVALID_OPERATION;
+  }
 }
 
 
 void Script::getFunctions(BCCsizei *actualFunctionCount,
                           BCCsizei maxFunctionCount,
                           BCCchar **functions) {
-  if (mStatus != ScriptStatus::Compiled) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    return;
-  }
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    mCompiled->getFunctions(actualFunctionCount, maxFunctionCount, functions);
+    break;
 
-  mCompiled->getFunctions(actualFunctionCount, maxFunctionCount, functions);
+  case ScriptStatus::Cached:
+    mCached->getFunctions(actualFunctionCount, maxFunctionCount, functions);
+    break;
+
+  default:
+    mErrorCode = BCC_INVALID_OPERATION;
+  }
 }
 
 char *Script::getContext() {
