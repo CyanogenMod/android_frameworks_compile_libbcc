@@ -168,7 +168,9 @@ off_t FileHandle::seek(off_t offset, int whence) {
 
 void FileHandle::truncate() {
   if (mFD >= 0) {
-    ftruncate(mFD, 0);
+    if (ftruncate(mFD, 0) != 0) {
+      LOGE("Unable to truncate the file.\n");
+    }
   }
 }
 
