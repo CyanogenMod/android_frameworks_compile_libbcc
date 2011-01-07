@@ -93,6 +93,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
     }
 
     // Good, we have open and lock the file correctly.
+    LOGI("File opened. fd=%d\n", mFD);
     return mFD;
   }
 
@@ -103,8 +104,9 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
 
 void FileHandle::close() {
   if (mFD >= 0) {
-    ::close(mFD);
     flock(mFD, LOCK_UN);
+    ::close(mFD);
+    LOGI("File closed. fd=%d\n", mFD);
     mFD = -1;
   }
 }
