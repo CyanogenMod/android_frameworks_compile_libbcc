@@ -63,7 +63,7 @@ void calcFileSHA1(unsigned char *result, char const *filename) {
   char buf[256];
   while (true) {
     ssize_t nread = file.read(buf, sizeof(buf));
-    
+
     if (nread < 0) {
       break;
     }

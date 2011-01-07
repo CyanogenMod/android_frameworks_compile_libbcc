@@ -153,7 +153,7 @@ ssize_t FileHandle::write(char const *buf, size_t count) {
 
       continue;
     }
-    
+
     written += nwrite;
     count -= (size_t)nwrite;
     buf += (size_t)nwrite;

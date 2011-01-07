@@ -90,7 +90,7 @@ bool CacheWriter::prepareHeader(uint32_t libRS_threadable) {
   // Initialize
   memset(header, '\0', sizeof(OBCC_Header));
 
-  // Magic word and version 
+  // Magic word and version
   memcpy(header->magic, OBCC_MAGIC, 4);
   memcpy(header->version, OBCC_VERSION, 4);
 
@@ -117,7 +117,7 @@ bool CacheWriter::prepareDependencyTable() {
                      sizeof(OBCC_Dependency) * mDependencies.size();
 
   OBCC_DependencyTable *tab = (OBCC_DependencyTable *)malloc(tableSize);
-  
+
   if (!tab) {
     LOGE("Unable to allocate for dependency table section.\n");
     return false;
@@ -158,11 +158,11 @@ bool CacheWriter::prepareFuncTable() {
   }
 
   mpFuncTableSection = tab;
-  mpHeaderSection->func_table_size = tableSize; 
+  mpHeaderSection->func_table_size = tableSize;
 
   tab->count = static_cast<size_t>(funcCount);
 
-  // Get the function informations 
+  // Get the function informations
   vector<char *> funcNameList(funcCount);
   mpOwner->getFunctions(0, funcCount, &*funcNameList.begin());
 
