@@ -256,13 +256,13 @@ int Script::internalCompile() {
       return 1;
     }
 
-    LOGE("Load sourceBC\n");
+    LOGI("Load sourceBC\n");
   } else if (sourceModule) {
     if (mCompiled->readModule(sourceModule) != 0) {
       return 1;
     }
 
-    LOGE("Load sourceModule\n");
+    LOGI("Load sourceModule\n");
   }
 
   // Link the source module with the library module
