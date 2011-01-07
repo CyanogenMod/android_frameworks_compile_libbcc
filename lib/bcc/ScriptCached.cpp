@@ -97,20 +97,26 @@ void ScriptCached::getPragmas(BCCsizei *actualStringCount,
 
 
 void *ScriptCached::lookup(const char *name) {
-  void *addr = NULL;
-
-  // TODO(logan): Not finished.
-  return addr;
+  FuncTable::const_iterator I = mFunctions.find(name);
+  return (I == mFunctions.end()) ? NULL : I->second.first;
 }
 
 
 void ScriptCached::getFunctions(BCCsizei *actualFunctionCount,
                                 BCCsizei maxFunctionCount,
                                 BCCchar **functions) {
-  LOGE("%s not implemented <<----------- WARNING\n", __func__);
+  int functionCount = mFunctions.size();
 
-  if (actualFunctionCount) {
-    *actualFunctionCount = 0;
+  if (actualFunctionCount)
+    *actualFunctionCount = functionCount;
+  if (functionCount > maxFunctionCount)
+    functionCount = maxFunctionCount;
+  if (functions) {
+    for (FuncTable::const_iterator
+         I = mFunctions.begin(), E = mFunctions.end();
+         I != E && (functionCount > 0); I++, functionCount--) {
+      *functions++ = const_cast<BCCchar*>(I->first.c_str());
+    }
   }
 }
 
@@ -118,14 +124,13 @@ void ScriptCached::getFunctions(BCCsizei *actualFunctionCount,
 void ScriptCached::getFunctionBinary(BCCchar *funcname,
                                      BCCvoid **base,
                                      BCCsizei *length) {
-  LOGE("%s not implemented <<----------- WARNING\n", __func__);
-
-  if (base) {
+  FuncTable::const_iterator I = mFunctions.find(funcname);
+  if (I == mFunctions.end()) {
     *base = NULL;
-  }
-
-  if (length) {
     *length = 0;
+  } else {
+    *base = I->second.first;
+    *length = I->second.second;
   }
 }
 

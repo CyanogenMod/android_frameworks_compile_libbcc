@@ -434,12 +434,21 @@ char *Script::getContext() {
 void Script::getFunctionBinary(BCCchar *function,
                                BCCvoid **base,
                                BCCsizei *length) {
-  if (mStatus != ScriptStatus::Compiled) {
-    mErrorCode = BCC_INVALID_OPERATION;
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
+    mCompiled->getFunctionBinary(function, base, length);
+    return;
+
+  case ScriptStatus::Cached:
+    mCached->getFunctionBinary(function, base, length);
+    return;
+
+  default:
+    *base = NULL;
+    *length = 0;
     return;
   }
 
-  mCompiled->getFunctionBinary(function, base, length);
 }
 
 
