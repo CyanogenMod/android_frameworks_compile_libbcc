@@ -36,6 +36,21 @@ using namespace std;
 
 namespace bcc {
 
+CacheWriter::~CacheWriter() {
+#define CHECK_AND_FREE(VAR) if (VAR) { free(VAR); }
+
+  CHECK_AND_FREE(mpHeaderSection);
+  CHECK_AND_FREE(mpStringPoolSection);
+  CHECK_AND_FREE(mpDependencyTableSection);
+  //CHECK_AND_FREE(mpRelocationTableSection);
+  CHECK_AND_FREE(mpExportVarListSection);
+  CHECK_AND_FREE(mpExportFuncListSection);
+  CHECK_AND_FREE(mpPragmaListSection);
+  CHECK_AND_FREE(mpFuncTableSection);
+
+#undef CHECK_AND_FREE
+}
+
 bool CacheWriter::writeCacheFile(FileHandle *file, Script *S,
                                  uint32_t libRS_threadable) {
   if (!file || file->getFD() < 0) {
@@ -396,126 +411,5 @@ bool CacheWriter::writeAll() {
   return true;
 }
 
-
-#if 0
-void Compiler::genCacheFile() {
-
-  // Write Header
-  sysWriteFully(mCacheFd, reinterpret_cast<char const *>(hdr),
-                sizeof(oBCCHeader), "Write oBCC header");
-
-  // Write Relocation Entry Table
-  {
-    size_t allocSize = hdr->relocCount * sizeof(oBCCRelocEntry);
-
-    oBCCRelocEntry const*records = &mCodeEmitter->getCachingRelocations()[0];
-
-    sysWriteFully(mCacheFd, reinterpret_cast<char const *>(records),
-                  allocSize, "Write Relocation Entries");
-  }
-
-  // Write Export Variables Table
-  {
-    uint32_t *record, *ptr;
-
-    record = (uint32_t *)calloc(hdr->exportVarsCount, sizeof(uint32_t));
-    ptr = record;
-
-    if (!record) {
-      goto bail;
-    }
-
-    for (ScriptCompiled::ExportVarList::const_iterator
-         I = mpResult->mExportVars.begin(),
-         E = mpResult->mExportVars.end(); I != E; I++) {
-      *ptr++ = reinterpret_cast<uint32_t>(*I);
-    }
-
-    sysWriteFully(mCacheFd, reinterpret_cast<char const *>(record),
-                  hdr->exportVarsCount * sizeof(uint32_t),
-                  "Write ExportVars");
-
-    free(record);
-  }
-
-  // Write Export Functions Table
-  {
-    uint32_t *record, *ptr;
-
-    record = (uint32_t *)calloc(hdr->exportFuncsCount, sizeof(uint32_t));
-    ptr = record;
-
-    if (!record) {
-      goto bail;
-    }
-
-    for (ScriptCompiled::ExportFuncList::const_iterator
-         I = mpResult->mExportFuncs.begin(),
-         E = mpResult->mExportFuncs.end(); I != E; I++) {
-      *ptr++ = reinterpret_cast<uint32_t>(*I);
-    }
-
-    sysWriteFully(mCacheFd, reinterpret_cast<char const *>(record),
-                  hdr->exportFuncsCount * sizeof(uint32_t),
-                  "Write ExportFuncs");
-
-    free(record);
-  }
-
-
-  // Write Export Pragmas Table
-  {
-    uint32_t pragmaEntryOffset =
-      hdr->exportPragmasCount * sizeof(oBCCPragmaEntry);
-
-    for (ScriptCompiled::PragmaList::const_iterator
-         I = mpResult->mPragmas.begin(),
-         E = mpResult->mPragmas.end(); I != E; ++I) {
-      oBCCPragmaEntry entry;
-
-      entry.pragmaNameOffset = pragmaEntryOffset;
-      entry.pragmaNameSize = I->first.size();
-      pragmaEntryOffset += entry.pragmaNameSize + 1;
-
-      entry.pragmaValueOffset = pragmaEntryOffset;
-      entry.pragmaValueSize = I->second.size();
-      pragmaEntryOffset += entry.pragmaValueSize + 1;
-
-      sysWriteFully(mCacheFd, (char *)&entry, sizeof(oBCCPragmaEntry),
-                    "Write export pragma entry");
-    }
-
-    for (ScriptCompiled::PragmaList::const_iterator
-         I = mpResult->mPragmas.begin(),
-         E = mpResult->mPragmas.end(); I != E; ++I) {
-      sysWriteFully(mCacheFd, I->first.c_str(), I->first.size() + 1,
-                    "Write export pragma name string");
-      sysWriteFully(mCacheFd, I->second.c_str(), I->second.size() + 1,
-                    "Write export pragma value string");
-    }
-  }
-
-  if (codeOffsetNeedPadding) {
-    // requires additional padding
-    lseek(mCacheFd, hdr->codeOffset, SEEK_SET);
-  }
-
-  // Write Generated Code and Global Variable
-  sysWriteFully(mCacheFd, mCodeDataAddr, MaxCodeSize + MaxGlobalVarSize,
-                "Write code and global variable");
-
-  goto close_return;
-
-bail:
-  if (ftruncate(mCacheFd, 0) != 0) {
-    LOGW("Warning: unable to truncate cache file: %s\n", strerror(errno));
-  }
-
-close_return:
-  free(hdr);
-  close(mCacheFd);
-  mCacheFd = -1;
-}
-#endif
 
 } // namespace bcc
