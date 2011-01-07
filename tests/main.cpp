@@ -198,7 +198,7 @@ static BCCscript* loadScript() {
                 statInFile.st_mtime, 0, "file", "/tmp") < 0) {
     bccLoadBinary(script);
   }
-  delete [] bitcode;
+  //delete [] bitcode;
 
   return script;
 }
@@ -206,7 +206,9 @@ static BCCscript* loadScript() {
 static int compile(BCCscript* script) {
   bccRegisterSymbolCallback(script, symbolLookup, NULL);
 
-  bccCompileBC(script);
+  if (bccCompileBC(script) != 0) {
+    fprintf(stderr, "Something wrong\n");
+  }
 
   int result = bccGetError(script);
   if (result != 0) {
