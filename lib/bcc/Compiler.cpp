@@ -347,7 +347,7 @@ int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
 }
 
 
-// interace for bccCompileBC()
+// Deprecated: interface for bccCompileBC()
 int Compiler::compile() {
   llvm::TargetData *TD = NULL;
 

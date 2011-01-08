@@ -88,7 +88,7 @@ void bccLinkBC(BCCscript *script,
                const BCCchar *bitcode,
                BCCint size);
 
-int bccCompileBC(BCCscript *script);
+int bccPrepareExecutable(BCCscript *script);
 
 void bccGetScriptInfoLog(BCCscript *script,
                          BCCsizei maxLength,

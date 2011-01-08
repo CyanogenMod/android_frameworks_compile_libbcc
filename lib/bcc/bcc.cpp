@@ -101,10 +101,10 @@ extern "C" int bccLoadBinary(BCCscript *script) {
   return 1;
 }
 
-extern "C" int bccCompileBC(BCCscript *script) {
+extern "C" int bccPrepareExecutable(BCCscript *script) {
   BCC_FUNC_LOGGER();
 #if defined(__arm__)
-  android::StopWatch compileTimer("RenderScript compile time");
+  android::StopWatch compileTimer("bcc: PrepareExecutable time");
 #endif
 
   int result = script->compile();

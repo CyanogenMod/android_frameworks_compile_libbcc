@@ -128,7 +128,7 @@ namespace bcc {
 
     int linkBC(const char *bitcode, size_t bitcodeSize);
 
-    // interace for bccCompileBC()
+    // Deprecated: interface for bccCompileBC()
     int compile();
 
     // interface for bccGetScriptInfoLog()

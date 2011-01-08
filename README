@@ -30,7 +30,7 @@ Basic end-to-end usage:
 * bccReadExe(): Read cached binary. No need to compiling the bitcode later.
 
 * bccLinkBC(): On-device linking of bitcodes.
-* bccCompileBC(): Compiling bitcode.
+* bccPrepareExecutable(): Either compile bitcode or load from cache (cache-hit)
 
 * bccRegisterSymbolCallback(): Tell libbcc the function address of "dlsym"
 * bccGetError(): Get compilation... error

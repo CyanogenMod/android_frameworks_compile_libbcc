@@ -206,7 +206,7 @@ static BCCscript* loadScript() {
 static int compile(BCCscript* script) {
   bccRegisterSymbolCallback(script, symbolLookup, NULL);
 
-  if (bccCompileBC(script) != 0) {
+  if (bccPrepareExecutable(script) != 0) {
     fprintf(stderr, "Something wrong\n");
   }
 
