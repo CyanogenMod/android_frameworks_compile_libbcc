@@ -77,8 +77,6 @@ int bccReadBC(BCCscript *script,
               const BCCchar *resName,
               const BCCchar *cacheDir);
 
-int bccLoadBinary(BCCscript *script);
-
 // Interface for llvm::Module input. @module should be a valid llvm::Module
 // instance.
 int bccReadModule(BCCscript *script,

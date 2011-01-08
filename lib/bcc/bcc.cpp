@@ -96,11 +96,6 @@ extern "C" void bccLinkBC(BCCscript *script,
   script->linkBC(bitcode, size);
 }
 
-extern "C" int bccLoadBinary(BCCscript *script) {
-  LOGE("bccLoadBinary is deprecated **************************\n");
-  return 1;
-}
-
 extern "C" int bccPrepareExecutable(BCCscript *script) {
   BCC_FUNC_LOGGER();
 #if defined(__arm__)

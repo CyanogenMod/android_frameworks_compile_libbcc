@@ -195,9 +195,16 @@ static BCCscript* loadScript() {
 
   bitcode[codeSize] = '\0'; /* must be null-terminated */
   if (bccReadBC(script, bitcode, codeSize,
-                statInFile.st_mtime, 0, "file", "/tmp") < 0) {
-    bccLoadBinary(script);
+                statInFile.st_mtime, 0, "file", "/tmp") != 0) {
+    fprintf(stderr, "bcc: FAILS to read bitcode");
+    return NULL;
   }
+
+  if (bccPrepareExecutable(script) != 0) {
+    fprintf(stderr, "bcc: FAILS to prepare executable");
+    return NULL;
+  }
+
   //delete [] bitcode;
 
   return script;

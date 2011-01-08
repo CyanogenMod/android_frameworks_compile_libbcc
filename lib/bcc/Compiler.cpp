@@ -283,15 +283,11 @@ Compiler::Compiler(ScriptCompiled *result)
 
 // Compiler::readBC
 // Parameters:
-//   resName: NULL means don't use cache.
-//   Note: If "cache-hit but bccLoadBinary fails for some reason", still
-//         pass in the resName.
-//         Rationale: So we may have future cache-hit.
 //
 int Compiler::readBC(const char *bitcode,
                      size_t bitcodeSize,
-                     const BCCchar *resName,
-                     const BCCchar *cacheDir) {
+                     const BCCchar *resName /* Deprecated */,
+                     const BCCchar *cacheDir /* Deprecated */) {
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
   if (bitcode == NULL || bitcodeSize <= 0)
@@ -347,7 +343,6 @@ int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
 }
 
 
-// Deprecated: interface for bccCompileBC()
 int Compiler::compile() {
   llvm::TargetData *TD = NULL;
 
