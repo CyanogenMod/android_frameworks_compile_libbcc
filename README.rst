@@ -102,7 +102,7 @@ Here is the brief description of each sections:
   represents the index of such string in this string pool.
 
 * **Dependencies Table** (OBCC_DependencyTable) - The dependencies table.
-  This table stores the resource name (or file path), the resouece
+  This table stores the resource name (or file path), the resource
   type (rather in APK or on the file system), and the SHA1 checksum.
 
 * **Relocation Table** (OBCC_RelocationTable) - *not enabled*
