@@ -6,19 +6,29 @@ libbcc: A Versatile Bitcode Execution Engine
 Introduction
 ------------
 
-libbcc is an LLVM bitcode execution engine which compiles the bitcode
-to an in-memory executable.  libbcc provides a *just-in-time bitcode
-compiler*, which translates the bitcode into machine code, and a *caching
-mechanism*, which saves the in-memory executable after the compilation.
+libbcc is an LLVM bitcode execution engine that compiles the bitcode
+to an in-memory executable.
+
+libbcc provides:
+
+* a *just-in-time (JIT) bitcode compiler*, which translates the bitcode into
+  machine code
+
+* a *caching mechanism*, which can:
+
+  * after the compilation, serialize the in-memory executable into a cache file.
+    Note that the compilation is triggered by a cache miss.
+  * load from the cache file upon cache-hit.
+
 Here are some highlights of libbcc:
 
-* libbcc supports bit code from various language frontends, such as
+* libbcc supports bitcode from various language frontends, such as
   RenderScript, GLSL.
 
 * libbcc strives to balance between library size, launch time and
   steady-state performance:
 
-  * The size of libbcc is aggressively reduced for a mobile device.
+  * The size of libbcc is aggressively reduced for mobile devices.
     We customize and we don't use Execution Engine.
 
   * To reduce launch time, we support caching of binaries.
@@ -33,7 +43,7 @@ Here are some highlights of libbcc:
 API
 ---
 
-Basic:
+**Basic:**
 
 * **bccCreateScript** - Create new bcc script
 
@@ -46,17 +56,17 @@ Basic:
 
 * **bccLinkBC** - Set the library bitcode for linking
 
-* **bccPrepareExecutable** Create the in-memory executable by either
+* **bccPrepareExecutable** - Create the in-memory executable by either
   just-in-time compilation or cache loading
 
 * **bccDeleteScript** - Destroy bcc script and release the resources
 
 * **bccGetError** - Get the error code
 
-* **bccGetScriptInfoLog** *deprecated* - Don't use this
+* **bccGetScriptInfoLog** - *deprecated* - Don't use this
 
 
-Reflection:
+**Reflection:**
 
 * **bccGetExportVars** - Get the addresses of exported variables
 
@@ -65,11 +75,11 @@ Reflection:
 * **bccGetPragmas** - Get the pragmas
 
 
-Debug:
+**Debug:**
 
 * **bccGetFunctions** - Get the function name list
 
-* **bccGetFunctionBinary** - Get the address and the size of function binary
+* **bccGetFunctionBinary** - Get the address and the size of a function binary
 
 
 

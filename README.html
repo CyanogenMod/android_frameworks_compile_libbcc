@@ -309,17 +309,26 @@ ul.auto-toc {
 
 <div class="section" id="introduction">
 <h1>Introduction</h1>
-<p>libbcc is an LLVM bitcode execution engine which compiles the bitcode
-to an in-memory executable.  libbcc provides a <em>just-in-time bitcode
-compiler</em>, which translates the bitcode into machine code, and a <em>caching
-mechanism</em>, which saves the in-memory executable after the compilation.
-Here are some highlights of libbcc:</p>
+<p>libbcc is an LLVM bitcode execution engine that compiles the bitcode
+to an in-memory executable.</p>
+<p>libbcc provides:</p>
 <ul class="simple">
-<li>libbcc supports bit code from various language frontends, such as
+<li>a <em>just-in-time (JIT) bitcode compiler</em>, which translates the bitcode into
+machine code</li>
+<li>a <em>caching mechanism</em>, which can:<ul>
+<li>after the compilation, serialize the in-memory executable into a cache file.
+Note that the compilation is triggered by a cache miss.</li>
+<li>load from the cache file upon cache-hit.</li>
+</ul>
+</li>
+</ul>
+<p>Here are some highlights of libbcc:</p>
+<ul class="simple">
+<li>libbcc supports bitcode from various language frontends, such as
 RenderScript, GLSL.</li>
 <li>libbcc strives to balance between library size, launch time and
 steady-state performance:<ul>
-<li>The size of libbcc is aggressively reduced for a mobile device.
+<li>The size of libbcc is aggressively reduced for mobile devices.
 We customize and we don't use Execution Engine.</li>
 <li>To reduce launch time, we support caching of binaries.</li>
 <li>For steady-state performance, we enable VFP3 and aggressive
@@ -331,7 +340,7 @@ optimizations.</li>
 </div>
 <div class="section" id="api">
 <h1>API</h1>
-<p>Basic:</p>
+<p><strong>Basic:</strong></p>
 <ul class="simple">
 <li><strong>bccCreateScript</strong> - Create new bcc script</li>
 <li><strong>bccRegisterSymbolCallback</strong> - Register the callback function for external
@@ -339,22 +348,22 @@ symbol lookup</li>
 <li><strong>bccReadBC</strong> - Set the source bitcode for compilation</li>
 <li><strong>bccReadModule</strong> - Set the llvm::Module for compilation</li>
 <li><strong>bccLinkBC</strong> - Set the library bitcode for linking</li>
-<li><strong>bccPrepareExecutable</strong> Create the in-memory executable by either
+<li><strong>bccPrepareExecutable</strong> - Create the in-memory executable by either
 just-in-time compilation or cache loading</li>
 <li><strong>bccDeleteScript</strong> - Destroy bcc script and release the resources</li>
 <li><strong>bccGetError</strong> - Get the error code</li>
-<li><strong>bccGetScriptInfoLog</strong> <em>deprecated</em> - Don't use this</li>
+<li><strong>bccGetScriptInfoLog</strong> - <em>deprecated</em> - Don't use this</li>
 </ul>
-<p>Reflection:</p>
+<p><strong>Reflection:</strong></p>
 <ul class="simple">
 <li><strong>bccGetExportVars</strong> - Get the addresses of exported variables</li>
 <li><strong>bccGetExportFuncs</strong> - Get the addresses of exported functions</li>
 <li><strong>bccGetPragmas</strong> - Get the pragmas</li>
 </ul>
-<p>Debug:</p>
+<p><strong>Debug:</strong></p>
 <ul class="simple">
 <li><strong>bccGetFunctions</strong> - Get the function name list</li>
-<li><strong>bccGetFunctionBinary</strong> - Get the address and the size of function binary</li>
+<li><strong>bccGetFunctionBinary</strong> - Get the address and the size of a function binary</li>
 </ul>
 </div>
 <div class="section" id="cache-file-format">
