@@ -1,14 +1,14 @@
-=========================================
-libbcc: A Hybrid Bitcode Execution Engine
-=========================================
+============================================
+libbcc: A Versatile Bitcode Execution Engine
+============================================
 
 
 Introduction
 ------------
 
 libbcc is an LLVM bitcode execution engine which compiles the bitcode
-to an in-memory executable.  It comes with a *just-in-time bitcode
-compiler*, which translates the bitcode to machine code, and a *caching
+to an in-memory executable.  libbcc provides a *just-in-time bitcode
+compiler*, which translates the bitcode into machine code, and a *caching
 mechanism*, which saves the in-memory executable after the compilation.
 Here are some highlights of libbcc:
 
@@ -25,6 +25,8 @@ Here are some highlights of libbcc:
 
   * For steady-state performance, we enable VFP3 and aggressive
     optimizations.
+
+* Currently we disable Lazy JITting.
 
 
 
@@ -74,26 +76,26 @@ Debug:
 Cache File Format
 -----------------
 
-The cache file of libbcc (\*.oBCC) is consisted of several sections:
+A cache file (denoted as \*.oBCC) for libbcc consists of several sections:
 header, string pool, dependencies table, relocation table, exported
 variable list, exported function list, pragma list, function information
 table, and bcc context.  Every section should be aligned to a word size.
-Here's the brief description of each sections:
+Here is the brief description of each sections:
 
-* **Header** (OBCC_Header) - The header of the cache file.  Contains the
+* **Header** (OBCC_Header) - The header of a cache file. It contains the
   magic word, version, machine integer type information, and the size
   and the offset of other sections.  The header section is guaranteed
   to be at the beginning of the cache file.
 
-* **String Pool** (OBCC_StringPool) - A collection of serialized variadic
+* **String Pool** (OBCC_StringPool) - A collection of serialized variable
   length strings.  The strp_index in the other part of the cache file
   represents the index of such string in this string pool.
 
 * **Dependencies Table** (OBCC_DependencyTable) - The dependencies table.
-  This table will store the resource name (or file path), the resouece
+  This table stores the resource name (or file path), the resouece
   type (rather in APK or on the file system), and the SHA1 checksum.
 
-* **Relocation Table** (OBCC_RelocationTable) *not finished*
+* **Relocation Table** (OBCC_RelocationTable) - *not enabled*
 
 * **Exported Variable List** (OBCC_ExportVarList),
   **Exported Function List** (OBCC_ExportFuncList) -
