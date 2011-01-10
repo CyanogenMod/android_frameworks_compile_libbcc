@@ -313,7 +313,8 @@ ul.auto-toc {
 to an in-memory executable. libbcc is versatile because:</p>
 <ul class="simple">
 <li>it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time) compilation.</li>
-<li>Android devices demand fast start-up time, small size and high performance.</li>
+<li>Android devices demand fast start-up time, small size, and high performance
+<em>at the same time</em>. libbcc attemps to address these design constraints.</li>
 </ul>
 <p>libbcc provides:</p>
 <ul class="simple">
@@ -326,7 +327,7 @@ Note that the compilation is triggered by a cache miss.</li>
 </ul>
 </li>
 </ul>
-<p>Here are some highlights of libbcc:</p>
+<p>Highlights of libbcc are:</p>
 <ul class="simple">
 <li>libbcc supports bitcode from various language frontends, such as
 RenderScript, GLSL.</li>
@@ -401,7 +402,7 @@ and function binary size.  Besides, the table should be ordered by
 function name.</li>
 <li><strong>Context</strong> - The context of the in-memory executable, including
 the code and the data.  The offset of context should aligned to
-a page size, so that we can mmap the context directly into the memory.</li>
+a page size, so that we can mmap the context directly into memory.</li>
 </ul>
 <p>For furthur information, you may read <a class="reference external" href="include/bcc/bcc_cache.h">bcc_cache.h</a>,
 <a class="reference external" href="lib/bcc/CacheReader.cpp">CacheReader.cpp</a>, and

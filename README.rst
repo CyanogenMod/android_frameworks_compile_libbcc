@@ -11,7 +11,8 @@ to an in-memory executable. libbcc is versatile because:
 
 * it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time) compilation.
 
-* Android devices demand fast start-up time, small size and high performance.
+* Android devices demand fast start-up time, small size, and high performance
+  *at the same time*. libbcc attemps to address these design constraints.
 
 libbcc provides:
 
@@ -24,7 +25,7 @@ libbcc provides:
     Note that the compilation is triggered by a cache miss.
   * load from the cache file upon cache-hit.
 
-Here are some highlights of libbcc:
+Highlights of libbcc are:
 
 * libbcc supports bitcode from various language frontends, such as
   RenderScript, GLSL.
@@ -127,7 +128,7 @@ Here is the brief description of each sections:
 
 * **Context** - The context of the in-memory executable, including
   the code and the data.  The offset of context should aligned to
-  a page size, so that we can mmap the context directly into the memory.
+  a page size, so that we can mmap the context directly into memory.
 
 For furthur information, you may read `bcc_cache.h <include/bcc/bcc_cache.h>`_,
 `CacheReader.cpp <lib/bcc/CacheReader.cpp>`_, and
