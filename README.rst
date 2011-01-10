@@ -1,22 +1,26 @@
-============================================
-libbcc: A Versatile Bitcode Execution Engine
-============================================
+===============================================================
+libbcc: A Versatile Bitcode Execution Engine for Mobile Devices
+===============================================================
 
 
 Introduction
 ------------
 
 libbcc is an LLVM bitcode execution engine that compiles the bitcode
-to an in-memory executable.
+to an in-memory executable. libbcc is versatile because:
+
+* it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time) compilation.
+
+* Android devices demand fast start-up time, small size and high performance.
 
 libbcc provides:
 
-* a *just-in-time (JIT) bitcode compiler*, which translates the bitcode into
+* a *just-in-time bitcode compiler*, which translates the bitcode into
   machine code
 
 * a *caching mechanism*, which can:
 
-  * after the compilation, serialize the in-memory executable into a cache file.
+  * after each compilation, serialize the in-memory executable into a cache file.
     Note that the compilation is triggered by a cache miss.
   * load from the cache file upon cache-hit.
 
@@ -29,7 +33,7 @@ Here are some highlights of libbcc:
   steady-state performance:
 
   * The size of libbcc is aggressively reduced for mobile devices.
-    We customize and we don't use Execution Engine.
+    We customize and we don't use the default Execution Engine from upstream.
 
   * To reduce launch time, we support caching of binaries.
 
@@ -93,8 +97,9 @@ table, and bcc context.  Every section should be aligned to a word size.
 Here is the brief description of each sections:
 
 * **Header** (OBCC_Header) - The header of a cache file. It contains the
-  magic word, version, machine integer type information, and the size
-  and the offset of other sections.  The header section is guaranteed
+  magic word, version, machine integer type information (the endianness,
+  the size of off_t, size_t, and ptr_t), and the size
+  and offset of other sections.  The header section is guaranteed
   to be at the beginning of the cache file.
 
 * **String Pool** (OBCC_StringPool) - A collection of serialized variable
