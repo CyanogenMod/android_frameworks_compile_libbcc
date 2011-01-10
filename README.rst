@@ -112,9 +112,11 @@ Here is the brief description of each sections:
 
 * **Relocation Table** (OBCC_RelocationTable) - *not enabled*
 
-* **Exported Variable List** (OBCC_ExportVarList),
-  **Exported Function List** (OBCC_ExportFuncList) -
-  The list of the addresses of exported variables and exported functions.
+* **Exported Variable List** (OBCC_ExportVarList) -
+  The list of the addresses of exported variables.
+
+* **Exported Function List** (OBCC_ExportFuncList) -
+  The list of the addresses of exported functions.
 
 * **Pragma List** (OBCC_PragmaList) - The list of pragma key-value pair.
 
