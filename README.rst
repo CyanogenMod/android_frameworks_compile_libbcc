@@ -12,7 +12,7 @@ to an in-memory executable. libbcc is versatile because:
 * it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time) compilation.
 
 * Android devices demand fast start-up time, small size, and high performance
-  *at the same time*. libbcc attemps to address these design constraints.
+  *at the same time*. libbcc attempts to address these design constraints.
 
 libbcc provides:
 
