@@ -81,12 +81,6 @@ namespace bcc {
 
     std::string mError;
 
-    bool mUseCache;         // Set by readBC()
-    bool mCacheNew;         // Set by readBC()
-    bool mCacheLoadFailed;  // Set by loadCacheFile() used by readBC()
-
-    unsigned char mSourceSHA1[20];  // Set by readBC()
-
     // The memory manager for code emitter
     llvm::OwningPtr<CodeMemoryManager> mCodeMemMgr;
 

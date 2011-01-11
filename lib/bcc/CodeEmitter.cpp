@@ -1314,7 +1314,7 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
   uint8_t *FnEnd = CurBufferPtr;
 
   if (!mRelocations.empty()) {
-    ptrdiff_t BufferOffset = BufferBegin - mpMemMgr->getCodeMemBase();
+    //ptrdiff_t BufferOffset = BufferBegin - mpMemMgr->getCodeMemBase();
 
     // Resolve the relocations to concrete pointers.
     for (int i = 0, e = mRelocations.size(); i != e; i++) {

@@ -269,9 +269,6 @@ CodeEmitter *Compiler::createCodeEmitter() {
 
 Compiler::Compiler(ScriptCompiled *result)
   : mpResult(result),
-    mUseCache(false),
-    mCacheNew(false),
-    mCacheLoadFailed(false),
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
     mContext(NULL),
