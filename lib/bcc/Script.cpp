@@ -204,7 +204,10 @@ int Script::internalLoadCache() {
   CacheReader reader;
 
   // Dependencies
+#if defined(USE_LIBBCC_SHA1SUM)
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
+#endif
+
   reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
   if (sourceBC) {
@@ -288,7 +291,9 @@ int Script::internalCompile() {
       CacheWriter writer;
 
       // Dependencies
+#if defined(USE_LIBBCC_SHA1SUM)
       writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
+#endif
       writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
       if (sourceBC) {

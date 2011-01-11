@@ -144,8 +144,16 @@ bool CacheReader::checkHeader() {
   }
 
   if (memcmp(mpHeader->version, OBCC_VERSION, 4) != 0) {
-    LOGE("Bad oBCC version 0x%08x\n",
-         *reinterpret_cast<uint32_t *>(mpHeader->version));
+    mpHeader->version[4 - 1] = '\0'; // ensure c-style string terminated
+    LOGE("Cache file format version mismatch: lib %s cached %s\n",
+         OBCC_VERSION, mpHeader->version);
+    return false;
+  }
+
+  if (memcmp(mpHeader->libbcc_build_time, libbcc_build_time, 24) != 0) {
+    mpHeader->libbcc_build_time[24 - 1] = '\0'; // ensure terminated
+    LOGE("Build time mismatch: lib %s cached %s\n", libbcc_build_time,
+         mpHeader->libbcc_build_time);
     return false;
   }
 

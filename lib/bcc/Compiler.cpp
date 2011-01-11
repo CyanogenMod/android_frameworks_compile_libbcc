@@ -149,7 +149,7 @@ void Compiler::GlobalInitialization() {
   if (GlobalInitialized)
     return;
 
-  LOGI("LIBBCC BUILD: %s %s\n", __DATE__, __TIME__);
+  LOGI("LIBBCC BUILD: %s\n", libbcc_build_time);
 
   // if (!llvm::llvm_is_multithreaded())
   //   llvm::llvm_start_multithreaded();
@@ -238,7 +238,9 @@ void Compiler::GlobalInitialization() {
      llvm::createLinearScanRegisterAllocator);
 
   // Calculate the SHA1 checksum of libbcc and libRS.
+#if defined(USE_LIBBCC_SHA1SUM)
   calcFileSHA1(sha1LibBCC, pathLibBCC);
+#endif
   calcFileSHA1(sha1LibRS, pathLibRS);
 
   GlobalInitialized = true;

@@ -23,16 +23,18 @@
 
 #include <string.h>
 
+#include <utils/StopWatch.h>
+
 #include <sha1.h>
 
 namespace bcc {
 
-
+#if defined(USE_LIBBCC_SHA1SUM)
 unsigned char sha1LibBCC[20];
-unsigned char sha1LibRS[20];
-
-
 char const *pathLibBCC = "/system/lib/libbcc.so";
+#endif
+
+unsigned char sha1LibRS[20];
 char const *pathLibRS = "/system/lib/libRS.so";
 
 
@@ -49,6 +51,10 @@ void calcSHA1(unsigned char *result, char const *data, size_t size) {
 
 
 void calcFileSHA1(unsigned char *result, char const *filename) {
+#if defined(__arm__)
+  android::StopWatch calcFileSHA1Timer("calcFileSHA1 time");
+#endif
+
   FileHandle file;
 
   if (file.open(filename, OpenMode::Read) < 0) {

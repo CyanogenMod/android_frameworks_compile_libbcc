@@ -27,6 +27,8 @@
 
 #include <utils/StopWatch.h>
 
+char const libbcc_build_time[24] = __DATE__ " " __TIME__;
+
 namespace bcc {
   class FuncLogger {
   private:

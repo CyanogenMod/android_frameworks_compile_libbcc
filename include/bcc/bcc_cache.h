@@ -20,18 +20,22 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+extern char const libbcc_build_time[24];
 
 /* BCC Cache File Magic Word */
 #define OBCC_MAGIC "\0bcc"
 
 /* BCC Cache File Version, encoded in 4 bytes of ASCII */
-#define OBCC_VERSION "004\0"
+#define OBCC_VERSION "005\0"
 
 /* BCC Cache Header Structure */
 struct OBCC_Header {
   /* magic and version */
   uint8_t magic[4];
   uint8_t version[4];
+
+  /* libbcc build time */
+  char libbcc_build_time[24];
 
   /* machine-dependent integer type size */
   uint8_t endianness;

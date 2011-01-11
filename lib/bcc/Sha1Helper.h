@@ -20,10 +20,12 @@
 #include <stdint.h>
 
 namespace bcc {
+#if defined(USE_LIBBCC_SHA1SUM)
   extern unsigned char sha1LibBCC[20];
-  extern unsigned char sha1LibRS[20];
-
   extern char const *pathLibBCC;
+#endif
+
+  extern unsigned char sha1LibRS[20];
   extern char const *pathLibRS;
 
   void calcSHA1(unsigned char *result, char const *data, size_t size);

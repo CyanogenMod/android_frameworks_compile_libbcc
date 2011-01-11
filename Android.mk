@@ -20,6 +20,7 @@ LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm
 
 USE_CACHE := true
+USE_LIBBCC_SHA1SUM := false
 USE_RELOCATE := false
 
 USE_DISASSEMBLER := true
@@ -121,6 +122,10 @@ LOCAL_STATIC_LIBRARIES := \
   $(LOCAL_STATIC_LIBRARIES)
 endif
 
+ifeq ($(USE_LIBBCC_SHA1SUM),true)
+LOCAL_CFLAGS += -DUSE_LIBBCC_SHA1SUM
+endif
+
 # This hides most of the symbols in the shared library and reduces the size
 # of libbcc.so by about 800k.
 LOCAL_LDFLAGS += -Wl,--exclude-libs=ALL
@@ -180,6 +185,10 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMARMAsmPrinter \
   libLLVMMCParser \
   $(LOCAL_STATIC_LIBRARIES)
+endif
+
+ifeq ($(USE_LIBBCC_SHA1SUM),true)
+LOCAL_CFLAGS += -DUSE_LIBBCC_SHA1SUM
 endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
