@@ -82,9 +82,9 @@ int bccReadBC(BCCscript *script,
 int bccReadModule(BCCscript *script,
                   BCCvoid *module);
 
-void bccLinkBC(BCCscript *script,
-               const BCCchar *bitcode,
-               BCCint size);
+int bccLinkBC(BCCscript *script,
+              const BCCchar *bitcode,
+              BCCint size);
 
 int bccPrepareExecutable(BCCscript *script);
 

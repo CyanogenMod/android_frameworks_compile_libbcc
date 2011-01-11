@@ -89,11 +89,11 @@ extern "C" int bccReadBC(BCCscript *script,
   return script->readBC(bitcode, bitcodeSize, resName, cacheDir);
 }
 
-extern "C" void bccLinkBC(BCCscript *script,
-                          const BCCchar *bitcode,
-                          BCCint size) {
+extern "C" int bccLinkBC(BCCscript *script,
+                         const BCCchar *bitcode,
+                         BCCint size) {
   BCC_FUNC_LOGGER();
-  script->linkBC(bitcode, size);
+  return script->linkBC(bitcode, size);
 }
 
 extern "C" int bccPrepareExecutable(BCCscript *script) {
