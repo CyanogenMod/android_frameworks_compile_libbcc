@@ -1,3 +1,16 @@
+//===-- CodeEmitter.cpp - CodeEmitter Class -------------------------------===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See external/llvm/LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+//
+//  This file defines the CodeEmitter class.
+//
+//===----------------------------------------------------------------------===//
+
 /*
  * Copyright 2010, The Android Open Source Project
  *
