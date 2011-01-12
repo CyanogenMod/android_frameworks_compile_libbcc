@@ -161,7 +161,7 @@ int Script::linkBC(const char *bitcode, size_t bitcodeSize) {
 }
 
 
-int Script::compile() {
+int Script::prepareExecutable() {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Invalid operation: %s\n", __func__);
@@ -340,11 +340,8 @@ char const *Script::getCompilerErrorMessage() {
 
 void *Script::lookup(const char *name) {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    return mCompiled->lookup(name);
-
-  case ScriptStatus::Cached:
-    return mCached->lookup(name);
+  case ScriptStatus::Compiled:  return mCompiled->lookup(name);
+  case ScriptStatus::Cached:    return mCached->lookup(name);
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -353,17 +350,52 @@ void *Script::lookup(const char *name) {
 }
 
 
-void Script::getExportVars(BCCsizei *actualVarCount,
-                           BCCsizei maxVarCount,
-                           BCCvoid **vars) {
+size_t Script::getExportVarCount() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    mCompiled->getExportVars(actualVarCount, maxVarCount, vars);
+  case ScriptStatus::Compiled:  return mCompiled->getExportVarCount();
+  case ScriptStatus::Cached:    return mCached->getExportVarCount();
+  default:                      return 0;
+  }
+}
+
+
+size_t Script::getExportFuncCount() const {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:  return mCompiled->getExportFuncCount();
+  case ScriptStatus::Cached:    return mCached->getExportFuncCount();
+  default:                      return 0;
+  }
+}
+
+
+size_t Script::getPragmaCount() const {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:  return mCompiled->getPragmaCount();
+  case ScriptStatus::Cached:    return mCached->getPragmaCount();
+  default:                      return 0;
+  }
+}
+
+
+size_t Script::getFuncCount() const {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:  return mCompiled->getFuncCount();
+  case ScriptStatus::Cached:    return mCached->getFuncCount();
+  default:                      return 0;
+  }
+}
+
+
+void Script::getExportVarList(size_t varListSize, void **varList) {
+  switch (mStatus) {
+#define DELEGATE(STATUS) \
+  case ScriptStatus::STATUS: \
+    m##STATUS->getExportVarList(varListSize, varList); \
     break;
 
-  case ScriptStatus::Cached:
-    mCached->getExportVars(actualVarCount, maxVarCount, vars);
-    break;
+  DELEGATE(Cached);
+  DELEGATE(Compiled);
+#undef DELEGATE
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -371,17 +403,16 @@ void Script::getExportVars(BCCsizei *actualVarCount,
 }
 
 
-void Script::getExportFuncs(BCCsizei *actualFuncCount,
-                            BCCsizei maxFuncCount,
-                            BCCvoid **funcs) {
+void Script::getExportFuncList(size_t funcListSize, void **funcList) {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    mCompiled->getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+#define DELEGATE(STATUS) \
+  case ScriptStatus::STATUS: \
+    m##STATUS->getExportFuncList(funcListSize, funcList); \
     break;
 
-  case ScriptStatus::Cached:
-    mCached->getExportFuncs(actualFuncCount, maxFuncCount, funcs);
-    break;
+  DELEGATE(Cached);
+  DELEGATE(Compiled);
+#undef DELEGATE
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -389,17 +420,18 @@ void Script::getExportFuncs(BCCsizei *actualFuncCount,
 }
 
 
-void Script::getPragmas(BCCsizei *actualStringCount,
-                        BCCsizei maxStringCount,
-                        BCCchar **strings) {
+void Script::getPragmaList(size_t pragmaListSize,
+                           char const **keyList,
+                           char const **valueList) {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    mCompiled->getPragmas(actualStringCount, maxStringCount, strings);
+#define DELEGATE(STATUS) \
+  case ScriptStatus::STATUS: \
+    m##STATUS->getPragmaList(pragmaListSize, keyList, valueList); \
     break;
 
-  case ScriptStatus::Cached:
-    mCached->getPragmas(actualStringCount, maxStringCount, strings);
-    break;
+  DELEGATE(Cached);
+  DELEGATE(Compiled);
+#undef DELEGATE
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -407,17 +439,17 @@ void Script::getPragmas(BCCsizei *actualStringCount,
 }
 
 
-void Script::getFunctions(BCCsizei *actualFunctionCount,
-                          BCCsizei maxFunctionCount,
-                          BCCchar **functions) {
+void Script::getFuncNameList(size_t funcNameListSize,
+                             char const **funcNameList) {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    mCompiled->getFunctions(actualFunctionCount, maxFunctionCount, functions);
+#define DELEGATE(STATUS) \
+  case ScriptStatus::STATUS: \
+    m##STATUS->getFuncNameList(funcNameListSize, funcNameList);
     break;
 
-  case ScriptStatus::Cached:
-    mCached->getFunctions(actualFunctionCount, maxFunctionCount, functions);
-    break;
+  DELEGATE(Cached);
+  DELEGATE(Compiled);
+#undef DELEGATE
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -426,11 +458,8 @@ void Script::getFunctions(BCCsizei *actualFunctionCount,
 
 char *Script::getContext() {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    return mCompiled->getContext();
-
-  case ScriptStatus::Cached:
-    return mCached->getContext();
+  case ScriptStatus::Cached:    return mCached->getContext();
+  case ScriptStatus::Compiled:  return mCompiled->getContext();
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -439,24 +468,23 @@ char *Script::getContext() {
 }
 
 
-void Script::getFunctionBinary(BCCchar *function,
-                               BCCvoid **base,
-                               BCCsizei *length) {
+void Script::getFuncBinary(char const *funcname,
+                           void **base,
+                           size_t *length) {
   switch (mStatus) {
-  case ScriptStatus::Compiled:
-    mCompiled->getFunctionBinary(function, base, length);
-    return;
+#define DELEGATE(STATUS) \
+  case ScriptStatus::STATUS: \
+    m##STATUS->getFuncBinary(funcname, base, length); \
+    break;
 
-  case ScriptStatus::Cached:
-    mCached->getFunctionBinary(function, base, length);
-    return;
+  DELEGATE(Cached);
+  DELEGATE(Compiled);
+#undef DELEGATE
 
   default:
     *base = NULL;
     *length = 0;
-    return;
   }
-
 }
 
 

@@ -104,7 +104,7 @@ extern "C" int bccPrepareExecutable(BCCscript *script) {
   android::StopWatch compileTimer("bcc: PrepareExecutable time");
 #endif
 
-  int result = script->compile();
+  int result = script->prepareExecutable();
   if (result)
     script->setError(BCC_INVALID_OPERATION);
 
@@ -116,19 +116,7 @@ extern "C" void bccGetScriptInfoLog(BCCscript *script,
                                     BCCsizei *length,
                                     BCCchar *infoLog) {
   BCC_FUNC_LOGGER();
-  char const *message = script->getCompilerErrorMessage();
-  int messageLength = strlen(message) + 1;
-  if (length)
-    *length = messageLength;
-
-  if (infoLog && maxLength > 0) {
-    int trimmedLength = maxLength < messageLength ? maxLength : messageLength;
-    memcpy(infoLog, message, trimmedLength);
-    infoLog[trimmedLength] = 0;
-#if defined(USE_DISASSEMBLER_FILE)
-    LOGI("[GetScriptInfoLog] %s", infoLog);
-#endif
-  }
+  LOGE("%s is deprecated. *********************************\n", __func__);
 }
 
 extern "C" void bccGetScriptLabel(BCCscript *script,
@@ -147,73 +135,133 @@ extern "C" void bccGetScriptLabel(BCCscript *script,
 }
 
 extern "C" void bccGetExportVars(BCCscript *script,
-                                 BCCsizei *actualVarCount,
-                                 BCCsizei maxVarCount,
-                                 BCCvoid **vars) {
+                                 BCCsizei *actualCount,
+                                 BCCsizei varListSize,
+                                 BCCvoid **varList) {
   BCC_FUNC_LOGGER();
-  script->getExportVars(actualVarCount, maxVarCount, vars);
+
+  if (actualCount) {
+    *actualCount = static_cast<BCCsizei>(script->getExportVarCount());
+  }
+
+  if (varList) {
+    script->getExportVarList(static_cast<size_t>(varListSize), varList);
 
 #if defined(USE_DISASSEMBLER_FILE)
-  int i;
-  if (actualVarCount) {
-    LOGI("[ExportVars] #=%d:", *actualVarCount);
-  } else {
-    for (i = 0; i < maxVarCount; i++) {
-      LOGI("[ExportVars] #%d=0x%x", i, vars[i]);
+    size_t count = script->getExportVarCount();
+    LOGD("ExportVarCount = %lu\n", (unsigned long)count);
+
+    if (count > varListSize) {
+      count = varListSize;
     }
-  }
+
+    for (size_t i = 0; i < count; ++i) {
+      LOGD("ExportVarList[%lu] = 0x%p\n", (unsigned long)i, varList[i]);
+    }
 #endif
+  }
 }
 
 extern "C" void bccGetExportFuncs(BCCscript *script,
-                                  BCCsizei *actualFuncCount,
-                                  BCCsizei maxFuncCount,
-                                  BCCvoid **funcs) {
+                                  BCCsizei *actualCount,
+                                  BCCsizei funcListSize,
+                                  BCCvoid **funcList) {
   BCC_FUNC_LOGGER();
-  script->getExportFuncs(actualFuncCount, maxFuncCount, funcs);
+
+  if (actualCount) {
+    *actualCount = static_cast<BCCsizei>(script->getExportFuncCount());
+  }
+
+  if (funcList) {
+    script->getExportFuncList(static_cast<size_t>(funcListSize), funcList);
 
 #if defined(USE_DISASSEMBLER_FILE)
-  int i;
-  if (actualFuncCount) {
-    LOGI("[ExportFunc] #=%d:", *actualFuncCount);
-  } else {
-    for (i = 0; i < maxFuncCount; i++) {
-      LOGI("[ExportFunc] #%d=0x%x", i, funcs[i]);
+    size_t count = script->getExportFuncCount();
+    LOGD("ExportFuncCount = %lu\n", (unsigned long)count);
+
+    if (count > funcListSize) {
+      count = funcListSize;
     }
-  }
+
+    for (size_t i = 0; i < count; ++i) {
+      LOGD("ExportFuncList[%lu] = 0x%p\n", (unsigned long)i, funcList[i]);
+    }
 #endif
+  }
 }
 
 extern "C" void bccGetPragmas(BCCscript *script,
-                              BCCsizei *actualStringCount,
-                              BCCsizei maxStringCount,
-                              BCCchar **strings) {
+                              BCCsizei *actualCount,
+                              BCCsizei stringListSize,
+                              BCCchar **stringList) {
   BCC_FUNC_LOGGER();
-  script->getPragmas(actualStringCount, maxStringCount, strings);
+
+  if (actualCount) {
+    *actualCount = static_cast<BCCsizei>(script->getPragmaCount() * 2);
+  }
+
+  if (stringList) {
+    size_t pragmaListSize = static_cast<size_t>(stringListSize) / 2;
+
+    char const **buf = new (nothrow) char const *[pragmaListSize * 2];
+    if (!buf) {
+      return;
+    }
+
+    char const **keyList = buf;
+    char const **valueList = buf + pragmaListSize;
+
+    script->getPragmaList(pragmaListSize, keyList, valueList);
+
+    for (size_t i = 0; i < pragmaListSize; ++i) {
+      *stringList++ = const_cast<BCCchar *>(keyList[i]);
+      *stringList++ = const_cast<BCCchar *>(valueList[i]);
+    }
+
+    delete [] buf;
 
 #if defined(USE_DISASSEMBLER_FILE)
-  int i;
-  LOGI("[Pragma] #=%d:", *actualStringCount);
-  for (i = 0; i < *actualStringCount; i++) {
-    LOGI("  %s", strings[i]);
-  }
+    size_t count = script->getPragmaCount();
+    LOGD("PragmaCount = %lu\n", count);
+
+    if (count > pragmaListSize) {
+      count = pragmaListSize;
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+      LOGD("Pragma[%lu] = (%s , %s)\n",
+           (unsigned long)i, stringList[2 * i], stringList[2 * i + 1]);
+    }
 #endif
+  }
 }
 
 extern "C" void bccGetFunctions(BCCscript *script,
-                                BCCsizei *actualFunctionCount,
-                                BCCsizei maxFunctionCount,
-                                BCCchar **functions) {
+                                BCCsizei *actualCount,
+                                BCCsizei funcNameListSize,
+                                BCCchar **funcNameList) {
   BCC_FUNC_LOGGER();
-  script->getFunctions(actualFunctionCount,
-                                maxFunctionCount,
-                                functions);
+
+  if (actualCount) {
+    *actualCount = static_cast<BCCsizei>(script->getFuncCount());
+  }
+
+  if (funcNameList) {
+    script->getFuncNameList(static_cast<size_t>(funcNameListSize),
+                            const_cast<char const **>(funcNameList));
+  }
 }
 
 extern "C" void bccGetFunctionBinary(BCCscript *script,
-                                     BCCchar *function,
+                                     BCCchar *funcname,
                                      BCCvoid **base,
                                      BCCsizei *length) {
   BCC_FUNC_LOGGER();
-  script->getFunctionBinary(function, base, length);
+
+  size_t funcLength = 0;
+  script->getFuncBinary(funcname, base, &funcLength);
+
+  if (length) {
+    *length = static_cast<BCCsizei>(funcLength);
+  }
 }

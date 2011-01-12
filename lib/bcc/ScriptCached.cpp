@@ -40,57 +40,51 @@ ScriptCached::~ScriptCached() {
   if (mpExportFuncs) { free(mpExportFuncs); }
 }
 
-void ScriptCached::getExportVars(BCCsizei *actualVarCount,
-                                 BCCsizei maxVarCount,
-                                 BCCvoid **vars) {
-  int varCount = static_cast<int>(mpExportVars->count);
+void ScriptCached::getExportVarList(size_t varListSize, void **varList) {
+  if (varList) {
+    size_t varCount = getExportVarCount();
 
-  if (actualVarCount)
-    *actualVarCount = varCount;
-  if (varCount > maxVarCount)
-    varCount = maxVarCount;
-  if (vars) {
-    void **ptr = mpExportVars->cached_addr_list;
-    for (int i = 0; i < varCount; i++) {
-      *vars++ = *ptr++;
+    if (varCount > varListSize) {
+      varCount = varListSize;
     }
+
+    memcpy(varList, mpExportVars->cached_addr_list, sizeof(void *) * varCount);
   }
 }
 
 
-void ScriptCached::getExportFuncs(BCCsizei *actualFuncCount,
-                                  BCCsizei maxFuncCount,
-                                  BCCvoid **funcs) {
-  int funcCount = static_cast<int>(mpExportFuncs->count);
+void ScriptCached::getExportFuncList(size_t funcListSize, void **funcList) {
+  if (funcList) {
+    size_t funcCount = getExportFuncCount();
 
-  if (actualFuncCount)
-    *actualFuncCount = funcCount;
-  if (funcCount > maxFuncCount)
-    funcCount = maxFuncCount;
-  if (funcs) {
-    void **ptr = mpExportFuncs->cached_addr_list;
-    for (int i = 0; i < funcCount; i++) {
-      *funcs++ = *ptr++;
+    if (funcCount > funcListSize) {
+      funcCount = funcListSize;
     }
+
+    memcpy(funcList, mpExportFuncs->cached_addr_list,
+           sizeof(void *) * funcCount);
   }
 }
 
 
-void ScriptCached::getPragmas(BCCsizei *actualStringCount,
-                              BCCsizei maxStringCount,
-                              BCCchar **strings) {
-  int stringCount = static_cast<int>(mPragmas.size()) * 2;
+void ScriptCached::getPragmaList(size_t pragmaListSize,
+                                 char const **keyList,
+                                 char const **valueList) {
+  size_t pragmaCount = getPragmaCount();
 
-  if (actualStringCount)
-    *actualStringCount = stringCount;
+  if (pragmaCount > pragmaListSize) {
+    pragmaCount = pragmaListSize;
+  }
 
-  if (stringCount > maxStringCount)
-    stringCount = maxStringCount;
+  if (keyList) {
+    for (size_t i = 0; i < pragmaCount; ++i) {
+      *keyList++ = mPragmas[i].first;
+    }
+  }
 
-  if (strings) {
-    for (int i = 0; stringCount >= 2; stringCount -= 2, ++i) {
-      *strings++ = const_cast<BCCchar *>(mPragmas[i].first);
-      *strings++ = const_cast<BCCchar *>(mPragmas[i].second);
+  if (valueList) {
+    for (size_t i = 0; i < pragmaCount; ++i) {
+      *valueList++ = mPragmas[i].second;
     }
   }
 }
@@ -102,36 +96,40 @@ void *ScriptCached::lookup(const char *name) {
 }
 
 
-void ScriptCached::getFunctions(BCCsizei *actualFunctionCount,
-                                BCCsizei maxFunctionCount,
-                                BCCchar **functions) {
-  int functionCount = mFunctions.size();
+void ScriptCached::getFuncNameList(size_t funcNameListSize,
+                                   char const **funcNameList) {
+  if (funcNameList) {
+    size_t funcCount = getFuncCount();
 
-  if (actualFunctionCount)
-    *actualFunctionCount = functionCount;
-  if (functionCount > maxFunctionCount)
-    functionCount = maxFunctionCount;
-  if (functions) {
+    if (funcCount > funcNameListSize) {
+      funcCount = funcNameListSize;
+    }
+
     for (FuncTable::const_iterator
          I = mFunctions.begin(), E = mFunctions.end();
-         I != E && (functionCount > 0); I++, functionCount--) {
-      *functions++ = const_cast<BCCchar*>(I->first.c_str());
+         I != E && funcCount > 0; I++, funcCount--) {
+      *funcNameList++ = I->first.c_str();
     }
   }
 }
 
 
-void ScriptCached::getFunctionBinary(BCCchar *funcname,
-                                     BCCvoid **base,
-                                     BCCsizei *length) {
+void ScriptCached::getFuncBinary(char const *funcname,
+                                 void **base,
+                                 size_t *length) {
   FuncTable::const_iterator I = mFunctions.find(funcname);
+
+#define DEREF_ASSIGN(VAR, VALUE) if (VAR) { *(VAR) = (VALUE); }
+
   if (I == mFunctions.end()) {
-    *base = NULL;
-    *length = 0;
+    DEREF_ASSIGN(base, NULL);
+    DEREF_ASSIGN(length, 0);
   } else {
-    *base = I->second.first;
-    *length = I->second.second;
+    DEREF_ASSIGN(base, I->second.first);
+    DEREF_ASSIGN(length, I->second.second);
   }
+
+#undef DEREF_ASSIGN
 }
 
 

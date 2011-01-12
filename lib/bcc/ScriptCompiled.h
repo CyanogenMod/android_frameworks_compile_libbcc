@@ -86,25 +86,37 @@ namespace bcc {
 
     void *lookup(const char *name);
 
-    void getExportVars(BCCsizei *actualVarCount,
-                       BCCsizei maxVarCount,
-                       BCCvoid **vars);
 
-    void getExportFuncs(BCCsizei *actualFuncCount,
-                        BCCsizei maxFuncCount,
-                        BCCvoid **funcs);
+    size_t getExportVarCount() const {
+      return mExportVars.size();
+    }
 
-    void getPragmas(BCCsizei *actualStringCount,
-                    BCCsizei maxStringCount,
-                    BCCchar **strings);
+    size_t getExportFuncCount() const {
+      return mExportFuncs.size();
+    }
 
-    void getFunctions(BCCsizei *actualFunctionCount,
-                      BCCsizei maxFunctionCount,
-                      BCCchar **functions);
+    size_t getPragmaCount() const {
+      return mPragmas.size();
+    }
 
-    void getFunctionBinary(BCCchar *function,
-                           BCCvoid **base,
-                           BCCsizei *length);
+    size_t getFuncCount() const {
+      return mEmittedFunctions.size();
+    }
+
+
+    void getExportVarList(size_t varListSize, void **varList);
+
+    void getExportFuncList(size_t funcListSize, void **funcList);
+
+    void getPragmaList(size_t pragmaListSize,
+                       char const **keyList,
+                       char const **valueList);
+
+    void getFuncNameList(size_t funcNameListSize, char const **funcNameList);
+
+    void getFuncBinary(char const *function,
+                       void **base,
+                       size_t *length);
 
     char *getContext() {
       return mContext;

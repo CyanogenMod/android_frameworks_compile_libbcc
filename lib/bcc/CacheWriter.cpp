@@ -144,9 +144,7 @@ bool CacheWriter::prepareDependencyTable() {
 
 
 bool CacheWriter::prepareFuncTable() {
-  ssize_t funcCount = 0;
-
-  mpOwner->getFunctions(&funcCount, 0, NULL);
+  size_t funcCount = mpOwner->getFuncCount();
 
   size_t tableSize = sizeof(OBCC_FuncTable) +
                      sizeof(OBCC_FuncInfo) * funcCount;
@@ -164,16 +162,16 @@ bool CacheWriter::prepareFuncTable() {
   tab->count = static_cast<size_t>(funcCount);
 
   // Get the function informations
-  vector<char *> funcNameList(funcCount);
-  mpOwner->getFunctions(0, funcCount, &*funcNameList.begin());
+  vector<char const *> funcNameList(funcCount);
+  mpOwner->getFuncNameList(funcCount, &*funcNameList.begin());
 
-  for (int i = 0; i < funcCount; ++i) {
-    char *funcName = funcNameList[i];
+  for (size_t i = 0; i < funcCount; ++i) {
+    char const *funcName = funcNameList[i];
     size_t funcNameLen = strlen(funcName);
 
     void *funcAddr = NULL;
-    ssize_t funcBinarySize = 0;
-    mpOwner->getFunctionBinary(funcName, &funcAddr, &funcBinarySize);
+    size_t funcBinarySize = 0;
+    mpOwner->getFuncBinary(funcName, &funcAddr, &funcBinarySize);
 
     OBCC_FuncInfo *funcInfo = &tab->table[i];
     funcInfo->name_strp_index = addString(funcName, funcNameLen);
@@ -186,11 +184,7 @@ bool CacheWriter::prepareFuncTable() {
 
 
 bool CacheWriter::preparePragmaList() {
-  ssize_t stringCount;
-
-  mpOwner->getPragmas(&stringCount, 0, NULL);
-
-  size_t pragmaCount = static_cast<size_t>(stringCount) / 2;
+  size_t pragmaCount = mpOwner->getPragmaCount();
 
   size_t listSize = sizeof(OBCC_PragmaList) +
                     sizeof(OBCC_Pragma) * pragmaCount;
@@ -207,14 +201,15 @@ bool CacheWriter::preparePragmaList() {
 
   list->count = pragmaCount;
 
-  vector<char *> strings(stringCount);
-  mpOwner->getPragmas(&stringCount, stringCount, &*strings.begin());
+  vector<char const *> keyList(pragmaCount);
+  vector<char const *> valueList(pragmaCount);
+  mpOwner->getPragmaList(pragmaCount, &*keyList.begin(), &*valueList.begin());
 
   for (size_t i = 0; i < pragmaCount; ++i) {
-    char *key = strings[2 * i];
-    size_t keyLen = strlen(key);
+    char const *key = keyList[i];
+    char const *value = valueList[i];
 
-    char *value = strings[2 * i + 1];
+    size_t keyLen = strlen(key);
     size_t valueLen = strlen(value);
 
     OBCC_Pragma *pragma = &list->list[i];
@@ -276,10 +271,7 @@ bool CacheWriter::prepareStringPool() {
 
 
 bool CacheWriter::prepareExportVarList() {
-  ssize_t varCount;
-
-  mpOwner->getExportVars(&varCount, 0, NULL);
-
+  size_t varCount = mpOwner->getExportVarCount();
   size_t listSize = sizeof(OBCC_ExportVarList) + sizeof(void *) * varCount;
 
   OBCC_ExportVarList *list = (OBCC_ExportVarList *)malloc(listSize);
@@ -294,16 +286,13 @@ bool CacheWriter::prepareExportVarList() {
 
   list->count = static_cast<size_t>(varCount);
 
-  mpOwner->getExportVars(&varCount, varCount, list->cached_addr_list);
+  mpOwner->getExportVarList(varCount, list->cached_addr_list);
   return true;
 }
 
 
 bool CacheWriter::prepareExportFuncList() {
-  ssize_t funcCount;
-
-  mpOwner->getExportFuncs(&funcCount, 0, NULL);
-
+  size_t funcCount = mpOwner->getExportFuncCount();
   size_t listSize = sizeof(OBCC_ExportFuncList) + sizeof(void *) * funcCount;
 
   OBCC_ExportFuncList *list = (OBCC_ExportFuncList *)malloc(listSize);
@@ -318,7 +307,7 @@ bool CacheWriter::prepareExportFuncList() {
 
   list->count = static_cast<size_t>(funcCount);
 
-  mpOwner->getExportFuncs(&funcCount, funcCount, list->cached_addr_list);
+  mpOwner->getExportFuncList(funcCount, list->cached_addr_list);
   return true;
 }
 

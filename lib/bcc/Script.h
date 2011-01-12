@@ -21,6 +21,8 @@
 
 #include "Compiler.h"
 
+#include <stddef.h>
+
 namespace llvm {
   class Module;
 }
@@ -87,35 +89,38 @@ namespace bcc {
 
     int linkBC(const char *bitcode, size_t bitcodeSize);
 
-    int compile(); // deprecated
+    int prepareExecutable();
 
     char const *getCompilerErrorMessage();
 
     void *lookup(const char *name);
 
-    void getExportVars(BCCsizei *actualVarCount,
-                       BCCsizei maxVarCount,
-                       BCCvoid **vars);
 
-    void getExportFuncs(BCCsizei *actualFuncCount,
-                        BCCsizei maxFuncCount,
-                        BCCvoid **funcs);
+    size_t getExportVarCount() const;
 
-    void getPragmas(BCCsizei *actualStringCount,
-                    BCCsizei maxStringCount,
-                    BCCchar **strings);
+    size_t getExportFuncCount() const;
 
-    void getFunctions(BCCsizei *actualFunctionCount,
-                      BCCsizei maxFunctionCount,
-                      BCCchar **functions);
+    size_t getPragmaCount() const;
 
-    void getFunctionBinary(BCCchar *function,
-                           BCCvoid **base,
-                           BCCsizei *length);
+    size_t getFuncCount() const;
 
-    char *getContext();
+
+    void getExportVarList(size_t size, void **list);
+
+    void getExportFuncList(size_t size, void **list);
+
+    void getPragmaList(size_t size,
+                       char const **keyList,
+                       char const **valueList);
+
+    void getFuncNameList(size_t size, char const **list);
+
+    void getFuncBinary(char const *funcname, void **base, size_t *length);
+
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext);
+
+    char *getContext();
 
 
     void setError(BCCenum error) {

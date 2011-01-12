@@ -39,56 +39,54 @@ ScriptCompiled::~ScriptCompiled() {
   }
 }
 
-void ScriptCompiled::getExportVars(BCCsizei *actualVarCount,
-                                   BCCsizei maxVarCount,
-                                   BCCvoid **vars) {
-  int varCount = mExportVars.size();
-  if (actualVarCount)
-    *actualVarCount = varCount;
-  if (varCount > maxVarCount)
-    varCount = maxVarCount;
-  if (vars) {
+void ScriptCompiled::getExportVarList(size_t varListSize, void **varList) {
+  if (varList) {
+    size_t varCount = getExportVarCount();
+
+    if (varCount > varListSize) {
+      varCount = varListSize;
+    }
+
     for (ExportVarList::const_iterator
-         I = mExportVars.begin(), E = mExportVars.end(); I != E; I++) {
-      *vars++ = *I;
+         I = mExportVars.begin(), E = mExportVars.end();
+         I != E && varCount > 0; ++I, --varCount) {
+      *varList++ = *I;
     }
   }
 }
 
 
-void ScriptCompiled::getExportFuncs(BCCsizei *actualFuncCount,
-                                    BCCsizei maxFuncCount,
-                                    BCCvoid **funcs) {
-  int funcCount = mExportFuncs.size();
-  if (actualFuncCount)
-    *actualFuncCount = funcCount;
-  if (funcCount > maxFuncCount)
-    funcCount = maxFuncCount;
-  if (funcs) {
+void ScriptCompiled::getExportFuncList(size_t funcListSize, void **funcList) {
+  if (funcList) {
+    size_t funcCount = getExportFuncCount();
+
+    if (funcCount > funcListSize) {
+      funcCount = funcListSize;
+    }
+
     for (ExportFuncList::const_iterator
-         I = mExportFuncs.begin(), E = mExportFuncs.end(); I != E; I++) {
-      *funcs++ = *I;
+         I = mExportFuncs.begin(), E = mExportFuncs.end();
+         I != E && funcCount > 0; ++I, --funcCount) {
+      *funcList++ = *I;
     }
   }
 }
 
 
-void ScriptCompiled::getPragmas(BCCsizei *actualStringCount,
-                                BCCsizei maxStringCount,
-                                BCCchar **strings) {
-  int stringCount = mPragmas.size() * 2;
+void ScriptCompiled::getPragmaList(size_t pragmaListSize,
+                                   char const **keyList,
+                                   char const **valueList) {
+  size_t pragmaCount = getPragmaCount();
 
-  if (actualStringCount)
-    *actualStringCount = stringCount;
-  if (stringCount > maxStringCount)
-    stringCount = maxStringCount;
-  if (strings) {
-    size_t i = 0;
-    for (PragmaList::const_iterator it = mPragmas.begin();
-         stringCount >= 2; stringCount -= 2, it++, ++i) {
-      *strings++ = const_cast<BCCchar*>(it->first.c_str());
-      *strings++ = const_cast<BCCchar*>(it->second.c_str());
-    }
+  if (pragmaCount > pragmaListSize) {
+    pragmaCount = pragmaListSize;
+  }
+
+  for (PragmaList::const_iterator
+       I = mPragmas.begin(), E = mPragmas.end();
+       I != E && pragmaCount > 0; ++I, --pragmaCount) {
+    if (keyList) { *keyList++ = I->first.c_str(); }
+    if (valueList) { *valueList++ = I->second.c_str(); }
   }
 }
 
@@ -99,37 +97,40 @@ void *ScriptCompiled::lookup(const char *name) {
 }
 
 
-void ScriptCompiled::getFunctions(BCCsizei *actualFunctionCount,
-                                  BCCsizei maxFunctionCount,
-                                  BCCchar **functions) {
+void ScriptCompiled::getFuncNameList(size_t funcNameListSize,
+                                     char const **funcNameList) {
+  if (funcNameList) {
+    size_t funcCount = getFuncCount();
 
-  int functionCount = mEmittedFunctions.size();
+    if (funcCount > funcNameListSize) {
+      funcCount = funcNameListSize;
+    }
 
-  if (actualFunctionCount)
-    *actualFunctionCount = functionCount;
-  if (functionCount > maxFunctionCount)
-    functionCount = maxFunctionCount;
-  if (functions) {
     for (EmittedFunctionsMapTy::const_iterator
          I = mEmittedFunctions.begin(), E = mEmittedFunctions.end();
-         I != E && (functionCount > 0); I++, functionCount--) {
-      *functions++ = const_cast<BCCchar*>(I->first.c_str());
+         I != E && funcCount > 0; ++I, --funcCount) {
+      *funcNameList++ = I->first.c_str();
     }
   }
 }
 
 
-void ScriptCompiled::getFunctionBinary(BCCchar *funcname,
-                                       BCCvoid **base,
-                                       BCCsizei *length) {
+void ScriptCompiled::getFuncBinary(char const *funcname,
+                                   void **base,
+                                   size_t *length) {
   EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(funcname);
+
+#define DEREF_ASSIGN(VAR, VALUE) if (VAR) { *(VAR) = (VALUE); }
+
   if (I == mEmittedFunctions.end()) {
-    *base = NULL;
-    *length = 0;
+    DEREF_ASSIGN(base, NULL);
+    DEREF_ASSIGN(length, 0);
   } else {
-    *base = I->second->Code;
-    *length = I->second->Size;
+    DEREF_ASSIGN(base, I->second->Code);
+    DEREF_ASSIGN(length, I->second->Size);
   }
+
+#undef DEREF_ASSIGN
 }
 
 
