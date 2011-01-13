@@ -321,6 +321,10 @@ int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
     return hasError();
   }
 
+#if 0
+  MEM.reset(llvm::MemoryBuffer::getFile("/system/lib/rslib.bc"));
+#endif
+
   MEM.reset(llvm::MemoryBuffer::getMemBuffer(
       llvm::StringRef(bitcode, bitcodeSize)));
 
