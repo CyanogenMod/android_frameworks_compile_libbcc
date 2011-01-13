@@ -107,6 +107,8 @@ namespace bcc {
 Script::~Script() {
   if (mStatus == ScriptStatus::Compiled) {
     delete mCompiled;
+  } else if (mStatus == ScriptStatus::Cached) {
+    delete mCached;
   }
 }
 
@@ -154,6 +156,7 @@ int Script::linkBC(const char *bitcode, size_t bitcodeSize) {
 
   libraryBC = bitcode;
   librarySize = bitcodeSize;
+  LOGI("libraryBC = %x, librarySize = %d", libraryBC, librarySize);
   return 0;
 }
 
