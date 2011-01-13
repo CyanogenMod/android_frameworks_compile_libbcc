@@ -311,8 +311,10 @@ int Compiler::readBC(const char *bitcode,
 int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
-  if (bitcode == NULL || bitcodeSize <= 0)
-    return 0;
+  if (bitcode == NULL || bitcodeSize <= 0) {
+    LOGE("Invalid bitcode for linkBC: bitcode=%p, size=%lu.\n", bitcode, (unsigned long)bitcodeSize);
+    return 1;
+  }
 
   if (mModule == NULL) {
     setError("No module presents for linking");
