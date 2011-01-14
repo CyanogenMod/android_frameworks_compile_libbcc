@@ -45,14 +45,14 @@ libbcc_SRC_FILES := \
 #
 # rslib.bc
 # ========================================================
-include $(CLEAR_VARS)
-local_target_dir := /system/lib
-LOCAL_MODULE := rslib.bc
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_MODULE_PATH := $(local_target_dir)
-LOCAL_SRC_FILES := $(LOCAL_MODULE)
-include $(BUILD_PREBUILT)
+# include $(CLEAR_VARS)
+# local_target_dir := /system/lib
+# LOCAL_MODULE := rslib.bc
+# LOCAL_MODULE_TAGS := optional
+# LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+# LOCAL_MODULE_PATH := $(local_target_dir)
+# LOCAL_SRC_FILES := $(LOCAL_MODULE)
+# include $(BUILD_PREBUILT)
 
 #
 # Shared library for target
