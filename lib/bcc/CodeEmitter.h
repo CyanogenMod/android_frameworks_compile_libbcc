@@ -18,6 +18,8 @@
 #include <bcc/bcc_cache.h>
 #include "bcc_internal.h"
 
+#include "Config.h"
+
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
@@ -43,7 +45,7 @@ namespace llvm {
   class MachineFunction;
   class MachineJumpTableInfo;
   class MachineModuleInfo;
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
   class MCAsmInfo;
   class MCDisassembler;
   class MCInstPrinter;
@@ -138,7 +140,7 @@ namespace bcc {
 
     std::map<void*, void*> ExternalFnToStubMap;
 
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
     const llvm::MCAsmInfo *mpAsmInfo;
     const llvm::MCDisassembler *mpDisassmbler;
     llvm::MCInstPrinter *mpIP;

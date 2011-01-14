@@ -17,53 +17,9 @@
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
 
-#if defined(__arm__)
-#   define DEFAULT_ARM_CODEGEN
-#   define PROVIDE_ARM_CODEGEN
-#elif defined(__i386__)
-#   define DEFAULT_X86_CODEGEN
-#   define PROVIDE_X86_CODEGEN
-#elif defined(__x86_64__)
-#   define DEFAULT_X64_CODEGEN
-#   define PROVIDE_X64_CODEGEN
-#endif
-
-#if defined(FORCE_ARM_CODEGEN)
-#   define DEFAULT_ARM_CODEGEN
-#   undef DEFAULT_X86_CODEGEN
-#   undef DEFAULT_X64_CODEGEN
-#   define PROVIDE_ARM_CODEGEN
-#   undef PROVIDE_X86_CODEGEN
-#   undef PROVIDE_X64_CODEGEN
-#elif defined(FORCE_X86_CODEGEN)
-#   undef DEFAULT_ARM_CODEGEN
-#   define DEFAULT_X86_CODEGEN
-#   undef DEFAULT_X64_CODEGEN
-#   undef PROVIDE_ARM_CODEGEN
-#   define PROVIDE_X86_CODEGEN
-#   undef PROVIDE_X64_CODEGEN
-#elif defined(FORCE_X64_CODEGEN)
-#   undef DEFAULT_ARM_CODEGEN
-#   undef DEFAULT_X86_CODEGEN
-#   define DEFAULT_X64_CODEGEN
-#   undef PROVIDE_ARM_CODEGEN
-#   undef PROVIDE_X86_CODEGEN
-#   define PROVIDE_X64_CODEGEN
-#endif
-
-#if defined(DEFAULT_ARM_CODEGEN)
-#   define TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
-#elif defined(DEFAULT_X86_CODEGEN)
-#   define TARGET_TRIPLE_STRING "i686-unknown-linux"
-#elif defined(DEFAULT_X64_CODEGEN)
-#   define TARGET_TRIPLE_STRING "x86_64-unknown-linux"
-#endif
-
-#if (defined(__VFP_FP__) && !defined(__SOFTFP__))
-#   define ARM_USE_VFP
-#endif
-
 #include "Compiler.h"
+
+#include "Config.h"
 
 #include "ContextManager.h"
 #include "ScriptCompiled.h"
@@ -167,7 +123,7 @@ void Compiler::GlobalInitialization() {
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
   LLVMInitializeARMDisassembler();
   LLVMInitializeARMAsmPrinter();
 #endif
@@ -176,7 +132,7 @@ void Compiler::GlobalInitialization() {
 #if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN)
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
   LLVMInitializeX86Disassembler();
   LLVMInitializeX86AsmPrinter();
 #endif
@@ -185,7 +141,7 @@ void Compiler::GlobalInitialization() {
 #if defined(DEFAULT_X64_CODEGEN) || defined(PROVIDE_X64_CODEGEN)
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
   LLVMInitializeX86Disassembler();
   LLVMInitializeX86AsmPrinter();
 #endif
@@ -237,11 +193,13 @@ void Compiler::GlobalInitialization() {
      llvm::createFastRegisterAllocator :
      llvm::createLinearScanRegisterAllocator);
 
+#if USE_CACHE
   // Calculate the SHA1 checksum of libbcc and libRS.
-#if defined(USE_LIBBCC_SHA1SUM)
+#if USE_LIBBCC_SHA1SUM
   calcFileSHA1(sha1LibBCC, pathLibBCC);
 #endif
   calcFileSHA1(sha1LibRS, pathLibRS);
+#endif
 
   GlobalInitialized = true;
 }

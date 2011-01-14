@@ -23,6 +23,8 @@
 #include <bcc/bcc.h>
 #include "bcc_internal.h"
 
+#include "Config.h"
+
 #include "Compiler.h"
 #include "Script.h"
 
@@ -126,7 +128,7 @@ extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
 
   void *addr = unwrap(script)->lookup(funcname);
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if USE_DISASSEMBLER_FILE
   LOGD("Function Address: %s --> 0x%p\n", funcname, addr);
 #endif
 
@@ -148,7 +150,7 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
   if (varList) {
     unwrap(script)->getExportVarList(varListSize, varList);
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if USE_DISASSEMBLER_FILE
     size_t count = unwrap(script)->getExportVarCount();
     LOGD("ExportVarCount = %lu\n", (unsigned long)count);
 
@@ -178,7 +180,7 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
   if (funcList) {
     unwrap(script)->getExportFuncList(funcListSize, funcList);
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if USE_DISASSEMBLER_FILE
     size_t count = unwrap(script)->getExportFuncCount();
     LOGD("ExportFuncCount = %lu\n", (unsigned long)count);
 
@@ -207,10 +209,10 @@ extern "C" void bccGetPragmaList(BCCScriptRef script,
   BCC_FUNC_LOGGER();
   unwrap(script)->getPragmaList(pragmaListSize, keyList, valueList);
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if USE_DISASSEMBLER_FILE
   if (keyList && valueList) {
-    size_t count = script->getPragmaCount();
-    LOGD("PragmaCount = %lu\n", count);
+    size_t count = unwrap(script)->getPragmaCount();
+    LOGD("PragmaCount = %lu\n", (unsigned long)count);
 
     if (count > pragmaListSize) {
       count = pragmaListSize;

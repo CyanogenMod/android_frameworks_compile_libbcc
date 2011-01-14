@@ -36,7 +36,9 @@ namespace bcc {
     enum StatusType {
       Unknown,
       Compiled,
+#if USE_CACHE
       Cached,
+#endif
     };
   }
 
@@ -48,7 +50,9 @@ namespace bcc {
 
     union {
       ScriptCompiled *mCompiled;
+#if USE_CACHE
       ScriptCached *mCached;
+#endif
     };
 
     char const *mCachePath;
@@ -140,7 +144,9 @@ namespace bcc {
     }
 
   private:
+#if USE_CACHE
     int internalLoadCache();
+#endif
     int internalCompile();
 
   };

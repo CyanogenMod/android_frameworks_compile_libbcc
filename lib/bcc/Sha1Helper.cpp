@@ -19,6 +19,8 @@
 
 #include "Sha1Helper.h"
 
+#include "Config.h"
+
 #include "FileHandle.h"
 
 #include <string.h>
@@ -29,7 +31,7 @@
 
 namespace bcc {
 
-#if defined(USE_LIBBCC_SHA1SUM)
+#if USE_LIBBCC_SHA1SUM
 unsigned char sha1LibBCC[20];
 char const *pathLibBCC = "/system/lib/libbcc.so";
 #endif

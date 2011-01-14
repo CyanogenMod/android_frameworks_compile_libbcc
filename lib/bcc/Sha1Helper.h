@@ -17,10 +17,12 @@
 #ifndef BCC_SHA1HELPER_H
 #define BCC_SHA1HELPER_H
 
+#include "Config.h"
+
 #include <stdint.h>
 
 namespace bcc {
-#if defined(USE_LIBBCC_SHA1SUM)
+#if USE_LIBBCC_SHA1SUM
   extern unsigned char sha1LibBCC[20];
   extern char const *pathLibBCC;
 #endif

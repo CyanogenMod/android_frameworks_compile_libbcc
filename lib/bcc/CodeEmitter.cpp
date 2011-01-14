@@ -16,6 +16,8 @@
 
 #include "CodeEmitter.h"
 
+#include "Config.h"
+
 #include "CodeMemoryManager.h"
 #include "Runtime.h"
 #include "ScriptCompiled.h"
@@ -48,7 +50,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
 #include "llvm/Support/MemoryObject.h"
 #endif
 
@@ -79,7 +81,7 @@
 
 namespace {
 
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
 class BufferMemoryObject : public llvm::MemoryObject {
 private:
   const uint8_t *mBytes;
@@ -118,7 +120,7 @@ CodeEmitter::CodeEmitter(ScriptCompiled *result, CodeMemoryManager *pMemMgr)
       mpConstantPool(NULL),
       mpJumpTable(NULL),
       mpMMI(NULL),
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
       mpAsmInfo(NULL),
       mpDisassmbler(NULL),
       mpIP(NULL),
@@ -129,7 +131,7 @@ CodeEmitter::CodeEmitter(ScriptCompiled *result, CodeMemoryManager *pMemMgr)
 
 
 CodeEmitter::~CodeEmitter() {
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
   delete mpAsmInfo;
   delete mpDisassmbler;
   delete mpIP;
@@ -1167,10 +1169,10 @@ void *CodeEmitter::GetExternalFunctionStub(void *FnAddr) {
 void CodeEmitter::Disassemble(const llvm::StringRef &Name,
                               uint8_t *Start, size_t Length, bool IsStub) {
 
-#if defined(USE_DISASSEMBLER)
+#if USE_DISASSEMBLER
   llvm::raw_ostream *OS;
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if USE_DISASSEMBLER_FILE
   std::string ErrorInfo;
   OS = new llvm::raw_fd_ostream("/data/local/tmp/out.S",
                                 ErrorInfo,
@@ -1221,13 +1223,13 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
   *OS << "\n";
   delete BufferMObj;
 
-#if defined(USE_DISASSEMBLER_FILE)
+#if USE_DISASSEMBLER_FILE
   // If you want the disassemble results write to file, uncomment this.
   ((llvm::raw_fd_ostream*)OS)->close();
   delete OS;
 #endif
 
-#endif // defined(USE_DISASSEMBLER)
+#endif // USE_DISASSEMBLER
 }
 
 

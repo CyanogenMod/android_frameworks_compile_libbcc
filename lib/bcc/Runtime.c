@@ -83,8 +83,6 @@ typedef struct {
   void *mPtr;
 } RuntimeFunction;
 
-#define USE_VFP_RUNTIME 1
-
 #if defined(__arm__)
   #define DEF_GENERIC_RUNTIME(func)   \
     extern void *func;

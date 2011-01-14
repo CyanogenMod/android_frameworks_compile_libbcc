@@ -19,6 +19,8 @@
 
 #include "Script.h"
 
+#include "Config.h"
+
 #include "CacheReader.h"
 #include "CacheWriter.h"
 #include "FileHandle.h"
@@ -46,10 +48,19 @@ bool getBooleanProp(const char *str) {
 namespace bcc {
 
 Script::~Script() {
-  if (mStatus == ScriptStatus::Compiled) {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:
     delete mCompiled;
-  } else if (mStatus == ScriptStatus::Cached) {
+    break;
+
+#if USE_CACHE
+  case ScriptStatus::Cached:
     delete mCached;
+    break;
+#endif
+
+  default:
+    break;
   }
 }
 
@@ -108,16 +119,19 @@ int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
     return 1;
   }
 
+#if USE_CACHE
   // Load Cache File
   mCachePath = cachePath;
   if (cachePath && internalLoadCache() == 0) {
     return 0;
   }
+#endif
 
   return internalCompile();
 }
 
 
+#if USE_CACHE
 int Script::internalLoadCache() {
   if (getBooleanProp("debug.bcc.nocache")) {
     // Android system environment property disable the cache mechanism by
@@ -152,7 +166,7 @@ int Script::internalLoadCache() {
   CacheReader reader;
 
   // Dependencies
-#if defined(USE_LIBBCC_SHA1SUM)
+#if USE_LIBBCC_SHA1SUM
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
 #endif
 
@@ -183,6 +197,7 @@ int Script::internalLoadCache() {
 
   return 0;
 }
+#endif
 
 
 int Script::internalCompile() {
@@ -233,6 +248,7 @@ int Script::internalCompile() {
     return 1;
   }
 
+#if USE_CACHE
   // TODO(logan): Write the cache out
   if (mCachePath && !getBooleanProp("debug.bcc.nocache")) {
     FileHandle file;
@@ -241,7 +257,7 @@ int Script::internalCompile() {
       CacheWriter writer;
 
       // Dependencies
-#if defined(USE_LIBBCC_SHA1SUM)
+#if USE_LIBBCC_SHA1SUM
       writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
 #endif
       writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
@@ -270,6 +286,7 @@ int Script::internalCompile() {
       }
     }
   }
+#endif // USE_CACHE
 
   return 0;
 }
@@ -288,7 +305,9 @@ char const *Script::getCompilerErrorMessage() {
 void *Script::lookup(const char *name) {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->lookup(name);
+#if USE_CACHE
   case ScriptStatus::Cached:    return mCached->lookup(name);
+#endif
 
   default:
     mErrorCode = BCC_INVALID_OPERATION;
@@ -300,7 +319,9 @@ void *Script::lookup(const char *name) {
 size_t Script::getExportVarCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getExportVarCount();
+#if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getExportVarCount();
+#endif
   default:                      return 0;
   }
 }
@@ -309,7 +330,9 @@ size_t Script::getExportVarCount() const {
 size_t Script::getExportFuncCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getExportFuncCount();
+#if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getExportFuncCount();
+#endif
   default:                      return 0;
   }
 }
@@ -318,7 +341,9 @@ size_t Script::getExportFuncCount() const {
 size_t Script::getPragmaCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getPragmaCount();
+#if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getPragmaCount();
+#endif
   default:                      return 0;
   }
 }
@@ -327,7 +352,9 @@ size_t Script::getPragmaCount() const {
 size_t Script::getFuncCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getFuncCount();
+#if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getFuncCount();
+#endif
   default:                      return 0;
   }
 }
@@ -340,7 +367,10 @@ void Script::getExportVarList(size_t varListSize, void **varList) {
     m##STATUS->getExportVarList(varListSize, varList); \
     break;
 
+#if USE_CACHE
   DELEGATE(Cached);
+#endif
+
   DELEGATE(Compiled);
 #undef DELEGATE
 
@@ -357,7 +387,10 @@ void Script::getExportFuncList(size_t funcListSize, void **funcList) {
     m##STATUS->getExportFuncList(funcListSize, funcList); \
     break;
 
+#if USE_CACHE
   DELEGATE(Cached);
+#endif
+
   DELEGATE(Compiled);
 #undef DELEGATE
 
@@ -376,7 +409,10 @@ void Script::getPragmaList(size_t pragmaListSize,
     m##STATUS->getPragmaList(pragmaListSize, keyList, valueList); \
     break;
 
+#if USE_CACHE
   DELEGATE(Cached);
+#endif
+
   DELEGATE(Compiled);
 #undef DELEGATE
 
@@ -394,7 +430,10 @@ void Script::getFuncInfoList(size_t funcInfoListSize,
     m##STATUS->getFuncInfoList(funcInfoListSize, funcInfoList);
     break;
 
+#if USE_CACHE
   DELEGATE(Cached);
+#endif
+
   DELEGATE(Compiled);
 #undef DELEGATE
 
@@ -405,7 +444,9 @@ void Script::getFuncInfoList(size_t funcInfoListSize,
 
 char *Script::getContext() {
   switch (mStatus) {
+#if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getContext();
+#endif
   case ScriptStatus::Compiled:  return mCompiled->getContext();
 
   default:

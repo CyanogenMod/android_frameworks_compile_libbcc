@@ -17,19 +17,24 @@
 ifneq ($(TARGET_SIMULATOR),true)
 
 LOCAL_PATH := $(call my-dir)
+
 LLVM_ROOT_PATH := external/llvm
 
-USE_CACHE := true
-USE_LIBBCC_SHA1SUM := true
-USE_RELOCATE := false
+# Extract Configuration from Cache.h
 
-USE_DISASSEMBLER := true
-LLVM_ENABLE_ASSERTION := false
+libbcc_GET_CONFIG = $(shell cat "$(LOCAL_PATH)/Config.h" | \
+                            grep "^\#define $1 [01]$$" | \
+                            cut -d ' ' -f 3)
+
+libbcc_USE_CACHE := $(call libbcc_GET_CONFIG,USE_CACHE)
+libbcc_USE_DISASSEMBLER := $(call libbcc_GET_CONFIG,USE_DISASSEMBLER)
+libbcc_USE_DISASSEMBLER_FILE := $(call libbcc_GET_CONFIG,USE_DISASSEMBLER_FILE)
+libbcc_USE_LIBBCC_SHA1SUM := $(call libbcc_GET_CONFIG,USE_LIBBCC_SHA1SUM)
+
+# Source Files
 
 libbcc_SRC_FILES := \
   lib/bcc/bcc.cpp \
-  lib/bcc/CacheReader.cpp \
-  lib/bcc/CacheWriter.cpp \
   lib/bcc/CodeEmitter.cpp \
   lib/bcc/CodeMemoryManager.cpp \
   lib/bcc/Compiler.cpp \
@@ -37,10 +42,16 @@ libbcc_SRC_FILES := \
   lib/bcc/FileHandle.cpp \
   lib/bcc/Runtime.c \
   lib/bcc/Script.cpp \
-  lib/bcc/ScriptCompiled.cpp \
+  lib/bcc/ScriptCompiled.cpp
+
+ifeq ($(libbcc_USE_CACHE),1)
+libbcc_SRC_FILES += \
+  lib/bcc/CacheReader.cpp \
+  lib/bcc/CacheWriter.cpp \
   lib/bcc/ScriptCached.cpp \
   lib/bcc/Sha1Helper.cpp \
   helper/sha1.c
+endif
 
 #
 # rslib.bc
@@ -124,17 +135,12 @@ LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/include \
   $(LOCAL_PATH)
 
-ifeq ($(USE_DISASSEMBLER),true)
-LOCAL_CFLAGS += -DUSE_DISASSEMBLER
+ifeq ($(libbcc_USE_DISASSEMBLER),1)
 LOCAL_STATIC_LIBRARIES := \
   libLLVMARMDisassembler \
   libLLVMARMAsmPrinter \
   libLLVMMCParser \
   $(LOCAL_STATIC_LIBRARIES)
-endif
-
-ifeq ($(USE_LIBBCC_SHA1SUM),true)
-LOCAL_CFLAGS += -DUSE_LIBBCC_SHA1SUM
 endif
 
 # This makes rslib.bc get installed if and only if the target libbcc.so is installed.
@@ -192,19 +198,14 @@ LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)
 
 # definitions for LLVM
-LOCAL_CFLAGS += -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DUSE_DISASSEMBLER=1 -DFORCE_ARM_CODEGEN=1 -DDEBUG_CODEGEN=1
+LOCAL_CFLAGS += -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DFORCE_ARM_CODEGEN=1 -DDEBUG_CODEGEN=1
 
-ifeq ($(USE_DISASSEMBLER),true)
-LOCAL_CFLAGS += -DUSE_DISASSEMBLER
+ifeq ($(libbcc_USE_DISASSEMBLER),1)
 LOCAL_STATIC_LIBRARIES := \
   libLLVMARMDisassembler \
   libLLVMARMAsmPrinter \
   libLLVMMCParser \
   $(LOCAL_STATIC_LIBRARIES)
-endif
-
-ifeq ($(USE_LIBBCC_SHA1SUM),true)
-LOCAL_CFLAGS += -DUSE_LIBBCC_SHA1SUM
 endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
