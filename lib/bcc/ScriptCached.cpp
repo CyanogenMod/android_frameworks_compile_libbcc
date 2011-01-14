@@ -22,7 +22,6 @@
 #include <bcc/bcc_cache.h>
 
 #include "ContextManager.h"
-#include "EmittedFuncInfo.h"
 
 #include <stdlib.h>
 
@@ -96,40 +95,24 @@ void *ScriptCached::lookup(const char *name) {
 }
 
 
-void ScriptCached::getFuncNameList(size_t funcNameListSize,
-                                   char const **funcNameList) {
-  if (funcNameList) {
+void ScriptCached::getFuncInfoList(size_t funcInfoListSize,
+                                   FuncInfo *funcInfoList) {
+  if (funcInfoList) {
     size_t funcCount = getFuncCount();
 
-    if (funcCount > funcNameListSize) {
-      funcCount = funcNameListSize;
+    if (funcCount > funcInfoListSize) {
+      funcCount = funcInfoListSize;
     }
 
+    FuncInfo *info = funcInfoList;
     for (FuncTable::const_iterator
          I = mFunctions.begin(), E = mFunctions.end();
-         I != E && funcCount > 0; I++, funcCount--) {
-      *funcNameList++ = I->first.c_str();
+         I != E && funcCount > 0; ++I, ++info, --funcCount) {
+      info->name = I->first.c_str();
+      info->addr = I->second.first;
+      info->size = I->second.second;
     }
   }
-}
-
-
-void ScriptCached::getFuncBinary(char const *funcname,
-                                 void **base,
-                                 size_t *length) {
-  FuncTable::const_iterator I = mFunctions.find(funcname);
-
-#define DEREF_ASSIGN(VAR, VALUE) if (VAR) { *(VAR) = (VALUE); }
-
-  if (I == mFunctions.end()) {
-    DEREF_ASSIGN(base, NULL);
-    DEREF_ASSIGN(length, 0);
-  } else {
-    DEREF_ASSIGN(base, I->second.first);
-    DEREF_ASSIGN(length, I->second.second);
-  }
-
-#undef DEREF_ASSIGN
 }
 
 

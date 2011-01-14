@@ -100,8 +100,7 @@ namespace bcc {
 
     static void GlobalInitialization();
 
-    // interface for BCCscript::registerSymbolCallback()
-    void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
+    void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
       mpSymbolLookupFn = pFn;
       mpSymbolLookupContext = pContext;
     }
@@ -115,10 +114,7 @@ namespace bcc {
       return hasError();
     }
 
-    int readBC(const char *bitcode,
-               size_t bitcodeSize,
-               const BCCchar *resName,
-               const BCCchar *cacheDir);
+    int readBC(const char *bitcode, size_t bitcodeSize);
 
     int linkBC(const char *bitcode, size_t bitcodeSize);
 

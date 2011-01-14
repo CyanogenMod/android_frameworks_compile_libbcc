@@ -32,7 +32,6 @@ namespace llvm {
 }
 
 namespace bcc {
-  class EmittedFuncInfo;
   class Script;
 
   class ScriptCompiled {
@@ -43,7 +42,7 @@ namespace bcc {
     typedef std::list<std::pair<std::string, std::string> > PragmaList;
     typedef std::list<void*> ExportVarList;
     typedef std::list<void*> ExportFuncList;
-    typedef std::map<std::string, EmittedFuncInfo *> EmittedFunctionsMapTy;
+    typedef std::map<std::string, FuncInfo *> FuncInfoMap;
 
   private:
     Script *mpOwner;
@@ -54,7 +53,7 @@ namespace bcc {
     ExportFuncList mExportFuncs;
     PragmaList mPragmas;
 
-    EmittedFunctionsMapTy mEmittedFunctions;
+    FuncInfoMap mEmittedFunctions;
 
     char *mContext; // Context of BCC script (code and data)
 
@@ -65,14 +64,23 @@ namespace bcc {
 
     ~ScriptCompiled();
 
-    int readBC(const char *bitcode,
+    int readBC(char const *resName,
+               char const *bitcode,
                size_t bitcodeSize,
-               const BCCchar *resName,
-               const BCCchar *cacheDir) {
-      return mCompiler.readBC(bitcode, bitcodeSize, resName, cacheDir);
+               unsigned long flags) {
+      return mCompiler.readBC(bitcode, bitcodeSize);
     }
 
-    int linkBC(const char *bitcode, size_t bitcodeSize) {
+    int readModule(char const *resName,
+                   llvm::Module *module,
+                   unsigned long flags) {
+      return mCompiler.readModule(module);
+    }
+
+    int linkBC(char const *resName,
+               char const *bitcode,
+               size_t bitcodeSize,
+               unsigned long flags) {
       return mCompiler.linkBC(bitcode, bitcodeSize);
     }
 
@@ -112,22 +120,15 @@ namespace bcc {
                        char const **keyList,
                        char const **valueList);
 
-    void getFuncNameList(size_t funcNameListSize, char const **funcNameList);
-
-    void getFuncBinary(char const *function,
-                       void **base,
-                       size_t *length);
+    void getFuncInfoList(size_t funcInfoListSize,
+                         FuncInfo *funcInfoList);
 
     char *getContext() {
       return mContext;
     }
 
-    void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
+    void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
       mCompiler.registerSymbolCallback(pFn, pContext);
-    }
-
-    int readModule(llvm::Module *module) {
-      return mCompiler.readModule(module);
     }
   };
 

@@ -162,21 +162,16 @@ bool CacheWriter::prepareFuncTable() {
   tab->count = static_cast<size_t>(funcCount);
 
   // Get the function informations
-  vector<char const *> funcNameList(funcCount);
-  mpOwner->getFuncNameList(funcCount, &*funcNameList.begin());
+  vector<FuncInfo> funcInfoList(funcCount);
+  mpOwner->getFuncInfoList(funcCount, &*funcInfoList.begin());
 
   for (size_t i = 0; i < funcCount; ++i) {
-    char const *funcName = funcNameList[i];
-    size_t funcNameLen = strlen(funcName);
+    FuncInfo *info = &funcInfoList[i];
+    OBCC_FuncInfo *outputInfo = &tab->table[i];
 
-    void *funcAddr = NULL;
-    size_t funcBinarySize = 0;
-    mpOwner->getFuncBinary(funcName, &funcAddr, &funcBinarySize);
-
-    OBCC_FuncInfo *funcInfo = &tab->table[i];
-    funcInfo->name_strp_index = addString(funcName, funcNameLen);
-    funcInfo->cached_addr = funcAddr;
-    funcInfo->size = static_cast<size_t>(funcBinarySize);
+    outputInfo->name_strp_index = addString(info->name, strlen(info->name));
+    outputInfo->cached_addr = info->addr;
+    outputInfo->size = info->size;
   }
 
   return true;

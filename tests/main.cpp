@@ -39,76 +39,73 @@
 
 #include <bcc/bcc.h>
 
+#include <vector>
+
+
 typedef int (*MainPtr)(int, char**);
+
 // This is a separate function so it can easily be set by breakpoint in gdb.
-static int run(MainPtr mainFunc, int argc, char** argv)
-{
+static int run(MainPtr mainFunc, int argc, char** argv) {
   return mainFunc(argc, argv);
 }
 
-static BCCvoid* symbolLookup(BCCvoid* pContext, const BCCchar* name)
-{
-  return (BCCvoid*) dlsym(RTLD_DEFAULT, name);
+static void* lookupSymbol(void* pContext, const char* name) {
+  return (void*) dlsym(RTLD_DEFAULT, name);
 }
 
 #ifdef PROVIDE_ARM_DISASSEMBLY
 
 static FILE* disasmOut;
 
-static u_int
-disassemble_readword(u_int address)
-{
+static u_int disassemble_readword(u_int address) {
   return(*((u_int *)address));
 }
 
-static void
-disassemble_printaddr(u_int address)
-{
+static void disassemble_printaddr(u_int address) {
   fprintf(disasmOut, "0x%08x", address);
 }
 
-static void
-disassemble_printf(const char *fmt, ...) {
+static void disassemble_printf(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vfprintf(disasmOut, fmt, ap);
   va_end(ap);
 }
 
-static int disassemble(BCCscript* script, FILE* out) {
+static int disassemble(BCCScriptRef script, FILE* out) {
   disasmOut = out;
   disasm_interface_t  di;
   di.di_readword = disassemble_readword;
   di.di_printaddr = disassemble_printaddr;
   di.di_printf = disassemble_printf;
 
-  BCCvoid* base;
-  BCCsizei length;
-
-  BCCsizei numFunctions;
-  bccGetFunctions(script, &numFunctions, 0, NULL);
+  size_t numFunctions = bccGetFuncCount(script);
+  fprintf(stderr, "Function Count: %lu\n", (unsigned long)numFunctions);
   if (numFunctions) {
-    char** labels = new char*[numFunctions];
-    bccGetFunctions(script, NULL, numFunctions, labels);
+    BCCFuncInfo *infos = new BCCFuncInfo[numFunctions];
+    bccGetFuncInfoList(script, numFunctions, infos);
 
-    for(BCCsizei i = 0; i < numFunctions; i++) {
-      bccGetFunctionBinary(script, labels[i], &base, &length);
+    for(size_t i = 0; i < numFunctions; i++) {
+      fprintf(stderr, "-----------------------------------------------------\n");
+      fprintf(stderr, "%s\n", infos[i].name);
+      fprintf(stderr, "-----------------------------------------------------\n");
 
-      unsigned long* pBase = (unsigned long*) base;
-      unsigned long* pEnd = (unsigned long*) (((unsigned char*) base) + length);
+      unsigned long* pBase = (unsigned long*) infos[i].addr;
+      unsigned long* pEnd =
+        (unsigned long*) (((unsigned char*) infos[i].addr) + infos[i].size);
 
       for(unsigned long* pInstruction = pBase; pInstruction < pEnd; pInstruction++) {
         fprintf(out, "%08x: %08x  ", (int) pInstruction, (int) *pInstruction);
         ::disasm(&di, (uint) pInstruction, 0);
       }
     }
-    delete[] labels;
+    delete [] infos;
   }
 
   return 1;
 }
 #else
-static int disassemble(BCCscript* script, FILE* out) {
+static int disassemble(BCCScriptRef script, FILE* out) {
   fprintf(stderr, "Disassembler not supported on this build.\n");
   return 1;
 }
@@ -158,11 +155,10 @@ static int parseOption(int argc, char** argv)
   }
 
   inFile = argv[optind];
-
   return 1;
 }
 
-static BCCscript* loadScript() {
+static BCCScriptRef loadScript() {
   if (!inFile) {
     fprintf(stderr, "input file required\n");
     return NULL;
@@ -185,134 +181,99 @@ static BCCscript* loadScript() {
     return NULL;
   }
 
-  size_t codeSize = (size_t)statInFile.st_size;
-  BCCchar* bitcode = new BCCchar[codeSize + 1];
-  size_t bytesRead = fread(bitcode, 1, codeSize, in);
-  if (bytesRead != codeSize)
+  size_t bitcodeSize = statInFile.st_size;
+
+  std::vector<char> bitcode(bitcodeSize + 1, '\0');
+  size_t nread = fread(&*bitcode.begin(), 1, bitcodeSize, in);
+
+  if (nread != bitcodeSize)
       fprintf(stderr, "Could not read all of file %s\n", inFile);
 
-  BCCscript* script = bccCreateScript();
+  BCCScriptRef script = bccCreateScript();
 
-  bitcode[codeSize] = '\0'; /* must be null-terminated */
-  if (bccReadBC(script, bitcode, codeSize,
-                statInFile.st_mtime, 0, "file", "/tmp") != 0) {
+  if (bccReadBC(script, "file", &*bitcode.begin(), bitcodeSize, 0) != 0) {
     fprintf(stderr, "bcc: FAILS to read bitcode");
+    bccDisposeScript(script);
     return NULL;
   }
 
-  if (bccPrepareExecutable(script) != 0) {
-    fprintf(stderr, "bcc: FAILS to prepare executable");
+  bccRegisterSymbolCallback(script, lookupSymbol, NULL);
+
+  if (bccPrepareExecutable(script, "cache.oBCC", 0) != 0) {
+    fprintf(stderr, "bcc: FAILS to prepare executable.\n");
+    bccDisposeScript(script);
     return NULL;
   }
-
-  //delete [] bitcode;
 
   return script;
 }
 
-static int compile(BCCscript* script) {
-  bccRegisterSymbolCallback(script, symbolLookup, NULL);
+static void printPragma(BCCScriptRef script) {
+  size_t numPragma = bccGetPragmaCount(script);
+  if (numPragma) {
+    char const ** keyList = new char const *[numPragma];
+    char const ** valueList = new char const *[numPragma];
 
-  if (bccPrepareExecutable(script) != 0) {
-    fprintf(stderr, "Something wrong\n");
-  }
-
-  int result = bccGetError(script);
-  if (result != 0) {
-    BCCsizei bufferLength;
-    bccGetScriptInfoLog(script, 0, &bufferLength, NULL);
-    char* buf = (char*) malloc(bufferLength + 1);
-    if (buf != NULL) {
-        bccGetScriptInfoLog(script, bufferLength + 1, NULL, buf);
-        fprintf(stderr, "%s", buf);
-        free(buf);
-    } else {
-        fprintf(stderr, "Out of memory.\n");
+    bccGetPragmaList(script, numPragma, keyList, valueList);
+    for(size_t i = 0; i < numPragma; ++i) {
+      fprintf(stderr, "#pragma %s(%s)\n", keyList[i], valueList[i]);
     }
-    bccDeleteScript(script);
+
+    delete [] keyList;
+    delete [] valueList;
+  }
+}
+
+static int runMain(BCCScriptRef script, int argc, char** argv) {
+  MainPtr mainPointer = (MainPtr)bccGetFuncAddr(script, "root");
+
+  if (!mainPointer) {
+    fprintf(stderr, "Could not find root.\n");
     return 0;
   }
 
-  {
-    BCCsizei numPragmaStrings;
-    bccGetPragmas(script, &numPragmaStrings, 0, NULL);
-    if (numPragmaStrings) {
-      char** strings = new char*[numPragmaStrings];
-      bccGetPragmas(script, NULL, numPragmaStrings, strings);
-      for(BCCsizei i = 0; i < numPragmaStrings; i += 2)
-        fprintf(stderr, "#pragma %s(%s)\n", strings[i], strings[i+1]);
-      delete[] strings;
-    }
-  }
+  fprintf(stderr, "Executing compiled code:\n");
+
+  int argc1 = argc - optind;
+  char** argv1 = argv + optind;
+
+  int result = run(mainPointer, argc1, argv1);
+  fprintf(stderr, "result: %d\n", result);
 
   return 1;
 }
 
-static int runMain(BCCscript* script, int argc, char** argv) {
-  MainPtr mainPointer = 0;
-
-  bccGetScriptLabel(script, "root", (BCCvoid**) &mainPointer);
-
-  int result = bccGetError(script);
-  if (result != BCC_NO_ERROR) {
-    fprintf(stderr, "Could not find root: %d\n", result);
-  } else {
-    fprintf(stderr, "Executing compiled code:\n");
-    int codeArgc = argc - optind;
-    char** codeArgv = argv + optind;
-    //codeArgv[0] = (char*) (inFile ? inFile : "stdin");
-    result = run(mainPointer, codeArgc, codeArgv);
-    fprintf(stderr, "result: %d\n", result);
-  }
-
-  return 1;
-
-}
-
-int main(int argc, char** argv)
-{
-  int result = 0;
-  BCCscript* script;
-
+int main(int argc, char** argv) {
   if(!parseOption(argc, argv)) {
-    result = 1;
     fprintf(stderr, "failed to parse option\n");
-    goto exit;
+    return 1;
   }
+
+  BCCScriptRef script;
 
   if((script = loadScript()) == NULL) {
-    result = 2;
     fprintf(stderr, "failed to load source\n");
-    goto exit;
+    return 2;
   }
 
 #if 0
   if(printTypeInformation && !reflection(script, stderr)) {
-    result = 3;
     fprintf(stderr, "failed to retrieve type information\n");
-    goto exit;
+    return 3;
   }
 #endif
 
-  if(!compile(script)) {
-    result = 4;
-    fprintf(stderr, "failed to compile\n");
-    goto exit;
-  }
+  printPragma(script);
 
   if(printListing && !disassemble(script, stderr)) {
-    result = 5;
     fprintf(stderr, "failed to disassemble\n");
-    goto exit;
+    return 5;
   }
 
   if(runResults && !runMain(script, argc, argv)) {
-    result = 6;
     fprintf(stderr, "failed to execute\n");
-    goto exit;
+    return 6;
   }
 
-exit:
-
-  return result;
+  return 0;
 }

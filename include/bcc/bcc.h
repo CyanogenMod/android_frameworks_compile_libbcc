@@ -17,116 +17,127 @@
 #ifndef ANDROID_BCC_BCC_H
 #define ANDROID_BCC_BCC_H
 
-#include <stdint.h>
-#include <sys/types.h>
+#include <stddef.h>
 
-typedef char                        BCCchar;
-typedef int32_t                     BCCint;
-typedef uint32_t                    BCCuint;
-typedef ssize_t                     BCCsizei;
-typedef unsigned int                BCCenum;
-typedef void                        BCCvoid;
+/*-------------------------------------------------------------------------*/
+
+/* libbcc script opaque type */
+typedef struct BCCOpaqueScript *BCCScriptRef;
+
+
+/* Function information struct */
+struct BCCFuncInfo {
+  char const *name;
+  void *addr;
+  size_t size;
+};
 
 #if !defined(__cplusplus)
-
-typedef struct BCCscript            BCCscript;
-
-#else
-
-namespace bcc {
-  class Script;
-}
-
-typedef bcc::Script                 BCCscript;
-
+typedef struct BCCFuncInfo BCCFuncInfo;
 #endif
 
-#define BCC_NO_ERROR                0x0000
-#define BCC_INVALID_ENUM            0x0500
-#define BCC_INVALID_OPERATION       0x0502
-#define BCC_INVALID_VALUE           0x0501
-#define BCC_OUT_OF_MEMORY           0x0505
 
-#define BCC_COMPILE_STATUS          0x8B81
-#define BCC_INFO_LOG_LENGTH         0x8B84
+/* Symbol lookup function type */
+typedef void *(*BCCSymbolLookupFn)(void *context, char const *symbolName);
 
 
-// ----------------------------------------------------------------------------
+/* llvm::Module (see <llvm>/include/llvm-c/Core.h for details) */
+typedef struct LLVMOpaqueModule *LLVMModuleRef;
+
+
+/*-------------------------------------------------------------------------*/
+
+
+#define BCC_NO_ERROR          0x0000
+#define BCC_INVALID_ENUM      0x0500
+#define BCC_INVALID_OPERATION 0x0502
+#define BCC_INVALID_VALUE     0x0501
+#define BCC_OUT_OF_MEMORY     0x0505
+
+
+/*-------------------------------------------------------------------------*/
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-BCCscript *bccCreateScript();
+BCCScriptRef bccCreateScript();
 
-void bccDeleteScript(BCCscript *script);
+void bccDisposeScript(BCCScriptRef script);
 
-typedef BCCvoid *(*BCCSymbolLookupFn)(BCCvoid *pContext, const BCCchar *name);
-
-void bccRegisterSymbolCallback(BCCscript *script,
+void bccRegisterSymbolCallback(BCCScriptRef script,
                                BCCSymbolLookupFn pFn,
-                               BCCvoid *pContext);
+                               void *pContext);
 
-BCCenum bccGetError( BCCscript *script );
+int bccGetError(BCCScriptRef script); /* deprecated */
 
-int bccReadBC(BCCscript *script,
-              const BCCchar *bitcode,
-              BCCint bitcodeSize,
-              long __DONT_USE_PARAM_1,
-              long __DONT_USE_PARAM_2,
-              const BCCchar *resName,
-              const BCCchar *cacheDir);
 
-// Interface for llvm::Module input. @module should be a valid llvm::Module
-// instance.
-int bccReadModule(BCCscript *script,
-                  BCCvoid *module);
 
-int bccLinkBC(BCCscript *script,
-              const BCCchar *bitcode,
-              BCCint size);
+int bccReadBC(BCCScriptRef script,
+              char const *resName,
+              char const *bitcode,
+              size_t bitcodeSize,
+              unsigned long flags);
 
-int bccPrepareExecutable(BCCscript *script);
+int bccReadModule(BCCScriptRef script,
+                  char const *resName,
+                  LLVMModuleRef module,
+                  unsigned long flags);
 
-void bccGetScriptInfoLog(BCCscript *script,
-                         BCCsizei maxLength,
-                         BCCsizei *length,
-                         BCCchar *infoLog);
+int bccLinkBC(BCCScriptRef script,
+              char const *resName,
+              char const *bitcode,
+              size_t bitcodeSize,
+              unsigned long flags);
 
-void bccGetScriptLabel(BCCscript *script,
-                       const BCCchar *name,
-                       BCCvoid **address);
+int bccPrepareExecutable(BCCScriptRef script,
+                         char const *cachePath,
+                         unsigned long flags);
 
-void bccGetExportVars(BCCscript *script,
-                      BCCsizei *actualVarCount,
-                      BCCsizei maxVarCount,
-                      BCCvoid **vars);
+void *bccGetFuncAddr(BCCScriptRef script, char const *funcname);
 
-void bccGetExportFuncs(BCCscript *script,
-                       BCCsizei *actualFuncCount,
-                       BCCsizei maxFuncCount,
-                       BCCvoid **funcs);
 
-void bccGetPragmas(BCCscript *script,
-                   BCCsizei *actualStringCount,
-                   BCCsizei maxStringCount,
-                   BCCchar **strings);
 
-// Below two functions are for debugging
-void bccGetFunctions(BCCscript *script,
-                     BCCsizei *actualFunctionCount,
-                     BCCsizei maxFunctionCount,
-                     BCCchar **functions);
+size_t bccGetExportVarCount(BCCScriptRef script);
 
-void bccGetFunctionBinary(BCCscript *script,
-                          BCCchar *function,
-                          BCCvoid **base,
-                          BCCsizei *length);
+void bccGetExportVarList(BCCScriptRef script,
+                         size_t varListSize,
+                         void **varList);
+
+size_t bccGetExportFuncCount(BCCScriptRef script);
+
+void bccGetExportFuncList(BCCScriptRef script,
+                          size_t funcListSize,
+                          void **funcList);
+
+size_t bccGetPragmaCount(BCCScriptRef script);
+
+void bccGetPragmaList(BCCScriptRef script,
+                      size_t pragmaListSize,
+                      char const **keyList,
+                      char const **valueList);
+
+size_t bccGetFuncCount(BCCScriptRef script);
+
+
+
+void bccGetFuncInfoList(BCCScriptRef script,
+                        size_t funcInfoListSize,
+                        BCCFuncInfo *funcInfoList);
 
 #ifdef __cplusplus
 };
 #endif
 
-// ----------------------------------------------------------------------------
+
+/*-------------------------------------------------------------------------*/
+
+
+/* libbcc library build time */
+extern char const libbcc_build_time[24];
+
+
+/*-------------------------------------------------------------------------*/
 
 #endif

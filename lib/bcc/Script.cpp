@@ -35,69 +35,10 @@
 
 namespace {
 
-// Input: cacheDir
-// Input: resName
-// Input: extName
-//
-// Note: cacheFile = resName + extName
-//
-// Output: Returns cachePath == cacheDir + cacheFile
-char *genCacheFileName(const char *cacheDir,
-                       const char *resName,
-                       const char *extName) {
-  char cachePath[512];
-  char cacheFile[sizeof(cachePath)];
-  const size_t kBufLen = sizeof(cachePath) - 1;
-
-  cacheFile[0] = '\0';
-  // Note: resName today is usually something like
-  //       "/com.android.fountain:raw/fountain"
-  if (resName[0] != '/') {
-    // Get the absolute path of the raw/***.bc file.
-
-    // Generate the absolute path.  This doesn't do everything it
-    // should, e.g. if resName is "./out/whatever" it doesn't crunch
-    // the leading "./" out because this if-block is not triggered,
-    // but it'll make do.
-    //
-    if (getcwd(cacheFile, kBufLen) == NULL) {
-      LOGE("Can't get CWD while opening raw/***.bc file\n");
-      return NULL;
-    }
-    // Append "/" at the end of cacheFile so far.
-    strncat(cacheFile, "/", kBufLen);
-  }
-
-  // cacheFile = resName + extName
-  //
-  strncat(cacheFile, resName, kBufLen);
-  if (extName != NULL) {
-    // TODO(srhines): strncat() is a bit dangerous
-    strncat(cacheFile, extName, kBufLen);
-  }
-
-  // Turn the path into a flat filename by replacing
-  // any slashes after the first one with '@' characters.
-  char *cp = cacheFile + 1;
-  while (*cp != '\0') {
-    if (*cp == '/') {
-      *cp = '@';
-    }
-    cp++;
-  }
-
-  // Tack on the file name for the actual cache file path.
-  strncpy(cachePath, cacheDir, kBufLen);
-  strncat(cachePath, cacheFile, kBufLen);
-
-  LOGV("Cache file for '%s' '%s' is '%s'\n", resName, extName, cachePath);
-  return strdup(cachePath);
-}
-
 bool getBooleanProp(const char *str) {
-    char buf[PROPERTY_VALUE_MAX];
-    property_get(str, buf, "0");
-    return strcmp(buf, "0") != 0;
+  char buf[PROPERTY_VALUE_MAX];
+  property_get(str, buf, "0");
+  return strcmp(buf, "0") != 0;
 }
 
 } // namespace anonymous
@@ -113,10 +54,10 @@ Script::~Script() {
 }
 
 
-int Script::readBC(const char *bitcode,
+int Script::readBC(char const *resName,
+                   const char *bitcode,
                    size_t bitcodeSize,
-                   const BCCchar *resName,
-                   const BCCchar *cacheDir) {
+                   unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Invalid operation: %s\n", __func__);
@@ -126,16 +67,13 @@ int Script::readBC(const char *bitcode,
   sourceBC = bitcode;
   sourceResName = resName;
   sourceSize = bitcodeSize;
-
-  if (cacheDir && resName) {
-    cacheFile = genCacheFileName(cacheDir, resName, ".oBCC");
-  }
-
   return 0;
 }
 
 
-int Script::readModule(llvm::Module *module) {
+int Script::readModule(char const *resName,
+                       llvm::Module *module,
+                       unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Invalid operation: %s\n", __func__);
@@ -147,7 +85,10 @@ int Script::readModule(llvm::Module *module) {
 }
 
 
-int Script::linkBC(const char *bitcode, size_t bitcodeSize) {
+int Script::linkBC(char const *resName,
+                   const char *bitcode,
+                   size_t bitcodeSize,
+                   unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Invalid operation: %s\n", __func__);
@@ -161,7 +102,7 @@ int Script::linkBC(const char *bitcode, size_t bitcodeSize) {
 }
 
 
-int Script::prepareExecutable() {
+int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Invalid operation: %s\n", __func__);
@@ -169,7 +110,8 @@ int Script::prepareExecutable() {
   }
 
   // Load Cache File
-  if (cacheFile && internalLoadCache() == 0) {
+  mCachePath = cachePath;
+  if (cachePath && internalLoadCache() == 0) {
     return 0;
   }
 
@@ -185,21 +127,25 @@ int Script::internalLoadCache() {
     return 1;
   }
 
-  if (!cacheFile) {
-    // The application developer has not specify resName or cacheDir, so
+  if (!mCachePath) {
+    // The application developer has not specify the cachePath, so
     // we don't know where to open the cache file.
     return 1;
   }
 
+  // If we are going to use the cache file.  We have to calculate sha1sum
+  // first (no matter we can open the file now or not.)
   if (sourceBC) {
-    // If we are going to create cache file.  We have to calculate sha1sum
-    // first (no matter we can open the file now or not.)
     calcSHA1(sourceSHA1, sourceBC, sourceSize);
   }
 
+  //if (libraryBC) {
+  //  calcSHA1(librarySHA1, libraryBC, librarySize);
+  //}
+
   FileHandle file;
 
-  if (file.open(cacheFile, OpenMode::Read) < 0) {
+  if (file.open(mCachePath, OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
     return 1;
   }
@@ -216,6 +162,10 @@ int Script::internalLoadCache() {
   if (sourceBC) {
     reader.addDependency(BCC_APK_RESOURCE, sourceResName, sourceSHA1);
   }
+
+  //if (libraryBC) {
+  //  reader.addDependency(BCC_APK_RESOURCE, libraryResName, librarySHA1);
+  //}
 
   // Read cache file
   ScriptCached *cached = reader.readCacheFile(&file, this);
@@ -256,24 +206,22 @@ int Script::internalCompile() {
 
   // Setup the source bitcode / module
   if (sourceBC) {
-    if (mCompiled->readBC(sourceBC, sourceSize, sourceResName, 0) != 0) {
+    if (mCompiled->readBC(sourceResName, sourceBC, sourceSize, 0) != 0) {
       LOGE("Unable to readBC, bitcode=%p, size=%lu\n",
            sourceBC, (unsigned long)sourceSize);
       return 1;
     }
-
     LOGI("Load sourceBC\n");
   } else if (sourceModule) {
-    if (mCompiled->readModule(sourceModule) != 0) {
+    if (mCompiled->readModule(NULL, sourceModule, 0) != 0) {
       return 1;
     }
-
     LOGI("Load sourceModule\n");
   }
 
   // Link the source module with the library module
   if (libraryBC) {
-    if (mCompiled->linkBC(libraryBC, librarySize) != 0) {
+    if (mCompiled->linkBC(NULL, libraryBC, librarySize, 0) != 0) {
       return 1;
     }
 
@@ -287,10 +235,10 @@ int Script::internalCompile() {
   }
 
   // TODO(logan): Write the cache out
-  if (cacheFile && !getBooleanProp("debug.bcc.nocache")) {
+  if (mCachePath && !getBooleanProp("debug.bcc.nocache")) {
     FileHandle file;
 
-    if (file.open(cacheFile, OpenMode::Write) >= 0) {
+    if (file.open(mCachePath, OpenMode::Write) >= 0) {
       CacheWriter writer;
 
       // Dependencies
@@ -316,9 +264,9 @@ int Script::internalCompile() {
         file.truncate();
         file.close();
 
-        if (unlink(cacheFile) != 0) {
+        if (unlink(mCachePath) != 0) {
           LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
-               cacheFile, strerror(errno));
+               mCachePath, strerror(errno));
         }
       }
     }
@@ -439,12 +387,12 @@ void Script::getPragmaList(size_t pragmaListSize,
 }
 
 
-void Script::getFuncNameList(size_t funcNameListSize,
-                             char const **funcNameList) {
+void Script::getFuncInfoList(size_t funcInfoListSize,
+                             FuncInfo *funcInfoList) {
   switch (mStatus) {
 #define DELEGATE(STATUS) \
   case ScriptStatus::STATUS: \
-    m##STATUS->getFuncNameList(funcNameListSize, funcNameList);
+    m##STATUS->getFuncInfoList(funcInfoListSize, funcInfoList);
     break;
 
   DELEGATE(Cached);
@@ -468,27 +416,7 @@ char *Script::getContext() {
 }
 
 
-void Script::getFuncBinary(char const *funcname,
-                           void **base,
-                           size_t *length) {
-  switch (mStatus) {
-#define DELEGATE(STATUS) \
-  case ScriptStatus::STATUS: \
-    m##STATUS->getFuncBinary(funcname, base, length); \
-    break;
-
-  DELEGATE(Cached);
-  DELEGATE(Compiled);
-#undef DELEGATE
-
-  default:
-    *base = NULL;
-    *length = 0;
-  }
-}
-
-
-void Script::registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
+void Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
   mpExtSymbolLookupFn = pFn;
   mpExtSymbolLookupFnContext = pContext;
 

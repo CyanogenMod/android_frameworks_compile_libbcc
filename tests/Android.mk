@@ -22,14 +22,14 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := bcc
 
-LOCAL_SRC_FILES:= \
-	main.cpp
+LOCAL_SRC_FILES := \
+  main.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-	libbcc
+  libbcc
 
-LOCAL_C_INCLUDES :=	\
-	$(LOCAL_PATH)/../include
+LOCAL_C_INCLUDES := \
+  $(LOCAL_PATH)/../include
 
 LOCAL_MODULE_TAGS := tests
 
@@ -41,18 +41,18 @@ include $(BUILD_HOST_EXECUTABLE)
 # ========================================================
 include $(CLEAR_VARS)
 
-LOCAL_MODULE:= bcc
+LOCAL_MODULE := bcc
 
-LOCAL_SRC_FILES:= \
-	main.cpp \
-	disassem.cpp
+LOCAL_SRC_FILES := \
+  main.cpp \
+  disassem.cpp
 
-LOCAL_SHARED_LIBRARIES := \
-	libbcc	\
-	libdl
+LOCAL_SHARED_LIBRARIES := libdl libstlport libbcc
 
-LOCAL_C_INCLUDES :=	\
-	$(LOCAL_PATH)/../include
+LOCAL_C_INCLUDES := \
+  bionic \
+  external/stlport/stlport \
+  $(LOCAL_PATH)/../include
 
 LOCAL_MODULE_TAGS := tests
 

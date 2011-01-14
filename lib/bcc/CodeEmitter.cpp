@@ -17,12 +17,12 @@
 #include "CodeEmitter.h"
 
 #include "CodeMemoryManager.h"
-#include "EmittedFuncInfo.h"
 #include "Runtime.h"
 #include "ScriptCompiled.h"
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
+#include "bcc_internal.h"
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
@@ -1269,9 +1269,12 @@ void CodeEmitter::startFunction(llvm::MachineFunction &F) {
       mpMemMgr->startFunctionBody(F.getFunction(), ActualSize);
   BufferEnd = BufferBegin + ActualSize;
 
-  if (mpCurEmitFunction == NULL)
-    mpCurEmitFunction = new EmittedFuncInfo();
-  mpCurEmitFunction->FunctionBody = BufferBegin;
+  if (mpCurEmitFunction == NULL) {
+    mpCurEmitFunction = new FuncInfo(); // TODO(all): Allocation check!
+    mpCurEmitFunction->name = NULL;
+    mpCurEmitFunction->addr = NULL;
+    mpCurEmitFunction->size = 0;
+  }
 
   // Ensure the constant pool/jump table info is at least 4-byte aligned.
   emitAlignment(16);
@@ -1285,7 +1288,7 @@ void CodeEmitter::startFunction(llvm::MachineFunction &F) {
 
   UpdateGlobalMapping(F.getFunction(), CurBufferPtr);
 
-  mpCurEmitFunction->Code = CurBufferPtr;
+  mpCurEmitFunction->addr = CurBufferPtr;
 
   mMBBLocations.clear();
 }
@@ -1379,7 +1382,7 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
     return false;
 
   // Now that we've succeeded in emitting the function.
-  mpCurEmitFunction->Size = CurBufferPtr - BufferBegin;
+  mpCurEmitFunction->size = CurBufferPtr - BufferBegin;
   BufferBegin = CurBufferPtr = 0;
 
   if (F.getFunction()->hasName()) {

@@ -20,8 +20,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-extern char const libbcc_build_time[24];
-
 /* BCC Cache File Magic Word */
 #define OBCC_MAGIC "\0bcc"
 

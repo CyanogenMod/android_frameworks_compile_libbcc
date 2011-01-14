@@ -18,6 +18,7 @@
 #define BCC_SCRIPT_H
 
 #include <bcc/bcc.h>
+#include "bcc_internal.h"
 
 #include "Compiler.h"
 
@@ -41,7 +42,7 @@ namespace bcc {
 
   class Script {
   private:
-    BCCenum mErrorCode;
+    int mErrorCode;
 
     ScriptStatus::StatusType mStatus;
 
@@ -50,7 +51,7 @@ namespace bcc {
       ScriptCached *mCached;
     };
 
-    char *cacheFile;
+    char const *mCachePath;
 
     // ReadBC
     char const *sourceBC;
@@ -67,11 +68,11 @@ namespace bcc {
 
     // Register Symbol Lookup Function
     BCCSymbolLookupFn mpExtSymbolLookupFn;
-    BCCvoid *mpExtSymbolLookupFnContext;
+    void *mpExtSymbolLookupFnContext;
 
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               cacheFile(NULL),
+               mCachePath(NULL),
                sourceBC(NULL), sourceResName(NULL), sourceSize(0),
                sourceModule(NULL), libraryBC(NULL), librarySize(0),
                mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
@@ -80,16 +81,21 @@ namespace bcc {
 
     ~Script();
 
-    int readBC(const char *bitcode,
+    int readBC(char const *resName,
+               const char *bitcode,
                size_t bitcodeSize,
-               const BCCchar *resName,
-               const BCCchar *cacheDir);
+               unsigned long flags);
 
-    int readModule(llvm::Module *module);
+    int readModule(char const *resName,
+                   llvm::Module *module,
+                   unsigned long flags);
 
-    int linkBC(const char *bitcode, size_t bitcodeSize);
+    int linkBC(char const *resName,
+               const char *bitcode,
+               size_t bitcodeSize,
+               unsigned long flags);
 
-    int prepareExecutable();
+    int prepareExecutable(char const *cachePath, unsigned long flags);
 
     char const *getCompilerErrorMessage();
 
@@ -113,24 +119,22 @@ namespace bcc {
                        char const **keyList,
                        char const **valueList);
 
-    void getFuncNameList(size_t size, char const **list);
-
-    void getFuncBinary(char const *funcname, void **base, size_t *length);
+    void getFuncInfoList(size_t size, FuncInfo *list);
 
 
-    void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext);
+    void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
 
     char *getContext();
 
 
-    void setError(BCCenum error) {
+    void setError(int error) {
       if (mErrorCode == BCC_NO_ERROR && error != BCC_NO_ERROR) {
         mErrorCode = error;
       }
     }
 
-    BCCenum getError() {
-      BCCenum result = mErrorCode;
+    int getError() {
+      int result = mErrorCode;
       mErrorCode = BCC_NO_ERROR;
       return result;
     }

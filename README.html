@@ -355,20 +355,23 @@ symbol lookup</li>
 <li><strong>bccLinkBC</strong> - Set the library bitcode for linking</li>
 <li><strong>bccPrepareExecutable</strong> - Create the in-memory executable by either
 just-in-time compilation or cache loading</li>
-<li><strong>bccDeleteScript</strong> - Destroy bcc script and release the resources</li>
-<li><strong>bccGetError</strong> - Get the error code</li>
-<li><strong>bccGetScriptInfoLog</strong> - <em>deprecated</em> - Don't use this</li>
+<li><strong>bccGetFuncAddr</strong> - Get the entry address of the function</li>
+<li><strong>bccDisposeScript</strong> - Destroy bcc script and release the resources</li>
+<li><strong>bccGetError</strong> - <em>deprecated</em> - Don't use this</li>
 </ul>
 <p><strong>Reflection:</strong></p>
 <ul class="simple">
-<li><strong>bccGetExportVars</strong> - Get the addresses of exported variables</li>
-<li><strong>bccGetExportFuncs</strong> - Get the addresses of exported functions</li>
-<li><strong>bccGetPragmas</strong> - Get the pragmas</li>
+<li><strong>bccGetExportVarCount</strong> - Get the count of exported variables</li>
+<li><strong>bccGetExportVarList</strong> - Get the addresses of exported variables</li>
+<li><strong>bccGetExportFuncCount</strong> - Get the count of exported functions</li>
+<li><strong>bccGetExportFuncList</strong> - Get the addresses of exported functions</li>
+<li><strong>bccGetPragmaCount</strong> - Get the count of pragmas</li>
+<li><strong>bccGetPragmaList</strong> - Get the pragmas</li>
 </ul>
 <p><strong>Debug:</strong></p>
 <ul class="simple">
-<li><strong>bccGetFunctions</strong> - Get the function name list</li>
-<li><strong>bccGetFunctionBinary</strong> - Get the address and the size of a function binary</li>
+<li><strong>bccGetFuncCount</strong> - Get the count of functions (including non-exported)</li>
+<li><strong>bccGetFuncInfoList</strong> - Get the function information (name, base, size)</li>
 </ul>
 </div>
 <div class="section" id="cache-file-format">

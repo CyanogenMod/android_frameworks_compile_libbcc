@@ -16,6 +16,7 @@
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
+#include "bcc_internal.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
@@ -57,7 +58,6 @@ namespace llvm {
 
 namespace bcc {
   class CodeMemoryManager;
-  class EmittedFuncInfo;
   class ScriptCompiled;
 
   class CodeEmitter : public llvm::JITCodeEmitter {
@@ -88,7 +88,7 @@ namespace bcc {
     const llvm::TargetData *mpTD;
 
 
-    EmittedFuncInfo *mpCurEmitFunction;
+    FuncInfo *mpCurEmitFunction;
 
     GlobalAddressMapTy mGlobalAddressMap;
 
@@ -171,7 +171,7 @@ namespace bcc {
     }
 #endif
 
-    void registerSymbolCallback(BCCSymbolLookupFn pFn, BCCvoid *pContext) {
+    void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
       mpSymbolLookupFn = pFn;
       mpSymbolLookupContext = pContext;
     }

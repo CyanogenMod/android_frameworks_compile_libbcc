@@ -20,12 +20,15 @@
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
 
+#include <bcc/bcc.h>
+#include "bcc_internal.h"
+
 #include "Compiler.h"
 #include "Script.h"
 
-#include <bcc/bcc.h>
-
 #include <utils/StopWatch.h>
+
+using namespace bcc;
 
 char const libbcc_build_time[24] = __DATE__ " " __TIME__;
 
@@ -53,102 +56,100 @@ namespace llvm {
 }
 
 
-extern "C" BCCscript *bccCreateScript() {
+extern "C" BCCScriptRef bccCreateScript() {
   BCC_FUNC_LOGGER();
-  return new BCCscript();
+  return wrap(new bcc::Script());
 }
 
-extern "C" BCCenum bccGetError(BCCscript *script) {
+extern "C" void bccDisposeScript(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
-  return script->getError();
+  delete unwrap(script);
 }
 
-extern "C" void bccDeleteScript(BCCscript *script) {
-  BCC_FUNC_LOGGER();
-  delete script;
-}
-
-extern "C" void bccRegisterSymbolCallback(BCCscript *script,
+extern "C" void bccRegisterSymbolCallback(BCCScriptRef script,
                                           BCCSymbolLookupFn pFn,
-                                          BCCvoid *pContext) {
+                                          void *pContext) {
   BCC_FUNC_LOGGER();
-  script->registerSymbolCallback(pFn, pContext);
+  return unwrap(script)->registerSymbolCallback(pFn, pContext);
 }
 
-extern "C" int bccReadModule(BCCscript *script, BCCvoid *module) {
+extern "C" int bccGetError(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
-  return script->readModule(reinterpret_cast<llvm::Module*>(module));
+  return unwrap(script)->getError();
 }
 
-extern "C" int bccReadBC(BCCscript *script,
-                         const BCCchar *bitcode,
-                         BCCint bitcodeSize,
-                         long __DONT_USE_PARAM_1,
-                         long __DONT_USE_PARAM_2,
-                         const BCCchar *resName,
-                         const BCCchar *cacheDir) {
+
+extern "C" int bccReadBC(BCCScriptRef script,
+                         char const *resName,
+                         char const *bitcode,
+                         size_t bitcodeSize,
+                         unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return script->readBC(bitcode, bitcodeSize, resName, cacheDir);
+  return unwrap(script)->readBC(resName, bitcode, bitcodeSize, flags);
 }
 
-extern "C" int bccLinkBC(BCCscript *script,
-                         const BCCchar *bitcode,
-                         BCCint size) {
+
+extern "C" int bccReadModule(BCCScriptRef script,
+                             char const *resName,
+                             LLVMModuleRef module,
+                             unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return script->linkBC(bitcode, size);
+  return unwrap(script)->readModule(resName, unwrap(module), flags);
 }
 
-extern "C" int bccPrepareExecutable(BCCscript *script) {
+
+extern "C" int bccLinkBC(BCCScriptRef script,
+                         char const *resName,
+                         char const *bitcode,
+                         size_t bitcodeSize,
+                         unsigned long flags) {
   BCC_FUNC_LOGGER();
+  return unwrap(script)->linkBC(resName, bitcode, bitcodeSize, flags);
+}
+
+
+extern "C" int bccPrepareExecutable(BCCScriptRef script,
+                                    char const *cachePath,
+                                    unsigned long flags) {
+  BCC_FUNC_LOGGER();
+
 #if defined(__arm__)
   android::StopWatch compileTimer("bcc: PrepareExecutable time");
 #endif
 
-  int result = script->prepareExecutable();
-  if (result)
-    script->setError(BCC_INVALID_OPERATION);
-
-  return result;
+  return unwrap(script)->prepareExecutable(cachePath, flags);
 }
 
-extern "C" void bccGetScriptInfoLog(BCCscript *script,
-                                    BCCsizei maxLength,
-                                    BCCsizei *length,
-                                    BCCchar *infoLog) {
-  BCC_FUNC_LOGGER();
-  LOGE("%s is deprecated. *********************************\n", __func__);
-}
 
-extern "C" void bccGetScriptLabel(BCCscript *script,
-                                  const BCCchar *name,
-                                  BCCvoid **address) {
+extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
   BCC_FUNC_LOGGER();
-  void *value = script->lookup(name);
-  if (value) {
-    *address = value;
+
+  void *addr = unwrap(script)->lookup(funcname);
+
 #if defined(USE_DISASSEMBLER_FILE)
-    LOGI("[GetScriptLabel] %s @ 0x%x", name, value);
+  LOGD("Function Address: %s --> 0x%p\n", funcname, addr);
 #endif
-  } else {
-    script->setError(BCC_INVALID_VALUE);
-  }
+
+  return addr;
 }
 
-extern "C" void bccGetExportVars(BCCscript *script,
-                                 BCCsizei *actualCount,
-                                 BCCsizei varListSize,
-                                 BCCvoid **varList) {
-  BCC_FUNC_LOGGER();
 
-  if (actualCount) {
-    *actualCount = static_cast<BCCsizei>(script->getExportVarCount());
-  }
+extern "C" size_t bccGetExportVarCount(BCCScriptRef script) {
+  BCC_FUNC_LOGGER();
+  return unwrap(script)->getExportVarCount();
+}
+
+
+extern "C" void bccGetExportVarList(BCCScriptRef script,
+                                    size_t varListSize,
+                                    void **varList) {
+  BCC_FUNC_LOGGER();
 
   if (varList) {
-    script->getExportVarList(static_cast<size_t>(varListSize), varList);
+    unwrap(script)->getExportVarList(varListSize, varList);
 
 #if defined(USE_DISASSEMBLER_FILE)
-    size_t count = script->getExportVarCount();
+    size_t count = unwrap(script)->getExportVarCount();
     LOGD("ExportVarCount = %lu\n", (unsigned long)count);
 
     if (count > varListSize) {
@@ -162,21 +163,23 @@ extern "C" void bccGetExportVars(BCCscript *script,
   }
 }
 
-extern "C" void bccGetExportFuncs(BCCscript *script,
-                                  BCCsizei *actualCount,
-                                  BCCsizei funcListSize,
-                                  BCCvoid **funcList) {
+
+extern "C" size_t bccGetExportFuncCount(BCCScriptRef script) {
+  BCC_FUNC_LOGGER();
+  return unwrap(script)->getExportFuncCount();
+}
+
+
+extern "C" void bccGetExportFuncList(BCCScriptRef script,
+                                     size_t funcListSize,
+                                     void **funcList) {
   BCC_FUNC_LOGGER();
 
-  if (actualCount) {
-    *actualCount = static_cast<BCCsizei>(script->getExportFuncCount());
-  }
-
   if (funcList) {
-    script->getExportFuncList(static_cast<size_t>(funcListSize), funcList);
+    unwrap(script)->getExportFuncList(funcListSize, funcList);
 
 #if defined(USE_DISASSEMBLER_FILE)
-    size_t count = script->getExportFuncCount();
+    size_t count = unwrap(script)->getExportFuncCount();
     LOGD("ExportFuncCount = %lu\n", (unsigned long)count);
 
     if (count > funcListSize) {
@@ -190,37 +193,22 @@ extern "C" void bccGetExportFuncs(BCCscript *script,
   }
 }
 
-extern "C" void bccGetPragmas(BCCscript *script,
-                              BCCsizei *actualCount,
-                              BCCsizei stringListSize,
-                              BCCchar **stringList) {
+
+extern "C" size_t bccGetPragmaCount(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
+  return unwrap(script)->getPragmaCount();
+}
 
-  if (actualCount) {
-    *actualCount = static_cast<BCCsizei>(script->getPragmaCount() * 2);
-  }
 
-  if (stringList) {
-    size_t pragmaListSize = static_cast<size_t>(stringListSize) / 2;
-
-    char const **buf = new (nothrow) char const *[pragmaListSize * 2];
-    if (!buf) {
-      return;
-    }
-
-    char const **keyList = buf;
-    char const **valueList = buf + pragmaListSize;
-
-    script->getPragmaList(pragmaListSize, keyList, valueList);
-
-    for (size_t i = 0; i < pragmaListSize; ++i) {
-      *stringList++ = const_cast<BCCchar *>(keyList[i]);
-      *stringList++ = const_cast<BCCchar *>(valueList[i]);
-    }
-
-    delete [] buf;
+extern "C" void bccGetPragmaList(BCCScriptRef script,
+                                 size_t pragmaListSize,
+                                 const char **keyList,
+                                 const char **valueList) {
+  BCC_FUNC_LOGGER();
+  unwrap(script)->getPragmaList(pragmaListSize, keyList, valueList);
 
 #if defined(USE_DISASSEMBLER_FILE)
+  if (keyList && valueList) {
     size_t count = script->getPragmaCount();
     LOGD("PragmaCount = %lu\n", count);
 
@@ -230,38 +218,25 @@ extern "C" void bccGetPragmas(BCCscript *script,
 
     for (size_t i = 0; i < count; ++i) {
       LOGD("Pragma[%lu] = (%s , %s)\n",
-           (unsigned long)i, stringList[2 * i], stringList[2 * i + 1]);
+           (unsigned long)i, keyList[i], valueList[i]);
     }
+  }
 #endif
-  }
 }
 
-extern "C" void bccGetFunctions(BCCscript *script,
-                                BCCsizei *actualCount,
-                                BCCsizei funcNameListSize,
-                                BCCchar **funcNameList) {
+
+extern "C" size_t bccGetFuncCount(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
-
-  if (actualCount) {
-    *actualCount = static_cast<BCCsizei>(script->getFuncCount());
-  }
-
-  if (funcNameList) {
-    script->getFuncNameList(static_cast<size_t>(funcNameListSize),
-                            const_cast<char const **>(funcNameList));
-  }
+  return unwrap(script)->getFuncCount();
 }
 
-extern "C" void bccGetFunctionBinary(BCCscript *script,
-                                     BCCchar *funcname,
-                                     BCCvoid **base,
-                                     BCCsizei *length) {
+
+extern "C" void bccGetFuncInfoList(BCCScriptRef script,
+                                   size_t funcInfoListSize,
+                                   BCCFuncInfo *funcInfoList) {
   BCC_FUNC_LOGGER();
 
-  size_t funcLength = 0;
-  script->getFuncBinary(funcname, base, &funcLength);
-
-  if (length) {
-    *length = static_cast<BCCsizei>(funcLength);
+  if (funcInfoList) {
+    unwrap(script)->getFuncInfoList(funcInfoListSize, funcInfoList);
   }
 }

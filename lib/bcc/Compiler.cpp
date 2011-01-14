@@ -283,14 +283,11 @@ Compiler::Compiler(ScriptCompiled *result)
 // Compiler::readBC
 // Parameters:
 //
-int Compiler::readBC(const char *bitcode,
-                     size_t bitcodeSize,
-                     const BCCchar *resName /* Deprecated */,
-                     const BCCchar *cacheDir /* Deprecated */) {
+int Compiler::readBC(const char *bitcode, size_t bitcodeSize) {
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
   if (bitcode == NULL || bitcodeSize <= 0)
-    return 0;
+    return 1;
 
   // Package input to object MemoryBuffer
   MEM.reset(llvm::MemoryBuffer::getMemBuffer(
@@ -312,7 +309,7 @@ int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
   if (bitcode == NULL || bitcodeSize <= 0) {
-    LOGE("Invalid bitcode for linkBC: bitcode=%p, size=%lu.\n", bitcode, (unsigned long)bitcodeSize);
+    LOGE("Invalid bitcode for linkBC\n");
     return 1;
   }
 

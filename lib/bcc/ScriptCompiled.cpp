@@ -19,8 +19,8 @@
 
 #include "ScriptCompiled.h"
 
+#include "bcc_internal.h"
 #include "ContextManager.h"
-#include "EmittedFuncInfo.h"
 
 namespace bcc {
 
@@ -31,7 +31,7 @@ ScriptCompiled::~ScriptCompiled() {
   }
 
   // Delete the emitted function information
-  for (EmittedFunctionsMapTy::iterator I = mEmittedFunctions.begin(),
+  for (FuncInfoMap::iterator I = mEmittedFunctions.begin(),
        E = mEmittedFunctions.end(); I != E; I++) {
     if (I->second != NULL) {
       delete I->second;
@@ -92,45 +92,29 @@ void ScriptCompiled::getPragmaList(size_t pragmaListSize,
 
 
 void *ScriptCompiled::lookup(const char *name) {
-  EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(name);
-  return (I == mEmittedFunctions.end()) ? NULL : I->second->Code;
+  FuncInfoMap::const_iterator I = mEmittedFunctions.find(name);
+  return (I == mEmittedFunctions.end()) ? NULL : I->second->addr;
 }
 
 
-void ScriptCompiled::getFuncNameList(size_t funcNameListSize,
-                                     char const **funcNameList) {
-  if (funcNameList) {
+void ScriptCompiled::getFuncInfoList(size_t funcInfoListSize,
+                                     FuncInfo *funcInfoList) {
+  if (funcInfoList) {
     size_t funcCount = getFuncCount();
 
-    if (funcCount > funcNameListSize) {
-      funcCount = funcNameListSize;
+    if (funcCount > funcInfoListSize) {
+      funcCount = funcInfoListSize;
     }
 
-    for (EmittedFunctionsMapTy::const_iterator
+    FuncInfo *info = funcInfoList;
+    for (FuncInfoMap::const_iterator
          I = mEmittedFunctions.begin(), E = mEmittedFunctions.end();
-         I != E && funcCount > 0; ++I, --funcCount) {
-      *funcNameList++ = I->first.c_str();
+         I != E && funcCount > 0; ++I, ++info, --funcCount) {
+      info->name = I->first.c_str();
+      info->addr = I->second->addr;
+      info->size = I->second->size;
     }
   }
-}
-
-
-void ScriptCompiled::getFuncBinary(char const *funcname,
-                                   void **base,
-                                   size_t *length) {
-  EmittedFunctionsMapTy::const_iterator I = mEmittedFunctions.find(funcname);
-
-#define DEREF_ASSIGN(VAR, VALUE) if (VAR) { *(VAR) = (VALUE); }
-
-  if (I == mEmittedFunctions.end()) {
-    DEREF_ASSIGN(base, NULL);
-    DEREF_ASSIGN(length, 0);
-  } else {
-    DEREF_ASSIGN(base, I->second->Code);
-    DEREF_ASSIGN(length, I->second->Size);
-  }
-
-#undef DEREF_ASSIGN
 }
 
 

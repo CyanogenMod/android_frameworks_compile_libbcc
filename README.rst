@@ -64,27 +64,33 @@ API
 * **bccPrepareExecutable** - Create the in-memory executable by either
   just-in-time compilation or cache loading
 
-* **bccDeleteScript** - Destroy bcc script and release the resources
+* **bccGetFuncAddr** - Get the entry address of the function
 
-* **bccGetError** - Get the error code
+* **bccDisposeScript** - Destroy bcc script and release the resources
 
-* **bccGetScriptInfoLog** - *deprecated* - Don't use this
+* **bccGetError** - *deprecated* - Don't use this
 
 
 **Reflection:**
 
-* **bccGetExportVars** - Get the addresses of exported variables
+* **bccGetExportVarCount** - Get the count of exported variables
 
-* **bccGetExportFuncs** - Get the addresses of exported functions
+* **bccGetExportVarList** - Get the addresses of exported variables
 
-* **bccGetPragmas** - Get the pragmas
+* **bccGetExportFuncCount** - Get the count of exported functions
+
+* **bccGetExportFuncList** - Get the addresses of exported functions
+
+* **bccGetPragmaCount** - Get the count of pragmas
+
+* **bccGetPragmaList** - Get the pragmas
 
 
 **Debug:**
 
-* **bccGetFunctions** - Get the function name list
+* **bccGetFuncCount** - Get the count of functions (including non-exported)
 
-* **bccGetFunctionBinary** - Get the address and the size of a function binary
+* **bccGetFuncInfoList** - Get the function information (name, base, size)
 
 
 

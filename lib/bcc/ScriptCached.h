@@ -19,6 +19,7 @@
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
+#include "bcc_internal.h"
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -99,11 +100,7 @@ namespace bcc {
                        char const **keyList,
                        char const **valueList);
 
-    void getFuncNameList(size_t funcNameListSize, char const **funcNameList);
-
-    void getFuncBinary(char const *function,
-                       void **base,
-                       size_t *length);
+    void getFuncInfoList(size_t funcInfoListSize, FuncInfo *funcNameList);
 
 
     char *getContext() {
