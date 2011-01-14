@@ -45,14 +45,12 @@ libbcc_SRC_FILES := \
 #
 # rslib.bc
 # ========================================================
-# include $(CLEAR_VARS)
-# local_target_dir := /system/lib
-# LOCAL_MODULE := rslib.bc
-# LOCAL_MODULE_TAGS := optional
-# LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-# LOCAL_MODULE_PATH := $(local_target_dir)
-# LOCAL_SRC_FILES := $(LOCAL_MODULE)
-# include $(BUILD_PREBUILT)
+include $(CLEAR_VARS)
+LOCAL_MODULE := rslib.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_SRC_FILES := lib/bcc/$(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
 
 #
 # Shared library for target
@@ -138,6 +136,9 @@ endif
 ifeq ($(USE_LIBBCC_SHA1SUM),true)
 LOCAL_CFLAGS += -DUSE_LIBBCC_SHA1SUM
 endif
+
+# This makes rslib.bc get installed if and only if the target libbcc.so is installed.
+LOCAL_REQUIRED_MODULES := rslib.bc
 
 # -Wl,--exclude-libs=ALL would hide most of the symbols in the shared library
 # and reduces the size of libbcc.so by about 800k.
