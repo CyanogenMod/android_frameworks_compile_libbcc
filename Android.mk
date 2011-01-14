@@ -42,6 +42,19 @@ libbcc_SRC_FILES := \
   lib/bcc/Sha1Helper.cpp \
   helper/sha1.c
 
+#
+# rslib.bc
+# ========================================================
+include $(CLEAR_VARS)
+local_target_dir := /system/lib
+LOCAL_MODULE := rslib.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_MODULE_PATH := $(local_target_dir)
+LOCAL_SRC_FILES := $(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
+
+#
 # Shared library for target
 # ========================================================
 include $(CLEAR_VARS)
@@ -131,10 +144,6 @@ endif
 # As libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2,
 # use below instead.
 LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMSystem:libLLVMAnalysis
-
-# This hides most of the symbols in the shared library and reduces the size
-# of libbcc.so by about 800k.
-LOCAL_LDFLAGS += -Wl,--exclude-libs=ALL
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
