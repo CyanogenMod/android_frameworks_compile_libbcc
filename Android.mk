@@ -20,7 +20,7 @@ LOCAL_PATH := $(call my-dir)
 LLVM_ROOT_PATH := external/llvm
 
 USE_CACHE := true
-USE_LIBBCC_SHA1SUM := false
+USE_LIBBCC_SHA1SUM := true
 USE_RELOCATE := false
 
 USE_DISASSEMBLER := true
