@@ -97,7 +97,6 @@ int Script::linkBC(char const *resName,
 
   libraryBC = bitcode;
   librarySize = bitcodeSize;
-  LOGI("libraryBC = %x, librarySize = %d", libraryBC, librarySize);
   return 0;
 }
 
