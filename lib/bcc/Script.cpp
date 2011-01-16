@@ -234,7 +234,8 @@ int Script::internalCompile() {
   }
 
   // Link the source module with the library module
-  if (libraryBC) {
+  if (librarySize == 1 /* link against file */ ||
+      libraryBC        /* link against buffer */) {
     if (mCompiled->linkBC(NULL, libraryBC, librarySize, 0) != 0) {
       return 1;
     }

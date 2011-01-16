@@ -5,9 +5,17 @@ define <3 x float> @_Z15convert1_float3Dv3_h(<3 x i8> %u3) nounwind readnone {
   ret <3 x float> %conv
 }
 
-define <3 x i8> @_Z15convert2uchar3Dv3_f(<3 x float> %f3) nounwind readnone {
-  %conv = fptoui <3 x float> %f3 to <3 x i8>
-  ret <3 x i8> %conv
+define <3 x i8> @_Z14convert2uchar3Dv3_f(<3 x float> %v) nounwind {
+  %1 = extractelement <3 x float> %v, i32 0
+  %2 = fptoui float %1 to i8
+  %3 = insertelement <3 x i8> undef, i8 %2, i32 0
+  %4 = extractelement <3 x float> %v, i32 1
+  %5 = fptoui float %4 to i8
+  %6 = insertelement <3 x i8> %3, i8 %5, i32 1
+  %7 = extractelement <3 x float> %v, i32 2
+  %8 = fptoui float %7 to i8
+  %9 = insertelement <3 x i8> %6, i8 %8, i32 2
+  ret <3 x i8> %9
 }
 
 declare float @llvm.powi.f32(float, i32) nounwind readonly
