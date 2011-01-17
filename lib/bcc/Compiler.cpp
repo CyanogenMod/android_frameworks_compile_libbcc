@@ -379,6 +379,10 @@ int Compiler::compile() {
   ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
   PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
 
+#if 0
+  mHasLinked = false;
+#endif
+
   // Create LTO passes and run them on the mModule
   if (mHasLinked) {
     llvm::TimePassesIsEnabled = true;  // TODO(all)
