@@ -280,7 +280,7 @@ int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
   }
 
 #if 1
-  MEM.reset(llvm::MemoryBuffer::getFile("/system/lib/rslib.bc"));
+  MEM.reset(llvm::MemoryBuffer::getFile("/system/lib/libruntime.bc"));
 
 #else
   MEM.reset(llvm::MemoryBuffer::getMemBuffer(

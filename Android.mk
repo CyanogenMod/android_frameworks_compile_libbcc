@@ -54,13 +54,13 @@ libbcc_SRC_FILES += \
 endif
 
 #
-# rslib.bc
+# libruntime.bc
 # ========================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE := rslib.bc
+LOCAL_MODULE := libruntime.bc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_SRC_FILES := lib/bcc/$(LOCAL_MODULE)
+LOCAL_SRC_FILES := lib/runtime/$(LOCAL_MODULE)
 include $(BUILD_PREBUILT)
 
 #
@@ -145,8 +145,8 @@ LOCAL_STATIC_LIBRARIES := \
   $(LOCAL_STATIC_LIBRARIES)
 endif
 
-# This makes rslib.bc get installed if and only if the target libbcc.so is installed.
-LOCAL_REQUIRED_MODULES := rslib.bc
+# This makes libruntime.bc get installed if and only if the target libbcc.so is installed.
+LOCAL_REQUIRED_MODULES := libruntime.bc
 
 # -Wl,--exclude-libs=ALL would hide most of the symbols in the shared library
 # and reduces the size of libbcc.so by about 800k.
