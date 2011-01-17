@@ -268,7 +268,7 @@ int Compiler::readBC(const char *bitcode, size_t bitcodeSize) {
 int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
   llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
-  if (bitcodeSize = 1) {  // link against file
+  if (bitcodeSize == 1) {  // link against file
   } else if (bitcode == NULL || bitcodeSize <= 0) {
     LOGE("Invalid bitcode for linkBC\n");
     return 1;
