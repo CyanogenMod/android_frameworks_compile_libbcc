@@ -35,7 +35,10 @@ clcore_LLVM_LINK := $(HOST_OUT_EXECUTABLES)/llvm-link$(HOST_EXECUTABLE_SUFFIX)
 clcore_bc_files := $(patsubst %.c,%.bc, \
     $(addprefix $(intermediates)/, $(LOCAL_SRC_FILES)))
 
-$(clcore_bc_files): PRIVATE_INCLUDES := frameworks/base/libs/rs/scriptc
+$(clcore_bc_files): PRIVATE_INCLUDES := \
+    frameworks/base/libs/rs/scriptc \
+    external/clang/lib/Headers
+
 $(clcore_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 	@mkdir -p $(dir $@)
 	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -std=c99 -c -O3 $< -emit-llvm -o $@
