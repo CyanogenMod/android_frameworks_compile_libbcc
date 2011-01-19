@@ -7,13 +7,14 @@
 # =================
 
 scriptc_path=../../../../base/libs/rs/scriptc
+clang_header_path=../../../../../external/clang/lib/Headers
 
-clang -I${scriptc_path} -c -O3 rs_cl.c -emit-llvm -o rs_cl.bc
+clang -I${scriptc_path} -I${clang_header_path} -c -std=c99 -O3 rs_cl.c -emit-llvm -o rs_cl.bc
 
 # Generate rs_core.bc
 # ===================
 
-clang -I${scriptc_path} -c -O3 rs_core.c -emit-llvm -o rs_core.bc
+clang -I${scriptc_path} -I${clang_header_path} -c -std=c99 -O3 rs_core.c -emit-llvm -o rs_core.bc
 
 # Link everything together
 # ========================
