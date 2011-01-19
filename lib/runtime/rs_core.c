@@ -1,4 +1,4 @@
-#include "../../../../base/libs/rs/scriptc/rs_types.rsh"
+#include "rs_types.rsh"
 
 #define bool  int
 #define true  1
@@ -8,4 +8,4 @@
 extern float4 __attribute__((overloadable)) convert_float4(uchar4 c);
 
 #define BCC_PREPARE_BC 1
-#include "../../../../base/libs/rs/scriptc/rs_core.rsh"
+#include "rs_core.rsh"

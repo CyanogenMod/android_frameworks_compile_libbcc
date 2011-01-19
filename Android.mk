@@ -54,16 +54,6 @@ libbcc_SRC_FILES += \
 endif
 
 #
-# libruntime.bc
-# ========================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := libruntime.bc
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_SRC_FILES := lib/runtime/$(LOCAL_MODULE)
-include $(BUILD_PREBUILT)
-
-#
 # Shared library for target
 # ========================================================
 include $(CLEAR_VARS)
@@ -145,8 +135,8 @@ LOCAL_STATIC_LIBRARIES := \
   $(LOCAL_STATIC_LIBRARIES)
 endif
 
-# This makes libruntime.bc get installed if and only if the target libbcc.so is installed.
-LOCAL_REQUIRED_MODULES := libruntime.bc
+# This makes libclcore.bc get installed if and only if the target libbcc.so is installed.
+LOCAL_REQUIRED_MODULES := libclcore.bc
 
 # -Wl,--exclude-libs=ALL would hide most of the symbols in the shared library
 # and reduces the size of libbcc.so by about 800k.
@@ -217,7 +207,6 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 
 # Build children
 # ========================================================
-
 include $(call all-makefiles-under,$(LOCAL_PATH))
 
 endif # TARGET_SIMULATOR != true

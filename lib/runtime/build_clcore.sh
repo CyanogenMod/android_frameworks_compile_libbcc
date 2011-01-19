@@ -6,12 +6,14 @@
 # Generate rs_cl.bc
 # =================
 
-clang -c -O3 rs_cl.c -emit-llvm -o rs_cl.bc
+scriptc_path=../../../../base/libs/rs/scriptc
+
+clang -I${scriptc_path} -c -O3 rs_cl.c -emit-llvm -o rs_cl.bc
 
 # Generate rs_core.bc
 # ===================
 
-clang -c -O3 rs_core.c -emit-llvm -o rs_core.bc
+clang -I${scriptc_path} -c -O3 rs_core.c -emit-llvm -o rs_core.bc
 
 # Link everything together
 # ========================
