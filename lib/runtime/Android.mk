@@ -38,7 +38,9 @@ clcore_bc_files := $(patsubst %.c,%.bc, \
 $(clcore_bc_files): PRIVATE_INCLUDES := frameworks/base/libs/rs/scriptc
 $(clcore_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 	@mkdir -p $(dir $@)
-	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -std=c99 -c -O3 $< -emit-llvm -o $@
+	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -emit-llvm $< -o $@
+
+-include $(clcore_bc_files:%.bc=%.d)
 
 $(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(clcore_bc_files)
 $(LOCAL_BUILT_MODULE) : $(clcore_bc_files) $(clcore_LLVM_LINK)
