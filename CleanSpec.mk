@@ -45,6 +45,7 @@
 #$(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/*)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES/libbcc_intermediates)
 $(call add-clean-step, rm -rf $(HOST_OUT)/obj/SHARED_LIBRARIES/libbcc_intermediates)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/lib/libruntime.bc)
 
 
 # ************************************************
