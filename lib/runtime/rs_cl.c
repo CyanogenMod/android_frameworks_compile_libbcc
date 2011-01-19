@@ -1,3 +1,5 @@
 #include "../../../../base/libs/rs/scriptc/rs_types.rsh"
 
-#include "rs_cl_extern.h"
+#define BCC_PREPARE_BC 1
+#include "../../../../base/libs/rs/scriptc/rs_cl.rsh"
+

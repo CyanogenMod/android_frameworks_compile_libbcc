@@ -7,4 +7,5 @@
 
 extern float4 __attribute__((overloadable)) convert_float4(uchar4 c);
 
-#include "rs_core_extern.h"
+#define BCC_PREPARE_BC 1
+#include "../../../../base/libs/rs/scriptc/rs_core.rsh"
