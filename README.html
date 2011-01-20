@@ -312,35 +312,71 @@ ul.auto-toc {
 <p>libbcc is an LLVM bitcode execution engine that compiles the bitcode
 to an in-memory executable. libbcc is versatile because:</p>
 <ul class="simple">
-<li>it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time) compilation.</li>
-<li>Android devices demand fast start-up time, small size, and high performance
-<em>at the same time</em>. libbcc attempts to address these design constraints.</li>
+<li>it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time)
+compilation.</li>
+<li>Android devices demand fast start-up time, small size, and high
+performance <em>at the same time</em>. libbcc attempts to address these
+design constraints.</li>
+<li>it supports on-device linking. Each device vendor can supply his or
+her own runtime bitcode library (lib*.bc) that differentiates his or
+her system. Specialization becomes ecosystem-friendly.</li>
 </ul>
 <p>libbcc provides:</p>
 <ul class="simple">
-<li>a <em>just-in-time bitcode compiler</em>, which translates the bitcode into
-machine code</li>
+<li>a <em>just-in-time bitcode compiler</em>, which translates the LLVM bitcode
+into machine code</li>
 <li>a <em>caching mechanism</em>, which can:<ul>
-<li>after each compilation, serialize the in-memory executable into a cache file.
-Note that the compilation is triggered by a cache miss.</li>
+<li>after each compilation, serialize the in-memory executable into a
+cache file.  Note that the compilation is triggered by a cache
+miss.</li>
 <li>load from the cache file upon cache-hit.</li>
 </ul>
 </li>
 </ul>
 <p>Highlights of libbcc are:</p>
-<ul class="simple">
-<li>libbcc supports bitcode from various language frontends, such as
-RenderScript, GLSL.</li>
-<li>libbcc strives to balance between library size, launch time and
-steady-state performance:<ul>
-<li>The size of libbcc is aggressively reduced for mobile devices.
-We customize and we don't use the default Execution Engine from upstream.</li>
-<li>To reduce launch time, we support caching of binaries.</li>
-<li>For steady-state performance, we enable VFP3 and aggressive
-optimizations.</li>
+<ul>
+<li><p class="first">libbcc supports bitcode from various language frontends, such as
+RenderScript, GLSL (pixelflinger2).</p>
+</li>
+<li><p class="first">libbcc strives to balance between library size, launch time and
+steady-state performance:</p>
+<ul>
+<li><p class="first">The size of libbcc is aggressively reduced for mobile devices. We
+customize and improve upon the default Execution Engine from
+upstream. Otherwise, libbcc's execution engine can easily become
+at least 2 times bigger.</p>
+</li>
+<li><p class="first">To reduce launch time, we support caching of
+binaries. Just-in-Time compilation are oftentimes Just-too-Late,
+if the given apps are performance-sensitive. Thus, we implemented
+AOT to get the best of both worlds: Fast launch time and high
+steady-state performance.</p>
+<p>AOT is also important for projects such as NDK on LLVM with
+portability enhancement. Launch time reduction after we
+implemented AOT is signficant:</p>
+<pre class="literal-block">
+Apps          libbcc without AOT       libbcc with AOT
+              launch time in libbcc    launch time in libbcc
+App_1            1218ms                   9ms
+App_2            842ms                    4ms
+Wallpaper:
+  MagicSmoke     182ms                    3ms
+  Halo           127ms                    3ms
+Balls            149ms                    3ms
+SceneGraph       146ms                    90ms
+Model            104ms                    4ms
+Fountain         57ms                     3ms
+</pre>
+<p>AOT also masks the launching time overhead of on-device linking
+and helps it become reality.</p>
+</li>
+<li><p class="first">For steady-state performance, we enable VFP3 and aggressive
+optimizations.</p>
+</li>
 </ul>
 </li>
-<li>Currently we disable Lazy JITting.</li>
+<li><p class="first">Currently we disable Lazy JITting.</p>
+</li>
 </ul>
 </div>
 <div class="section" id="api">

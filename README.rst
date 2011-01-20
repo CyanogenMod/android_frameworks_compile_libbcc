@@ -9,34 +9,67 @@ Introduction
 libbcc is an LLVM bitcode execution engine that compiles the bitcode
 to an in-memory executable. libbcc is versatile because:
 
-* it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time) compilation.
+* it implements both AOT (Ahead-of-Time) and JIT (Just-in-Time)
+  compilation.
 
-* Android devices demand fast start-up time, small size, and high performance
-  *at the same time*. libbcc attempts to address these design constraints.
+* Android devices demand fast start-up time, small size, and high
+  performance *at the same time*. libbcc attempts to address these
+  design constraints.
+
+* it supports on-device linking. Each device vendor can supply his or
+  her own runtime bitcode library (lib*.bc) that differentiates his or
+  her system. Specialization becomes ecosystem-friendly.
 
 libbcc provides:
 
-* a *just-in-time bitcode compiler*, which translates the bitcode into
-  machine code
+* a *just-in-time bitcode compiler*, which translates the LLVM bitcode
+  into machine code
 
 * a *caching mechanism*, which can:
 
-  * after each compilation, serialize the in-memory executable into a cache file.
-    Note that the compilation is triggered by a cache miss.
+  * after each compilation, serialize the in-memory executable into a
+    cache file.  Note that the compilation is triggered by a cache
+    miss.
   * load from the cache file upon cache-hit.
 
 Highlights of libbcc are:
 
 * libbcc supports bitcode from various language frontends, such as
-  RenderScript, GLSL.
+  RenderScript, GLSL (pixelflinger2).
 
 * libbcc strives to balance between library size, launch time and
   steady-state performance:
 
-  * The size of libbcc is aggressively reduced for mobile devices.
-    We customize and we don't use the default Execution Engine from upstream.
+  * The size of libbcc is aggressively reduced for mobile devices. We
+    customize and improve upon the default Execution Engine from
+    upstream. Otherwise, libbcc's execution engine can easily become
+    at least 2 times bigger.
 
-  * To reduce launch time, we support caching of binaries.
+  * To reduce launch time, we support caching of
+    binaries. Just-in-Time compilation are oftentimes Just-too-Late,
+    if the given apps are performance-sensitive. Thus, we implemented
+    AOT to get the best of both worlds: Fast launch time and high
+    steady-state performance.
+
+    AOT is also important for projects such as NDK on LLVM with
+    portability enhancement. Launch time reduction after we
+    implemented AOT is signficant::
+
+
+     Apps          libbcc without AOT       libbcc with AOT
+                   launch time in libbcc    launch time in libbcc
+     App_1            1218ms                   9ms
+     App_2            842ms                    4ms
+     Wallpaper:
+       MagicSmoke     182ms                    3ms
+       Halo           127ms                    3ms
+     Balls            149ms                    3ms
+     SceneGraph       146ms                    90ms
+     Model            104ms                    4ms
+     Fountain         57ms                     3ms
+
+    AOT also masks the launching time overhead of on-device linking
+    and helps it become reality.
 
   * For steady-state performance, we enable VFP3 and aggressive
     optimizations.
