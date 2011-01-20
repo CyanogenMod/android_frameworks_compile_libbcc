@@ -41,7 +41,7 @@ $(clcore_bc_files): PRIVATE_INCLUDES := \
 
 $(clcore_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 	@mkdir -p $(dir $@)
-	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -emit-llvm $< -o $@
+	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -fno-builtin -emit-llvm $< -o $@
 
 -include $(clcore_bc_files:%.bc=%.d)
 
