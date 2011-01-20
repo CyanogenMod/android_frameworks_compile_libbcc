@@ -68,9 +68,9 @@ extern "C" void bccDisposeScript(BCCScriptRef script) {
   delete unwrap(script);
 }
 
-extern "C" void bccRegisterSymbolCallback(BCCScriptRef script,
-                                          BCCSymbolLookupFn pFn,
-                                          void *pContext) {
+extern "C" int bccRegisterSymbolCallback(BCCScriptRef script,
+                                         BCCSymbolLookupFn pFn,
+                                         void *pContext) {
   BCC_FUNC_LOGGER();
   return unwrap(script)->registerSymbolCallback(pFn, pContext);
 }

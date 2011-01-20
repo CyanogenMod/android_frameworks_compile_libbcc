@@ -66,9 +66,9 @@ BCCScriptRef bccCreateScript();
 
 void bccDisposeScript(BCCScriptRef script);
 
-void bccRegisterSymbolCallback(BCCScriptRef script,
-                               BCCSymbolLookupFn pFn,
-                               void *pContext);
+int bccRegisterSymbolCallback(BCCScriptRef script,
+                              BCCSymbolLookupFn pFn,
+                              void *pContext);
 
 int bccGetError(BCCScriptRef script); /* deprecated */
 

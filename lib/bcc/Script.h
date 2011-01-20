@@ -126,7 +126,7 @@ namespace bcc {
     void getFuncInfoList(size_t size, FuncInfo *list);
 
 
-    void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
+    int registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
 
     char *getContext();
 
