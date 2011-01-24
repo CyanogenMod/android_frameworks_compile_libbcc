@@ -1211,7 +1211,8 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
       (*OS).indent(4)
            .write("0x", 2)
            .write_hex((uint32_t) Start + Index)
-           .write(':');
+           .write(": 0x", 4);
+      (*OS).write_hex((uint32_t) *(uint32_t*)(Start+Index));
       mpIP->printInst(&Inst, *OS);
       *OS << "\n";
     } else {
