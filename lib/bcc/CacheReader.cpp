@@ -416,6 +416,7 @@ bool CacheReader::readContext() {
 
   if (!mpResult->mContext) {
     // Unable to allocate at cached address.  Give up.
+    mIsContextSlotNotAvail = true;
     return false;
 
     // TODO(logan): If relocation is fixed, we should try to allocate the

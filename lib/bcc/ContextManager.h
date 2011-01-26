@@ -32,6 +32,8 @@
 
 namespace bcc {
 
+  extern ssize_t getSlotIndexFromAddress(char *addr);
+
   extern char *allocateContext();
 
   extern char *allocateContext(char *addr, int imageFd, off_t imageOffset);

@@ -36,6 +36,21 @@ namespace bcc {
 
 static android::Mutex gContextLock;
 
+
+ssize_t getSlotIndexFromAddress(char *addr) {
+  if (addr >= BCC_CONTEXT_FIXED_ADDR) {
+    size_t offset = (size_t)(addr - BCC_CONTEXT_FIXED_ADDR);
+    if (offset % BCC_CONTEXT_SIZE == 0) {
+      size_t slot = offset / BCC_CONTEXT_SIZE;
+      if (slot < BCC_CONTEXT_SLOT_COUNT) {
+        return slot;
+      }
+    }
+  }
+  return -1;
+}
+
+
 char *allocateContext() {
   android::AutoMutex _l(gContextLock);
 
@@ -80,18 +95,6 @@ char *allocateContext() {
   return (char *)result;
 }
 
-static ssize_t getSlotIndexFromAddress(char* addr) {
-  if (addr >= BCC_CONTEXT_FIXED_ADDR) {
-    size_t offset = (size_t)(addr - BCC_CONTEXT_FIXED_ADDR);
-    if (offset % BCC_CONTEXT_SIZE == 0) {
-      size_t slot = offset / BCC_CONTEXT_SIZE;
-      if (slot < BCC_CONTEXT_SLOT_COUNT) {
-        return slot;
-      }
-    }
-  }
-  return -1;
-}
 
 char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
   android::AutoMutex _l(gContextLock);

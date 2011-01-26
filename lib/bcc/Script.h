@@ -57,6 +57,8 @@ namespace bcc {
 
     char const *mCachePath;
 
+    bool mIsContextSlotNotAvail;
+
     // ReadBC
     char const *sourceBC;
     char const *sourceResName;
@@ -76,7 +78,7 @@ namespace bcc {
 
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               mCachePath(NULL),
+               mCachePath(NULL), mIsContextSlotNotAvail(false),
                sourceBC(NULL), sourceResName(NULL), sourceSize(0),
                sourceModule(NULL), libraryBC(NULL), librarySize(0),
                mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {

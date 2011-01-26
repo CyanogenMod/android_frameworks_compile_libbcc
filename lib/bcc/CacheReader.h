@@ -49,10 +49,13 @@ namespace bcc {
     std::map<std::string,
              std::pair<uint32_t, unsigned char const *> > mDependencies;
 
+    bool mIsContextSlotNotAvail;
+
   public:
     CacheReader()
       : mFile(NULL), mFileSize(0), mpHeader(NULL),
-        mpCachedDependTable(NULL), mpPragmaList(NULL), mpFuncTable(NULL) {
+        mpCachedDependTable(NULL), mpPragmaList(NULL), mpFuncTable(NULL),
+        mIsContextSlotNotAvail(false) {
     }
 
     ~CacheReader();
@@ -65,6 +68,10 @@ namespace bcc {
     }
 
     ScriptCached *readCacheFile(FileHandle *file, Script *s);
+
+    bool isContextSlotNotAvail() const {
+      return mIsContextSlotNotAvail;
+    }
 
   private:
     bool readHeader();

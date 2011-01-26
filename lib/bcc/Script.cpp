@@ -23,6 +23,7 @@
 
 #include "CacheReader.h"
 #include "CacheWriter.h"
+#include "ContextManager.h"
 #include "FileHandle.h"
 #include "ScriptCompiled.h"
 #include "ScriptCached.h"
@@ -183,6 +184,7 @@ int Script::internalLoadCache() {
   // Read cache file
   ScriptCached *cached = reader.readCacheFile(&file, this);
   if (!cached) {
+    mIsContextSlotNotAvail = reader.isContextSlotNotAvail();
     return 1;
   }
 
@@ -250,8 +252,18 @@ int Script::internalCompile() {
   }
 
 #if USE_CACHE
-  // TODO(logan): Write the cache out
-  if (mCachePath && !getBooleanProp("debug.bcc.nocache")) {
+  // Note: If we re-compile the script because the cached context slot not
+  // available, then we don't have to write the cache.
+
+  // Note: If the address of the context is not in the context slot, then
+  // we don't have to cache it.
+
+  char *addr = getContext();
+
+  if (mCachePath &&
+      !mIsContextSlotNotAvail && getSlotIndexFromAddress(addr) >= 0 &&
+      !getBooleanProp("debug.bcc.nocache")) {
+
     FileHandle file;
 
     // Remove the file if it already exists before writing the new file.
