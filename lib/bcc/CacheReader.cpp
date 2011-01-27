@@ -80,6 +80,7 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *file, Script *S) {
              && readExportFuncList()
              && readPragmaList()
              && readFuncTable()
+             && readObjectSlotList()
              && readContext()
              && checkContext()
              //&& readRelocationTable()
@@ -380,6 +381,13 @@ bool CacheReader::readPragmaList() {
                                 strPool[pragma->value_strp_index]));
   }
 
+  return true;
+}
+
+
+bool CacheReader::readObjectSlotList() {
+  CACHE_READER_READ_SECTION(OBCC_ObjectSlotList,
+                            mpResult->mpObjectSlotList, object_slot_list);
   return true;
 }
 

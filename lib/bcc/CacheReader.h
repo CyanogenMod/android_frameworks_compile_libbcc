@@ -74,6 +74,7 @@ namespace bcc {
     bool readExportFuncList();
     bool readPragmaList();
     bool readFuncTable();
+    bool readObjectSlotList();
     bool readContext();
     bool readRelocationTable();
 

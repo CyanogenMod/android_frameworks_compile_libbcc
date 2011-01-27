@@ -43,6 +43,7 @@ namespace bcc {
     typedef std::list<void*> ExportVarList;
     typedef std::list<void*> ExportFuncList;
     typedef std::map<std::string, FuncInfo *> FuncInfoMap;
+    typedef std::list<uint32_t> ObjectSlotList;
 
   private:
     Script *mpOwner;
@@ -52,6 +53,7 @@ namespace bcc {
     ExportVarList mExportVars;
     ExportFuncList mExportFuncs;
     PragmaList mPragmas;
+    ObjectSlotList mObjectSlots;
 
     FuncInfoMap mEmittedFunctions;
 
@@ -111,6 +113,9 @@ namespace bcc {
       return mEmittedFunctions.size();
     }
 
+    size_t getObjectSlotCount() const {
+      return mObjectSlots.size();
+    }
 
     void getExportVarList(size_t varListSize, void **varList);
 
@@ -122,6 +127,9 @@ namespace bcc {
 
     void getFuncInfoList(size_t funcInfoListSize,
                          FuncInfo *funcInfoList);
+
+    void getObjectSlotList(size_t objectSlotListSize,
+                           uint32_t *objectSlotList);
 
     char *getContext() {
       return mContext;

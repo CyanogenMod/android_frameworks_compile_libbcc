@@ -114,6 +114,7 @@ namespace bcc {
 
     size_t getFuncCount() const;
 
+    size_t getObjectSlotCount() const;
 
     void getExportVarList(size_t size, void **list);
 
@@ -124,6 +125,8 @@ namespace bcc {
                        char const **valueList);
 
     void getFuncInfoList(size_t size, FuncInfo *list);
+
+    void getObjectSlotList(size_t size, uint32_t *list);
 
 
     int registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);

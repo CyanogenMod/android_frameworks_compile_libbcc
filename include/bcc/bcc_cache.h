@@ -69,6 +69,10 @@ struct OBCC_Header {
   off_t func_table_offset;
   size_t func_table_size;
 
+  /* function table */
+  off_t object_slot_list_offset;
+  size_t object_slot_list_size;
+
   /* context section */
   off_t context_offset;
   char *context_cached_addr;
@@ -127,6 +131,11 @@ struct OBCC_Pragma {
 struct OBCC_PragmaList {
   size_t count;
   struct OBCC_Pragma list[];
+};
+
+struct OBCC_ObjectSlotList {
+  size_t count;
+  uint32_t object_slot_list[];
 };
 
 struct OBCC_FuncInfo {

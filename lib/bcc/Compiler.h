@@ -71,6 +71,7 @@ namespace bcc {
     static const llvm::StringRef PragmaMetadataName;
     static const llvm::StringRef ExportVarMetadataName;
     static const llvm::StringRef ExportFuncMetadataName;
+    static const llvm::StringRef ObjectSlotMetadataName;
 
     friend class CodeEmitter;
     friend class CodeMemoryManager;

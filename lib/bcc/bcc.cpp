@@ -242,3 +242,33 @@ extern "C" void bccGetFuncInfoList(BCCScriptRef script,
     unwrap(script)->getFuncInfoList(funcInfoListSize, funcInfoList);
   }
 }
+
+
+extern "C" size_t bccGetObjectSlotCount(BCCScriptRef script) {
+  BCC_FUNC_LOGGER();
+  return unwrap(script)->getObjectSlotCount();
+}
+
+
+extern "C" void bccGetObjectSlotList(BCCScriptRef script,
+                                     size_t objectSlotListSize,
+                                     uint32_t *objectSlotList) {
+  BCC_FUNC_LOGGER();
+
+  if (objectSlotList) {
+    unwrap(script)->getObjectSlotList(objectSlotListSize, objectSlotList);
+#if USE_DISASSEMBLER_FILE
+    size_t count = unwrap(script)->getObjectSlotCount();
+    LOGD("ObjectSlotCount = %lu\n", (unsigned long)count);
+
+    if (count > objectSlotListSize) {
+      count = objectSlotListSize;
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+      LOGD("ObjectSlotList[%lu] = %d\n", (unsigned long)i, objectSlotList[i]);
+    }
+#endif
+  }
+}
+

@@ -54,6 +54,7 @@ namespace bcc {
     OBCC_ExportVarList *mpExportVars;
     OBCC_ExportFuncList *mpExportFuncs;
     PragmaList mPragmas;
+    OBCC_ObjectSlotList *mpObjectSlotList;
 
     FuncTable mFunctions;
 
@@ -67,7 +68,8 @@ namespace bcc {
   public:
     ScriptCached(Script *owner)
       : mpOwner(owner), mpExportVars(NULL), mpExportFuncs(NULL),
-        mContext(NULL), mpStringPoolRaw(NULL), mLibRSThreadable(false) {
+        mpObjectSlotList(NULL), mContext(NULL), mpStringPoolRaw(NULL),
+        mLibRSThreadable(false) {
     }
 
     ~ScriptCached();
@@ -91,6 +93,9 @@ namespace bcc {
       return mFunctions.size();
     }
 
+    size_t getObjectSlotCount() const {
+      return mpObjectSlotList->count;
+    }
 
     void getExportVarList(size_t varListSize, void **varList);
 
@@ -102,6 +107,8 @@ namespace bcc {
 
     void getFuncInfoList(size_t funcInfoListSize, FuncInfo *funcNameList);
 
+    void getObjectSlotList(size_t objectSlotListSize,
+                           uint32_t *objectSlotList);
 
     char *getContext() {
       return mContext;

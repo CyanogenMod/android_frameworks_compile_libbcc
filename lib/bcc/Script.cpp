@@ -367,6 +367,17 @@ size_t Script::getFuncCount() const {
 }
 
 
+size_t Script::getObjectSlotCount() const {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:  return mCompiled->getObjectSlotCount();
+#if USE_CACHE
+  case ScriptStatus::Cached:    return mCached->getObjectSlotCount();
+#endif
+  default:                      return 0;
+  }
+}
+
+
 void Script::getExportVarList(size_t varListSize, void **varList) {
   switch (mStatus) {
 #define DELEGATE(STATUS) \
@@ -434,7 +445,7 @@ void Script::getFuncInfoList(size_t funcInfoListSize,
   switch (mStatus) {
 #define DELEGATE(STATUS) \
   case ScriptStatus::STATUS: \
-    m##STATUS->getFuncInfoList(funcInfoListSize, funcInfoList);
+    m##STATUS->getFuncInfoList(funcInfoListSize, funcInfoList); \
     break;
 
 #if USE_CACHE
@@ -448,6 +459,28 @@ void Script::getFuncInfoList(size_t funcInfoListSize,
     mErrorCode = BCC_INVALID_OPERATION;
   }
 }
+
+
+void Script::getObjectSlotList(size_t objectSlotListSize,
+                               uint32_t *objectSlotList) {
+  switch (mStatus) {
+#define DELEGATE(STATUS) \
+  case ScriptStatus::STATUS: \
+    m##STATUS->getObjectSlotList(objectSlotListSize, objectSlotList); \
+    break;
+
+#if USE_CACHE
+  DELEGATE(Cached);
+#endif
+
+  DELEGATE(Compiled);
+#undef DELEGATE
+
+  default:
+    mErrorCode = BCC_INVALID_OPERATION;
+  }
+}
+
 
 char *Script::getContext() {
   switch (mStatus) {

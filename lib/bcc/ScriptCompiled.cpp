@@ -117,5 +117,22 @@ void ScriptCompiled::getFuncInfoList(size_t funcInfoListSize,
   }
 }
 
+void ScriptCompiled::getObjectSlotList(size_t objectSlotListSize,
+                                       uint32_t *objectSlotList) {
+  if (objectSlotList) {
+    size_t objectSlotCount = getObjectSlotCount();
+
+    if (objectSlotCount > objectSlotListSize) {
+      objectSlotCount = objectSlotListSize;
+    }
+
+    for (ObjectSlotList::const_iterator
+         I = mObjectSlots.begin(), E = mObjectSlots.end();
+         I != E && objectSlotCount > 0; ++I, --objectSlotCount) {
+      *objectSlotList++ = *I;
+    }
+  }
+
+}
 
 } // namespace bcc

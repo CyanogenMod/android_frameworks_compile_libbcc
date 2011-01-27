@@ -47,6 +47,7 @@ CacheWriter::~CacheWriter() {
   CHECK_AND_FREE(mpExportFuncListSection);
   CHECK_AND_FREE(mpPragmaListSection);
   CHECK_AND_FREE(mpFuncTableSection);
+  CHECK_AND_FREE(mpObjectSlotSection);
 
 #undef CHECK_AND_FREE
 }
@@ -68,6 +69,7 @@ bool CacheWriter::writeCacheFile(FileHandle *file, Script *S,
              && prepareStringPool()
              && prepareExportVarList()
              && prepareExportFuncList()
+             && prepareObjectSlotList()
              && calcSectionOffset()
              && calcContextChecksum()
              && writeAll()
@@ -307,6 +309,29 @@ bool CacheWriter::prepareExportFuncList() {
 }
 
 
+bool CacheWriter::prepareObjectSlotList() {
+  size_t objectSlotCount = mpOwner->getObjectSlotCount();
+
+  size_t listSize = sizeof(OBCC_ObjectSlotList) +
+                    sizeof(uint32_t) * objectSlotCount;
+
+  OBCC_ObjectSlotList *list = (OBCC_ObjectSlotList *)malloc(listSize);
+
+  if (!list) {
+    LOGE("Unable to allocate for object slot list\n");
+    return false;
+  }
+
+  mpObjectSlotSection = list;
+  mpHeaderSection->object_slot_list_size = listSize;
+
+  list->count = objectSlotCount;
+
+  mpOwner->getObjectSlotList(objectSlotCount, list->object_slot_list);
+  return true;
+}
+
+
 bool CacheWriter::calcSectionOffset() {
   size_t offset = sizeof(OBCC_Header);
 
@@ -330,6 +355,7 @@ bool CacheWriter::calcSectionOffset() {
   OFFSET_INCREASE(export_func_list);
   OFFSET_INCREASE(pragma_list);
   OFFSET_INCREASE(func_table);
+  OFFSET_INCREASE(object_slot_list);
 
 #undef OFFSET_INCREASE
 
@@ -388,6 +414,7 @@ bool CacheWriter::writeAll() {
   WRITE_SECTION_SIMPLE(export_func_list, mpExportFuncListSection);
   WRITE_SECTION_SIMPLE(pragma_list, mpPragmaListSection);
   WRITE_SECTION_SIMPLE(func_table, mpFuncTableSection);
+  WRITE_SECTION_SIMPLE(object_slot_list, mpObjectSlotSection);
 
   WRITE_SECTION(context, mpHeaderSection->context_offset, BCC_CONTEXT_SIZE,
                 mpOwner->getContext());

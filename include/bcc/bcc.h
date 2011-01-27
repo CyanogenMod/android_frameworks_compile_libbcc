@@ -120,11 +120,15 @@ void bccGetPragmaList(BCCScriptRef script,
 
 size_t bccGetFuncCount(BCCScriptRef script);
 
-
-
 void bccGetFuncInfoList(BCCScriptRef script,
                         size_t funcInfoListSize,
                         BCCFuncInfo *funcInfoList);
+
+size_t bccGetObjectSlotCount(BCCScriptRef script);
+
+void bccGetObjectSlotList(BCCScriptRef script,
+                          size_t objectSlotListSize,
+                          uint32_t *objectSlotList);
 
 #ifdef __cplusplus
 };

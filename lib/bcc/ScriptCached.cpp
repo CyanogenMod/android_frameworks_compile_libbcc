@@ -37,6 +37,7 @@ ScriptCached::~ScriptCached() {
   if (mpStringPoolRaw) { free(mpStringPoolRaw); }
   if (mpExportVars) { free(mpExportVars); }
   if (mpExportFuncs) { free(mpExportFuncs); }
+  if (mpObjectSlotList) { free(mpObjectSlotList); }
 }
 
 void ScriptCached::getExportVarList(size_t varListSize, void **varList) {
@@ -85,6 +86,21 @@ void ScriptCached::getPragmaList(size_t pragmaListSize,
     for (size_t i = 0; i < pragmaCount; ++i) {
       *valueList++ = mPragmas[i].second;
     }
+  }
+}
+
+
+void ScriptCached::getObjectSlotList(size_t objectSlotListSize,
+                                     uint32_t *objectSlotList) {
+  if (objectSlotList) {
+    size_t objectSlotCount = getObjectSlotCount();
+
+    if (objectSlotCount > objectSlotListSize) {
+      objectSlotCount = objectSlotListSize;
+    }
+
+    memcpy(objectSlotList, mpObjectSlotList->object_slot_list,
+           sizeof(uint32_t) * objectSlotCount);
   }
 }
 

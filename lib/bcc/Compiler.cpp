@@ -84,18 +84,21 @@ std::string Compiler::CPU;
 
 std::vector<std::string> Compiler::Features;
 
-// The named of metadata node that pragma resides (should be synced with
+// Name of metadata node where pragma info resides (should be synced with
 // slang.cpp)
 const llvm::StringRef Compiler::PragmaMetadataName = "#pragma";
 
-// The named of metadata node that export variable name resides (should be
+// Name of metadata node where exported variable names reside (should be
 // synced with slang_rs_metadata.h)
 const llvm::StringRef Compiler::ExportVarMetadataName = "#rs_export_var";
 
-// The named of metadata node that export function name resides (should be
+// Name of metadata node where exported function names reside (should be
 // synced with slang_rs_metadata.h)
 const llvm::StringRef Compiler::ExportFuncMetadataName = "#rs_export_func";
 
+// Name of metadata node where RS object slot info resides (should be
+// synced with slang_rs_metadata.h)
+const llvm::StringRef Compiler::ObjectSlotMetadataName = "#rs_object_slots";
 
 //////////////////////////////////////////////////////////////////////////////
 // Compiler
@@ -319,6 +322,7 @@ int Compiler::compile() {
   const llvm::NamedMDNode *PragmaMetadata;
   const llvm::NamedMDNode *ExportVarMetadata;
   const llvm::NamedMDNode *ExportFuncMetadata;
+  const llvm::NamedMDNode *ObjectSlotMetadata;
 
   if (mModule == NULL)  // No module was loaded
     return 0;
@@ -378,6 +382,7 @@ int Compiler::compile() {
   ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
   ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
   PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
+  ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
 
 #if 0
   mHasLinked = false;
@@ -608,6 +613,28 @@ int Compiler::compile() {
                                        PragmaName.size()),
                            std::string(PragmaValue.data(),
                                        PragmaValue.size())));
+        }
+      }
+    }
+  }
+
+  if (ObjectSlotMetadata) {
+    ScriptCompiled::ObjectSlotList &objectSlotList = mpResult->mObjectSlots;
+
+    for (int i = 0, e = ObjectSlotMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *ObjectSlot = ObjectSlotMetadata->getOperand(i);
+      if (ObjectSlot != NULL &&
+          ObjectSlot->getNumOperands() == 1) {
+        llvm::Value *SlotMDS = ObjectSlot->getOperand(0);
+        if (SlotMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef Slot =
+              static_cast<llvm::MDString*>(SlotMDS)->getString();
+          uint32_t USlot = 0;
+          if (Slot.getAsInteger(10, USlot)) {
+            setError("Non-integer object slot value '" + Slot.str() + "'");
+            goto on_bcc_compile_error;
+          }
+          objectSlotList.push_back(USlot);
         }
       }
     }
