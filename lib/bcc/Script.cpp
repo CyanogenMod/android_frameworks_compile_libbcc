@@ -254,6 +254,12 @@ int Script::internalCompile() {
   if (mCachePath && !getBooleanProp("debug.bcc.nocache")) {
     FileHandle file;
 
+    // Remove the file if it already exists before writing the new file.
+    // The old file may still be mapped elsewhere in memory and we do not want
+    // to modify its contents.  (The same script may be running concurrently in
+    // the same process or a different process!)
+    ::unlink(mCachePath);
+
     if (file.open(mCachePath, OpenMode::Write) >= 0) {
       CacheWriter writer;
 

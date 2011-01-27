@@ -159,6 +159,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_STATIC_LIBRARIES := \
   libcutils \
+  libutils \
   libLLVMX86CodeGen \
   libLLVMX86Info \
   libLLVMARMCodeGen \
