@@ -153,7 +153,7 @@ bool CacheReader::checkHeader() {
 
   if (memcmp(mpHeader->libbcc_build_time, libbcc_build_time, 24) != 0) {
     mpHeader->libbcc_build_time[24 - 1] = '\0'; // ensure terminated
-    LOGE("Build time mismatch: lib %s cached %s\n", libbcc_build_time,
+    LOGW("Build time mismatch: lib %s cached %s\n", libbcc_build_time,
          mpHeader->libbcc_build_time);
     return false;
   }

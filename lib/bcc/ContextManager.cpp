@@ -119,7 +119,7 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
   }
 
   if (ContextSlotTaken[slot]) {
-    LOGE("Suggested bcc context slot has been occupied.\n");
+    LOGW("Suggested bcc context slot has been occupied.\n");
     return NULL;
   }
 

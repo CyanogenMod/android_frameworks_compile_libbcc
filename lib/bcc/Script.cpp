@@ -240,7 +240,7 @@ int Script::internalCompile() {
       return 1;
     }
 
-    LOGE("Load Library\n");
+    LOGI("Load Library\n");
   }
 
   // Compile and JIT the code

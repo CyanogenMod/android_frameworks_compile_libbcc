@@ -121,7 +121,6 @@ namespace bcc {
 
     int compile();
 
-    // interface for bccGetScriptInfoLog()
     char const *getErrorMessage() {
       return mError.c_str();
     }

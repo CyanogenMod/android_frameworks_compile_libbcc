@@ -1,4 +1,5 @@
 #include "rs_types.rsh"
+#include "rs_cl.rsh"
 
 /* Declaration of 4 basic functions in libRS */
 extern void __attribute__((overloadable))

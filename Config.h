@@ -9,7 +9,7 @@
 
 #define USE_DISASSEMBLER_FILE 0
 
-#define USE_LIBBCC_SHA1SUM 1
+#define USE_LIBBCC_SHA1SUM 0
 
 //---------------------------------------------------------------------------
 

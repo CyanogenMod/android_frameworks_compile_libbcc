@@ -54,7 +54,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
         continue;
       }
 
-      LOGE("Unable to open %s in %s mode.  (reason: %s)\n",
+      LOGW("Unable to open %s in %s mode.  (reason: %s)\n",
            filename, open_mode_str[mode], strerror(errno));
 
       return -1;
@@ -93,11 +93,11 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
     }
 
     // Good, we have open and lock the file correctly.
-    LOGI("File opened. fd=%d\n", mFD);
+    LOGV("File opened. fd=%d\n", mFD);
     return mFD;
   }
 
-  LOGE("Unable to open %s in %s mode.\n", filename, open_mode_str[mode]);
+  LOGW("Unable to open %s in %s mode.\n", filename, open_mode_str[mode]);
   return -1;
 }
 
@@ -106,7 +106,7 @@ void FileHandle::close() {
   if (mFD >= 0) {
     flock(mFD, LOCK_UN);
     ::close(mFD);
-    LOGI("File closed. fd=%d\n", mFD);
+    LOGV("File closed. fd=%d\n", mFD);
     mFD = -1;
   }
 }

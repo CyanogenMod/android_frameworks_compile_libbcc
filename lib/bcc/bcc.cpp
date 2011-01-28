@@ -63,10 +63,12 @@ extern "C" BCCScriptRef bccCreateScript() {
   return wrap(new bcc::Script());
 }
 
+
 extern "C" void bccDisposeScript(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
   delete unwrap(script);
 }
+
 
 extern "C" int bccRegisterSymbolCallback(BCCScriptRef script,
                                          BCCSymbolLookupFn pFn,
@@ -74,6 +76,7 @@ extern "C" int bccRegisterSymbolCallback(BCCScriptRef script,
   BCC_FUNC_LOGGER();
   return unwrap(script)->registerSymbolCallback(pFn, pContext);
 }
+
 
 extern "C" int bccGetError(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
@@ -271,4 +274,3 @@ extern "C" void bccGetObjectSlotList(BCCScriptRef script,
 #endif
   }
 }
-
