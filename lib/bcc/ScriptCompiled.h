@@ -66,24 +66,16 @@ namespace bcc {
 
     ~ScriptCompiled();
 
-    int readBC(char const *resName,
-               char const *bitcode,
-               size_t bitcodeSize,
-               unsigned long flags) {
-      return mCompiler.readBC(bitcode, bitcodeSize);
+    llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM) {
+      return mCompiler.parseBitcodeFile(MEM);
     }
 
-    int readModule(char const *resName,
-                   llvm::Module *module,
-                   unsigned long flags) {
+    int readModule(llvm::Module *module) {
       return mCompiler.readModule(module);
     }
 
-    int linkBC(char const *resName,
-               char const *bitcode,
-               size_t bitcodeSize,
-               unsigned long flags) {
-      return mCompiler.linkBC(bitcode, bitcodeSize);
+    int linkModule(llvm::Module *module) {
+      return mCompiler.linkModule(module);
     }
 
     int compile() {

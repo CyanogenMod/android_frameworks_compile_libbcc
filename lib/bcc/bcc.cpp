@@ -83,23 +83,30 @@ extern "C" int bccGetError(BCCScriptRef script) {
   return unwrap(script)->getError();
 }
 
-
 extern "C" int bccReadBC(BCCScriptRef script,
                          char const *resName,
                          char const *bitcode,
                          size_t bitcodeSize,
                          unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->readBC(resName, bitcode, bitcodeSize, flags);
+  return unwrap(script)->addSourceBC(0, resName, bitcode, bitcodeSize, flags);
 }
 
 
 extern "C" int bccReadModule(BCCScriptRef script,
-                             char const *resName,
+                             char const *resName /* deprecated */,
                              LLVMModuleRef module,
                              unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->readModule(resName, unwrap(module), flags);
+  return unwrap(script)->addSourceModule(0, unwrap(module), flags);
+}
+
+
+extern "C" int bccReadFile(BCCScriptRef script,
+                           char const *path,
+                           unsigned long flags) {
+  BCC_FUNC_LOGGER();
+  return unwrap(script)->addSourceFile(0, path, flags);
 }
 
 
@@ -109,7 +116,15 @@ extern "C" int bccLinkBC(BCCScriptRef script,
                          size_t bitcodeSize,
                          unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->linkBC(resName, bitcode, bitcodeSize, flags);
+  return unwrap(script)->addSourceBC(1, resName, bitcode, bitcodeSize, flags);
+}
+
+
+extern "C" int bccLinkFile(BCCScriptRef script,
+                           char const *path,
+                           unsigned long flags) {
+  BCC_FUNC_LOGGER();
+  return unwrap(script)->addSourceFile(1, path, flags);
 }
 
 

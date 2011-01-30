@@ -42,7 +42,8 @@ libbcc_SRC_FILES := \
   lib/bcc/FileHandle.cpp \
   lib/bcc/Runtime.c \
   lib/bcc/Script.cpp \
-  lib/bcc/ScriptCompiled.cpp
+  lib/bcc/ScriptCompiled.cpp \
+  lib/bcc/SourceInfo.cpp
 
 ifeq ($(libbcc_USE_CACHE),1)
 libbcc_SRC_FILES += \

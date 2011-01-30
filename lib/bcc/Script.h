@@ -31,6 +31,7 @@ namespace llvm {
 namespace bcc {
   class ScriptCompiled;
   class ScriptCached;
+  class SourceInfo;
 
   namespace ScriptStatus {
     enum StatusType {
@@ -59,18 +60,11 @@ namespace bcc {
 
     bool mIsContextSlotNotAvail;
 
-    // ReadBC
-    char const *sourceBC;
-    char const *sourceResName;
-    unsigned char sourceSHA1[20];
-    size_t sourceSize;
-
-    // ReadModule
-    llvm::Module *sourceModule;
-
-    // LinkBC
-    char const *libraryBC;
-    size_t librarySize;
+    // Source List
+    SourceInfo *mSourceList[2];
+    // Note: mSourceList[0] (main source)
+    // Note: mSourceList[1] (library source)
+    // TODO(logan): Generalize this, use vector or SmallVector instead!
 
     // Register Symbol Lookup Function
     BCCSymbolLookupFn mpExtSymbolLookupFn;
@@ -79,27 +73,28 @@ namespace bcc {
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
                mCachePath(NULL), mIsContextSlotNotAvail(false),
-               sourceBC(NULL), sourceResName(NULL), sourceSize(0),
-               sourceModule(NULL), libraryBC(NULL), librarySize(0),
                mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
       Compiler::GlobalInitialization();
+
+      mSourceList[0] = NULL;
+      mSourceList[1] = NULL;
     }
 
     ~Script();
 
-    int readBC(char const *resName,
-               const char *bitcode,
-               size_t bitcodeSize,
-               unsigned long flags);
+    int addSourceBC(size_t idx,
+                    char const *resName,
+                    const char *bitcode,
+                    size_t bitcodeSize,
+                    unsigned long flags);
 
-    int readModule(char const *resName,
-                   llvm::Module *module,
-                   unsigned long flags);
+    int addSourceModule(size_t idx,
+                        llvm::Module *module,
+                        unsigned long flags);
 
-    int linkBC(char const *resName,
-               const char *bitcode,
-               size_t bitcodeSize,
-               unsigned long flags);
+    int addSourceFile(size_t idx,
+                      char const *path,
+                      unsigned long flags);
 
     int prepareExecutable(char const *cachePath, unsigned long flags);
 

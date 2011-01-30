@@ -37,6 +37,7 @@
 namespace llvm {
   class LLVMContext;
   class Module;
+  class MemoryBuffer;
 }
 
 
@@ -110,14 +111,14 @@ namespace bcc {
 
     CodeEmitter *createCodeEmitter();
 
+    llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM);
+
     int readModule(llvm::Module *module) {
       mModule = module;
       return hasError();
     }
 
-    int readBC(const char *bitcode, size_t bitcodeSize);
-
-    int linkBC(const char *bitcode, size_t bitcodeSize);
+    int linkModule(llvm::Module *module);
 
     int compile();
 

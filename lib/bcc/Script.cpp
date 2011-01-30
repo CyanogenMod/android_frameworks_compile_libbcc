@@ -28,8 +28,11 @@
 #include "ScriptCompiled.h"
 #include "ScriptCached.h"
 #include "Sha1Helper.h"
+#include "SourceInfo.h"
 
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <new>
 #include <string.h>
@@ -63,52 +66,101 @@ Script::~Script() {
   default:
     break;
   }
+
+  for (size_t i = 0; i < 2; ++i) {
+    delete mSourceList[i];
+  }
 }
 
 
-int Script::readBC(char const *resName,
-                   const char *bitcode,
-                   size_t bitcodeSize,
-                   unsigned long flags) {
+int Script::addSourceBC(size_t idx,
+                        char const *resName,
+                        const char *bitcode,
+                        size_t bitcodeSize,
+                        unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Invalid operation: %s\n", __func__);
+    LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
     return 1;
   }
 
-  sourceBC = bitcode;
-  sourceResName = resName;
-  sourceSize = bitcodeSize;
+  if (!bitcode) {
+    mErrorCode = BCC_INVALID_VALUE;
+    LOGE("Invalid argument: bitcode = NULL\n");
+    return 1;
+  }
+
+  mSourceList[idx] = SourceInfo::createFromBuffer(resName,
+                                                  bitcode, bitcodeSize,
+                                                  flags);
+
+  if (!mSourceList[idx]) {
+    mErrorCode = BCC_OUT_OF_MEMORY;
+    LOGE("Out of memory while adding source bitcode\n");
+    return 1;
+  }
+
   return 0;
 }
 
 
-int Script::readModule(char const *resName,
-                       llvm::Module *module,
-                       unsigned long flags) {
+int Script::addSourceModule(size_t idx,
+                            llvm::Module *module,
+                            unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Invalid operation: %s\n", __func__);
+    LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
     return 1;
   }
 
-  sourceModule = module;
+  if (!module) {
+    mErrorCode = BCC_INVALID_VALUE;
+    LOGE("Invalid argument: module = NULL\n");
+    return 1;
+  }
+
+  mSourceList[idx] = SourceInfo::createFromModule(module, flags);
+
+  if (!mSourceList[idx]) {
+    mErrorCode = BCC_OUT_OF_MEMORY;
+    LOGE("Out of memory when add source module\n");
+    return 1;
+  }
+
   return 0;
 }
 
 
-int Script::linkBC(char const *resName,
-                   const char *bitcode,
-                   size_t bitcodeSize,
-                   unsigned long flags) {
+int Script::addSourceFile(size_t idx,
+                          char const *path,
+                          unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Invalid operation: %s\n", __func__);
+    LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
     return 1;
   }
 
-  libraryBC = bitcode;
-  librarySize = bitcodeSize;
+  if (!path) {
+    mErrorCode = BCC_INVALID_VALUE;
+    LOGE("Invalid argument: path = NULL\n");
+    return 1;
+  }
+
+  struct stat sb;
+  if (stat(path, &sb) != 0) {
+    mErrorCode = BCC_INVALID_VALUE;
+    LOGE("File not found: %s\n", path);
+    return 1;
+  }
+
+  mSourceList[idx] = SourceInfo::createFromFile(path, flags);
+
+  if (!mSourceList[idx]) {
+    mErrorCode = BCC_OUT_OF_MEMORY;
+    LOGE("Out of memory while adding source file\n");
+    return 1;
+  }
+
   return 0;
 }
 
@@ -147,16 +199,6 @@ int Script::internalLoadCache() {
     return 1;
   }
 
-  // If we are going to use the cache file.  We have to calculate sha1sum
-  // first (no matter we can open the file now or not.)
-  if (sourceBC) {
-    calcSHA1(sourceSHA1, sourceBC, sourceSize);
-  }
-
-  //if (libraryBC) {
-  //  calcSHA1(librarySHA1, libraryBC, librarySize);
-  //}
-
   FileHandle file;
 
   if (file.open(mCachePath, OpenMode::Read) < 0) {
@@ -173,13 +215,11 @@ int Script::internalLoadCache() {
 
   reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
-  if (sourceBC) {
-    reader.addDependency(BCC_APK_RESOURCE, sourceResName, sourceSHA1);
+  for (size_t i = 0; i < 2; ++i) {
+    if (mSourceList[i]) {
+      mSourceList[i]->introDependency(reader);
+    }
   }
-
-  //if (libraryBC) {
-  //  reader.addDependency(BCC_APK_RESOURCE, libraryResName, librarySHA1);
-  //}
 
   // Read cache file
   ScriptCached *cached = reader.readCacheFile(&file, this);
@@ -220,29 +260,31 @@ int Script::internalCompile() {
                                       mpExtSymbolLookupFnContext);
   }
 
-  // Setup the source bitcode / module
-  if (sourceBC) {
-    if (mCompiled->readBC(sourceResName, sourceBC, sourceSize, 0) != 0) {
-      LOGE("Unable to readBC, bitcode=%p, size=%lu\n",
-           sourceBC, (unsigned long)sourceSize);
+  // Parse Bitcode File (if necessary)
+  for (size_t i = 0; i < 2; ++i) {
+    if (mSourceList[i] && mSourceList[i]->prepareModule(mCompiled) != 0) {
+      LOGE("Unable to parse bitcode for source[%lu]\n", (unsigned long)i);
       return 1;
     }
-    LOGI("Load sourceBC\n");
-  } else if (sourceModule) {
-    if (mCompiled->readModule(NULL, sourceModule, 0) != 0) {
-      return 1;
-    }
-    LOGI("Load sourceModule\n");
+  }
+
+  // Set the main source module
+  if (!mSourceList[0] || !mSourceList[0]->getModule()) {
+    LOGE("Source bitcode is not setted.\n");
+    return 1;
+  }
+
+  if (mCompiled->readModule(mSourceList[0]->takeModule()) != 0) {
+    LOGE("Unable to read source module\n");
+    return 1;
   }
 
   // Link the source module with the library module
-  if (librarySize == 1 /* link against file */ ||
-      libraryBC        /* link against buffer */) {
-    if (mCompiled->linkBC(NULL, libraryBC, librarySize, 0) != 0) {
+  if (mSourceList[1]) {
+    if (mCompiled->linkModule(mSourceList[1]->takeModule()) != 0) {
+      LOGE("Unable to link library module\n");
       return 1;
     }
-
-    LOGI("Load Library\n");
   }
 
   // Compile and JIT the code
@@ -281,8 +323,8 @@ int Script::internalCompile() {
 #endif
       writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
-      if (sourceBC) {
-        writer.addDependency(BCC_APK_RESOURCE, sourceResName, sourceSHA1);
+      for (size_t i = 0; i < 2; ++i) {
+        mSourceList[i]->introDependency(writer);
       }
 
       // libRS is threadable dirty hack

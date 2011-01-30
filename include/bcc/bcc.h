@@ -58,6 +58,13 @@ typedef struct LLVMOpaqueModule *LLVMModuleRef;
 /*-------------------------------------------------------------------------*/
 
 
+/* Optional Flags for bccReadBC, bccReadFile, bccLinkBC, bccLinkFile */
+#define BCC_SKIP_DEP_SHA1 (1 << 0)
+
+
+/*-------------------------------------------------------------------------*/
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,11 +92,19 @@ int bccReadModule(BCCScriptRef script,
                   LLVMModuleRef module,
                   unsigned long flags);
 
+int bccReadFile(BCCScriptRef script,
+                char const *path,
+                unsigned long flags);
+
 int bccLinkBC(BCCScriptRef script,
               char const *resName,
               char const *bitcode,
               size_t bitcodeSize,
               unsigned long flags);
+
+int bccLinkFile(BCCScriptRef script,
+                char const *path,
+                unsigned long flags);
 
 int bccPrepareExecutable(BCCScriptRef script,
                          char const *cachePath,

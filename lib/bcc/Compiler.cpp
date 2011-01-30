@@ -241,68 +241,23 @@ Compiler::Compiler(ScriptCompiled *result)
   return;
 }
 
-// Compiler::readBC
-// Parameters:
-//
-int Compiler::readBC(const char *bitcode, size_t bitcodeSize) {
-  llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
-  if (bitcode == NULL || bitcodeSize <= 0)
-    return 1;
+llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
+  llvm::Module *result = llvm::ParseBitcodeFile(MEM, *mContext, &mError);
 
-  // Package input to object MemoryBuffer
-  MEM.reset(llvm::MemoryBuffer::getMemBuffer(
-      llvm::StringRef(bitcode, bitcodeSize)));
-
-  if (MEM.get() == NULL) {
-    setError("Error reading input program bitcode into memory");
-    return hasError();
+  if (!result) {
+    LOGE("Unable to ParseBitcodeFile: %s\n", mError.c_str());
+    return NULL;
   }
 
-  // Read the input Bitcode as a Module
-  mModule = llvm::ParseBitcodeFile(MEM.get(), *mContext, &mError);
-  MEM.reset();
-  return hasError();
+  return result;
 }
 
 
-// bitcodeSize == 1: Link against file
-// bitcodeSize > 1: Link against buffer
-int Compiler::linkBC(const char *bitcode, size_t bitcodeSize) {
-  llvm::OwningPtr<llvm::MemoryBuffer> MEM;
-
-  if (bitcodeSize == 1) {  // link against file
-  } else if (bitcode == NULL || bitcodeSize <= 0) {
-    LOGE("Invalid bitcode for linkBC\n");
-    return 1;
-  }
-
-  if (mModule == NULL) {
-    setError("No module presents for linking");
+int Compiler::linkModule(llvm::Module *moduleWith) {
+  if (llvm::Linker::LinkModules(mModule, moduleWith, &mError) != 0) {
     return hasError();
   }
-
-#if 1
-  MEM.reset(llvm::MemoryBuffer::getFile("/system/lib/libclcore.bc"));
-
-#else
-  MEM.reset(llvm::MemoryBuffer::getMemBuffer(
-      llvm::StringRef(bitcode, bitcodeSize)));
-#endif
-
-  if (MEM.get() == NULL) {
-    setError("Error reading input library bitcode into memory");
-    return hasError();
-  }
-
-  llvm::OwningPtr<llvm::Module> Lib(llvm::ParseBitcodeFile(MEM.get(),
-                                                           *mContext,
-                                                           &mError));
-  if (Lib.get() == NULL)
-    return hasError();
-
-  if (llvm::Linker::LinkModules(mModule, Lib.take(), &mError))
-    return hasError();
 
   // Everything for linking should be settled down here with no error occurs
   mHasLinked = true;
