@@ -116,6 +116,13 @@ extern "C" int bccLinkBC(BCCScriptRef script,
                          size_t bitcodeSize,
                          unsigned long flags) {
   BCC_FUNC_LOGGER();
+
+  // Dirty hack for backward libRS compatibility.
+  // TODO(logan): Remove this in next release.
+  if (bitcodeSize == 1) {
+    return unwrap(script)->addSourceFile(1, "/system/lib/libclcore.bc", 0);
+  }
+
   return unwrap(script)->addSourceBC(1, resName, bitcode, bitcodeSize, flags);
 }
 
