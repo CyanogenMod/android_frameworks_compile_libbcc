@@ -18,7 +18,9 @@
 #include "runtime/lib/absvsi2.c"
 #include "runtime/lib/addvdi3.c"
 #include "runtime/lib/addvsi3.c"
-#include "runtime/lib/ashldi3.c"
+#if !defined(__i386__) && !defined(__SSE2__)
+#   include "runtime/lib/ashldi3.c"
+#endif
 #ifndef ANDROID
 #   include "runtime/lib/ashrdi3.c"
 #endif
@@ -30,7 +32,9 @@
 #ifndef ANDROID // no complex.h
 #   include "runtime/lib/divdc3.c"
 #endif
-#include "runtime/lib/divdi3.c"
+#if !defined(__i386__)
+#   include "runtime/lib/divdi3.c"
+#endif
 #ifndef ANDROID // no complex.h
 #   include "runtime/lib/divsc3.c"
 #endif
@@ -41,16 +45,22 @@
 #include "runtime/lib/fixunsdfsi.c"
 #include "runtime/lib/fixunssfdi.c"
 #include "runtime/lib/fixunssfsi.c"
-#include "runtime/lib/floatdidf.c"
-#include "runtime/lib/floatdisf.c"
-#include "runtime/lib/floatundidf.c"
-#include "runtime/lib/floatundisf.c"
-#include "runtime/lib/lshrdi3.c"
-#include "runtime/lib/moddi3.c"
+#if !defined(__i386__)
+#   include "runtime/lib/floatdidf.c"
+#   include "runtime/lib/floatdisf.c"
+#   include "runtime/lib/floatundidf.c"
+#   include "runtime/lib/floatundisf.c"
+#   include "runtime/lib/moddi3.c"
+#endif
+#if !defined(__i386__) && !defined(__SSE2__)
+#   include "runtime/lib/lshrdi3.c"
+#endif
 #ifndef ANDROID // no complex.h
 #   include "runtime/lib/muldc3.c"
 #endif
-#include "runtime/lib/muldi3.c"
+#if !defined(__i386__)
+#   include "runtime/lib/muldi3.c"
+#endif
 #ifndef ANDROID // no complex.h
 #   include "runtime/lib/mulsc3.c"
 #endif
@@ -68,10 +78,14 @@
 #include "runtime/lib/subvdi3.c"
 #include "runtime/lib/subvsi3.c"
 #include "runtime/lib/ucmpdi2.c"
-#include "runtime/lib/udivdi3.c"
+#if !defined(__i386__)
+#   include "runtime/lib/udivdi3.c"
+#endif
 #include "runtime/lib/udivsi3.c"
 #include "runtime/lib/udivmoddi4.c"
-#include "runtime/lib/umoddi3.c"
+#if !defined(__i386__)
+#   include "runtime/lib/umoddi3.c"
+#endif
 #include "runtime/lib/eprintf.c"
 
 #include <string.h>
