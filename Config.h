@@ -2,6 +2,8 @@
 #define BCC_CONFIG_H
 
 //---------------------------------------------------------------------------
+// Configuration for libbcc
+//---------------------------------------------------------------------------
 
 #define USE_CACHE 1
 
@@ -11,6 +13,25 @@
 
 #define USE_LIBBCC_SHA1SUM 1
 
+//---------------------------------------------------------------------------
+// Configuration for ContextManager
+//---------------------------------------------------------------------------
+
+// Note: Most of the code should NOT use these constants.  Use the public
+// static member of ContextManager instead, which is type-safe.  For example,
+// if you need BCC_CONTEXT_FIXED_ADDR_, then you should write:
+// ContextManager::ContextFixedAddr
+
+#define BCC_CONTEXT_FIXED_ADDR_ reinterpret_cast<char *>(0x7e000000)
+
+#define BCC_CONTEXT_SLOT_COUNT_ 8
+
+#define BCC_CONTEXT_CODE_SIZE_ (128 * 1024)
+
+#define BCC_CONTEXT_DATA_SIZE_ (128 * 1024)
+
+//---------------------------------------------------------------------------
+// Configuration for CodeGen and CompilerRT
 //---------------------------------------------------------------------------
 
 #if defined(__arm__)

@@ -375,7 +375,7 @@ bool CacheWriter::calcContextChecksum() {
   uint32_t sum = 0;
   uint32_t *ptr = reinterpret_cast<uint32_t *>(mpOwner->getContext());
 
-  for (size_t i = 0; i < BCC_CONTEXT_SIZE / sizeof(uint32_t); ++i) {
+  for (size_t i = 0; i < ContextManager::ContextSize / sizeof(uint32_t); ++i) {
     sum ^= *ptr++;
   }
 
@@ -416,7 +416,8 @@ bool CacheWriter::writeAll() {
   WRITE_SECTION_SIMPLE(func_table, mpFuncTableSection);
   WRITE_SECTION_SIMPLE(object_slot_list, mpObjectSlotSection);
 
-  WRITE_SECTION(context, mpHeaderSection->context_offset, BCC_CONTEXT_SIZE,
+  WRITE_SECTION(context, mpHeaderSection->context_offset,
+                ContextManager::ContextSize,
                 mpOwner->getContext());
 
 #undef WRITE_SECTION_SIMPLE

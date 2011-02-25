@@ -300,10 +300,9 @@ int Script::internalCompile() {
   // Note: If the address of the context is not in the context slot, then
   // we don't have to cache it.
 
-  char *addr = getContext();
-
   if (mCachePath &&
-      !mIsContextSlotNotAvail && getSlotIndexFromAddress(addr) >= 0 &&
+      !mIsContextSlotNotAvail &&
+      ContextManager::get().isManagingContext(getContext()) &&
       !getBooleanProp("debug.bcc.nocache")) {
 
     FileHandle file;

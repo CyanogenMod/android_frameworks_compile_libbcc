@@ -19,6 +19,9 @@
 
 #include "ContextManager.h"
 
+#include <llvm/System/Mutex.h>
+#include <llvm/Support/MutexGuard.h>
+
 #include <errno.h>
 #include <sys/mman.h>
 #include <utils/threads.h>
@@ -27,63 +30,56 @@
 #include <string.h>
 
 
-namespace {
-  static bool ContextSlotTaken[BCC_CONTEXT_SLOT_COUNT];
-} // namespace anonymous
-
-
 namespace bcc {
 
-static android::Mutex gContextLock;
+// Starting address for context slots
+char * const ContextManager::ContextFixedAddr = BCC_CONTEXT_FIXED_ADDR_;
+
+// ContextManager singleton object
+ContextManager ContextManager::TheContextManager;
 
 
-ssize_t getSlotIndexFromAddress(char *addr) {
-  if (addr >= BCC_CONTEXT_FIXED_ADDR) {
-    size_t offset = (size_t)(addr - BCC_CONTEXT_FIXED_ADDR);
-    if (offset % BCC_CONTEXT_SIZE == 0) {
-      size_t slot = offset / BCC_CONTEXT_SIZE;
-      if (slot < BCC_CONTEXT_SLOT_COUNT) {
-        return slot;
-      }
-    }
+ContextManager::ContextManager() {
+  // Initialize context slot occupation table to false
+  for (size_t i = 0; i < ContextSlotCount; ++i) {
+    mContextSlotOccupied[i] = false;
   }
-  return -1;
 }
 
+char *ContextManager::allocateContext() {
+  {
+    // Acquire mContextSlotOccupiedLock
+    llvm::MutexGuard Locked(mContextSlotOccupiedLock);
 
-char *allocateContext() {
-  android::AutoMutex _l(gContextLock);
+    // Try to allocate context on the managed context slot.
+    for (size_t i = 0; i < ContextSlotCount; ++i) {
+      if (mContextSlotOccupied[i]) {
+        continue;
+      }
 
-  // Try to allocate context on the managed context slot.
-  for (size_t i = 0; i < BCC_CONTEXT_SLOT_COUNT; ++i) {
-    if (ContextSlotTaken[i]) {
-      continue;
+      void *addr = ContextFixedAddr + ContextSize * i;
+      void *result = mmap(addr, ContextSize,
+                          PROT_READ | PROT_WRITE | PROT_EXEC,
+                          MAP_PRIVATE | MAP_ANON, -1, 0);
+
+      if (result == addr) {
+        LOGI("Allocate bcc context. addr=%p\n", result);
+        mContextSlotOccupied[i] = true;
+        return static_cast<char *>(result);
+      }
+
+      if (result && result != MAP_FAILED) {
+        LOGE("Unable to allocate. suggested=%p, result=%p\n", addr, result);
+        munmap(result, ContextSize);
+      }
+
+      LOGE("Unable to allocate. addr=%p.  Retry ...\n", addr);
     }
-
-    // Try to mmap
-    void *addr = BCC_CONTEXT_FIXED_ADDR + BCC_CONTEXT_SIZE * i;
-    void *result = mmap(addr, BCC_CONTEXT_SIZE,
-                        PROT_READ | PROT_WRITE | PROT_EXEC,
-                        MAP_PRIVATE | MAP_ANON, -1, 0);
-
-    if (result == addr) {
-      LOGI("Allocate bcc context. addr=%p\n", result);
-      ContextSlotTaken[i] = true;
-      return static_cast<char *>(result);
-    }
-
-    if (result && result != MAP_FAILED) {
-      LOGE("Unable to allocate. suggested=%p, result=%p\n", addr, result);
-      munmap(result, BCC_CONTEXT_SIZE);
-    }
-
-    LOGE("Unable to allocate. addr=%p.  Retry ...\n", addr);
+    // Release mContextSlotOccupiedLock
   }
 
   // No slot available, allocate at arbitary address.
-
-  void *result = mmap(0, BCC_CONTEXT_SIZE,
-                      PROT_READ | PROT_WRITE | PROT_EXEC,
+  void *result = mmap(0, ContextSize, PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE | MAP_ANON, -1, 0);
 
   if (!result || result == MAP_FAILED) {
@@ -92,18 +88,16 @@ char *allocateContext() {
   }
 
   LOGI("Allocate bcc context. addr=%p\n", result);
-  return (char *)result;
+  return static_cast<char *>(result);
 }
 
 
-char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
-  android::AutoMutex _l(gContextLock);
-
+char *ContextManager::allocateContext(char *addr,
+                                      int imageFd, off_t imageOffset) {
   // This function should only allocate context when address is an context
   // slot address.  And the image offset is aligned to the pagesize.
 
   if (imageFd < 0) {
-    // Invalid file descriptor.
     LOGE("Invalid file descriptor for bcc context image\n");
     return NULL;
   }
@@ -121,13 +115,14 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
     return NULL;
   }
 
-  if (ContextSlotTaken[slot]) {
+  llvm::MutexGuard Locked(mContextSlotOccupiedLock);
+  if (mContextSlotOccupied[slot]) {
     LOGW("Suggested bcc context slot has been occupied.\n");
     return NULL;
   }
 
   // LOGI("addr=%x, imageFd=%d, imageOffset=%x", addr, imageFd, imageOffset);
-  void *result = mmap(addr, BCC_CONTEXT_SIZE,
+  void *result = mmap(addr, ContextSize,
                       PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE, imageFd, imageOffset);
 
@@ -138,27 +133,27 @@ char *allocateContext(char *addr, int imageFd, off_t imageOffset) {
 
   if (result != addr) {
     LOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
-    munmap(result, BCC_CONTEXT_SIZE);
+    munmap(result, ContextSize);
     return NULL;
   }
 
   LOGI("Allocate bcc context. addr=%p\n", addr);
-  ContextSlotTaken[slot] = true;
+  mContextSlotOccupied[slot] = true;
   return static_cast<char *>(result);
 }
 
 
-void deallocateContext(char *addr) {
+void ContextManager::deallocateContext(char *addr) {
   if (!addr) {
     return;
   }
 
-  android::AutoMutex _l(gContextLock);
+  llvm::MutexGuard Locked(mContextSlotOccupiedLock);
 
   LOGI("Deallocate bcc context. addr=%p\n", addr);
 
   // Unmap
-  if (munmap(addr, BCC_CONTEXT_SIZE) < 0) {
+  if (munmap(addr, ContextSize) < 0) {
     LOGE("Unable to unmap. addr=%p (reason: %s)\n", addr, strerror(errno));
     return;
   }
@@ -168,8 +163,36 @@ void deallocateContext(char *addr) {
   ssize_t slot = getSlotIndexFromAddress(addr);
   if (slot >= 0) {
     // Give the context slot back.
-    ContextSlotTaken[slot] = false;
+    mContextSlotOccupied[slot] = false;
   }
 }
+
+
+bool ContextManager::isManagingContext(char *addr) {
+  ssize_t slot = getSlotIndexFromAddress(addr);
+
+  if (slot < 0) {
+    return false;
+  }
+
+  llvm::MutexGuard Locked(mContextSlotOccupiedLock);
+  return mContextSlotOccupied[slot];
+}
+
+
+ssize_t ContextManager::getSlotIndexFromAddress(char *addr) {
+  if (addr >= ContextFixedAddr) {
+    size_t offset = (size_t)(addr - ContextFixedAddr);
+    if (offset % ContextSize == 0) {
+      size_t slot = offset / ContextSize;
+      if (slot < ContextSlotCount) {
+        return slot;
+      }
+    }
+  }
+  return -1;
+}
+
+
 
 } // namespace bcc

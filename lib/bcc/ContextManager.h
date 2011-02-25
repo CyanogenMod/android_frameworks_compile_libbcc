@@ -17,30 +17,57 @@
 #ifndef BCC_CONTEXTMANAGER_H
 #define BCC_CONTEXTMANAGER_H
 
+#include <Config.h>
+
+#include <llvm/System/Mutex.h>
+
 #include <stddef.h>
-
-#include <unistd.h>
-
-
-#define BCC_CONTEXT_FIXED_ADDR (reinterpret_cast<char *>(0x7e000000))
-#define BCC_CONTEXT_SLOT_COUNT 8
-
-#define BCC_CONTEXT_CODE_SIZE (128 * 1024)
-#define BCC_CONTEXT_DATA_SIZE (128 * 1024)
-#define BCC_CONTEXT_SIZE (BCC_CONTEXT_CODE_SIZE + BCC_CONTEXT_DATA_SIZE)
 
 
 namespace bcc {
 
-  extern ssize_t getSlotIndexFromAddress(char *addr);
+  class ContextManager {
+  public:
+    // Starting address of context slot address space
+    static char * const ContextFixedAddr;
 
-  extern char *allocateContext();
+    // Number of the context slots
+    static size_t const ContextSlotCount = BCC_CONTEXT_SLOT_COUNT_;
 
-  extern char *allocateContext(char *addr, int imageFd, off_t imageOffset);
+    // Context size
+    static size_t const ContextCodeSize = BCC_CONTEXT_CODE_SIZE_;
+    static size_t const ContextDataSize = BCC_CONTEXT_DATA_SIZE_;
+    static size_t const ContextSize = ContextCodeSize + ContextDataSize;
 
-  extern void deallocateContext(char *addr);
+  private:
+    // Context manager singleton
+    static ContextManager TheContextManager;
+
+  private:
+    // Mutex lock for context slot occupation table
+    llvm::sys::Mutex mContextSlotOccupiedLock;
+
+    // Context slot occupation table
+    bool mContextSlotOccupied[ContextSlotCount];
+
+    ContextManager();
+
+  public:
+    static ContextManager &get() {
+      return TheContextManager;
+    }
+
+    char *allocateContext();
+    char *allocateContext(char *addr, int imageFd, off_t imageOffset);
+    void deallocateContext(char *addr);
+
+    bool isManagingContext(char *addr);
+
+  private:
+    static ssize_t getSlotIndexFromAddress(char *addr);
+
+  };
 
 } // namespace bcc
-
 
 #endif // BCC_CONTEXTMANAGER_H

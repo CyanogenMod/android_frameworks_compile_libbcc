@@ -101,7 +101,7 @@ bool CacheReader::checkFileSize() {
   mFileSize = stfile.st_size;
 
   if (mFileSize < (off_t)sizeof(OBCC_Header) ||
-      mFileSize < (off_t)BCC_CONTEXT_SIZE) {
+      mFileSize < (off_t)ContextManager::ContextSize) {
     LOGE("Cache file is too small to be correct.\n");
     return false;
   }
@@ -215,7 +215,8 @@ bool CacheReader::checkSectionOffsetAndSize() {
 #undef CHECK_SECTION_OFFSET
 
   if (mFileSize < mpHeader->context_offset ||
-      mFileSize < mpHeader->context_offset + BCC_CONTEXT_SIZE) {
+      mFileSize < (off_t)mpHeader->context_offset +
+                  (off_t)ContextManager::ContextSize) {
     LOGE("context section overflow.\n");
     return false;
   }
@@ -410,9 +411,10 @@ bool CacheReader::readFuncTable() {
 
 
 bool CacheReader::readContext() {
-  mpResult->mContext = allocateContext(mpHeader->context_cached_addr,
-                                      mFile->getFD(),
-                                      mpHeader->context_offset);
+  mpResult->mContext =
+    ContextManager::get().allocateContext(mpHeader->context_cached_addr,
+                                          mFile->getFD(),
+                                          mpHeader->context_offset);
 
   if (!mpResult->mContext) {
     // Unable to allocate at cached address.  Give up.
@@ -431,7 +433,7 @@ bool CacheReader::checkContext() {
   uint32_t sum = mpHeader->context_parity_checksum;
   uint32_t *ptr = reinterpret_cast<uint32_t *>(mpResult->mContext);
 
-  for (size_t i = 0; i < BCC_CONTEXT_SIZE / sizeof(uint32_t); ++i) {
+  for (size_t i = 0; i < ContextManager::ContextSize / sizeof(uint32_t); ++i) {
     sum ^= *ptr++;
   }
 

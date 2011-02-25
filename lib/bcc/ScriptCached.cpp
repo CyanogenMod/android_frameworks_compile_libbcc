@@ -30,7 +30,7 @@ namespace bcc {
 ScriptCached::~ScriptCached() {
   // Deallocate the bcc script context
   if (mContext) {
-    deallocateContext(mContext);
+    ContextManager::get().deallocateContext(mContext);
   }
 
   // Deallocate string pool, exported var list, exported func list

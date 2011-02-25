@@ -27,7 +27,7 @@ namespace bcc {
 ScriptCompiled::~ScriptCompiled() {
   // Deallocate the BCC context
   if (mContext) {
-    deallocateContext(mContext);
+    ContextManager::get().deallocateContext(mContext);
   }
 
   // Delete the emitted function information

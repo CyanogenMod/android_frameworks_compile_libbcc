@@ -32,9 +32,9 @@
 namespace bcc {
 
 
-const unsigned int MaxCodeSize = BCC_CONTEXT_CODE_SIZE;
+const unsigned int MaxCodeSize = ContextManager::ContextCodeSize;
 const unsigned int MaxGOTSize = 1 * 1024;
-const unsigned int MaxGlobalVarSize = BCC_CONTEXT_DATA_SIZE;
+const unsigned int MaxGlobalVarSize = ContextManager::ContextDataSize;
 
 
 CodeMemoryManager::CodeMemoryManager()
@@ -43,7 +43,7 @@ CodeMemoryManager::CodeMemoryManager()
   reset();
   std::string ErrMsg;
 
-  mpCodeMem = allocateContext();
+  mpCodeMem = ContextManager::get().allocateContext();
 
   if (!mpCodeMem) {
     LOGE("Unable to allocate mpCodeMem\n");
