@@ -204,7 +204,7 @@ LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES) \
-  helper/logd_write.c
+  helper/DebugHelper.c
 
 LOCAL_STATIC_LIBRARIES := \
   libcutils \
