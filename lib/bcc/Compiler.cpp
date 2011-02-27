@@ -116,12 +116,15 @@ void Compiler::GlobalInitialization() {
   // Set Triple, CPU and Features here
   Triple = TARGET_TRIPLE_STRING;
 
-  // TODO(sliao): NEON for JIT
-  // Features.push_back("+neon");
-  // Features.push_back("+vmlx");
-  // Features.push_back("+neonfp");
   Features.push_back("+vfp3");
   Features.push_back("+d16");
+
+  // NOTE: Currently, we have to turn off the support for NEON explicitly.
+  // Since the ARMCodeEmitter.cpp is not ready for JITing NEON
+  // instructions.
+  Features.push_back("-neon"); // TODO(sliao): NEON for JIT
+  Features.push_back("-neonfp");
+  Features.push_back("-vmlx");
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMTargetInfo();
