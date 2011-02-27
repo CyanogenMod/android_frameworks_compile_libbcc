@@ -168,7 +168,7 @@ void ContextManager::deallocateContext(char *addr) {
 }
 
 
-bool ContextManager::isManagingContext(char *addr) {
+bool ContextManager::isManagingContext(char *addr) const {
   ssize_t slot = getSlotIndexFromAddress(addr);
 
   if (slot < 0) {

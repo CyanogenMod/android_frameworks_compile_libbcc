@@ -45,7 +45,7 @@ namespace bcc {
 
   private:
     // Mutex lock for context slot occupation table
-    llvm::sys::Mutex mContextSlotOccupiedLock;
+    mutable llvm::sys::Mutex mContextSlotOccupiedLock;
 
     // Context slot occupation table
     bool mContextSlotOccupied[ContextSlotCount];
@@ -61,7 +61,7 @@ namespace bcc {
     char *allocateContext(char *addr, int imageFd, off_t imageOffset);
     void deallocateContext(char *addr);
 
-    bool isManagingContext(char *addr);
+    bool isManagingContext(char *addr) const;
 
   private:
     static ssize_t getSlotIndexFromAddress(char *addr);
