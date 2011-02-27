@@ -333,7 +333,6 @@ FN_FUNC_FN(asinh)
 extern float __attribute__((overloadable)) asinpi(float v) {
     return asin(v) / M_PI;
 }
-extern float __attribute__((overloadable)) asinpi(float v);
 FN_FUNC_FN(asinpi)
 
 extern float __attribute__((overloadable)) atan(float);
