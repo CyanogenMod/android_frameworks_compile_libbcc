@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include "Compiler.h"
 
 #include "Config.h"
 
 #include "ContextManager.h"
+#include "DebugHelper.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
 

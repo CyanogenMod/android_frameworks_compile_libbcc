@@ -19,7 +19,7 @@
 
 #include "Config.h"
 
-#include <stdint.h>
+#include <stddef.h>
 
 namespace bcc {
 #if USE_LIBBCC_SHA1SUM

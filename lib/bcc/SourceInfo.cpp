@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include "SourceInfo.h"
 
 #if USE_CACHE
@@ -24,6 +21,7 @@
 #include "CacheWriter.h"
 #endif
 
+#include "DebugHelper.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
 

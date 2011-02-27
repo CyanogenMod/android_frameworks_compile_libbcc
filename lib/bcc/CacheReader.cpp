@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include "CacheReader.h"
 
 #include "ContextManager.h"
+#include "DebugHelper.h"
 #include "FileHandle.h"
 #include "ScriptCached.h"
 

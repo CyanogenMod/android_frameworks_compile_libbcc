@@ -14,10 +14,9 @@
  * limitations under the license.
  */
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include "ContextManager.h"
+
+#include "DebugHelper.h"
 
 #include <llvm/System/Mutex.h>
 #include <llvm/Support/MutexGuard.h>

@@ -18,6 +18,7 @@
 #define ANDROID_BCC_BCC_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*-------------------------------------------------------------------------*/
 

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include "FileHandle.h"
+
+#include "DebugHelper.h"
 
 #include <errno.h>
 #include <fcntl.h>

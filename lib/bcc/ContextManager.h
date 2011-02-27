@@ -21,6 +21,7 @@
 
 #include <llvm/System/Mutex.h>
 
+#include <unistd.h>
 #include <stddef.h>
 
 

@@ -13,6 +13,10 @@
 
 #define USE_LIBBCC_SHA1SUM 1
 
+#define USE_LOGGER 1
+
+#define USE_FUNC_LOGGER 0
+
 //---------------------------------------------------------------------------
 // Configuration for ContextManager
 //---------------------------------------------------------------------------

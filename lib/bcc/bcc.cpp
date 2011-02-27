@@ -17,15 +17,13 @@
 // Bitcode compiler (bcc) for Android:
 //    This is an eager-compilation JIT running on Android.
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include <bcc/bcc.h>
 #include "bcc_internal.h"
 
 #include "Config.h"
 
 #include "Compiler.h"
+#include "DebugHelper.h"
 #include "Script.h"
 
 #include <utils/StopWatch.h>
@@ -33,24 +31,6 @@
 using namespace bcc;
 
 char const libbcc_build_time[24] = __DATE__ " " __TIME__;
-
-namespace bcc {
-  class FuncLogger {
-  private:
-    char const *mFuncName;
-
-  public:
-    FuncLogger(char const *name) : mFuncName(name) {
-      // LOGI("---> BEGIN: libbcc [ %s ]\n", name);
-    }
-
-    ~FuncLogger() {
-      // LOGI("---> END: libbcc [ %s ]\n", mFuncName);
-    }
-  };
-
-#define BCC_FUNC_LOGGER() bcc::FuncLogger XX__funcLogger(__FUNCTION__)
-} // namespace bcc
 
 
 namespace llvm {

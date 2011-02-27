@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "bcc"
-#include <cutils/log.h>
-
 #include "ScriptCompiled.h"
 
 #include "bcc_internal.h"
 #include "ContextManager.h"
+#include "DebugHelper.h"
 
 namespace bcc {
 
