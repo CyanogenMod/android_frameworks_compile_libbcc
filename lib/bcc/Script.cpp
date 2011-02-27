@@ -323,7 +323,9 @@ int Script::internalCompile() {
       writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
       for (size_t i = 0; i < 2; ++i) {
-        mSourceList[i]->introDependency(writer);
+        if (mSourceList[i]) {
+          mSourceList[i]->introDependency(writer);
+        }
       }
 
       // libRS is threadable dirty hack
