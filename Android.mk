@@ -41,6 +41,7 @@ libbcc_SRC_FILES := \
   lib/bcc/ContextManager.cpp \
   lib/bcc/FileHandle.cpp \
   lib/bcc/Runtime.c \
+  lib/bcc/RuntimeStub.c \
   lib/bcc/Script.cpp \
   lib/bcc/ScriptCompiled.cpp \
   lib/bcc/SourceInfo.cpp

@@ -57,7 +57,7 @@ DEF_LLVM_RUNTIME(__addvsi3)
   DEF_GENERIC_RUNTIME(__aeabi_f2d)
   DEF_GENERIC_RUNTIME(__aeabi_f2iz)
   DEF_GENERIC_RUNTIME(__aeabi_f2lz)
-//DEF_GENERIC_RUNTIME(__aeabi_f2uiz) // TODO: Missing from libgcc.
+  DEF_GENERIC_RUNTIME(__aeabi_f2uiz)
   DEF_GENERIC_RUNTIME(__aeabi_f2ulz)
   DEF_GENERIC_RUNTIME(__aeabi_fadd)
   DEF_GENERIC_RUNTIME(__aeabi_fcmpeq)
@@ -187,7 +187,6 @@ DEF_VFP_RUNTIME(__ltsf2)
 DEF_GENERIC_OR_VFP_RUNTIME(__muldf3)
 #if !defined(__i386__)
     DEF_LLVM_RUNTIME(__muldi3)
-    DEF_LLVM_RUNTIME(__muldsi3)
 #endif
 
 #ifndef ANDROID // no complex extension
