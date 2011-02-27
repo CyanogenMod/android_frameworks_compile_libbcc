@@ -34,24 +34,24 @@ libbcc_USE_LIBBCC_SHA1SUM := $(call libbcc_GET_CONFIG,USE_LIBBCC_SHA1SUM)
 # Source Files
 
 libbcc_SRC_FILES := \
-  lib/bcc/bcc.cpp \
+  lib/ExecutionEngine/bcc.cpp \
   lib/CodeGen/CodeEmitter.cpp \
   lib/CodeGen/CodeMemoryManager.cpp \
-  lib/bcc/Compiler.cpp \
-  lib/bcc/ContextManager.cpp \
-  lib/bcc/FileHandle.cpp \
-  lib/bcc/Runtime.c \
-  lib/bcc/RuntimeStub.c \
-  lib/bcc/Script.cpp \
-  lib/bcc/ScriptCompiled.cpp \
-  lib/bcc/SourceInfo.cpp
+  lib/ExecutionEngine/Compiler.cpp \
+  lib/ExecutionEngine/ContextManager.cpp \
+  lib/ExecutionEngine/FileHandle.cpp \
+  lib/ExecutionEngine/Runtime.c \
+  lib/ExecutionEngine/RuntimeStub.c \
+  lib/ExecutionEngine/Script.cpp \
+  lib/ExecutionEngine/ScriptCompiled.cpp \
+  lib/ExecutionEngine/SourceInfo.cpp
 
 ifeq ($(libbcc_USE_CACHE),1)
 libbcc_SRC_FILES += \
-  lib/bcc/CacheReader.cpp \
-  lib/bcc/CacheWriter.cpp \
-  lib/bcc/ScriptCached.cpp \
-  lib/bcc/Sha1Helper.cpp \
+  lib/ExecutionEngine/CacheReader.cpp \
+  lib/ExecutionEngine/CacheWriter.cpp \
+  lib/ExecutionEngine/ScriptCached.cpp \
+  lib/ExecutionEngine/Sha1Helper.cpp \
   helper/sha1.c
 endif
 
@@ -159,7 +159,7 @@ LOCAL_STATIC_LIBRARIES += \
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
 LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/lib/bcc \
+  $(LOCAL_PATH)/lib/ExecutionEngine \
   $(LOCAL_PATH)/lib/CodeGen \
   $(LOCAL_PATH)/helper \
   $(LOCAL_PATH)/include \
@@ -235,7 +235,7 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_LDLIBS := -ldl -lpthread
 
 LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/lib/bcc \
+  $(LOCAL_PATH)/lib/ExecutionEngine \
   $(LOCAL_PATH)/lib/CodeGen \
   $(LOCAL_PATH)/helper \
   $(LOCAL_PATH)/include \
