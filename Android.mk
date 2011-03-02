@@ -174,7 +174,8 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
     ifeq ($(TARGET_ARCH),x86)
       LOCAL_STATIC_LIBRARIES += \
         libLLVMX86Disassembler \
-        libLLVMX86AsmPrinter
+        libLLVMX86AsmPrinter \
+        libLLVMX86InstPrinter
     else
       $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
     endif
@@ -260,6 +261,7 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMARMAsmPrinter \
   libLLVMX86Disassembler \
   libLLVMX86AsmPrinter \
+  libLLVMX86InstPrinter \
   libLLVMMCParser \
   $(LOCAL_STATIC_LIBRARIES)
 endif
