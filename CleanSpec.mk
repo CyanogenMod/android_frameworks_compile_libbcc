@@ -46,6 +46,7 @@
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES/libbcc_intermediates)
 $(call add-clean-step, rm -rf $(HOST_OUT)/obj/SHARED_LIBRARIES/libbcc_intermediates)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/lib/libruntime.bc)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES/libclcore.bc_intermediates)
 
 
 # ************************************************
