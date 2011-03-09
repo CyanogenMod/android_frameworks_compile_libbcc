@@ -54,7 +54,7 @@
 #include "llvm/Support/MemoryObject.h"
 #endif
 
-#include "llvm/System/Host.h"
+#include "llvm/Support/Host.h"
 
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"

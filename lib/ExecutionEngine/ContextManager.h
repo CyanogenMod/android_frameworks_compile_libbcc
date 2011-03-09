@@ -19,7 +19,7 @@
 
 #include <Config.h>
 
-#include <llvm/System/Mutex.h>
+#include <llvm/Support/Mutex.h>
 
 #include <unistd.h>
 #include <stddef.h>

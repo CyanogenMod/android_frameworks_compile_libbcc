@@ -18,7 +18,7 @@
 
 #include "DebugHelper.h"
 
-#include <llvm/System/Mutex.h>
+#include <llvm/Support/Mutex.h>
 #include <llvm/Support/MutexGuard.h>
 
 #include <errno.h>

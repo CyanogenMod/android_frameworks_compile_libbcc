@@ -31,6 +31,7 @@
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/system_error.h>
 
 #include <stddef.h>
 #include <string.h>
@@ -146,10 +147,9 @@ int SourceInfo::prepareModule(ScriptCompiled *SC) {
 
   case SourceKind::File:
     {
-      llvm::OwningPtr<llvm::MemoryBuffer> MEM(
-        llvm::MemoryBuffer::getFile(file.path));
+      llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
-      if (!MEM.get()) {
+      if (llvm::error_code ec = llvm::MemoryBuffer::getFile(file.path, MEM)) {
         LOGE("Unable to MemoryBuffer::getFile(path=%s)\n", file.path);
         return 1;
       }

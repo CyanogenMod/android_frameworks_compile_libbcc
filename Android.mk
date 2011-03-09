@@ -153,7 +153,6 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMTransformUtils \
   libLLVMCore \
   libLLVMSupport \
-  libLLVMSystem \
   libLLVMAnalysis
 
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
@@ -174,8 +173,7 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
     ifeq ($(TARGET_ARCH),x86)
       LOCAL_STATIC_LIBRARIES += \
         libLLVMX86Disassembler \
-        libLLVMX86AsmPrinter \
-        libLLVMX86InstPrinter
+        libLLVMX86AsmPrinter
     else
       $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
     endif
@@ -192,7 +190,7 @@ LOCAL_REQUIRED_MODULES := libclcore.bc
 # and reduces the size of libbcc.so by about 800k.
 # As libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2,
 # use below instead.
-LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMSystem:libLLVMAnalysis
+LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
@@ -230,7 +228,6 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMTransformUtils \
   libLLVMCore \
   libLLVMSupport \
-  libLLVMSystem \
   libLLVMAnalysis
 
 LOCAL_LDLIBS := -ldl -lpthread
@@ -261,7 +258,6 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMARMAsmPrinter \
   libLLVMX86Disassembler \
   libLLVMX86AsmPrinter \
-  libLLVMX86InstPrinter \
   libLLVMMCParser \
   $(LOCAL_STATIC_LIBRARIES)
 endif
