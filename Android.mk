@@ -16,6 +16,8 @@
 
 ifneq ($(TARGET_SIMULATOR),true)
 
+local_cflags_for_libbcc := -Wall -Werror
+
 LOCAL_PATH := $(call my-dir)
 
 LLVM_ROOT_PATH := external/llvm
@@ -62,6 +64,7 @@ include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS += $(local_cflags_for_libbcc)
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES)
 
@@ -202,6 +205,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS += $(local_cflags_for_libbcc)
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES) \
   helper/DebugHelper.c
