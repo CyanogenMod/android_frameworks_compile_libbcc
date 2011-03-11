@@ -131,7 +131,8 @@ else
   ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
     LOCAL_STATIC_LIBRARIES := \
       libLLVMX86CodeGen \
-      libLLVMX86Info
+      libLLVMX86Info \
+      libLLVMX86Utils
   else
     $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
   endif
