@@ -212,6 +212,7 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMX86CodeGen \
   libLLVMX86Info \
   libLLVMX86Utils \
+  libLLVMX86AsmPrinter \
   libLLVMARMCodeGen \
   libLLVMARMInfo \
   libLLVMBitReader \
@@ -259,7 +260,6 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMARMDisassembler \
   libLLVMARMAsmPrinter \
   libLLVMX86Disassembler \
-  libLLVMX86AsmPrinter \
   libLLVMMCParser \
   $(LOCAL_STATIC_LIBRARIES)
 endif
