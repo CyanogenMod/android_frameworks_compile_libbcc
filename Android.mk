@@ -211,6 +211,7 @@ LOCAL_STATIC_LIBRARIES := \
   libutils \
   libLLVMX86CodeGen \
   libLLVMX86Info \
+  libLLVMX86Utils \
   libLLVMARMCodeGen \
   libLLVMARMInfo \
   libLLVMBitReader \
