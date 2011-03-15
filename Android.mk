@@ -16,7 +16,7 @@
 
 ifneq ($(TARGET_SIMULATOR),true)
 
-local_cflags_for_libbcc := -Wall -Werror
+local_cflags_for_libbcc := -Wall #-Werror
 
 LOCAL_PATH := $(call my-dir)
 
