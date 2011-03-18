@@ -193,7 +193,7 @@ bool CacheReader::checkSectionOffsetAndSize() {
     }                                                                       \
                                                                             \
     if (offset % sizeof(int) != 0) {                                        \
-      LOGE(#NAME " offset must aligned to %d.\n", sizeof(int));             \
+      LOGE(#NAME " offset must aligned to %d.\n", (int)sizeof(int));        \
       return false;                                                         \
     }                                                                       \
                                                                             \
