@@ -16,7 +16,7 @@
 
 ifneq ($(TARGET_SIMULATOR),true)
 
-local_cflags_for_libbcc := -Wall #-Werror
+local_cflags_for_libbcc := -Wall -Wno-unused-parameter -Werror
 
 LOCAL_PATH := $(call my-dir)
 
@@ -247,7 +247,7 @@ LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)
 
 # definitions for LLVM
-LOCAL_CFLAGS += -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DDEBUG_CODEGEN=1
+LOCAL_CFLAGS += -DDEBUG_CODEGEN=1
 
 ifeq ($(TARGET_ARCH),arm)
   LOCAL_CFLAGS += -DFORCE_ARM_CODEGEN=1
