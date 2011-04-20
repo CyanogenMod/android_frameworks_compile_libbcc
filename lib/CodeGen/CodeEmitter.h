@@ -82,6 +82,8 @@ namespace bcc {
 
     CodeMemoryManager *mpMemMgr;
 
+    llvm::TargetMachine *mpTargetMachine;
+
     // The JITInfo for the target we are compiling to
     const llvm::Target *mpTarget;
 

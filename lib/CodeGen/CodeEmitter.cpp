@@ -1195,7 +1195,8 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
   if (mpDisassmbler == NULL)
     mpDisassmbler = mpTarget->createMCDisassembler();
   if (mpIP == NULL)
-    mpIP = mpTarget->createMCInstPrinter(mpAsmInfo->getAssemblerDialect(),
+    mpIP = mpTarget->createMCInstPrinter(*mpTargetMachine,
+                                         mpAsmInfo->getAssemblerDialect(),
                                          *mpAsmInfo);
 
   const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Start,
@@ -1235,6 +1236,8 @@ void CodeEmitter::Disassemble(const llvm::StringRef &Name,
 
 
 void CodeEmitter::setTargetMachine(llvm::TargetMachine &TM) {
+  mpTargetMachine = &TM;
+
   // Set Target
   mpTarget = &TM.getTarget();
   // Set TargetJITInfo
