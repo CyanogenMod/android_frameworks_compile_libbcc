@@ -15,6 +15,7 @@
 #define BCC_CODEEMITTER_H
 
 #include <bcc/bcc.h>
+#include <bcc/bcc_assert.h>
 #include <bcc/bcc_cache.h>
 #include "bcc_internal.h"
 
@@ -23,6 +24,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineRelocation.h"
 #include "llvm/CodeGen/JITCodeEmitter.h"
 #include "llvm/Support/ValueHandle.h"
@@ -31,7 +33,6 @@
 #include <vector>
 #include <set>
 
-#include <assert.h>
 #include <stdint.h>
 
 namespace llvm {
@@ -41,7 +42,6 @@ namespace llvm {
   class GlobalValue;
   class Function;
   class MachineBasicBlock;
-  class MachineConstantPool;
   class MachineFunction;
   class MachineJumpTableInfo;
   class MachineModuleInfo;
@@ -221,8 +221,8 @@ namespace bcc {
     // Return the address of the @Index entry in the constant pool that was
     // last emitted with the emitConstantPool method.
     virtual uintptr_t getConstantPoolEntryAddress(unsigned Index) const {
-      assert(Index < mpConstantPool->getConstants().size() &&
-             "Invalid constant pool index!");
+      bccAssert(Index < mpConstantPool->getConstants().size() &&
+                "Invalid constant pool index!");
       return mConstPoolAddresses[Index];
     }
 
@@ -238,7 +238,7 @@ namespace bcc {
     // Return the address of the specified LabelID, only usable after the
     // LabelID has been emitted.
     virtual uintptr_t getLabelAddress(llvm::MCSymbol *Label) const {
-      assert(mLabelLocations.count(Label) && "Label not emitted!");
+      bccAssert(mLabelLocations.count(Label) && "Label not emitted!");
       return mLabelLocations.find(Label)->second;
     }
 

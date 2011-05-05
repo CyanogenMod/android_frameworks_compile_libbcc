@@ -12,6 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 #define LOG_TAG "bcc"
+#include <bcc/bcc_assert.h>
+
 #include <cutils/log.h>
 
 #include "CodeMemoryManager.h"
@@ -21,7 +23,6 @@
 
 #include <sys/mman.h>
 
-#include <assert.h>
 #include <stddef.h>
 
 #include <map>
@@ -111,7 +112,7 @@ void CodeMemoryManager::setPoisonMemory(bool poison) {
 // If the current table requires a Global Offset Table, this method is
 // invoked to allocate it.  This method is required to set HasGOT to true.
 void CodeMemoryManager::AllocateGOT() {
-  assert(mpGOTBase != NULL && "Cannot allocate the GOT multiple times");
+  bccAssert(mpGOTBase != NULL && "Cannot allocate the GOT multiple times");
   mpGOTBase = allocateSGMemory(MaxGOTSize);
   HasGOT = true;
 }
@@ -149,19 +150,19 @@ uint8_t *CodeMemoryManager::startFunctionBody(const llvm::Function *F,
 void CodeMemoryManager::endFunctionBody(const llvm::Function *F,
                                         uint8_t *FunctionStart,
                                         uint8_t *FunctionEnd) {
-  assert(FunctionEnd > FunctionStart);
-  assert(FunctionStart == (getCodeMemBase() + mCurFuncMemIdx) &&
-         "Mismatched function start/end!");
+  bccAssert(FunctionEnd > FunctionStart);
+  bccAssert(FunctionStart == (getCodeMemBase() + mCurFuncMemIdx) &&
+            "Mismatched function start/end!");
 
   // Advance the pointer
   intptr_t FunctionCodeSize = FunctionEnd - FunctionStart;
-  assert(FunctionCodeSize <= getFreeCodeMemSize() &&
-         "Code size excess the limitation!");
+  bccAssert(FunctionCodeSize <= getFreeCodeMemSize() &&
+            "Code size excess the limitation!");
   mCurFuncMemIdx += FunctionCodeSize;
 
   // Record there's a function in our memory start from @FunctionStart
-  assert(mFunctionMap.find(F) == mFunctionMap.end() &&
-         "Function already emitted!");
+  bccAssert(mFunctionMap.find(F) == mFunctionMap.end() &&
+            "Function already emitted!");
   mFunctionMap.insert(
       std::make_pair<const llvm::Function*, std::pair<void*, void*> >(
           F, std::make_pair(FunctionStart, FunctionEnd)));
@@ -224,14 +225,14 @@ void CodeMemoryManager::deallocateFunctionBody(void *Body) {
     }
   }
 
-  assert((FunctionStart == NULL) && "Memory is never allocated!");
+  bccAssert((FunctionStart == NULL) && "Memory is never allocated!");
 
   // free the memory
   intptr_t SizeNeedMove = (getCodeMemBase() + mCurFuncMemIdx) - FunctionEnd;
 
-  assert(SizeNeedMove >= 0 &&
-         "Internal error: CodeMemoryManager::mCurFuncMemIdx may not"
-         " be correctly calculated!");
+  bccAssert(SizeNeedMove >= 0 &&
+            "Internal error: CodeMemoryManager::mCurFuncMemIdx may not"
+            " be correctly calculated!");
 
   if (SizeNeedMove > 0) {
     // there's data behind deallocating function

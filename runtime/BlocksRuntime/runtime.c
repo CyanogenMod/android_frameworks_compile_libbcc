@@ -490,7 +490,7 @@ static void _Block_destroy(const void *arg) {
     if (!arg) return;
     aBlock = (struct Block_layout *)arg;
     if (aBlock->flags & BLOCK_IS_GC) {
-        // assert(aBlock->Block_flags & BLOCK_HAS_CTOR);
+        // bccAssert(aBlock->Block_flags & BLOCK_HAS_CTOR);
         return; // ignore, we are being called because of a DTOR
     }
     _Block_release(aBlock);

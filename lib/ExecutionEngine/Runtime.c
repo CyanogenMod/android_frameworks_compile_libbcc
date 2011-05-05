@@ -16,9 +16,11 @@
 
 #include "RuntimeStub.h"
 
+#include <bcc/bcc_assert.h>
+
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 
 typedef struct {
   const char *mName;
@@ -79,7 +81,7 @@ void VerifyRuntimesTable() {
     int *Ptr = FindRuntimeFunction(Name);
 
     if (Ptr != (int*) gRuntimes[i].mPtr)
-      assert(false && "Table is corrupted (runtime name should be sorted in "
-                      "Runtime.def).");
+      bccAssert(false && "Table is corrupted (runtime name should be sorted "
+                         "in Runtime.def).");
   }
 }

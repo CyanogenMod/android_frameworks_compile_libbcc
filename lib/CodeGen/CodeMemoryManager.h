@@ -18,10 +18,11 @@
 
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 
+#include <bcc/bcc_assert.h>
+
 #include <map>
 #include <utility>
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -197,14 +198,16 @@ namespace bcc {
     // emit the exception table.
     virtual uint8_t *startExceptionTable(const llvm::Function *F,
                                          uintptr_t &ActualSize) {
-      assert(false && "Exception is not allowed in our language specification");
+      bccAssert(false &&
+                "Exception is not allowed in our language specification");
       return NULL;
     }
 
     // This method is called when the JIT is done emitting the exception table.
     virtual void endExceptionTable(const llvm::Function *F, uint8_t *TableStart,
                                    uint8_t *TableEnd, uint8_t *FrameRegister) {
-      assert(false && "Exception is not allowed in our language specification");
+      bccAssert(false &&
+                "Exception is not allowed in our language specification");
     }
 
     // Free the specified exception table's memory. The argument must be the
@@ -212,7 +215,8 @@ namespace bcc {
     // deallocated yet. This is never called when the JIT is currently emitting
     // an exception table.
     virtual void deallocateExceptionTable(void *ET) {
-      assert(false && "Exception is not allowed in our language specification");
+      bccAssert(false &&
+                "Exception is not allowed in our language specification");
     }
 
     // Below are the methods we create

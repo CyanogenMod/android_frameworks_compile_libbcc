@@ -357,7 +357,7 @@ void CodeEmitter::GetConstantValue(const llvm::Constant *C,
         GetConstantValue(Op0, Result);
         if (PtrWidth != Result.IntVal.getBitWidth())
           Result.IntVal = Result.IntVal.zextOrTrunc(PtrWidth);
-        assert(Result.IntVal.getBitWidth() <= 64 && "Bad pointer width");
+        bccAssert(Result.IntVal.getBitWidth() <= 64 && "Bad pointer width");
 
         Result.PointerVal =
             llvm::PointerTy(
@@ -371,7 +371,7 @@ void CodeEmitter::GetConstantValue(const llvm::Constant *C,
 
         switch (Op0->getType()->getTypeID()) {
           case llvm::Type::IntegerTyID: {
-            assert(DestTy->isFloatingPointTy() && "invalid bitcast");
+            bccAssert(DestTy->isFloatingPointTy() && "invalid bitcast");
             if (DestTy->isFloatTy())
               Result.FloatVal = Result.IntVal.bitsToFloat();
             else if (DestTy->isDoubleTy())
@@ -379,17 +379,17 @@ void CodeEmitter::GetConstantValue(const llvm::Constant *C,
             break;
           }
           case llvm::Type::FloatTyID: {
-            assert(DestTy->isIntegerTy(32) && "Invalid bitcast");
+            bccAssert(DestTy->isIntegerTy(32) && "Invalid bitcast");
             Result.IntVal.floatToBits(Result.FloatVal);
             break;
           }
           case llvm::Type::DoubleTyID: {
-            assert(DestTy->isIntegerTy(64) && "Invalid bitcast");
+            bccAssert(DestTy->isIntegerTy(64) && "Invalid bitcast");
             Result.IntVal.doubleToBits(Result.DoubleVal);
             break;
           }
           case llvm::Type::PointerTyID: {
-            assert(DestTy->isPointerTy() && "Invalid bitcast");
+            bccAssert(DestTy->isPointerTy() && "Invalid bitcast");
             break;  // getConstantValue(Op0) above already converted it
           }
           default: {
@@ -617,7 +617,7 @@ void CodeEmitter::GetConstantValue(const llvm::Constant *C,
           break;
         }
         case llvm::Value::BlockAddressVal: {
-          assert(false && "JIT does not support address-of-label yet!");
+          bccAssert(false && "JIT does not support address-of-label yet!");
         }
         default: {
           llvm_unreachable("Unknown constant pointer type!");
@@ -646,7 +646,7 @@ void CodeEmitter::StoreValueToMemory(const llvm::GenericValue &Val,
   switch (Ty->getTypeID()) {
     case llvm::Type::IntegerTyID: {
       const llvm::APInt &IntVal = Val.IntVal;
-      assert(((IntVal.getBitWidth() + 7) / 8 >= StoreBytes) &&
+      bccAssert(((IntVal.getBitWidth() + 7) / 8 >= StoreBytes) &&
           "Integer too small!");
 
       const uint8_t *Src =
@@ -851,9 +851,9 @@ void CodeEmitter::emitJumpTableInfo(llvm::MachineJumpTableInfo *MJTI) {
   if (JT.empty() || mpJumpTableBase == 0)
     return;
 
-  assert(llvm::TargetMachine::getRelocationModel() == llvm::Reloc::Static &&
-         (MJTI->getEntrySize(*mpTD) == sizeof(mpTD /* a pointer type */)) &&
-         "Cross JIT'ing?");
+  bccAssert(llvm::TargetMachine::getRelocationModel() == llvm::Reloc::Static &&
+            (MJTI->getEntrySize(*mpTD) == sizeof(mpTD /* a pointer type */)) &&
+            "Cross JIT'ing?");
 
   // For each jump table, map each target in the jump table to the
   // address of an emitted MachineBasicBlock.
@@ -946,7 +946,7 @@ void *CodeEmitter::GetPointerToGlobal(llvm::GlobalValue *V,
           break;
         }
         case llvm::Value::GlobalAliasVal: {
-          assert(false && "Alias should be resolved ultimately!");
+          bccAssert(false && "Alias should be resolved ultimately!");
         }
       }
       break;
@@ -1015,8 +1015,8 @@ void *CodeEmitter::GetPointerToFunction(const llvm::Function *F,
   if (Addr)
     return Addr;
 
-  assert((F->isDeclaration() || F->hasAvailableExternallyLinkage()) &&
-         "Internal error: only external defined function routes here!");
+  bccAssert((F->isDeclaration() || F->hasAvailableExternallyLinkage()) &&
+            "Internal error: only external defined function routes here!");
 
   // Handle the failure resolution by ourselves.
   Addr = GetPointerToNamedSymbol(F->getName().str().c_str(),
@@ -1245,7 +1245,7 @@ void CodeEmitter::setTargetMachine(llvm::TargetMachine &TM) {
   // set TargetData
   mpTD = TM.getTargetData();
 
-  assert(!mpTJI->needsGOT() && "We don't support GOT needed target!");
+  bccAssert(!mpTJI->needsGOT() && "We don't support GOT needed target!");
 
   return;
 }
@@ -1355,7 +1355,7 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
           ResultPtr =
              (void*) getConstantPoolEntryAddress(MR.getConstantPoolIndex());
         } else {
-          assert(MR.isJumpTableIndex() && "Unknown type of relocation");
+          bccAssert(MR.isJumpTableIndex() && "Unknown type of relocation");
           ResultPtr =
               (void*) getJumpTableEntryAddress(MR.getJumpTableIndex());
         }
@@ -1441,7 +1441,7 @@ void CodeEmitter::startGVStub(void *Buffer, unsigned StubSize) {
 
 
 void CodeEmitter::finishGVStub() {
-  assert(CurBufferPtr != BufferEnd && "Stub overflowed allocated space.");
+  bccAssert(CurBufferPtr != BufferEnd && "Stub overflowed allocated space.");
 
   // restore
   BufferBegin = mpSavedBufferBegin;
@@ -1487,7 +1487,7 @@ uintptr_t CodeEmitter::getJumpTableEntryAddress(unsigned Index) const {
   const std::vector<llvm::MachineJumpTableEntry> &JT =
       mpJumpTable->getJumpTables();
 
-  assert((Index < JT.size()) && "Invalid jump table index!");
+  bccAssert((Index < JT.size()) && "Invalid jump table index!");
 
   unsigned int Offset = 0;
   unsigned int EntrySize = mpJumpTable->getEntrySize(*mpTD);
@@ -1504,9 +1504,9 @@ uintptr_t CodeEmitter::getJumpTableEntryAddress(unsigned Index) const {
 // the label for the MBB has been emitted.
 uintptr_t CodeEmitter::getMachineBasicBlockAddress(
                                         llvm::MachineBasicBlock *MBB) const {
-  assert(mMBBLocations.size() > (unsigned) MBB->getNumber() &&
-         mMBBLocations[MBB->getNumber()] &&
-         "MBB not emitted!");
+  bccAssert(mMBBLocations.size() > (unsigned) MBB->getNumber() &&
+            mMBBLocations[MBB->getNumber()] &&
+            "MBB not emitted!");
   return mMBBLocations[MBB->getNumber()];
 }
 
@@ -1522,8 +1522,8 @@ void CodeEmitter::updateFunctionStub(const llvm::Function *F) {
 
   void *Addr = GetPointerToGlobalIfAvailable(F);
 
-  assert(Addr != Stub &&
-         "Function must have non-stub address to be updated.");
+  bccAssert(Addr != Stub &&
+            "Function must have non-stub address to be updated.");
 
   // Tell the target jit info to rewrite the stub at the specified address,
   // rather than creating a new one.

@@ -17,6 +17,9 @@
 ifneq ($(TARGET_SIMULATOR),true)
 
 local_cflags_for_libbcc := -Wall -Wno-unused-parameter -Werror
+ifneq ($(TARGET_BUILD_VARIANT),eng)
+local_cflags_for_libbcc += -D__DISABLE_ASSERTS
+endif
 
 LOCAL_PATH := $(call my-dir)
 

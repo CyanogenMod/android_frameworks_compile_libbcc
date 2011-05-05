@@ -521,8 +521,8 @@ int Compiler::compile() {
       varList.push_back(NULL);
     }
 
-    assert((varList.size() == ExportVarMetadata->getNumOperands()) &&
-           "Number of slots doesn't match the number of export variables!");
+    bccAssert((varList.size() == ExportVarMetadata->getNumOperands()) &&
+              "Number of slots doesn't match the number of export variables!");
   }
 
   if (ExportFuncMetadata) {
