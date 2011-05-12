@@ -178,7 +178,11 @@ int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
   }
 #endif
 
-  return internalCompile();
+  int status = internalCompile();
+  if (status != 0) {
+    LOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+  }
+  return status;
 }
 
 
