@@ -44,6 +44,7 @@
 #include "llvm/Target/TargetSelect.h"
 
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/MemoryBuffer.h"
 
 #include "llvm/GlobalValue.h"
@@ -243,6 +244,32 @@ Compiler::Compiler(ScriptCompiled *result)
 }
 
 
+int Compiler::getFilePath(char *filePath) {
+  char outStr[256];
+  char *replaceStr;
+
+  strcpy(outStr, mResName);
+  LOGE("outStr = %s\n", outStr);
+
+  // For example, if mResName is "com.android.balls:raw/balls",
+  // filePath will be "/data/data/com.android.balls/ELF_balls.o".
+  //
+  replaceStr = strstr(outStr, ":raw/");
+  if (replaceStr) {
+    strncpy(replaceStr, "_ELF_", 5);
+  } else {
+    LOGE("Ill formatted resource name\n");
+    return 1;
+  }
+
+  strcpy(filePath, "/data/local/tmp/");
+  strcat(filePath, outStr);
+  strcat(filePath, ".o");
+
+  return 0;
+}
+
+
 llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
   llvm::Module *result = llvm::ParseBitcodeFile(MEM, *mContext, &mError);
 
@@ -273,7 +300,33 @@ int Compiler::compile() {
   const llvm::Target *Target;
   std::string FeaturesStr;
 
+#if CLASSIC_JIT
   llvm::FunctionPassManager *CodeGenPasses = NULL;
+#endif
+
+#if MC_ASSEMBLER
+  bool RelaxAll = true;
+  llvm::PassManager MCCodeGenPasses;
+
+  char ObjectPath[512];
+  if (getFilePath(ObjectPath)) {
+    LOGE("Fail to create ObjectPath");
+    return 1;
+  }
+
+  int Fd = -1;
+  Fd = open(ObjectPath, O_CREAT | O_RDWR | O_TRUNC);
+  //            S_IRUSR , S_IWUSR , S_IRGRP , S_IROTH /* 0644 */);
+
+  if (Fd < 0) {
+    LOGE("Fail to open file '%s'", ObjectPath);
+    return 1;
+  }
+
+  llvm::raw_fd_ostream OutFdOS(Fd, /* shouldClose= */ false);
+  OutFdOS.seek(0);
+  llvm::formatted_raw_ostream OutFOS(OutFdOS);
+#endif
 
   const llvm::NamedMDNode *PragmaMetadata;
   const llvm::NamedMDNode *ExportVarMetadata;
@@ -465,6 +518,7 @@ int Compiler::compile() {
     LTOPasses.run(*mModule);
   }
 
+#if CLASSIC_JIT
   // Create code-gen pass to run the code emitter
   CodeGenPasses = new llvm::FunctionPassManager(mModule);
   CodeGenPasses->add(TD);  // Will take the ownership of TD
@@ -488,7 +542,22 @@ int Compiler::compile() {
   }
 
   CodeGenPasses->doFinalization();
+#endif
 
+#if MC_ASSEMBLER
+  TM->setMCRelaxAll(RelaxAll);
+
+  MCCodeGenPasses.add(new llvm::TargetData(*TD));
+
+  if (TM->addPassesToEmitFile(MCCodeGenPasses, OutFOS,
+                              llvm::TargetMachine::CGFT_ObjectFile,
+                              CodeGenOptLevel)) {
+    setError("Fail to add passes to emit file");
+    goto on_bcc_compile_error;
+  }
+
+  MCCodeGenPasses.run(*mModule);
+#endif
   // Copy the global address mapping from code emitter and remapping
   if (ExportVarMetadata) {
     ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;

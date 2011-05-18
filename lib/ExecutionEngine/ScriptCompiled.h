@@ -66,6 +66,11 @@ namespace bcc {
 
     ~ScriptCompiled();
 
+    void setResName(char const *resName) {
+      mCompiler.setResName(resName);
+      return;
+    }
+
     llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM) {
       return mCompiler.parseBitcodeFile(MEM);
     }

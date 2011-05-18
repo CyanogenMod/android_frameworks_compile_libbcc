@@ -76,6 +76,15 @@ int Script::addSourceBC(size_t idx,
                         const char *bitcode,
                         size_t bitcodeSize,
                         unsigned long flags) {
+
+  if (!resName) {
+    mErrorCode = BCC_INVALID_VALUE;
+    LOGE("Invalid argument: resName = NULL\n");
+    return 1;
+  }
+
+  mResName = resName;
+
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
@@ -288,6 +297,8 @@ int Script::internalCompile() {
       return 1;
     }
   }
+
+  mCompiled->setResName(mResName);
 
   // Compile and JIT the code
   if (mCompiled->compile() != 0) {

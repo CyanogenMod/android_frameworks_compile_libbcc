@@ -79,6 +79,8 @@ namespace bcc {
 
 
   private:
+    const char *mResName;
+
     ScriptCompiled *mpResult;
 
     std::string mError;
@@ -102,6 +104,11 @@ namespace bcc {
 
     static void GlobalInitialization();
 
+    void setResName(const char *resName) {
+      mResName = resName;
+      return;
+    }
+
     void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
       mpSymbolLookupFn = pFn;
       mpSymbolLookupContext = pContext;
@@ -110,6 +117,8 @@ namespace bcc {
     CodeMemoryManager *createCodeMemoryManager();
 
     CodeEmitter *createCodeEmitter();
+
+    int getFilePath(char *ObjectPath);
 
     llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM);
 
