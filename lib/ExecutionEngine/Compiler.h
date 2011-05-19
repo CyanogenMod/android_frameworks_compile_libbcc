@@ -118,7 +118,7 @@ namespace bcc {
 
     CodeEmitter *createCodeEmitter();
 
-    int getFilePath(char *ObjectPath);
+    bool getObjPath(std::string &objPath);
 
     llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM);
 

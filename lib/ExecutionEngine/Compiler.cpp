@@ -244,29 +244,26 @@ Compiler::Compiler(ScriptCompiled *result)
 }
 
 
-int Compiler::getFilePath(char *filePath) {
-  char outStr[256];
-  char *replaceStr;
+#define TOKEN_RAW ":raw"
+#define TOKEN_RAW_LEN 4
 
-  strcpy(outStr, mResName);
-  LOGE("outStr = %s\n", outStr);
-
-  // For example, if mResName is "com.android.balls:raw/balls",
-  // filePath will be "/data/data/com.android.balls/ELF_balls.o".
-  //
-  replaceStr = strstr(outStr, ":raw/");
-  if (replaceStr) {
-    strncpy(replaceStr, "_ELF_", 5);
-  } else {
-    LOGE("Ill formatted resource name\n");
-    return 1;
+// input objPath: For example, com.example.android.rs.fountain:raw/fountain
+// output objPath:  /data/data/com.example.android.rs.fountain/cache/fountain.o
+//
+bool Compiler::getObjPath(std::string &objPath) {
+  size_t found = objPath.find(TOKEN_RAW);
+  if (found == string::npos) {
+    LOGE("Ill formatted resource name '%s'. The name should contain :raw/",
+         objPath.c_str());
+    return false;
   }
 
-  strcpy(filePath, "/data/local/tmp/");
-  strcat(filePath, outStr);
-  strcat(filePath, ".o");
+  objPath.replace(found, TOKEN_RAW_LEN, "/cache");
 
-  return 0;
+  objPath.append(".o");
+  objPath.insert(0, "/data/data/");
+  LOGV("objPath = %s", objPath.c_str());
+  return true;
 }
 
 
@@ -308,18 +305,19 @@ int Compiler::compile() {
   bool RelaxAll = true;
   llvm::PassManager MCCodeGenPasses;
 
-  char ObjectPath[512];
-  if (getFilePath(ObjectPath)) {
-    LOGE("Fail to create ObjectPath");
+  std::string objPath(mResName);
+
+  if (!getObjPath(objPath)) {
+    LOGE("Fail to create objPath");
     return 1;
   }
 
   int Fd = -1;
-  Fd = open(ObjectPath, O_CREAT | O_RDWR | O_TRUNC);
-  //            S_IRUSR , S_IWUSR , S_IRGRP , S_IROTH /* 0644 */);
+  Fd = open(objPath.c_str(), O_CREAT | O_RDWR | O_TRUNC,
+            S_IRUSR , S_IWUSR , S_IRGRP , S_IROTH /* 0644 */);
 
   if (Fd < 0) {
-    LOGE("Fail to open file '%s'", ObjectPath);
+    LOGE("Fail to open file '%s'", objPath.c_str());
     return 1;
   }
 
