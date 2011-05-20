@@ -83,8 +83,6 @@ int Script::addSourceBC(size_t idx,
     return 1;
   }
 
-  mResName = resName;
-
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
@@ -298,7 +296,7 @@ int Script::internalCompile() {
     }
   }
 
-  mCompiled->setResName(mResName);
+  mCompiled->setCachePath(mCachePath);
 
   // Compile and JIT the code
   if (mCompiled->compile() != 0) {

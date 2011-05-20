@@ -58,8 +58,6 @@ namespace bcc {
 
     char const *mCachePath;
 
-    char const *mResName;
-
     bool mIsContextSlotNotAvail;
 
     // Source List

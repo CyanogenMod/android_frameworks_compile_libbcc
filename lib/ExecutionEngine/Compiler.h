@@ -79,7 +79,7 @@ namespace bcc {
 
 
   private:
-    const char *mResName;
+    const char *mCachePath;
 
     ScriptCompiled *mpResult;
 
@@ -104,8 +104,8 @@ namespace bcc {
 
     static void GlobalInitialization();
 
-    void setResName(const char *resName) {
-      mResName = resName;
+    void setCachePath(const char *cachePath) {
+      mCachePath = cachePath;
       return;
     }
 

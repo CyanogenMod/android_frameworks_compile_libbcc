@@ -66,8 +66,8 @@ namespace bcc {
 
     ~ScriptCompiled();
 
-    void setResName(char const *resName) {
-      mCompiler.setResName(resName);
+    void setCachePath(char const *cachePath) {
+      mCompiler.setCachePath(cachePath);
       return;
     }
 

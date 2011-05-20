@@ -244,24 +244,27 @@ Compiler::Compiler(ScriptCompiled *result)
 }
 
 
-#define TOKEN_RAW ":raw"
-#define TOKEN_RAW_LEN 4
-
-// input objPath: For example, com.example.android.rs.fountain:raw/fountain
-// output objPath:  /data/data/com.example.android.rs.fountain/cache/fountain.o
+// input objPath: For example,
+//                 /data/user/0/com.example.android.rs.fountain/cache/
+//                     @com.example.android.rs.fountain:raw@fountain.oBCC
+// output objPath: /data/user/0/com.example.android.rs.fountain/cache/
+//                     fountain.o
 //
 bool Compiler::getObjPath(std::string &objPath) {
-  size_t found = objPath.find(TOKEN_RAW);
-  if (found == string::npos) {
-    LOGE("Ill formatted resource name '%s'. The name should contain :raw/",
+  size_t found0 = objPath.find("@");
+  size_t found1 = objPath.rfind("@");
+
+  if (found0 == found1 ||
+      found0 == string::npos ||
+      found1 == string::npos) {
+    LOGE("Ill formatted resource name '%s'. The name should contain 2 @s",
          objPath.c_str());
     return false;
   }
 
-  objPath.replace(found, TOKEN_RAW_LEN, "/cache");
+  objPath.replace(found0, found1 - found0 + 1, "", 0);
+  objPath.resize(objPath.length() - 3);
 
-  objPath.append(".o");
-  objPath.insert(0, "/data/data/");
   LOGV("objPath = %s", objPath.c_str());
   return true;
 }
@@ -305,7 +308,7 @@ int Compiler::compile() {
   bool RelaxAll = true;
   llvm::PassManager MCCodeGenPasses;
 
-  std::string objPath(mResName);
+  std::string objPath(mCachePath);
 
   if (!getObjPath(objPath)) {
     LOGE("Fail to create objPath");
