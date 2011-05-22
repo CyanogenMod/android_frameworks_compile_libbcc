@@ -20,6 +20,7 @@
 
 #include "ContextManager.h"
 #include "DebugHelper.h"
+#include "FileHandle.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
 
@@ -316,9 +317,9 @@ int Compiler::compile() {
   }
 
   int Fd = -1;
-  Fd = open(objPath.c_str(), O_CREAT | O_RDWR | O_TRUNC,
-            S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH /* 0644 */);
+  FileHandle file;
 
+  Fd = file.open(objPath.c_str(), OpenMode::Write);
   if (Fd < 0) {
     LOGE("Fail to open file '%s'", objPath.c_str());
     return 1;
