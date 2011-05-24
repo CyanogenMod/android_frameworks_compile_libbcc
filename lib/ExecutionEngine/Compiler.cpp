@@ -256,8 +256,8 @@ bool Compiler::getObjPath(std::string &objPath) {
   size_t found1 = objPath.rfind("@");
 
   if (found0 == found1 ||
-      found0 == string::npos ||
-      found1 == string::npos) {
+      found0 == std::string::npos ||
+      found1 == std::string::npos) {
     LOGE("Ill formatted resource name '%s'. The name should contain 2 @s",
          objPath.c_str());
     return false;

@@ -229,7 +229,6 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMCodeGen \
   libLLVMLinker \
   libLLVMJIT \
-  libLLVMTarget \
   libLLVMMC \
   libLLVMScalarOpts \
   libLLVMInstCombine \
@@ -237,6 +236,7 @@ LOCAL_STATIC_LIBRARIES := \
   libLLVMipa \
   libLLVMTransformUtils \
   libLLVMCore \
+  libLLVMTarget \
   libLLVMSupport \
   libLLVMAnalysis
 

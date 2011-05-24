@@ -1392,7 +1392,7 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
   BufferBegin = CurBufferPtr = 0;
 
   if (F.getFunction()->hasName()) {
-    string const &name = F.getFunction()->getNameStr();
+    std::string const &name = F.getFunction()->getNameStr();
     mpResult->mEmittedFunctions[name] = mpCurEmitFunction;
     mpCurEmitFunction = NULL;
   }

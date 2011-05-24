@@ -253,7 +253,7 @@ int Script::internalLoadCache() {
 
 int Script::internalCompile() {
   // Create the ScriptCompiled object
-  mCompiled = new (nothrow) ScriptCompiled(this);
+  mCompiled = new (std::nothrow) ScriptCompiled(this);
 
   if (!mCompiled) {
     mErrorCode = BCC_OUT_OF_MEMORY;
