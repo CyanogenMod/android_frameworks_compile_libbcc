@@ -25,7 +25,7 @@ LOCAL_PATH := $(call my-dir)
 
 LLVM_ROOT_PATH := external/llvm
 
-# Extract Configuration from Cache.h
+# Extract Configuration from Config.h
 
 libbcc_GET_CONFIG = $(shell cat "$(LOCAL_PATH)/Config.h" | \
                             grep "^\#define $1 [01]$$" | \
