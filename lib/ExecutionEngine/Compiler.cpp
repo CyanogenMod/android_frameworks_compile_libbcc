@@ -301,11 +301,11 @@ int Compiler::compile() {
   const llvm::Target *Target;
   std::string FeaturesStr;
 
-#if CLASSIC_JIT
+#if USE_OLD_JIT
   llvm::FunctionPassManager *CodeGenPasses = NULL;
 #endif
 
-#if MC_ASSEMBLER
+#if USE_MCJIT
   bool RelaxAll = true;
   llvm::PassManager MCCodeGenPasses;
 
@@ -520,7 +520,7 @@ int Compiler::compile() {
     LTOPasses.run(*mModule);
   }
 
-#if CLASSIC_JIT
+#if USE_OLD_JIT
   // Create code-gen pass to run the code emitter
   CodeGenPasses = new llvm::FunctionPassManager(mModule);
   CodeGenPasses->add(new llvm::TargetData(*TD));
@@ -546,7 +546,7 @@ int Compiler::compile() {
   CodeGenPasses->doFinalization();
 #endif
 
-#if MC_ASSEMBLER
+#if USE_MCJIT
   TM->setMCRelaxAll(RelaxAll);
 
   MCCodeGenPasses.add(new llvm::TargetData(*TD));
@@ -560,6 +560,7 @@ int Compiler::compile() {
 
   MCCodeGenPasses.run(*mModule);
 #endif
+
   // Copy the global address mapping from code emitter and remapping
   if (ExportVarMetadata) {
     ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;

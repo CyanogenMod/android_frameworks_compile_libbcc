@@ -4,8 +4,12 @@
 //---------------------------------------------------------------------------
 // Configuration for JIT & MC Assembler
 //---------------------------------------------------------------------------
-#define CLASSIC_JIT 1
-#define MC_ASSEMBLER 0
+#define USE_OLD_JIT 1
+#define USE_MCJIT 0
+
+#if !USE_OLD_JIT && !USE_MCJIT
+#error "You should choose at least one code generation method."
+#endif
 
 //---------------------------------------------------------------------------
 // Configuration for libbcc
