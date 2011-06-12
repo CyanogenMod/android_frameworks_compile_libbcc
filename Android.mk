@@ -25,12 +25,16 @@ LOCAL_PATH := $(call my-dir)
 
 LLVM_ROOT_PATH := external/llvm
 
+RSLOADER_ROOT_PATH := frameworks/compile/linkloader
+
 # Extract Configuration from Config.h
 
 libbcc_GET_CONFIG = $(shell cat "$(LOCAL_PATH)/Config.h" | \
                             grep "^\#define $1 [01]$$" | \
                             cut -d ' ' -f 3)
 
+libbcc_USE_OLD_JIT := $(call libbcc_GET_CONFIG,USE_OLD_JIT)
+libbcc_USE_MCJIT := $(call libbcc_GET_CONFIG,USE_MCJIT)
 libbcc_USE_CACHE := $(call libbcc_GET_CONFIG,USE_CACHE)
 libbcc_USE_DISASSEMBLER := $(call libbcc_GET_CONFIG,USE_DISASSEMBLER)
 libbcc_USE_DISASSEMBLER_FILE := $(call libbcc_GET_CONFIG,USE_DISASSEMBLER_FILE)
@@ -40,8 +44,6 @@ libbcc_USE_LIBBCC_SHA1SUM := $(call libbcc_GET_CONFIG,USE_LIBBCC_SHA1SUM)
 
 libbcc_SRC_FILES := \
   lib/ExecutionEngine/bcc.cpp \
-  lib/CodeGen/CodeEmitter.cpp \
-  lib/CodeGen/CodeMemoryManager.cpp \
   lib/ExecutionEngine/Compiler.cpp \
   lib/ExecutionEngine/ContextManager.cpp \
   lib/ExecutionEngine/FileHandle.cpp \
@@ -50,6 +52,12 @@ libbcc_SRC_FILES := \
   lib/ExecutionEngine/Script.cpp \
   lib/ExecutionEngine/ScriptCompiled.cpp \
   lib/ExecutionEngine/SourceInfo.cpp
+
+ifeq ($(libbcc_USE_OLD_JIT),1)
+libbcc_SRC_FILES += \
+  lib/CodeGen/CodeEmitter.cpp \
+  lib/CodeGen/CodeMemoryManager.cpp
+endif
 
 ifeq ($(libbcc_USE_CACHE),1)
 libbcc_SRC_FILES += \
@@ -145,6 +153,7 @@ else
 endif
 
 LOCAL_STATIC_LIBRARIES += \
+  librsloader \
   libLLVMBitReader \
   libLLVMSelectionDAG \
   libLLVMAsmPrinter \
@@ -165,6 +174,7 @@ LOCAL_STATIC_LIBRARIES += \
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
 LOCAL_C_INCLUDES := \
+  $(RSLOADER_ROOT_PATH)/android \
   $(LOCAL_PATH)/lib/ExecutionEngine \
   $(LOCAL_PATH)/lib/CodeGen \
   $(LOCAL_PATH)/helper \
@@ -214,6 +224,7 @@ LOCAL_SRC_FILES := \
   helper/DebugHelper.c
 
 LOCAL_STATIC_LIBRARIES := \
+  librsloader \
   libcutils \
   libutils \
   libLLVMX86CodeGen \
@@ -243,6 +254,7 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_LDLIBS := -ldl -lpthread
 
 LOCAL_C_INCLUDES := \
+  $(RSLOADER_ROOT_PATH)/android \
   $(LOCAL_PATH)/lib/ExecutionEngine \
   $(LOCAL_PATH)/lib/CodeGen \
   $(LOCAL_PATH)/helper \

@@ -90,8 +90,16 @@ void ScriptCompiled::getPragmaList(size_t pragmaListSize,
 
 
 void *ScriptCompiled::lookup(const char *name) {
+#if USE_OLD_JIT
   FuncInfoMap::const_iterator I = mEmittedFunctions.find(name);
   return (I == mEmittedFunctions.end()) ? NULL : I->second->addr;
+#endif
+
+#if USE_MCJIT
+  return mCompiler.getSymbolAddress(name);
+#endif
+
+  return NULL;
 }
 
 

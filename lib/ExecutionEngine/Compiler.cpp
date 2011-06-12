@@ -21,8 +21,11 @@
 #include "ContextManager.h"
 #include "DebugHelper.h"
 #include "FileHandle.h"
+#include "Runtime.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
+
+#include "librsloader.h"
 
 #include "llvm/ADT/StringRef.h"
 
@@ -219,20 +222,27 @@ void Compiler::LLVMErrorHandler(void *UserData, const std::string &Message) {
 }
 
 
+#if USE_OLD_JIT
 CodeMemoryManager *Compiler::createCodeMemoryManager() {
   mCodeMemMgr.reset(new CodeMemoryManager());
   return mCodeMemMgr.get();
 }
+#endif
 
 
+#if USE_OLD_JIT
 CodeEmitter *Compiler::createCodeEmitter() {
   mCodeEmitter.reset(new CodeEmitter(mpResult, mCodeMemMgr.get()));
   return mCodeEmitter.get();
 }
+#endif
 
 
 Compiler::Compiler(ScriptCompiled *result)
   : mpResult(result),
+#if USE_MCJIT
+    mRSExecutable(NULL),
+#endif
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
     mContext(NULL),
@@ -245,6 +255,7 @@ Compiler::Compiler(ScriptCompiled *result)
 }
 
 
+#if USE_MCJIT
 // input objPath: For example,
 //                 /data/user/0/com.example.android.rs.fountain/cache/
 //                     @com.example.android.rs.fountain:raw@fountain.oBCC
@@ -269,6 +280,7 @@ bool Compiler::getObjPath(std::string &objPath) {
   LOGV("objPath = %s", objPath.c_str());
   return true;
 }
+#endif
 
 
 llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
@@ -295,40 +307,16 @@ int Compiler::linkModule(llvm::Module *moduleWith) {
 
 
 int Compiler::compile() {
+  llvm::Target const *Target = NULL;
   llvm::TargetData *TD = NULL;
-
   llvm::TargetMachine *TM = NULL;
-  const llvm::Target *Target;
+
   std::string FeaturesStr;
 
-#if USE_OLD_JIT
-  llvm::FunctionPassManager *CodeGenPasses = NULL;
-#endif
-
-#if USE_MCJIT
-  bool RelaxAll = true;
-  llvm::PassManager MCCodeGenPasses;
-
-  std::string objPath(mCachePath);
-
-  if (!getObjPath(objPath)) {
-    LOGE("Fail to create objPath");
-    return 1;
-  }
-
-  int Fd = -1;
-  FileHandle file;
-
-  Fd = file.open(objPath.c_str(), OpenMode::Write);
-  if (Fd < 0) {
-    LOGE("Fail to open file '%s'", objPath.c_str());
-    return 1;
-  }
-
-  llvm::raw_fd_ostream OutFdOS(Fd, /* shouldClose= */ false);
-  OutFdOS.seek(0);
-  llvm::formatted_raw_ostream OutFOS(OutFdOS);
-#endif
+  llvm::NamedMDNode const *PragmaMetadata;
+  llvm::NamedMDNode const *ExportVarMetadata;
+  llvm::NamedMDNode const *ExportFuncMetadata;
+  llvm::NamedMDNode const *ObjectSlotMetadata;
 
   if (mModule == NULL)  // No module was loaded
     return 0;
@@ -357,10 +345,114 @@ int Compiler::compile() {
     goto on_bcc_compile_error;
   }
 
+  // Get target data from Module
+  TD = new llvm::TargetData(mModule);
+
+  // Load named metadata
+  ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
+  ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
+  PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
+  ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
+
+  // Perform link-time optimization if we have multiple modules
+  if (mHasLinked) {
+    runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata);
+  }
+
+  // Perform code generation
+#if USE_OLD_JIT
+  if (runCodeGen(new llvm::TargetData(*TD), TM,
+                 ExportVarMetadata, ExportFuncMetadata) != 0) {
+    goto on_bcc_compile_error;
+  }
+#endif
+
+#if USE_MCJIT
+  if (runMCCodeGen(new llvm::TargetData(*TD), TM,
+                   ExportVarMetadata, ExportFuncMetadata) != 0) {
+    goto on_bcc_compile_error;
+  }
+#endif
+
+  // Read pragma information from the metadata node of the module.
+  if (PragmaMetadata) {
+    ScriptCompiled::PragmaList &pragmaList = mpResult->mPragmas;
+
+    for (int i = 0, e = PragmaMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
+      if (Pragma != NULL &&
+          Pragma->getNumOperands() == 2 /* should have exactly 2 operands */) {
+        llvm::Value *PragmaNameMDS = Pragma->getOperand(0);
+        llvm::Value *PragmaValueMDS = Pragma->getOperand(1);
+
+        if ((PragmaNameMDS->getValueID() == llvm::Value::MDStringVal) &&
+            (PragmaValueMDS->getValueID() == llvm::Value::MDStringVal)) {
+          llvm::StringRef PragmaName =
+            static_cast<llvm::MDString*>(PragmaNameMDS)->getString();
+          llvm::StringRef PragmaValue =
+            static_cast<llvm::MDString*>(PragmaValueMDS)->getString();
+
+          pragmaList.push_back(
+            std::make_pair(std::string(PragmaName.data(),
+                                       PragmaName.size()),
+                           std::string(PragmaValue.data(),
+                                       PragmaValue.size())));
+        }
+      }
+    }
+    LOGD("Found %d pragma\n", pragmaList.size());
+  }
+
+  if (ObjectSlotMetadata) {
+    ScriptCompiled::ObjectSlotList &objectSlotList = mpResult->mObjectSlots;
+
+    for (int i = 0, e = ObjectSlotMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *ObjectSlot = ObjectSlotMetadata->getOperand(i);
+      if (ObjectSlot != NULL &&
+          ObjectSlot->getNumOperands() == 1) {
+        llvm::Value *SlotMDS = ObjectSlot->getOperand(0);
+        if (SlotMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef Slot =
+              static_cast<llvm::MDString*>(SlotMDS)->getString();
+          uint32_t USlot = 0;
+          if (Slot.getAsInteger(10, USlot)) {
+            setError("Non-integer object slot value '" + Slot.str() + "'");
+            goto on_bcc_compile_error;
+          }
+          objectSlotList.push_back(USlot);
+        }
+      }
+    }
+    LOGD("Found %d object slot\n", objectSlotList.size());
+  }
+
+on_bcc_compile_error:
+  // LOGE("on_bcc_compiler_error");
+  if (TD) {
+    delete TD;
+  }
+
+  if (TM) {
+    delete TM;
+  }
+
+  if (mError.empty()) {
+    return 0;
+  }
+
+  // LOGE(getErrorMessage());
+  return 1;
+}
+
+
+#if USE_OLD_JIT
+int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
+                         llvm::NamedMDNode const *ExportVarMetadata,
+                         llvm::NamedMDNode const *ExportFuncMetadata) {
   // Create memory manager for creation of code emitter later.
   if (!mCodeMemMgr.get() && !createCodeMemoryManager()) {
     setError("Failed to startup memory management for further compilation");
-    goto on_bcc_compile_error;
+    return 1;
   }
 
   mpResult->mContext = (char *) (mCodeMemMgr.get()->getCodeMemBase());
@@ -368,9 +460,8 @@ int Compiler::compile() {
   // Create code emitter
   if (!mCodeEmitter.get()) {
     if (!createCodeEmitter()) {
-      setError("Failed to create machine code emitter to complete"
-               " the compilation");
-      goto on_bcc_compile_error;
+      setError("Failed to create machine code emitter for compilation");
+      return 1;
     }
   } else {
     // Reuse the code emitter
@@ -381,65 +472,31 @@ int Compiler::compile() {
   mCodeEmitter->registerSymbolCallback(mpSymbolLookupFn,
                                        mpSymbolLookupContext);
 
-  // Get target data from Module
-  TD = new llvm::TargetData(mModule);
-
-  // Load named metadata
-  const llvm::NamedMDNode *PragmaMetadata;
-  const llvm::NamedMDNode *ExportVarMetadata;
-  const llvm::NamedMDNode *ExportFuncMetadata;
-  const llvm::NamedMDNode *ObjectSlotMetadata;
-
-  ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
-  ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
-  PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
-  ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
-
-  // Perform Link-time Optimization if we have multiple modules
-  if (mHasLinked) {
-    runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata);
-  }
-
-#if USE_OLD_JIT
   // Create code-gen pass to run the code emitter
-  CodeGenPasses = new llvm::FunctionPassManager(mModule);
-  CodeGenPasses->add(new llvm::TargetData(*TD));
+  llvm::OwningPtr<llvm::FunctionPassManager> CodeGenPasses(
+    new llvm::FunctionPassManager(mModule));
 
+  // Add TargetData to code generation pass manager
+  CodeGenPasses->add(TD);
+
+  // Add code emit passes
   if (TM->addPassesToEmitMachineCode(*CodeGenPasses,
                                      *mCodeEmitter,
                                      CodeGenOptLevel)) {
-    setError("The machine code emission is not supported by BCC on target '"
-             + Triple + "'");
-    goto on_bcc_compile_error;
+    setError("The machine code emission is not supported on '" + Triple + "'");
+    return 1;
   }
 
-  // Run the pass (the code emitter) on every non-declaration function in the
-  // module
+  // Run the code emitter on every non-declaration function in the module
   CodeGenPasses->doInitialization();
-  for (llvm::Module::iterator I = mModule->begin(), E = mModule->end();
-       I != E; I++) {
+  for (llvm::Module::iterator
+       I = mModule->begin(), E = mModule->end(); I != E; I++) {
     if (!I->isDeclaration()) {
       CodeGenPasses->run(*I);
     }
   }
 
   CodeGenPasses->doFinalization();
-#endif
-
-#if USE_MCJIT
-  TM->setMCRelaxAll(RelaxAll);
-
-  MCCodeGenPasses.add(new llvm::TargetData(*TD));
-
-  if (TM->addPassesToEmitFile(MCCodeGenPasses, OutFOS,
-                              llvm::TargetMachine::CGFT_ObjectFile,
-                              CodeGenOptLevel)) {
-    setError("Fail to add passes to emit file");
-    goto on_bcc_compile_error;
-  }
-
-  MCCodeGenPasses.run(*mModule);
-#endif
 
   // Copy the global address mapping from code emitter and remapping
   if (ExportVarMetadata) {
@@ -461,6 +518,7 @@ int Compiler::compile() {
               continue;
             if (ExportVarName == I->first->getName()) {
               varList.push_back(I->second);
+              LOGD("Exported VAR: %s\n", ExportVarName.str().c_str());
               break;
             }
           }
@@ -488,6 +546,7 @@ int Compiler::compile() {
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
           funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
+          LOGD("Exported Func: %s\n", ExportFuncName.str().c_str());
         }
       }
     }
@@ -497,83 +556,110 @@ int Compiler::compile() {
   // we have done the code emission
   mCodeEmitter->releaseUnnecessary();
 
-  // Finally, read pragma information from the metadata node of the @Module if
-  // any.
-  if (PragmaMetadata) {
-    ScriptCompiled::PragmaList &pragmaList = mpResult->mPragmas;
-
-    for (int i = 0, e = PragmaMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
-      if (Pragma != NULL &&
-          Pragma->getNumOperands() == 2 /* should have exactly 2 operands */) {
-        llvm::Value *PragmaNameMDS = Pragma->getOperand(0);
-        llvm::Value *PragmaValueMDS = Pragma->getOperand(1);
-
-        if ((PragmaNameMDS->getValueID() == llvm::Value::MDStringVal) &&
-            (PragmaValueMDS->getValueID() == llvm::Value::MDStringVal)) {
-          llvm::StringRef PragmaName =
-            static_cast<llvm::MDString*>(PragmaNameMDS)->getString();
-          llvm::StringRef PragmaValue =
-            static_cast<llvm::MDString*>(PragmaValueMDS)->getString();
-
-          pragmaList.push_back(
-            std::make_pair(std::string(PragmaName.data(),
-                                       PragmaName.size()),
-                           std::string(PragmaValue.data(),
-                                       PragmaValue.size())));
-        }
-      }
-    }
-  }
-
-  if (ObjectSlotMetadata) {
-    ScriptCompiled::ObjectSlotList &objectSlotList = mpResult->mObjectSlots;
-
-    for (int i = 0, e = ObjectSlotMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ObjectSlot = ObjectSlotMetadata->getOperand(i);
-      if (ObjectSlot != NULL &&
-          ObjectSlot->getNumOperands() == 1) {
-        llvm::Value *SlotMDS = ObjectSlot->getOperand(0);
-        if (SlotMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef Slot =
-              static_cast<llvm::MDString*>(SlotMDS)->getString();
-          uint32_t USlot = 0;
-          if (Slot.getAsInteger(10, USlot)) {
-            setError("Non-integer object slot value '" + Slot.str() + "'");
-            goto on_bcc_compile_error;
-          }
-          objectSlotList.push_back(USlot);
-        }
-      }
-    }
-  }
-
-on_bcc_compile_error:
-  // LOGE("on_bcc_compiler_error");
-  if (CodeGenPasses) {
-    delete CodeGenPasses;
-  }
-
-  if (TD) {
-    delete TD;
-  }
-
-  if (TM) {
-    delete TM;
-  }
-
-  if (mError.empty()) {
-    return 0;
-  }
-
-  // LOGE(getErrorMessage());
-  return 1;
+  return 0;
 }
+#endif // USE_OLD_JIT
 
 
-void Compiler::runLTO(llvm::TargetData *TD,
-                      llvm::NamedMDNode const *ExportVarMetadata,
-                      llvm::NamedMDNode const *ExportFuncMetadata) {
+#if USE_MCJIT
+int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
+                           llvm::NamedMDNode const *ExportVarMetadata,
+                           llvm::NamedMDNode const *ExportFuncMetadata) {
+  // Decorate mEmittedELFExecutable with formatted ostream
+  llvm::raw_svector_ostream OutSVOS(mEmittedELFExecutable);
+
+  // Relax all machine instructions
+  TM->setMCRelaxAll(/* RelaxAll= */ true);
+
+  // Create MC code generation pass manager
+  llvm::PassManager MCCodeGenPasses;
+
+  // Add TargetData to MC code generation pass manager
+  MCCodeGenPasses.add(TD);
+
+  // Add MC code generation passes to pass manager
+  llvm::MCContext *Ctx;
+  if (TM->addPassesToEmitMC(MCCodeGenPasses, Ctx, OutSVOS,
+                            CodeGenOptLevel, false)) {
+    setError("Fail to add passes to emit file");
+    return 1;
+  }
+
+  MCCodeGenPasses.run(*mModule);
+  OutSVOS.flush();
+
+  // Load the ELF Object
+  mRSExecutable =
+    rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
+                       mEmittedELFExecutable.size(),
+                       &resolveSymbolAdapter, this);
+
+  if (!mRSExecutable) {
+    setError("Fail to load emitted ELF relocatable file");
+    return 1;
+  }
+
+#if !USE_OLD_JIT
+  // Note: If old JIT is compiled then we prefer the old version instead of the
+  // new version.
+
+  if (ExportVarMetadata) {
+    ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
+
+    for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
+      if (ExportVar == NULL || ExportVar->getNumOperands() <= 1) {
+        continue;
+      }
+
+      llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
+      if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
+        llvm::StringRef ExportVarName =
+          static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
+
+        varList.push_back(
+          rsloaderGetSymbolAddress(mRSExecutable,
+                                   ExportVarName.str().c_str()));
+      }
+    }
+  }
+
+  if (ExportFuncMetadata) {
+    ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
+
+    for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
+      if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
+        llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
+        if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef ExportFuncName =
+            static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
+
+          funcList.push_back(
+            rsloaderGetSymbolAddress(mRSExecutable,
+                                     ExportFuncName.str().c_str()));
+        }
+      }
+    }
+  }
+#endif // !USE_OLD_JIT
+
+#if USE_CACHE
+  // Write generated executable to file.
+  if (writeELFExecToFile() != 0) {
+    setError("Fail to write mcjit-ed executable to file");
+    return 1;
+  }
+#endif
+
+  return 0;
+}
+#endif // USE_MCJIT
+
+
+int Compiler::runLTO(llvm::TargetData *TD,
+                     llvm::NamedMDNode const *ExportVarMetadata,
+                     llvm::NamedMDNode const *ExportFuncMetadata) {
   llvm::PassManager LTOPasses;
 
   // Add TargetData to LTO passes
@@ -694,12 +780,68 @@ void Compiler::runLTO(llvm::TargetData *TD,
   LTOPasses.add(llvm::createGlobalDCEPass());
 
   LTOPasses.run(*mModule);
+
+  return 0;
 }
+
+
+#if USE_MCJIT
+int Compiler::writeELFExecToFile() {
+  std::string objPath(mCachePath);
+  if (!getObjPath(objPath)) {
+    LOGE("Fail to create objPath");
+    return 1;
+  }
+
+  FileHandle file;
+
+  int Fd = file.open(objPath.c_str(), OpenMode::Write);
+  if (Fd < 0) {
+    LOGE("Fail to open file '%s'", objPath.c_str());
+    return 1;
+  }
+
+  file.write(&*mEmittedELFExecutable.begin(), mEmittedELFExecutable.size());
+
+  return 0;
+}
+#endif
+
+
+#if USE_MCJIT
+void *Compiler::getSymbolAddress(char const *name) {
+  return rsloaderGetSymbolAddress(mRSExecutable, name);
+}
+#endif
+
+
+#if USE_MCJIT
+void *Compiler::resolveSymbolAdapter(void *context, char const *name) {
+  Compiler *self = reinterpret_cast<Compiler *>(context);
+
+  if (void *Addr = FindRuntimeFunction(name)) {
+    return Addr;
+  }
+
+  if (self->mpSymbolLookupFn) {
+    if (void *Addr = self->mpSymbolLookupFn(self->mpSymbolLookupContext, name)) {
+      return Addr;
+    }
+  }
+
+  LOGE("Unable to resolve symbol: %s\n", name);
+  return NULL;
+}
+#endif
 
 
 Compiler::~Compiler() {
   delete mModule;
   delete mContext;
+
+#if USE_MCJIT
+  rsloaderDisposeExec(mRSExecutable);
+#endif
 
   // llvm::llvm_shutdown();
 }

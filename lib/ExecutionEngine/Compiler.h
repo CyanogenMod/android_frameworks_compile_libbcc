@@ -22,8 +22,11 @@
 #include "CodeEmitter.h"
 #include "CodeMemoryManager.h"
 
+#include "librsloader.h"
+
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/Target/TargetMachine.h"
 
 #include <stddef.h>
@@ -87,11 +90,21 @@ namespace bcc {
 
     std::string mError;
 
+#if USE_OLD_JIT
     // The memory manager for code emitter
     llvm::OwningPtr<CodeMemoryManager> mCodeMemMgr;
 
     // The CodeEmitter
     llvm::OwningPtr<CodeEmitter> mCodeEmitter;
+#endif
+
+#if USE_MCJIT
+    // Compilation buffer for MCJIT
+    llvm::SmallVector<char, 1024> mEmittedELFExecutable;
+
+    // Loaded and relocated executable
+    RSExecRef mRSExecutable;
+#endif
 
     BCCSymbolLookupFn mpSymbolLookupFn;
     void *mpSymbolLookupContext;
@@ -116,11 +129,17 @@ namespace bcc {
       mpSymbolLookupContext = pContext;
     }
 
+#if USE_OLD_JIT
     CodeMemoryManager *createCodeMemoryManager();
 
     CodeEmitter *createCodeEmitter();
+#endif
 
+#if USE_MCJIT
     bool getObjPath(std::string &objPath);
+
+    void *getSymbolAddress(char const *name);
+#endif
 
     llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM);
 
@@ -145,9 +164,23 @@ namespace bcc {
 
   private:
 
-    void runLTO(llvm::TargetData *TD,
-                llvm::NamedMDNode const *ExportVarMetadata,
-                llvm::NamedMDNode const *ExportFuncMetadata);
+    int runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
+                   llvm::NamedMDNode const *ExportVarMetadata,
+                   llvm::NamedMDNode const *ExportFuncMetadata);
+
+    int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
+                     llvm::NamedMDNode const *ExportVarMetadata,
+                     llvm::NamedMDNode const *ExportFuncMetadata);
+
+#if USE_MCJIT
+    static void *resolveSymbolAdapter(void *context, char const *name);
+#endif
+
+    int runLTO(llvm::TargetData *TD,
+               llvm::NamedMDNode const *ExportVarMetadata,
+               llvm::NamedMDNode const *ExportFuncMetadata);
+
+    int writeELFExecToFile();
 
     bool hasError() const {
       return !mError.empty();
