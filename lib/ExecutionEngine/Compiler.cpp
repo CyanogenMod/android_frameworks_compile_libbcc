@@ -523,7 +523,7 @@ int Compiler::compile() {
 #if CLASSIC_JIT
   // Create code-gen pass to run the code emitter
   CodeGenPasses = new llvm::FunctionPassManager(mModule);
-  CodeGenPasses->add(TD);  // Will take the ownership of TD
+  CodeGenPasses->add(new llvm::TargetData(*TD));
 
   if (TM->addPassesToEmitMachineCode(*CodeGenPasses,
                                      *mCodeEmitter,
@@ -671,11 +671,15 @@ on_bcc_compile_error:
   // LOGE("on_bcc_compiler_error");
   if (CodeGenPasses) {
     delete CodeGenPasses;
-  } else if (TD) {
+  }
+
+  if (TD) {
     delete TD;
   }
-  if (TM)
+
+  if (TM) {
     delete TM;
+  }
 
   if (mError.empty()) {
     return 0;
