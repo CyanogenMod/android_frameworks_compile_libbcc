@@ -38,6 +38,8 @@ namespace llvm {
   class LLVMContext;
   class Module;
   class MemoryBuffer;
+  class NamedMDNode;
+  class TargetData;
 }
 
 
@@ -142,6 +144,10 @@ namespace bcc {
     ~Compiler();
 
   private:
+
+    void runLTO(llvm::TargetData *TD,
+                llvm::NamedMDNode const *ExportVarMetadata,
+                llvm::NamedMDNode const *ExportFuncMetadata);
 
     bool hasError() const {
       return !mError.empty();
