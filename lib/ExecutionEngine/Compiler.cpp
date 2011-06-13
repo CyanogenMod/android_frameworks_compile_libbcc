@@ -608,19 +608,22 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
 
     for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
       llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
-      if (ExportVar == NULL || ExportVar->getNumOperands() <= 1) {
-        continue;
+      if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
+        llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
+        if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef ExportVarName =
+            static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
+
+          varList.push_back(
+            rsloaderGetSymbolAddress(mRSExecutable,
+                                     ExportVarName.str().c_str()));
+          LOGD("MC/ Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
+               varList.back());
+          continue;
+        }
       }
 
-      llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
-      if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
-        llvm::StringRef ExportVarName =
-          static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
-
-        varList.push_back(
-          rsloaderGetSymbolAddress(mRSExecutable,
-                                   ExportVarName.str().c_str()));
-      }
+      varList.push_back(NULL);
     }
   }
 
