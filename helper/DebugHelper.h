@@ -49,6 +49,7 @@
 
 #else // USE_FUNC_LOGGER
 
+#if defined(__cplusplus)
 namespace bcc {
   class FuncLogger {
   private:
@@ -66,6 +67,7 @@ namespace bcc {
 } // namespace bcc
 
 #define BCC_FUNC_LOGGER() bcc::FuncLogger XX__FuncLogger(__func__)
+#endif
 
 #endif
 
