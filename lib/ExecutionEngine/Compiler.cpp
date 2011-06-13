@@ -397,10 +397,11 @@ int Compiler::compile() {
                                        PragmaName.size()),
                            std::string(PragmaValue.data(),
                                        PragmaValue.size())));
+          LOGD("COMP/ Pragma: %s -> %s\n", pragmaList.back().first.c_str(),
+                                           pragmaList.back().second.c_str());
         }
       }
     }
-    LOGD("Found %d pragma\n", pragmaList.size());
   }
 
   if (ObjectSlotMetadata) {
@@ -420,10 +421,10 @@ int Compiler::compile() {
             goto on_bcc_compile_error;
           }
           objectSlotList.push_back(USlot);
+          LOGD("COMP/ RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
         }
       }
     }
-    LOGD("Found %d object slot\n", objectSlotList.size());
   }
 
 on_bcc_compile_error:
@@ -518,12 +519,15 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
               continue;
             if (ExportVarName == I->first->getName()) {
               varList.push_back(I->second);
-              LOGD("Exported VAR: %s\n", ExportVarName.str().c_str());
+              LOGD("JIT/ Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
               break;
             }
           }
           if (I != mCodeEmitter->global_address_end())
             continue;  // found
+
+          LOGD("JIT/ Exported VAR: %s @ %p\n",
+               ExportVarName.str().c_str(), (void *)0);
         }
       }
       // if reaching here, we know the global variable record in metadata is
@@ -546,7 +550,8 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
           funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
-          LOGD("Exported Func: %s\n", ExportFuncName.str().c_str());
+          LOGD("JIT/ Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+               funcList.back());
         }
       }
     }
@@ -641,6 +646,8 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           funcList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportFuncName.str().c_str()));
+          LOGD("MC/ Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+               funcList.back());
         }
       }
     }
