@@ -127,7 +127,7 @@ extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
   void *addr = unwrap(script)->lookup(funcname);
 
 #if USE_DISASSEMBLER_FILE
-  LOGD("Function Address: %s --> 0x%p\n", funcname, addr);
+  LOGD("Function Address: %s --> %p\n", funcname, addr);
 #endif
 
   return addr;
@@ -157,7 +157,7 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
     }
 
     for (size_t i = 0; i < count; ++i) {
-      LOGD("ExportVarList[%lu] = 0x%p\n", (unsigned long)i, varList[i]);
+      LOGD("ExportVarList[%lu] = %p\n", (unsigned long)i, varList[i]);
     }
 #endif
   }
@@ -187,7 +187,7 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
     }
 
     for (size_t i = 0; i < count; ++i) {
-      LOGD("ExportFuncList[%lu] = 0x%p\n", (unsigned long)i, funcList[i]);
+      LOGD("ExportFuncList[%lu] = %p\n", (unsigned long)i, funcList[i]);
     }
 #endif
   }
