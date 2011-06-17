@@ -70,6 +70,8 @@
 #include <string>
 #include <vector>
 
+#define DEBUG_BCC_REFLECT_TO_LIBRS 0
+
 namespace bcc {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -397,8 +399,10 @@ int Compiler::compile() {
                                        PragmaName.size()),
                            std::string(PragmaValue.data(),
                                        PragmaValue.size())));
-          LOGD("COMP/ Pragma: %s -> %s\n", pragmaList.back().first.c_str(),
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+          LOGD("compile(): Pragma: %s -> %s\n", pragmaList.back().first.c_str(),
                                            pragmaList.back().second.c_str());
+#endif
         }
       }
     }
@@ -421,7 +425,9 @@ int Compiler::compile() {
             goto on_bcc_compile_error;
           }
           objectSlotList.push_back(USlot);
-          LOGD("COMP/ RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+          LOGD("compile(): RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
+#endif
         }
       }
     }
@@ -519,15 +525,19 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
               continue;
             if (ExportVarName == I->first->getName()) {
               varList.push_back(I->second);
-              LOGD("JIT/ Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+              LOGD("runCodeGen(): Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
+#endif
               break;
             }
           }
           if (I != mCodeEmitter->global_address_end())
             continue;  // found
 
-          LOGD("JIT/ Exported VAR: %s @ %p\n",
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+          LOGD("runCodeGen(): Exported VAR: %s @ %p\n",
                ExportVarName.str().c_str(), (void *)0);
+#endif
         }
       }
       // if reaching here, we know the global variable record in metadata is
@@ -550,8 +560,10 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
           funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
-          LOGD("JIT/ Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+          LOGD("runCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
+#endif
         }
       }
     }
@@ -622,8 +634,10 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           varList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportVarName.str().c_str()));
-          LOGD("MC/ Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+          LOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
                varList.back());
+#endif
           continue;
         }
       }
@@ -646,8 +660,10 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           funcList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportFuncName.str().c_str()));
-          LOGD("MC/ Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+#if DEBUG_BCC_REFLECT_TO_LIBRS
+          LOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
+#endif
         }
       }
     }
