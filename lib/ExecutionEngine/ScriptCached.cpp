@@ -104,10 +104,12 @@ void ScriptCached::getObjectSlotList(size_t objectSlotListSize,
 
 
 void *ScriptCached::lookup(const char *name) {
+#if USE_MCJIT
+  return rsloaderGetSymbolAddress(mRSExecutable, name);
+#endif
   FuncTable::const_iterator I = mFunctions.find(name);
   return (I == mFunctions.end()) ? NULL : I->second.first;
 }
-
 
 void ScriptCached::getFuncInfoList(size_t funcInfoListSize,
                                    FuncInfo *funcInfoList) {

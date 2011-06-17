@@ -19,7 +19,10 @@
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
+#include <bcc/bcc_mccache.h>
 #include "bcc_internal.h"
+
+#include "librsloader.h"
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -39,6 +42,7 @@ namespace bcc {
 
   class ScriptCached {
     friend class CacheReader;
+    friend class MCCacheReader;
 
   private:
     enum { SMALL_VECTOR_QUICKN = 16 };
@@ -59,6 +63,8 @@ namespace bcc {
     FuncTable mFunctions;
 
     char *mContext;
+
+    RSExecRef mRSExecutable;
 
     OBCC_StringPool *mpStringPoolRaw;
     std::vector<char const *> mStringPool;

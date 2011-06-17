@@ -65,6 +65,8 @@ libbcc_SRC_FILES += \
   lib/ExecutionEngine/CacheWriter.cpp \
   lib/ExecutionEngine/ScriptCached.cpp \
   lib/ExecutionEngine/Sha1Helper.cpp \
+  lib/ExecutionEngine/MCCacheWriter.cpp \
+  lib/ExecutionEngine/MCCacheReader.cpp \
   helper/sha1.c
 endif
 

@@ -125,6 +125,9 @@ namespace bcc {
 
     void getObjectSlotList(size_t size, uint32_t *list);
 
+    size_t getELFSize() const;
+
+    const char *getELF() const;
 
     int registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
 

@@ -20,6 +20,8 @@
 
 #include "CacheReader.h"
 #include "CacheWriter.h"
+#include "MCCacheReader.h"
+#include "MCCacheWriter.h"
 #include "ContextManager.h"
 #include "DebugHelper.h"
 #include "FileHandle.h"
@@ -194,6 +196,34 @@ int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
 
 
 #if USE_CACHE
+bool getObjPath(std::string &objPath) {
+  size_t found0 = objPath.find("@");
+  size_t found1 = objPath.rfind("@");
+
+  if (found0 == found1 ||
+      found0 == std::string::npos ||
+      found1 == std::string::npos) {
+    LOGE("Ill formatted resource name '%s'. The name should contain 2 @s",
+         objPath.c_str());
+    return false;
+  }
+
+  objPath.replace(found0, found1 - found0 + 1, "", 0);
+  objPath.resize(objPath.length() - 3);
+
+  LOGV("objPath = %s", objPath.c_str());
+  return true;
+}
+
+bool getInfoPath(std::string &infoPath) {
+  getObjPath(infoPath);
+  infoPath.erase(infoPath.size() - 1, 1);
+  infoPath.append("info");
+
+  LOGV("infoPath = %s", infoPath.c_str());
+  return true;
+}
+
 int Script::internalLoadCache() {
   if (getBooleanProp("debug.bcc.nocache")) {
     // Android system environment property disable the cache mechanism by
@@ -207,15 +237,38 @@ int Script::internalLoadCache() {
     // we don't know where to open the cache file.
     return 1;
   }
+  FileHandle objFile, infoFile;
 
-  FileHandle file;
+  std::string objPath(mCachePath);
+  std::string infoPath(mCachePath);
 
-  if (file.open(mCachePath, OpenMode::Read) < 0) {
+#if USE_MCJIT
+  getObjPath(objPath);
+  getInfoPath(infoPath);
+ #endif
+
+  if (objFile.open(objPath.c_str(), OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
     return 1;
   }
 
+ #if USE_OLD_JIT
   CacheReader reader;
+ #endif
+#if USE_MCJIT
+  if (infoFile.open(infoPath.c_str(), OpenMode::Read) < 0) {
+    // Unable to open the cache file in read mode.
+    return 1;
+  }
+
+  MCCacheReader reader;
+
+  // Register symbol lookup function
+  if (mpExtSymbolLookupFn) {
+    reader.registerSymbolCallback(mpExtSymbolLookupFn,
+                                      mpExtSymbolLookupFnContext);
+  }
+ #endif
 
   // Dependencies
 #if USE_LIBBCC_SHA1SUM
@@ -231,7 +284,12 @@ int Script::internalLoadCache() {
   }
 
   // Read cache file
-  ScriptCached *cached = reader.readCacheFile(&file, this);
+#if USE_MCJIT
+  ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);
+#endif
+#if USE_OLD_JIT
+  ScriptCached *cached = reader.readCacheFile(&objFile, this);
+#endif
   if (!cached) {
     mIsContextSlotNotAvail = reader.isContextSlotNotAvail();
     return 1;
@@ -249,7 +307,6 @@ int Script::internalLoadCache() {
   return 0;
 }
 #endif
-
 
 int Script::internalCompile() {
   // Create the ScriptCompiled object
@@ -312,20 +369,42 @@ int Script::internalCompile() {
   // we don't have to cache it.
 
   if (mCachePath &&
+#if USE_OLD_JIT
       !mIsContextSlotNotAvail &&
       ContextManager::get().isManagingContext(getContext()) &&
+#endif
       !getBooleanProp("debug.bcc.nocache")) {
 
-    FileHandle file;
+    FileHandle infoFile, objFile;
+
+    std::string objPath(mCachePath);
+    std::string infoPath(mCachePath);
+
+#if USE_MCJIT
+    getObjPath(objPath);
+    getInfoPath(infoPath);
+#endif
 
     // Remove the file if it already exists before writing the new file.
     // The old file may still be mapped elsewhere in memory and we do not want
     // to modify its contents.  (The same script may be running concurrently in
     // the same process or a different process!)
-    ::unlink(mCachePath);
+    ::unlink(objPath.c_str());
+#if USE_MCJIT
+    ::unlink(infoPath.c_str());
+#endif
 
-    if (file.open(mCachePath, OpenMode::Write) >= 0) {
+    if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0
+#if USE_MCJIT
+        && infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0
+#endif
+	) {
+#if USE_MCJIT
+      MCCacheWriter writer;
+#endif
+#if USE_OLD_JIT
       CacheWriter writer;
+#endif
 
       // Dependencies
 #if USE_LIBBCC_SHA1SUM
@@ -347,15 +426,29 @@ int Script::internalCompile() {
           (uint32_t)mpExtSymbolLookupFn(mpExtSymbolLookupFnContext,
                                         "__isThreadable");
       }
+#if USE_OLD_JIT
+      if (!writer.writeCacheFile(&objFile, this, libRS_threadable)) {
+#endif
+#if USE_MCJIT
+      if (!writer.writeCacheFile(&objFile, &infoFile, this, libRS_threadable)) {
+#endif
+        objFile.truncate();
+        objFile.close();
 
-      if (!writer.writeCacheFile(&file, this, libRS_threadable)) {
-        file.truncate();
-        file.close();
-
-        if (unlink(mCachePath) != 0) {
+        if (unlink(objPath.c_str()) != 0) {
           LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
-               mCachePath, strerror(errno));
+               objPath.c_str(), strerror(errno));
         }
+
+#if USE_MCJIT
+        infoFile.truncate();
+        infoFile.close();
+
+        if (unlink(infoPath.c_str()) != 0) {
+          LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
+               infoPath.c_str(), strerror(errno));
+        }
+#endif
       }
     }
   }
@@ -573,5 +666,25 @@ int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
   }
   return 0;
 }
+#if USE_MCJIT
+size_t Script::getELFSize() const {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:  return mCompiled->getELFSize();
+
+  default:
+    return NULL;
+  }
+  return 0;
+}
+
+const char *Script::getELF() const {
+  switch (mStatus) {
+  case ScriptStatus::Compiled:  return mCompiled->getELF();
+
+  default:
+    return NULL;
+  }
+}
+#endif
 
 } // namespace bcc

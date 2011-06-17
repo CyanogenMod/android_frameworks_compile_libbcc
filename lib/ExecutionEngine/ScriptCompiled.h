@@ -131,6 +131,15 @@ namespace bcc {
     char *getContext() {
       return mContext;
     }
+#if USE_MCJIT
+    const char *getELF() const {
+      return &*mCompiler.getELF().begin();
+    }
+
+    size_t getELFSize() const {
+      return mCompiler.getELF().size();
+    }
+#endif
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
       mCompiler.registerSymbolCallback(pFn, pContext);

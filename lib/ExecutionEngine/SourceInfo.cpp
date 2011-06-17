@@ -19,6 +19,8 @@
 #if USE_CACHE
 #include "CacheReader.h"
 #include "CacheWriter.h"
+#include "MCCacheWriter.h"
+#include "MCCacheReader.h"
 #endif
 
 #include "DebugHelper.h"
@@ -188,6 +190,8 @@ template <typename T> void SourceInfo::introDependency(T &checker) {
 
 template void SourceInfo::introDependency<CacheReader>(CacheReader &);
 template void SourceInfo::introDependency<CacheWriter>(CacheWriter &);
+template void SourceInfo::introDependency<MCCacheWriter>(MCCacheWriter &);
+template void SourceInfo::introDependency<MCCacheReader>(MCCacheReader &);
 #endif // USE_CACHE
 
 
