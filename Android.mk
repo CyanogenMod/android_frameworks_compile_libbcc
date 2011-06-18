@@ -225,33 +225,63 @@ LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES) \
   helper/DebugHelper.c
 
-LOCAL_STATIC_LIBRARIES := \
-  librsloader \
-  libcutils \
-  libutils \
-  libLLVMX86CodeGen \
-  libLLVMX86Info \
-  libLLVMX86Utils \
-  libLLVMX86AsmPrinter \
-  libLLVMARMCodeGen \
-  libLLVMARMInfo \
-  libLLVMBitReader \
-  libLLVMSelectionDAG \
-  libLLVMAsmPrinter \
-  libLLVMMCParser \
-  libLLVMCodeGen \
-  libLLVMLinker \
-  libLLVMJIT \
-  libLLVMMC \
-  libLLVMScalarOpts \
-  libLLVMInstCombine \
-  libLLVMipo \
-  libLLVMipa \
-  libLLVMTransformUtils \
-  libLLVMCore \
-  libLLVMTarget \
-  libLLVMSupport \
-  libLLVMAnalysis
+ifeq ($(libbcc_USE_MCJIT),1)
+  LOCAL_STATIC_LIBRARIES := \
+    librsloader \
+    libcutils \
+    libutils \
+    libLLVMX86CodeGen \
+    libLLVMX86Info \
+    libLLVMX86Utils \
+    libLLVMX86AsmPrinter \
+    libLLVMARMCodeGen \
+    libLLVMARMInfo \
+    libLLVMBitReader \
+    libLLVMSelectionDAG \
+    libLLVMAsmPrinter \
+    libLLVMMCParser \
+    libLLVMCodeGen \
+    libLLVMLinker \
+    libLLVMJIT \
+    libLLVMMC \
+    libLLVMScalarOpts \
+    libLLVMInstCombine \
+    libLLVMipo \
+    libLLVMipa \
+    libLLVMTransformUtils \
+    libLLVMCore \
+    libLLVMTarget \
+    libLLVMSupport \
+    libLLVMAnalysis
+else
+  LOCAL_STATIC_LIBRARIES := \
+    librsloader \
+    libcutils \
+    libutils \
+    libLLVMX86CodeGen \
+    libLLVMX86Info \
+    libLLVMX86Utils \
+    libLLVMX86AsmPrinter \
+    libLLVMARMCodeGen \
+    libLLVMARMInfo \
+    libLLVMBitReader \
+    libLLVMSelectionDAG \
+    libLLVMAsmPrinter \
+    libLLVMMCParser \
+    libLLVMCodeGen \
+    libLLVMLinker \
+    libLLVMJIT \
+    libLLVMMC \
+    libLLVMScalarOpts \
+    libLLVMInstCombine \
+    libLLVMipo \
+    libLLVMipa \
+    libLLVMTransformUtils \
+    libLLVMCore \
+    libLLVMTarget \
+    libLLVMSupport \
+    libLLVMAnalysis
+endif
 
 LOCAL_LDLIBS := -ldl -lpthread
 
