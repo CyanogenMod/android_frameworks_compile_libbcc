@@ -155,7 +155,7 @@ else
 endif
 
 ifeq ($(libbcc_USE_MCJIT),1)
-  LOCAL_STATIC_LIBRARIES := librsloader
+  LOCAL_STATIC_LIBRARIES += librsloader
 endif
 
 LOCAL_STATIC_LIBRARIES += \
@@ -229,7 +229,7 @@ LOCAL_SRC_FILES := \
   helper/DebugHelper.c
 
 ifeq ($(libbcc_USE_MCJIT),1)
-  LOCAL_STATIC_LIBRARIES := librsloader
+  LOCAL_STATIC_LIBRARIES += librsloader
 endif
 
 LOCAL_STATIC_LIBRARIES += \
