@@ -245,16 +245,17 @@ int Script::internalLoadCache() {
 #if USE_MCJIT
   getObjPath(objPath);
   getInfoPath(infoPath);
- #endif
+#endif
 
   if (objFile.open(objPath.c_str(), OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
     return 1;
   }
 
- #if USE_OLD_JIT
+#if USE_OLD_JIT
   CacheReader reader;
- #endif
+#endif
+
 #if USE_MCJIT
   if (infoFile.open(infoPath.c_str(), OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
@@ -268,7 +269,7 @@ int Script::internalLoadCache() {
     reader.registerSymbolCallback(mpExtSymbolLookupFn,
                                       mpExtSymbolLookupFnContext);
   }
- #endif
+#endif
 
   // Dependencies
 #if USE_LIBBCC_SHA1SUM
@@ -287,9 +288,11 @@ int Script::internalLoadCache() {
 #if USE_MCJIT
   ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);
 #endif
+
 #if USE_OLD_JIT
   ScriptCached *cached = reader.readCacheFile(&objFile, this);
 #endif
+
   if (!cached) {
     mIsContextSlotNotAvail = reader.isContextSlotNotAvail();
     return 1;
@@ -399,6 +402,7 @@ int Script::internalCompile() {
         && infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0
 #endif
 	) {
+
 #if USE_MCJIT
       MCCacheWriter writer;
 #endif
@@ -426,6 +430,7 @@ int Script::internalCompile() {
           (uint32_t)mpExtSymbolLookupFn(mpExtSymbolLookupFnContext,
                                         "__isThreadable");
       }
+
 #if USE_OLD_JIT
       if (!writer.writeCacheFile(&objFile, this, libRS_threadable)) {
 #endif
@@ -471,6 +476,7 @@ char const *Script::getCompilerErrorMessage() {
 void *Script::lookup(const char *name) {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->lookup(name);
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->lookup(name);
 #endif
@@ -485,9 +491,11 @@ void *Script::lookup(const char *name) {
 size_t Script::getExportVarCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getExportVarCount();
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getExportVarCount();
 #endif
+
   default:                      return 0;
   }
 }
@@ -496,9 +504,11 @@ size_t Script::getExportVarCount() const {
 size_t Script::getExportFuncCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getExportFuncCount();
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getExportFuncCount();
 #endif
+
   default:                      return 0;
   }
 }
@@ -507,9 +517,11 @@ size_t Script::getExportFuncCount() const {
 size_t Script::getPragmaCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getPragmaCount();
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getPragmaCount();
 #endif
+
   default:                      return 0;
   }
 }
@@ -518,9 +530,11 @@ size_t Script::getPragmaCount() const {
 size_t Script::getFuncCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getFuncCount();
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getFuncCount();
 #endif
+
   default:                      return 0;
   }
 }
@@ -529,9 +543,11 @@ size_t Script::getFuncCount() const {
 size_t Script::getObjectSlotCount() const {
   switch (mStatus) {
   case ScriptStatus::Compiled:  return mCompiled->getObjectSlotCount();
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getObjectSlotCount();
 #endif
+
   default:                      return 0;
   }
 }
@@ -643,9 +659,11 @@ void Script::getObjectSlotList(size_t objectSlotListSize,
 
 char *Script::getContext() {
   switch (mStatus) {
+
 #if USE_CACHE
   case ScriptStatus::Cached:    return mCached->getContext();
 #endif
+
   case ScriptStatus::Compiled:  return mCompiled->getContext();
 
   default:
@@ -666,6 +684,7 @@ int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
   }
   return 0;
 }
+
 #if USE_MCJIT
 size_t Script::getELFSize() const {
   switch (mStatus) {
