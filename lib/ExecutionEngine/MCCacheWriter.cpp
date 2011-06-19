@@ -356,12 +356,12 @@ bool MCCacheWriter::calcSectionOffset() {
 bool MCCacheWriter::writeAll() {
 #define WRITE_SECTION(NAME, OFFSET, SIZE, SECTION)                          \
   do {                                                                      \
-    if (mInfoFile->seek(OFFSET, SEEK_SET) == -1) {                              \
+    if (mInfoFile->seek(OFFSET, SEEK_SET) == -1) {                          \
       LOGE("Unable to seek to " #NAME " section for writing.\n");           \
       return false;                                                         \
     }                                                                       \
                                                                             \
-    if (mInfoFile->write(reinterpret_cast<char *>(SECTION), (SIZE)) !=          \
+    if (mInfoFile->write(reinterpret_cast<char *>(SECTION), (SIZE)) !=      \
         static_cast<ssize_t>(SIZE)) {                                       \
       LOGE("Unable to write " #NAME " section to cache file.\n");           \
       return false;                                                         \
@@ -386,8 +386,9 @@ bool MCCacheWriter::writeAll() {
 
 #undef WRITE_SECTION_SIMPLE
 #undef WRITE_SECTION
-  
-  if (static_cast<size_t>(mObjFile->write(mpOwner->getELF(), mpOwner->getELFSize()))
+
+  if (static_cast<size_t>(mObjFile->write(mpOwner->getELF(),
+                                          mpOwner->getELFSize()))
       != mpOwner->getELFSize()) {
       LOGE("Unable to write ELF to cache file.\n");
       return false;
@@ -395,7 +396,6 @@ bool MCCacheWriter::writeAll() {
 
   return true;
 }
-
 
 } // namespace bcc
 #endif

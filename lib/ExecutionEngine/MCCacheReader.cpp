@@ -51,7 +51,9 @@ MCCacheReader::~MCCacheReader() {
   if (mpFuncTable) { free(mpFuncTable); }
 }
 
-ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile, FileHandle *infoFile, Script *S) {
+ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
+                                           FileHandle *infoFile,
+                                           Script *S) {
   // Check file handle
   if (!objFile || objFile->getFD() < 0 || !infoFile || infoFile->getFD() < 0) {
     return false;
@@ -379,7 +381,8 @@ void *MCCacheReader::resolveSymbolAdapter(void *context, char const *name) {
   }
 
   if (self->mpSymbolLookupFn) {
-    if (void *Addr = self->mpSymbolLookupFn(self->mpSymbolLookupContext, name)) {
+    if (void *Addr =
+        self->mpSymbolLookupFn(self->mpSymbolLookupContext, name)) {
       return Addr;
     }
   }
@@ -435,15 +438,18 @@ bool MCCacheReader::relocate() {
                     reinterpret_cast<char *>(mpHeader->root_base_addr);
   for (size_t i = 0; i < mpResult->getExportVarCount(); ++i) {
     mpResult->mpExportVars->cached_addr_list[i] =
-    reinterpret_cast<void *>(reinterpret_cast<char *>(mpResult->mpExportVars->cached_addr_list[i]) + mRootOffset);
+    reinterpret_cast<void *>(
+        reinterpret_cast<char *>(mpResult->mpExportVars->cached_addr_list[i])
+        + mRootOffset);
   }
   for (size_t i = 0; i < mpResult->getExportFuncCount(); ++i) {
     mpResult->mpExportFuncs->cached_addr_list[i] =
-    reinterpret_cast<void *>(reinterpret_cast<char *>(mpResult->mpExportFuncs->cached_addr_list[i]) + mRootOffset);
+    reinterpret_cast<void *>(
+        reinterpret_cast<char *>(mpResult->mpExportFuncs->cached_addr_list[i])
+        + mRootOffset);
   }
   return true;
 }
-
 
 } // namespace bcc
 #endif
