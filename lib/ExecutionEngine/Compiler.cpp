@@ -395,9 +395,11 @@ int Compiler::compile() {
   ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
 
   // Perform link-time optimization if we have multiple modules
+#if !USE_MCJIT || !DEBUG_MCJIT_DISASSEMBLE
   if (mHasLinked) {
     runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata);
   }
+#endif
 
   // Perform code generation
 #if USE_OLD_JIT
@@ -416,7 +418,7 @@ int Compiler::compile() {
   {
     llvm::LLVMContext Ctx;
     LOGD("@ long long alignment: %d\n", TD->getABITypeAlignment((llvm::Type const *)llvm::Type::getInt64Ty(Ctx)));
-    char const *func_list[] = { "root", ".helper_lookAt" };
+    char const *func_list[] = { "root", "lookAt" };
     size_t func_list_size = sizeof(func_list) / sizeof(char const *);
 
     for (size_t i = 0; i < func_list_size; ++i) {
