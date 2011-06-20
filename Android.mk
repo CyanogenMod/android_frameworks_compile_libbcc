@@ -172,9 +172,9 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMipo \
   libLLVMipa \
   libLLVMTransformUtils \
+  libLLVMAnalysis \
   libLLVMCore \
-  libLLVMSupport \
-  libLLVMAnalysis
+  libLLVMSupport
 
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
@@ -254,10 +254,10 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMipo \
   libLLVMipa \
   libLLVMTransformUtils \
+  libLLVMAnalysis \
   libLLVMCore \
   libLLVMTarget \
-  libLLVMSupport \
-  libLLVMAnalysis
+  libLLVMSupport
 
 LOCAL_LDLIBS := -ldl -lpthread
 
