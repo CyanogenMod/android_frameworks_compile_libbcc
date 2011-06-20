@@ -47,10 +47,20 @@
 #include "llvm/Target/TargetRegistry.h"
 #include "llvm/Target/TargetSelect.h"
 
+#if USE_DISASSEMBLER
+#include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCDisassembler.h"
+#include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstPrinter.h"
+#include "llvm/Support/MemoryObject.h"
+#include "llvm/LLVMContext.h"
+#endif
+
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/MemoryBuffer.h"
 
+#include "llvm/Type.h"
 #include "llvm/GlobalValue.h"
 #include "llvm/Linker.h"
 #include "llvm/LLVMContext.h"
@@ -70,7 +80,35 @@
 #include <string>
 #include <vector>
 
-#define DEBUG_BCC_REFLECT_TO_LIBRS 0
+namespace {
+
+#if USE_DISASSEMBLER
+class BufferMemoryObject : public llvm::MemoryObject {
+private:
+  const uint8_t *mBytes;
+  uint64_t mLength;
+
+public:
+  BufferMemoryObject(const uint8_t *Bytes, uint64_t Length)
+    : mBytes(Bytes), mLength(Length) {
+  }
+
+  virtual uint64_t getBase() const { return 0; }
+  virtual uint64_t getExtent() const { return mLength; }
+
+  virtual int readByte(uint64_t Addr, uint8_t *Byte) const {
+    if (Addr > getExtent())
+      return -1;
+    *Byte = mBytes[Addr];
+    return 0;
+  }
+};
+#endif
+
+}; // namespace anonymous
+
+#define DEBUG_MCJIT REFLECT 0
+#define DEBUG_MCJIT_DISASSEMBLE 1
 
 namespace bcc {
 
@@ -374,6 +412,22 @@ int Compiler::compile() {
                    ExportVarMetadata, ExportFuncMetadata) != 0) {
     goto on_bcc_compile_error;
   }
+#if USE_DISASSEMBLER && DEBUG_MCJIT_DISASSEMBLE
+  {
+    llvm::LLVMContext Ctx;
+    LOGD("@ long long alignment: %d\n", TD->getABITypeAlignment((llvm::Type const *)llvm::Type::getInt64Ty(Ctx)));
+    char const *func_list[] = { "root", ".helper_lookAt" };
+    size_t func_list_size = sizeof(func_list) / sizeof(char const *);
+
+    for (size_t i = 0; i < func_list_size; ++i) {
+      void *func = rsloaderGetSymbolAddress(mRSExecutable, func_list[i]);
+      if (func) {
+        size_t size = rsloaderGetSymbolSize(mRSExecutable, func_list[i]);
+        Disassemble(Target, TM, func_list[i], (unsigned char const *)func, size);
+      }
+    }
+  }
+#endif
 #endif
 
   // Read pragma information from the metadata node of the module.
@@ -399,7 +453,7 @@ int Compiler::compile() {
                                        PragmaName.size()),
                            std::string(PragmaValue.data(),
                                        PragmaValue.size())));
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_REFLECT
           LOGD("compile(): Pragma: %s -> %s\n", pragmaList.back().first.c_str(),
                                            pragmaList.back().second.c_str());
 #endif
@@ -425,7 +479,7 @@ int Compiler::compile() {
             goto on_bcc_compile_error;
           }
           objectSlotList.push_back(USlot);
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_REFLECT
           LOGD("compile(): RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
 #endif
         }
@@ -525,7 +579,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
               continue;
             if (ExportVarName == I->first->getName()) {
               varList.push_back(I->second);
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_REFLECT
               LOGD("runCodeGen(): Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
 #endif
               break;
@@ -534,7 +588,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           if (I != mCodeEmitter->global_address_end())
             continue;  // found
 
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_REFLECT
           LOGD("runCodeGen(): Exported VAR: %s @ %p\n",
                ExportVarName.str().c_str(), (void *)0);
 #endif
@@ -560,7 +614,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
           funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_REFLECT
           LOGD("runCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
 #endif
@@ -634,7 +688,7 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           varList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportVarName.str().c_str()));
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_REFLECT
           LOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
                varList.back());
 #endif
@@ -660,7 +714,7 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           funcList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportFuncName.str().c_str()));
-#if DEBUG_BCC_REFLECT_TO_LIBRS
+#if DEBUG_MCJIT_RELECT
           LOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
 #endif
@@ -871,5 +925,78 @@ Compiler::~Compiler() {
 
   // llvm::llvm_shutdown();
 }
+
+#if USE_MCJIT && USE_DISASSEMBLER
+void Compiler::Disassemble(llvm::Target const *Target,
+                           llvm::TargetMachine *TM,
+                           std::string const &Name,
+                           unsigned char const *Func,
+                           size_t FuncSize) {
+  llvm::raw_ostream *OS;
+
+#if USE_DISASSEMBLER_FILE
+  std::string ErrorInfo;
+  OS = new llvm::raw_fd_ostream("/data/local/tmp/mcjit-dis.s", ErrorInfo,
+                                llvm::raw_fd_ostream::F_Append);
+
+  if (!ErrorInfo.empty()) {    // some errors occurred
+    // LOGE("Error in creating disassembly file");
+    delete OS;
+    return;
+  }
+#else
+  OS = &llvm::outs();
+#endif
+
+  *OS << "MC/ Disassembled code: " << Name << "\n";
+
+  const llvm::MCAsmInfo *AsmInfo;
+  const llvm::MCDisassembler *Disassmbler;
+  llvm::MCInstPrinter *IP;
+
+  AsmInfo = Target->createAsmInfo(Compiler::Triple);
+  Disassmbler = Target->createMCDisassembler();
+  IP = Target->createMCInstPrinter(*TM,
+                                   AsmInfo->getAssemblerDialect(),
+                                   *AsmInfo);
+
+  const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Func, FuncSize);
+
+  uint64_t Size;
+  uint64_t Index;
+
+  for (Index = 0; Index < FuncSize; Index += Size) {
+    llvm::MCInst Inst;
+
+    if (Disassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
+                                    /* REMOVED */ llvm::nulls())) {
+      OS->indent(4);
+      OS->write("0x", 2);
+      OS->write_hex((uint32_t)Func + Index);
+      OS->write(": 0x", 4);
+      OS->write_hex(*(uint32_t *)(Func + Index));
+      IP->printInst(&Inst, *OS);
+      *OS << "\n";
+    } else {
+      if (Size == 0)
+        Size = 1;  // skip illegible bytes
+    }
+  }
+
+  *OS << "\n";
+  delete BufferMObj;
+
+  delete AsmInfo;
+  delete Disassmbler;
+  delete IP;
+
+#if USE_DISASSEMBLER_FILE
+  // If you want the disassemble results write to file, uncomment this.
+  ((llvm::raw_fd_ostream*)OS)->close();
+  delete OS;
+#endif
+}
+#endif
+
 
 }  // namespace bcc

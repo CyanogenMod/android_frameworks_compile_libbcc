@@ -104,6 +104,14 @@ namespace bcc {
 
     // Loaded and relocated executable
     RSExecRef mRSExecutable;
+
+#if USE_DISASSEMBLER
+    void Disassemble(llvm::Target const *Target,
+                     llvm::TargetMachine *TM,
+                     std::string const &name,
+                     unsigned char const *code,
+                     size_t size);
+#endif
 #endif
 
     BCCSymbolLookupFn mpSymbolLookupFn;
