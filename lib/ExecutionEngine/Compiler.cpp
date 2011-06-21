@@ -395,11 +395,9 @@ int Compiler::compile() {
   ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
 
   // Perform link-time optimization if we have multiple modules
-#if !USE_MCJIT || !DEBUG_MCJIT_DISASSEMBLE
   if (mHasLinked) {
     runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata);
   }
-#endif
 
   // Perform code generation
 #if USE_OLD_JIT
