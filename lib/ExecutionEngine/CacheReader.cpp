@@ -149,10 +149,10 @@ bool CacheReader::checkHeader() {
     return false;
   }
 
-  if (memcmp(mpHeader->libbcc_build_time, libbcc_build_time, 24) != 0) {
-    mpHeader->libbcc_build_time[24 - 1] = '\0'; // ensure terminated
-    LOGW("Build time mismatch: lib %s cached %s\n", libbcc_build_time,
-         mpHeader->libbcc_build_time);
+  if (memcmp(mpHeader->libbcc_build_checksum, libbcc_build_checksum, 41) != 0) {
+    mpHeader->libbcc_build_checksum[41 - 1] = '\0'; // ensure terminated
+    LOGW("Build checksum mismatch: lib %s cached %s\n", libbcc_build_checksum,
+         mpHeader->libbcc_build_checksum);
     return false;
   }
 

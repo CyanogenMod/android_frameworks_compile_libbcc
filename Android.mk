@@ -70,6 +70,19 @@ libbcc_SRC_FILES += \
   helper/sha1.c
 endif
 
+FULL_PATH_libbcc_SRC_FILES := \
+  $(addprefix $(LOCAL_PATH)/, $(libbcc_SRC_FILES)) \
+  $(sort $(shell find $(LOCAL_PATH) -name "*.h"))
+
+# Build Host SHA1 Command Line
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := helper/sha1.c
+LOCAL_MODULE := sha1sum
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS += -DCMDLINE
+include $(BUILD_HOST_EXECUTABLE)
+
 #
 # Shared library for target
 # ========================================================
@@ -77,9 +90,21 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_CFLAGS += $(local_cflags_for_libbcc)
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES)
+
+intermediates := $(local-intermediates-dir)
+libbcc_CHECKSUM_FILE := $(intermediates)/lib/bcc_checksum.c
+
+LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
+
+$(libbcc_CHECKSUM_FILE):$(HOST_OUT_EXECUTABLES)/sha1sum $(FULL_PATH_libbcc_SRC_FILES)
+	@echo Generate SHA1
+	@echo -n "char const libbcc_build_checksum[41] = \"" > $@
+	@cat $(FULL_PATH_libbcc_SRC_FILES) | $(HOST_OUT_EXECUTABLES)/sha1sum >> $@
+	@echo "\";" >> $@
 
 ifeq ($(TARGET_ARCH),arm)
   LOCAL_SRC_FILES += \
@@ -223,10 +248,23 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_IS_HOST_MODULE := true
 LOCAL_CFLAGS += $(local_cflags_for_libbcc)
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES) \
   helper/DebugHelper.c
+
+intermediates := $(local-intermediates-dir)
+libbcc_CHECKSUM_FILE := $(intermediates)/lib/bcc_checksum.c
+
+LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
+
+$(libbcc_CHECKSUM_FILE):$(HOST_OUT_EXECUTABLES)/sha1sum $(FULL_PATH_libbcc_SRC_FILES)
+	@echo Generate SHA1
+	@echo -n "char const libbcc_build_checksum[41] = \"" > $@
+	@cat $(FULL_PATH_libbcc_SRC_FILES) | $(HOST_OUT_EXECUTABLES)/sha1sum >> $@
+	@echo "\";" >> $@
 
 ifeq ($(libbcc_USE_MCJIT),1)
   LOCAL_STATIC_LIBRARIES += librsloader

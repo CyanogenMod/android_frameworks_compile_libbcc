@@ -93,7 +93,7 @@ bool CacheWriter::prepareHeader(uint32_t libRS_threadable) {
   // Magic word and version
   memcpy(header->magic, OBCC_MAGIC, 4);
   memcpy(header->version, OBCC_VERSION, 4);
-  memcpy(header->libbcc_build_time, libbcc_build_time, 24);
+  memcpy(header->libbcc_build_checksum, libbcc_build_checksum, 41);
 
   // Machine Integer Type
   uint32_t number = 0x00000001;

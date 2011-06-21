@@ -17,6 +17,8 @@
 #ifndef BCC_SCRIPTCACHED_H
 #define BCC_SCRIPTCACHED_H
 
+#include "Config.h"
+
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
 #include <bcc/bcc_mccache.h>

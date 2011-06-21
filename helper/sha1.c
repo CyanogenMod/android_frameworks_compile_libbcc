@@ -80,9 +80,9 @@ A million repetitions of "a"
 #define SHA1HANDSOFF    /*Copies data before messing with it.*/
 
 /*#define CMDLINE        * include main() and file processing */
-#ifdef CMDLINE
-# undef CMDLINE         /* Never include main() for libbcc */
-#endif
+//#ifdef CMDLINE
+//# undef CMDLINE         /* Never include main() for libbcc */
+//#endif
 
 #include "sha1.h"
 
@@ -434,6 +434,12 @@ int main(int argc, char** argv)
     char ext[MAXEXT];
 #endif
     unsigned char err;
+
+    // Read from STDIN
+    sha1file(NULL, digest);
+    for (j = 0; j < HASHSIZE; j++)
+        printf("%02x", digest[j]);
+    return 0;
 
     for (i = 1; i < argc; i++)
     {

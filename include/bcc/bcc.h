@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "bcc/bcc_checksum.h"
+
 /*-------------------------------------------------------------------------*/
 
 /* libbcc script opaque type */
@@ -149,14 +151,6 @@ void bccGetObjectSlotList(BCCScriptRef script,
 #ifdef __cplusplus
 };
 #endif
-
-
-/*-------------------------------------------------------------------------*/
-
-
-/* libbcc library build time */
-extern char const libbcc_build_time[24];
-
 
 /*-------------------------------------------------------------------------*/
 

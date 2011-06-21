@@ -30,13 +30,9 @@
 
 using namespace bcc;
 
-char const libbcc_build_time[24] = __DATE__ " " __TIME__;
-
-
 namespace llvm {
   class Module;
 }
-
 
 extern "C" BCCScriptRef bccCreateScript() {
   BCC_FUNC_LOGGER();

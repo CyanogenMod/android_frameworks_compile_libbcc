@@ -153,7 +153,7 @@ void Compiler::GlobalInitialization() {
   if (GlobalInitialized)
     return;
 
-  LOGI("LIBBCC BUILD: %s\n", libbcc_build_time);
+  LOGI("LIBBCC BUILD CHECKSUM: %s\n", libbcc_build_checksum);
 
   // if (!llvm::llvm_is_multithreaded())
   //   llvm::llvm_start_multithreaded();
