@@ -22,7 +22,9 @@
 #include <bcc/bcc_mccache.h>
 #include "bcc_internal.h"
 
+#if USE_MCJIT
 #include "librsloader.h"
+#endif
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -64,7 +66,9 @@ namespace bcc {
 
     char *mContext;
 
+#if USE_MCJIT
     RSExecRef mRSExecutable;
+#endif
 
     OBCC_StringPool *mpStringPoolRaw;
     std::vector<char const *> mStringPool;

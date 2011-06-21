@@ -22,7 +22,9 @@
 #include "CodeEmitter.h"
 #include "CodeMemoryManager.h"
 
+#if USE_MCJIT
 #include "librsloader.h"
+#endif
 
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"

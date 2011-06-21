@@ -25,7 +25,9 @@
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
 
+#if USE_MCJIT
 #include "librsloader.h"
+#endif
 
 #include "llvm/ADT/StringRef.h"
 
@@ -108,7 +110,7 @@ public:
 }; // namespace anonymous
 
 #define DEBUG_MCJIT REFLECT 0
-#define DEBUG_MCJIT_DISASSEMBLE 1
+#define DEBUG_MCJIT_DISASSEMBLE 0
 
 namespace bcc {
 
@@ -414,9 +416,10 @@ int Compiler::compile() {
   }
 #if USE_DISASSEMBLER && DEBUG_MCJIT_DISASSEMBLE
   {
-    llvm::LLVMContext Ctx;
-    LOGD("@ long long alignment: %d\n", TD->getABITypeAlignment((llvm::Type const *)llvm::Type::getInt64Ty(Ctx)));
-    char const *func_list[] = { "root", "lookAt" };
+    // llvm::LLVMContext Ctx;
+    // LOGD("@ long long alignment: %d\n", TD->getABITypeAlignment((llvm::Type const *)llvm::Type::getInt64Ty(Ctx)));
+    char const *func_list[] = { "root" };
+
     size_t func_list_size = sizeof(func_list) / sizeof(char const *);
 
     for (size_t i = 0; i < func_list_size; ++i) {
