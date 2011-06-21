@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "Config.h"
+
 #include "ScriptCached.h"
 
 #include <bcc/bcc_cache.h>
