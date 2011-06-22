@@ -102,7 +102,7 @@ LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
 
 $(libbcc_CHECKSUM_FILE):$(HOST_OUT_EXECUTABLES)/sha1sum $(FULL_PATH_libbcc_SRC_FILES)
 	@echo Generate SHA1
-	@echo -n "char const libbcc_build_checksum[41] = \"" > $@
+	@mkdir -p $(dir $@) && echo -n "char const libbcc_build_checksum[41] = \"" > $@
 	@cat $(FULL_PATH_libbcc_SRC_FILES) | $(HOST_OUT_EXECUTABLES)/sha1sum >> $@
 	@echo "\";" >> $@
 
@@ -262,7 +262,7 @@ LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
 
 $(libbcc_CHECKSUM_FILE):$(HOST_OUT_EXECUTABLES)/sha1sum $(FULL_PATH_libbcc_SRC_FILES)
 	@echo Generate SHA1
-	@echo -n "char const libbcc_build_checksum[41] = \"" > $@
+	@mkdir -p $(dir $@) && echo -n "char const libbcc_build_checksum[41] = \"" > $@
 	@cat $(FULL_PATH_libbcc_SRC_FILES) | $(HOST_OUT_EXECUTABLES)/sha1sum >> $@
 	@echo "\";" >> $@
 
