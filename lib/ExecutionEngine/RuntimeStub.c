@@ -23,6 +23,7 @@
 #if !defined(__i386__)
 #   include "runtime/lib/divdi3.c"
 #endif
+#include "runtime/lib/divsi3.c"
 #ifndef ANDROID // no complex.h
 #   include "runtime/lib/divsc3.c"
 #endif
@@ -40,6 +41,7 @@
 #   include "runtime/lib/floatundisf.c"
 #   include "runtime/lib/moddi3.c"
 #endif
+#include "runtime/lib/modsi3.c"
 #if !defined(__i386__) && !defined(__SSE2__)
 #   include "runtime/lib/lshrdi3.c"
 #endif
@@ -74,6 +76,7 @@
 #if !defined(__i386__)
 #   include "runtime/lib/umoddi3.c"
 #endif
+#include "runtime/lib/umodsi3.c"
 #include "runtime/lib/eprintf.c"
 
 #if defined(__arm__)
