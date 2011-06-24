@@ -148,14 +148,6 @@ bool CacheReader::checkHeader() {
          OBCC_VERSION, mpHeader->version);
     return false;
   }
-
-  if (memcmp(mpHeader->libbcc_build_checksum, libbcc_build_checksum, 41) != 0) {
-    mpHeader->libbcc_build_checksum[41 - 1] = '\0'; // ensure terminated
-    LOGW("Build checksum mismatch: lib %s cached %s\n", libbcc_build_checksum,
-         mpHeader->libbcc_build_checksum);
-    return false;
-  }
-
   return true;
 }
 
