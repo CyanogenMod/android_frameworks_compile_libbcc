@@ -162,13 +162,20 @@ void Compiler::GlobalInitialization() {
   Triple = TARGET_TRIPLE_STRING;
 
   Features.push_back("+vfp3");
-  Features.push_back("+d16");
 
   // NOTE: Currently, we have to turn off the support for NEON explicitly.
   // Since the ARMCodeEmitter.cpp is not ready for JITing NEON
   // instructions.
-  Features.push_back("-neon"); // TODO(sliao): NEON for JIT
+#if ARCH_ARM_HAVE_NEON
+  Features.push_back("+d32");
+  Features.push_back("+neon");
+  Features.push_back("+neonfp");
+#else
+  Features.push_back("+d16");
+  Features.push_back("-neon");
   Features.push_back("-neonfp");
+#endif
+
   Features.push_back("-vmlx");
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
