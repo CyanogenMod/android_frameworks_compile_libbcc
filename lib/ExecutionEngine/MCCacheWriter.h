@@ -46,7 +46,6 @@ namespace bcc {
     OBCC_ExportVarList *mpExportVarListSection;
     OBCC_ExportFuncList *mpExportFuncListSection;
     OBCC_PragmaList *mpPragmaListSection;
-    OBCC_FuncTable *mpFuncTableSection;
     OBCC_ObjectSlotList *mpObjectSlotSection;
 
   public:
@@ -54,7 +53,7 @@ namespace bcc {
       : mpHeaderSection(NULL), mpStringPoolSection(NULL),
         mpDependencyTableSection(NULL), mpExportVarListSection(NULL),
         mpExportFuncListSection(NULL), mpPragmaListSection(NULL),
-        mpFuncTableSection(NULL), mpObjectSlotSection(NULL) {
+        mpObjectSlotSection(NULL) {
     }
 
     ~MCCacheWriter();
@@ -77,7 +76,6 @@ namespace bcc {
     bool prepareExportVarList();
     bool prepareExportFuncList();
     bool preparePragmaList();
-    bool prepareFuncTable();
     bool prepareObjectSlotList();
 
     bool writeAll();

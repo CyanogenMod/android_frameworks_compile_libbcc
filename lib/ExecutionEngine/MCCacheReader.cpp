@@ -48,7 +48,6 @@ MCCacheReader::~MCCacheReader() {
   if (mpHeader) { free(mpHeader); }
   if (mpCachedDependTable) { free(mpCachedDependTable); }
   if (mpPragmaList) { free(mpPragmaList); }
-  if (mpFuncTable) { free(mpFuncTable); }
 }
 
 ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
@@ -82,7 +81,6 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
              && readExportVarList()
              && readExportFuncList()
              && readPragmaList()
-             && readFuncTable()
              && readObjectSlotList()
              && readObjFile()
              && relocate()
@@ -410,20 +408,6 @@ bool MCCacheReader::readObjFile() {
   return true;
 }
 
-bool MCCacheReader::readFuncTable() {
-  CACHE_READER_READ_SECTION(OBCC_FuncTable, mpFuncTable, func_table);
-
-  vector<char const *> &strPool = mpResult->mStringPool;
-  ScriptCached::FuncTable &table = mpResult->mFunctions;
-  for (size_t i = 0; i < func_table_raw->count; ++i) {
-    OBCC_FuncInfo *func = &func_table_raw->table[i];
-    table.insert(make_pair(strPool[func->name_strp_index],
-                           make_pair(func->cached_addr, func->size)));
-  }
-
-  return true;
-}
-
 #undef CACHE_READER_READ_SECTION
 
 bool MCCacheReader::readRelocationTable() {
@@ -437,6 +421,9 @@ bool MCCacheReader::relocate() {
   int mRootOffset = reinterpret_cast<char *>(rootPtr) -
                     reinterpret_cast<char *>(mpHeader->root_base_addr);
   for (size_t i = 0; i < mpResult->getExportVarCount(); ++i) {
+    // Variable is optimized out by libbcc. Don't relocate.
+    if (mpResult->mpExportVars->cached_addr_list[i] == 0x00) continue;
+
     mpResult->mpExportVars->cached_addr_list[i] =
     reinterpret_cast<void *>(
         reinterpret_cast<char *>(mpResult->mpExportVars->cached_addr_list[i])

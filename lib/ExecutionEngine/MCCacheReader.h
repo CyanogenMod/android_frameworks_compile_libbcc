@@ -57,7 +57,7 @@ namespace bcc {
   public:
     MCCacheReader()
       : mObjFile(NULL), mInfoFile(NULL), mInfoFileSize(0), mpHeader(NULL),
-        mpCachedDependTable(NULL), mpPragmaList(NULL), mpFuncTable(NULL),
+        mpCachedDependTable(NULL), mpPragmaList(NULL),
         mIsContextSlotNotAvail(false) {
     }
 
@@ -88,7 +88,6 @@ namespace bcc {
     bool readExportVarList();
     bool readExportFuncList();
     bool readPragmaList();
-    bool readFuncTable();
     bool readObjectSlotList();
     bool readObjFile();
     bool readRelocationTable();

@@ -44,7 +44,6 @@ MCCacheWriter::~MCCacheWriter() {
   CHECK_AND_FREE(mpExportVarListSection);
   CHECK_AND_FREE(mpExportFuncListSection);
   CHECK_AND_FREE(mpPragmaListSection);
-  CHECK_AND_FREE(mpFuncTableSection);
   CHECK_AND_FREE(mpObjectSlotSection);
 
 #undef CHECK_AND_FREE
@@ -62,7 +61,6 @@ bool MCCacheWriter::writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
 
   bool result = prepareHeader(libRS_threadable)
              && prepareDependencyTable()
-             && prepareFuncTable()
              && preparePragmaList()
              && prepareStringPool()
              && prepareExportVarList()
@@ -141,42 +139,6 @@ bool MCCacheWriter::prepareDependencyTable() {
 
   return true;
 }
-
-
-bool MCCacheWriter::prepareFuncTable() {
-  size_t funcCount = mpOwner->getFuncCount();
-
-  size_t tableSize = sizeof(OBCC_FuncTable) +
-                     sizeof(OBCC_FuncInfo) * funcCount;
-
-  OBCC_FuncTable *tab = (OBCC_FuncTable *)malloc(tableSize);
-
-  if (!tab) {
-    LOGE("Unable to allocate for function table section.\n");
-    return false;
-  }
-
-  mpFuncTableSection = tab;
-  mpHeaderSection->func_table_size = tableSize;
-
-  tab->count = static_cast<size_t>(funcCount);
-
-  // Get the function informations
-  vector<FuncInfo> funcInfoList(funcCount);
-  mpOwner->getFuncInfoList(funcCount, &*funcInfoList.begin());
-
-  for (size_t i = 0; i < funcCount; ++i) {
-    FuncInfo *info = &funcInfoList[i];
-    OBCC_FuncInfo *outputInfo = &tab->table[i];
-
-    outputInfo->name_strp_index = addString(info->name, strlen(info->name));
-    outputInfo->cached_addr = info->addr;
-    outputInfo->size = info->size;
-  }
-
-  return true;
-}
-
 
 bool MCCacheWriter::preparePragmaList() {
   size_t pragmaCount = mpOwner->getPragmaCount();
@@ -381,7 +343,6 @@ bool MCCacheWriter::writeAll() {
   WRITE_SECTION_SIMPLE(export_var_list, mpExportVarListSection);
   WRITE_SECTION_SIMPLE(export_func_list, mpExportFuncListSection);
   WRITE_SECTION_SIMPLE(pragma_list, mpPragmaListSection);
-  WRITE_SECTION_SIMPLE(func_table, mpFuncTableSection);
   WRITE_SECTION_SIMPLE(object_slot_list, mpObjectSlotSection);
 
 #undef WRITE_SECTION_SIMPLE
