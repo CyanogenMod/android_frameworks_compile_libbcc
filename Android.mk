@@ -83,6 +83,29 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS += -DCMDLINE
 include $(BUILD_HOST_EXECUTABLE)
 
+# Calculate SHA1 checksum for libbcc.so and libRS.so
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := libbcc_sha1
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+
+LOCAL_REQUIRED_MODULES := libbcc sha1sum libRS
+
+CONVERT_ASM := frameworks/compile/libbcc/tools/dataconvert.py
+
+intermediates := $(local-intermediates-dir)
+libbcc_CHECKSUM_FILE := $(intermediates)/checksum.S
+LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
+
+$(libbcc_CHECKSUM_FILE):$(TARGET_OUT_SHARED_LIBRARIES)/libbcc.so \
+                        $(TARGET_OUT_SHARED_LIBRARIES)/libRS.so
+	@mkdir -p $(dir $@) && \
+	  cat $^ | $(HOST_OUT_EXECUTABLES)/sha1sum | \
+	  python $(CONVERT_ASM) libbcc_checksum > $@
+
+include $(BUILD_SHARED_LIBRARY)
+
 #
 # Shared library for target
 # ========================================================
@@ -95,16 +118,7 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcc)
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES)
 
-intermediates := $(local-intermediates-dir)
-libbcc_CHECKSUM_FILE := $(intermediates)/lib/bcc_checksum.c
-
-LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
-
-$(libbcc_CHECKSUM_FILE):$(HOST_OUT_EXECUTABLES)/sha1sum $(FULL_PATH_libbcc_SRC_FILES)
-	@echo Generate SHA1
-	@mkdir -p $(dir $@) && echo -n "char const libbcc_build_checksum[41] = \"" > $@
-	@cat $(FULL_PATH_libbcc_SRC_FILES) | $(HOST_OUT_EXECUTABLES)/sha1sum >> $@
-	@echo "\";" >> $@
+LOCAL_CFLAGS += -DTARGET_BUILD
 
 ifeq ($(TARGET_ARCH),arm)
   LOCAL_SRC_FILES += \
@@ -254,17 +268,6 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcc)
 LOCAL_SRC_FILES := \
   $(libbcc_SRC_FILES) \
   helper/DebugHelper.c
-
-intermediates := $(local-intermediates-dir)
-libbcc_CHECKSUM_FILE := $(intermediates)/lib/bcc_checksum.c
-
-LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
-
-$(libbcc_CHECKSUM_FILE):$(HOST_OUT_EXECUTABLES)/sha1sum $(FULL_PATH_libbcc_SRC_FILES)
-	@echo Generate SHA1
-	@mkdir -p $(dir $@) && echo -n "char const libbcc_build_checksum[41] = \"" > $@
-	@cat $(FULL_PATH_libbcc_SRC_FILES) | $(HOST_OUT_EXECUTABLES)/sha1sum >> $@
-	@echo "\";" >> $@
 
 ifeq ($(libbcc_USE_MCJIT),1)
   LOCAL_STATIC_LIBRARIES += librsloader
