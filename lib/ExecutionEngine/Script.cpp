@@ -272,7 +272,11 @@ int Script::internalLoadCache() {
 #endif
 
   // Dependencies
-  reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+#if USE_LIBBCC_SHA1SUM
+  reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
+#endif
+
+  reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
   for (size_t i = 0; i < 2; ++i) {
     if (mSourceList[i]) {
@@ -406,10 +410,11 @@ int Script::internalCompile() {
       CacheWriter writer;
 #endif
 
-#ifdef TARGET_BUILD
       // Dependencies
-      writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+#if USE_LIBBCC_SHA1SUM
+      writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC, sha1LibBCC);
 #endif
+      writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
       for (size_t i = 0; i < 2; ++i) {
         if (mSourceList[i]) {

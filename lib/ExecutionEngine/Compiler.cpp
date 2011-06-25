@@ -152,6 +152,9 @@ const llvm::StringRef Compiler::ObjectSlotMetadataName = "#rs_object_slots";
 void Compiler::GlobalInitialization() {
   if (GlobalInitialized)
     return;
+
+  LOGI("LIBBCC BUILD CHECKSUM: %s\n", libbcc_build_checksum);
+
   // if (!llvm::llvm_is_multithreaded())
   //   llvm::llvm_start_multithreaded();
 
@@ -250,7 +253,10 @@ void Compiler::GlobalInitialization() {
 
 #if USE_CACHE
   // Calculate the SHA1 checksum of libbcc and libRS.
-  calcFileSHA1(sha1LibBCC_SHA1, pathLibBCC_SHA1);
+#if USE_LIBBCC_SHA1SUM
+  calcFileSHA1(sha1LibBCC, pathLibBCC);
+#endif
+  calcFileSHA1(sha1LibRS, pathLibRS);
 #endif
 
   GlobalInitialized = true;

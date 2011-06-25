@@ -34,6 +34,9 @@ struct MCO_Header {
   uint8_t magic[4];
   uint8_t version[4];
 
+  /* libbcc SHA1 checksum */
+  char libbcc_build_checksum[41];
+
   /* machine-dependent integer type size */
   uint8_t endianness;
   uint8_t sizeof_off_t;

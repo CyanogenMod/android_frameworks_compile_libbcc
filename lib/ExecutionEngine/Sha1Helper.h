@@ -22,8 +22,13 @@
 #include <stddef.h>
 
 namespace bcc {
-  extern unsigned char sha1LibBCC_SHA1[20];
-  extern char const *pathLibBCC_SHA1;
+#if USE_LIBBCC_SHA1SUM
+  extern unsigned char sha1LibBCC[20];
+  extern char const *pathLibBCC;
+#endif
+
+  extern unsigned char sha1LibRS[20];
+  extern char const *pathLibRS;
 
   void calcSHA1(unsigned char *result, char const *data, size_t size);
 
