@@ -727,15 +727,6 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
     }
   }
 #endif // !USE_OLD_JIT
-
-#if USE_CACHE
-  // Write generated executable to file.
-  if (writeELFExecToFile() != 0) {
-    setError("Fail to write mcjit-ed executable to file");
-    return 1;
-  }
-#endif
-
   return 0;
 }
 #endif // USE_MCJIT
@@ -867,29 +858,6 @@ int Compiler::runLTO(llvm::TargetData *TD,
 
   return 0;
 }
-
-
-#if USE_MCJIT
-int Compiler::writeELFExecToFile() {
-  std::string objPath(mCachePath);
-  if (!getObjPath(objPath)) {
-    LOGE("Fail to create objPath");
-    return 1;
-  }
-
-  FileHandle file;
-
-  int Fd = file.open(objPath.c_str(), OpenMode::Write);
-  if (Fd < 0) {
-    LOGE("Fail to open file '%s'", objPath.c_str());
-    return 1;
-  }
-
-  file.write(&*mEmittedELFExecutable.begin(), mEmittedELFExecutable.size());
-
-  return 0;
-}
-#endif
 
 
 #if USE_MCJIT

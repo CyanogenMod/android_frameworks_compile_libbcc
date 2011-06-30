@@ -194,8 +194,6 @@ namespace bcc {
                llvm::NamedMDNode const *ExportVarMetadata,
                llvm::NamedMDNode const *ExportFuncMetadata);
 
-    int writeELFExecToFile();
-
     bool hasError() const {
       return !mError.empty();
     }
