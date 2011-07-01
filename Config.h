@@ -18,12 +18,16 @@
 #define USE_CACHE 1
 
 #define USE_DISASSEMBLER 1
+#define DEBUG_OLD_JIT_DISASSEMBLE 0
+#define DEBUG_MCJIT_DISASSEMBLE 0
 
 #define USE_DISASSEMBLER_FILE 0
 
 #define USE_LOGGER 1
 
 #define USE_FUNC_LOGGER 0
+
+#define DEBUG_BCC_REFLECT 0
 
 //---------------------------------------------------------------------------
 // Configuration for ContextManager
