@@ -4,8 +4,8 @@
 //---------------------------------------------------------------------------
 // Configuration for JIT & MC Assembler
 //---------------------------------------------------------------------------
-#define USE_OLD_JIT 1
-#define USE_MCJIT 0
+#define USE_OLD_JIT 0
+#define USE_MCJIT 1
 
 #if !USE_OLD_JIT && !USE_MCJIT
 #error "You should choose at least one code generation method."
