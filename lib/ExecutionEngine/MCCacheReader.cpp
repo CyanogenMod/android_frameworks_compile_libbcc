@@ -392,7 +392,7 @@ bool MCCacheReader::readObjFile() {
     LOGE("Read file Error");
     return false;
   }
-  LOGD("Read object file size %d", mEmittedELFExecutable.size());
+  LOGD("Read object file size %d", (int)mEmittedELFExecutable.size());
   mpResult->mRSExecutable =
   rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
                      mEmittedELFExecutable.size(),
