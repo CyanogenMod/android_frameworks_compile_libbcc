@@ -90,6 +90,7 @@ LOCAL_MODULE := libbcc_sha1
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
+LOCAL_ADDITIONAL_DEPENDENCIES := sha1sum
 LOCAL_REQUIRED_MODULES := libbcc sha1sum libRS
 
 CONVERT_ASM := frameworks/compile/libbcc/tools/dataconvert.py
