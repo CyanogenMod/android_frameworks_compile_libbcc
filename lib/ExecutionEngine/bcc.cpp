@@ -122,7 +122,7 @@ extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
 
   void *addr = unwrap(script)->lookup(funcname);
 
-#if USE_DISASSEMBLER_FILE
+#if DEBUG_BCC_REFLECT
   LOGD("Function Address: %s --> %p\n", funcname, addr);
 #endif
 
@@ -144,7 +144,7 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
   if (varList) {
     unwrap(script)->getExportVarList(varListSize, varList);
 
-#if USE_DISASSEMBLER_FILE
+#if DEBUG_BCC_REFLECT
     size_t count = unwrap(script)->getExportVarCount();
     LOGD("ExportVarCount = %lu\n", (unsigned long)count);
 
@@ -174,7 +174,7 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
   if (funcList) {
     unwrap(script)->getExportFuncList(funcListSize, funcList);
 
-#if USE_DISASSEMBLER_FILE
+#if DEBUG_BCC_REFLECT
     size_t count = unwrap(script)->getExportFuncCount();
     LOGD("ExportFuncCount = %lu\n", (unsigned long)count);
 
@@ -203,7 +203,7 @@ extern "C" void bccGetPragmaList(BCCScriptRef script,
   BCC_FUNC_LOGGER();
   unwrap(script)->getPragmaList(pragmaListSize, keyList, valueList);
 
-#if USE_DISASSEMBLER_FILE
+#if DEBUG_BCC_REFLECT
   if (keyList && valueList) {
     size_t count = unwrap(script)->getPragmaCount();
     LOGD("PragmaCount = %lu\n", (unsigned long)count);
@@ -251,7 +251,7 @@ extern "C" void bccGetObjectSlotList(BCCScriptRef script,
 
   if (objectSlotList) {
     unwrap(script)->getObjectSlotList(objectSlotListSize, objectSlotList);
-#if USE_DISASSEMBLER_FILE
+#if DEBUG_BCC_REFLECT
     size_t count = unwrap(script)->getObjectSlotCount();
     LOGD("ObjectSlotCount = %lu\n", (unsigned long)count);
 

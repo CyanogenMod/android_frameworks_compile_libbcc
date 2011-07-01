@@ -1169,12 +1169,12 @@ void *CodeEmitter::GetExternalFunctionStub(void *FnAddr) {
 void CodeEmitter::Disassemble(const llvm::StringRef &Name,
                               uint8_t *Start, size_t Length, bool IsStub) {
 
-#if USE_DISASSEMBLER
+#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
   llvm::raw_ostream *OS;
 
 #if USE_DISASSEMBLER_FILE
   std::string ErrorInfo;
-  OS = new llvm::raw_fd_ostream("/data/local/tmp/out.S",
+  OS = new llvm::raw_fd_ostream("/data/local/tmp/old-jit.s",
                                 ErrorInfo,
                                 llvm::raw_fd_ostream::F_Append);
 

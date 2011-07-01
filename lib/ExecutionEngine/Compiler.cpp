@@ -109,9 +109,6 @@ public:
 
 }; // namespace anonymous
 
-#define DEBUG_MCJIT REFLECT 0
-#define DEBUG_MCJIT_DISASSEMBLE 0
-
 namespace bcc {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -457,9 +454,10 @@ int Compiler::compile() {
                                        PragmaName.size()),
                            std::string(PragmaValue.data(),
                                        PragmaValue.size())));
-#if DEBUG_MCJIT_REFLECT
-          LOGD("compile(): Pragma: %s -> %s\n", pragmaList.back().first.c_str(),
-                                           pragmaList.back().second.c_str());
+#if DEBUG_BCC_REFLECT
+          LOGD("compile(): Pragma: %s -> %s\n",
+               pragmaList.back().first.c_str(),
+               pragmaList.back().second.c_str());
 #endif
         }
       }
@@ -483,7 +481,7 @@ int Compiler::compile() {
             goto on_bcc_compile_error;
           }
           objectSlotList.push_back(USlot);
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_BCC_REFLECT
           LOGD("compile(): RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
 #endif
         }
@@ -583,7 +581,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
               continue;
             if (ExportVarName == I->first->getName()) {
               varList.push_back(I->second);
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_BCC_REFLECT
               LOGD("runCodeGen(): Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
 #endif
               break;
@@ -592,7 +590,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           if (I != mCodeEmitter->global_address_end())
             continue;  // found
 
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_BCC_REFLECT
           LOGD("runCodeGen(): Exported VAR: %s @ %p\n",
                ExportVarName.str().c_str(), (void *)0);
 #endif
@@ -618,7 +616,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           llvm::StringRef ExportFuncName =
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
           funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_BCC_REFLECT
           LOGD("runCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
 #endif
