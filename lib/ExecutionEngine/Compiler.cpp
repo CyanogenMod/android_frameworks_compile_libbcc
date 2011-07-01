@@ -417,12 +417,12 @@ int Compiler::compile() {
   }
 #if USE_DISASSEMBLER && DEBUG_MCJIT_DISASSEMBLE
   {
-    // llvm::LLVMContext Ctx;
-    // LOGD("@ long long alignment: %d\n", TD->getABITypeAlignment((llvm::Type const *)llvm::Type::getInt64Ty(Ctx)));
-    char const *func_list[] = { "root" };
+    // Get MC codegen emitted function name list
+    size_t func_list_size = rsloaderGetFuncCount(mRSExecutable);
+    std::vector<char const *> func_list(func_list_size, NULL);
+    rsloaderGetFuncNameList(mRSExecutable, func_list_size, &*func_list.begin());
 
-    size_t func_list_size = sizeof(func_list) / sizeof(char const *);
-
+    // Disassemble each function
     for (size_t i = 0; i < func_list_size; ++i) {
       void *func = rsloaderGetSymbolAddress(mRSExecutable, func_list[i]);
       if (func) {
