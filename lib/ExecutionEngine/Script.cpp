@@ -470,80 +470,115 @@ char const *Script::getCompilerErrorMessage() {
 
 void *Script::lookup(const char *name) {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->lookup(name);
+    case ScriptStatus::Compiled: {
+      return mCompiled->lookup(name);
+    }
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->lookup(name);
+    case ScriptStatus::Cached: {
+      return mCached->lookup(name);
+    }
 #endif
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
-    return NULL;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+      return NULL;
+    }
   }
 }
 
 
 size_t Script::getExportVarCount() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getExportVarCount();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getExportVarCount();
+    }
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->getExportVarCount();
+    case ScriptStatus::Cached: {
+      return mCached->getExportVarCount();
+    }
 #endif
 
-  default:                      return 0;
+    default: {
+      return 0;
+    }
   }
 }
 
 
 size_t Script::getExportFuncCount() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getExportFuncCount();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getExportFuncCount();
+    }
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->getExportFuncCount();
+    case ScriptStatus::Cached: {
+      return mCached->getExportFuncCount();
+    }
 #endif
 
-  default:                      return 0;
+    default: {
+      return 0;
+    }
   }
 }
 
 
 size_t Script::getPragmaCount() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getPragmaCount();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getPragmaCount();
+    }
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->getPragmaCount();
+    case ScriptStatus::Cached: {
+      return mCached->getPragmaCount();
+    }
 #endif
 
-  default:                      return 0;
+    default: {
+      return 0;
+    }
   }
 }
 
 
 size_t Script::getFuncCount() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getFuncCount();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getFuncCount();
+    }
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->getFuncCount();
+    case ScriptStatus::Cached: {
+      return mCached->getFuncCount();
+    }
 #endif
 
-  default:                      return 0;
+    default: {
+      return 0;
+    }
   }
 }
 
 
 size_t Script::getObjectSlotCount() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getObjectSlotCount();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getObjectSlotCount();
+    }
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->getObjectSlotCount();
+    case ScriptStatus::Cached: {
+      return mCached->getObjectSlotCount();
+    }
 #endif
 
-  default:                      return 0;
+    default: {
+      return 0;
+    }
   }
 }
 
@@ -551,19 +586,20 @@ size_t Script::getObjectSlotCount() const {
 void Script::getExportVarList(size_t varListSize, void **varList) {
   switch (mStatus) {
 #define DELEGATE(STATUS) \
-  case ScriptStatus::STATUS: \
-    m##STATUS->getExportVarList(varListSize, varList); \
-    break;
+    case ScriptStatus::STATUS:                           \
+      m##STATUS->getExportVarList(varListSize, varList); \
+      break;
 
 #if USE_CACHE
-  DELEGATE(Cached);
+    DELEGATE(Cached);
 #endif
 
-  DELEGATE(Compiled);
+    DELEGATE(Compiled);
 #undef DELEGATE
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
   }
 }
 
@@ -571,19 +607,20 @@ void Script::getExportVarList(size_t varListSize, void **varList) {
 void Script::getExportFuncList(size_t funcListSize, void **funcList) {
   switch (mStatus) {
 #define DELEGATE(STATUS) \
-  case ScriptStatus::STATUS: \
-    m##STATUS->getExportFuncList(funcListSize, funcList); \
-    break;
+    case ScriptStatus::STATUS:                              \
+      m##STATUS->getExportFuncList(funcListSize, funcList); \
+      break;
 
 #if USE_CACHE
-  DELEGATE(Cached);
+    DELEGATE(Cached);
 #endif
 
-  DELEGATE(Compiled);
+    DELEGATE(Compiled);
 #undef DELEGATE
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
   }
 }
 
@@ -593,19 +630,20 @@ void Script::getPragmaList(size_t pragmaListSize,
                            char const **valueList) {
   switch (mStatus) {
 #define DELEGATE(STATUS) \
-  case ScriptStatus::STATUS: \
-    m##STATUS->getPragmaList(pragmaListSize, keyList, valueList); \
-    break;
+    case ScriptStatus::STATUS:                                      \
+      m##STATUS->getPragmaList(pragmaListSize, keyList, valueList); \
+      break;
 
 #if USE_CACHE
-  DELEGATE(Cached);
+    DELEGATE(Cached);
 #endif
 
-  DELEGATE(Compiled);
+    DELEGATE(Compiled);
 #undef DELEGATE
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
   }
 }
 
@@ -614,19 +652,20 @@ void Script::getFuncInfoList(size_t funcInfoListSize,
                              FuncInfo *funcInfoList) {
   switch (mStatus) {
 #define DELEGATE(STATUS) \
-  case ScriptStatus::STATUS: \
-    m##STATUS->getFuncInfoList(funcInfoListSize, funcInfoList); \
-    break;
+    case ScriptStatus::STATUS:                                    \
+      m##STATUS->getFuncInfoList(funcInfoListSize, funcInfoList); \
+      break;
 
 #if USE_CACHE
-  DELEGATE(Cached);
+    DELEGATE(Cached);
 #endif
 
-  DELEGATE(Compiled);
+    DELEGATE(Compiled);
 #undef DELEGATE
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
   }
 }
 
@@ -634,20 +673,21 @@ void Script::getFuncInfoList(size_t funcInfoListSize,
 void Script::getObjectSlotList(size_t objectSlotListSize,
                                uint32_t *objectSlotList) {
   switch (mStatus) {
-#define DELEGATE(STATUS) \
-  case ScriptStatus::STATUS: \
-    m##STATUS->getObjectSlotList(objectSlotListSize, objectSlotList); \
-    break;
+#define DELEGATE(STATUS)     \
+    case ScriptStatus::STATUS:                                          \
+      m##STATUS->getObjectSlotList(objectSlotListSize, objectSlotList); \
+      break;
 
 #if USE_CACHE
-  DELEGATE(Cached);
+    DELEGATE(Cached);
 #endif
 
-  DELEGATE(Compiled);
+    DELEGATE(Compiled);
 #undef DELEGATE
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
   }
 }
 
@@ -656,14 +696,19 @@ char *Script::getContext() {
   switch (mStatus) {
 
 #if USE_CACHE
-  case ScriptStatus::Cached:    return mCached->getContext();
+    case ScriptStatus::Cached: {
+      return mCached->getContext();
+    }
 #endif
 
-  case ScriptStatus::Compiled:  return mCompiled->getContext();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getContext();
+    }
 
-  default:
-    mErrorCode = BCC_INVALID_OPERATION;
-    return NULL;
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+      return NULL;
+    }
   }
 }
 
@@ -683,20 +728,25 @@ int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
 #if USE_MCJIT
 size_t Script::getELFSize() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getELFSize();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getELFSize();
+    }
 
-  default:
-    return 0;
+    default: {
+      return 0;
+    }
   }
-  return 0;
 }
 
 const char *Script::getELF() const {
   switch (mStatus) {
-  case ScriptStatus::Compiled:  return mCompiled->getELF();
+    case ScriptStatus::Compiled: {
+      return mCompiled->getELF();
+    }
 
-  default:
-    return NULL;
+    default: {
+      return NULL;
+    }
   }
 }
 #endif
