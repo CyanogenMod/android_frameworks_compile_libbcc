@@ -42,7 +42,6 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Scalar.h"
 
-#include "llvm/Target/SubtargetFeature.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
@@ -54,6 +53,7 @@
 #include "llvm/MC/MCDisassembler.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstPrinter.h"
+#include "llvm/MC/SubtargetFeature.h"
 #include "llvm/Support/MemoryObject.h"
 #include "llvm/LLVMContext.h"
 #endif
@@ -368,7 +368,6 @@ int Compiler::compile() {
 
   if (!CPU.empty() || !Features.empty()) {
     llvm::SubtargetFeatures F;
-    F.setCPU(CPU);
 
     for (std::vector<std::string>::const_iterator
          I = Features.begin(), E = Features.end(); I != E; I++) {
@@ -378,7 +377,7 @@ int Compiler::compile() {
     FeaturesStr = F.getString();
   }
 
-  TM = Target->createTargetMachine(Triple, FeaturesStr);
+  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr);
   if (TM == NULL) {
     setError("Failed to create target machine implementation for the"
              " specified triple '" + Triple + "'");
