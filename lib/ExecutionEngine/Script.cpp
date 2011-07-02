@@ -686,7 +686,7 @@ size_t Script::getELFSize() const {
   case ScriptStatus::Compiled:  return mCompiled->getELFSize();
 
   default:
-    return NULL;
+    return 0;
   }
   return 0;
 }
