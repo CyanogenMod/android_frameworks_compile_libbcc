@@ -86,27 +86,19 @@ include $(BUILD_HOST_EXECUTABLE)
 # Calculate SHA1 checksum for libbcc.so and libRS.so
 # ========================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE := libbcc_sha1
+LOCAL_MODULE := libbcc.so.sha1
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
-CONVERT_ASM := frameworks/compile/libbcc/tools/dataconvert.py
-
-intermediates := $(local-intermediates-dir)
-libbcc_CHECKSUM_FILE := $(intermediates)/checksum.S
-LOCAL_GENERATED_SOURCES += $(libbcc_CHECKSUM_FILE)
-
+include $(BUILD_SYSTEM)/base_rules.mk
 libbcc_SHA1_SRCS := $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
     $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so
 
-$(libbcc_CHECKSUM_FILE): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
-$(libbcc_CHECKSUM_FILE) : $(libbcc_SHA1_SRCS) \
-                          $(HOST_OUT_EXECUTABLES)/sha1sum
+$(LOCAL_BUILT_MODULE): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
+$(LOCAL_BUILT_MODULE) : $(libbcc_SHA1_SRCS) \
+                       $(HOST_OUT_EXECUTABLES)/sha1sum
 	$(hide) mkdir -p $(dir $@) && \
-            cat $(PRIVATE_SHA1_SRCS) | $(HOST_OUT_EXECUTABLES)/sha1sum | \
-            python $(CONVERT_ASM) libbcc_checksum > $@
-
-include $(BUILD_SHARED_LIBRARY)
+          cat $(PRIVATE_SHA1_SRCS) | $(HOST_OUT_EXECUTABLES)/sha1sum -B $@
 
 #
 # Shared library for target
@@ -246,8 +238,8 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
     $(LOCAL_STATIC_LIBRARIES)
 endif
 
-# This makes libclcore.bc get installed if and only if the target libbcc.so is installed.
-LOCAL_REQUIRED_MODULES := libclcore.bc libbcc_sha1
+# Modules that need get installed if and only if the target libbcc.so is installed.
+LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 
 # -Wl,--exclude-libs=ALL would hide most of the symbols in the shared library
 # and reduces the size of libbcc.so by about 800k.
