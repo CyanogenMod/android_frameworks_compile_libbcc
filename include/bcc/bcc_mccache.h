@@ -74,6 +74,14 @@ struct MCO_Header {
   off_t object_slot_list_offset;
   size_t object_slot_list_size;
 
+  /* export variable name list section */
+  off_t export_var_name_list_offset;
+  size_t export_var_name_list_size;
+
+  /* export function name list section */
+  off_t export_func_name_list_offset;
+  size_t export_func_name_list_size;
+
   /* dirty hack for libRS */
   /* TODO: This should be removed in the future */
   uint32_t libRS_threadable;

@@ -146,5 +146,10 @@ struct OBCC_FuncTable {
   struct OBCC_FuncInfo table[];
 };
 
+struct OBCC_String_Ptr {
+  size_t count;
+  size_t strp_indexs[];
+};
+
 
 #endif /* BCC_CACHE_H */

@@ -677,6 +677,7 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
 
   if (ExportVarMetadata) {
     ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
+    std::vector<std::string> &varNameList = mpResult->mExportVarsName;
 
     for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
       llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
@@ -689,6 +690,7 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           varList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportVarName.str().c_str()));
+          varNameList.push_back(ExportVarName.str());
 #if DEBUG_MCJIT_REFLECT
           LOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
                varList.back());
@@ -703,6 +705,7 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
 
   if (ExportFuncMetadata) {
     ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
+    std::vector<std::string> &funcNameList = mpResult->mExportFuncsName;
 
     for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
       llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
@@ -715,6 +718,7 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
           funcList.push_back(
             rsloaderGetSymbolAddress(mRSExecutable,
                                      ExportFuncName.str().c_str()));
+          funcNameList.push_back(ExportFuncName.str());
 #if DEBUG_MCJIT_RELECT
           LOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());

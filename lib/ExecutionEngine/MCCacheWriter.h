@@ -48,6 +48,12 @@ namespace bcc {
     OBCC_PragmaList *mpPragmaListSection;
     OBCC_ObjectSlotList *mpObjectSlotSection;
 
+    OBCC_String_Ptr *mpExportVarNameListSection;
+    OBCC_String_Ptr *mpExportFuncNameListSection;
+
+    std::vector<std::string> varNameList;
+    std::vector<std::string> funcNameList;
+
   public:
     MCCacheWriter()
       : mpHeaderSection(NULL), mpStringPoolSection(NULL),
@@ -77,6 +83,9 @@ namespace bcc {
     bool prepareExportFuncList();
     bool preparePragmaList();
     bool prepareObjectSlotList();
+
+    bool prepareExportVarNameList();
+    bool prepareExportFuncNameList();
 
     bool writeAll();
 

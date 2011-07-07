@@ -44,6 +44,9 @@ namespace bcc {
     OBCC_PragmaList *mpPragmaList;
     OBCC_FuncTable *mpFuncTable;
 
+    OBCC_String_Ptr *mpVarNameList;
+    OBCC_String_Ptr *mpFuncNameList;
+
     llvm::OwningPtr<ScriptCached> mpResult;
 
     std::map<std::string,
@@ -58,6 +61,7 @@ namespace bcc {
     MCCacheReader()
       : mObjFile(NULL), mInfoFile(NULL), mInfoFileSize(0), mpHeader(NULL),
         mpCachedDependTable(NULL), mpPragmaList(NULL),
+        mpVarNameList(NULL), mpFuncNameList(NULL),
         mIsContextSlotNotAvail(false) {
     }
 
@@ -91,6 +95,9 @@ namespace bcc {
     bool readObjectSlotList();
     bool readObjFile();
     bool readRelocationTable();
+
+    bool readVarNameList();
+    bool readFuncNameList();
 
     bool checkFileSize();
     bool checkHeader();

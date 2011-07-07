@@ -603,6 +603,18 @@ void Script::getExportVarList(size_t varListSize, void **varList) {
   }
 }
 
+void Script::getExportVarNameList(std::vector<std::string> &varList) {
+  switch (mStatus) {
+    case ScriptStatus::Compiled: {
+      return mCompiled->getExportVarNameList(varList);
+    }
+
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
+  }
+}
+
 
 void Script::getExportFuncList(size_t funcListSize, void **funcList) {
   switch (mStatus) {
@@ -617,6 +629,18 @@ void Script::getExportFuncList(size_t funcListSize, void **funcList) {
 
     DELEGATE(Compiled);
 #undef DELEGATE
+
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
+  }
+}
+
+void Script::getExportFuncNameList(std::vector<std::string> &funcList) {
+  switch (mStatus) {
+    case ScriptStatus::Compiled: {
+      return mCompiled->getExportFuncNameList(funcList);
+    }
 
     default: {
       mErrorCode = BCC_INVALID_OPERATION;

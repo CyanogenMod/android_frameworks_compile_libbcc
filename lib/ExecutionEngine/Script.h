@@ -117,6 +117,10 @@ namespace bcc {
 
     void getExportFuncList(size_t size, void **list);
 
+    void getExportVarNameList(std::vector<std::string> &list);
+
+    void getExportFuncNameList(std::vector<std::string> &list);
+
     void getPragmaList(size_t size,
                        char const **keyList,
                        char const **valueList);

@@ -51,6 +51,10 @@ namespace bcc {
     Compiler mCompiler;
 
     ExportVarList mExportVars;
+
+    std::vector<std::string> mExportVarsName;
+    std::vector<std::string> mExportFuncsName;
+
     ExportFuncList mExportFuncs;
     PragmaList mPragmas;
     ObjectSlotList mObjectSlots;
@@ -117,6 +121,10 @@ namespace bcc {
     void getExportVarList(size_t varListSize, void **varList);
 
     void getExportFuncList(size_t funcListSize, void **funcList);
+
+    void getExportVarNameList(std::vector<std::string> &varList);
+
+    void getExportFuncNameList(std::vector<std::string> &funcList);
 
     void getPragmaList(size_t pragmaListSize,
                        char const **keyList,

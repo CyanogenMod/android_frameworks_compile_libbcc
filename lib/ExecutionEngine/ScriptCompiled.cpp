@@ -53,6 +53,15 @@ void ScriptCompiled::getExportVarList(size_t varListSize, void **varList) {
   }
 }
 
+void ScriptCompiled::getExportVarNameList(std::vector<std::string> &varList) {
+  varList = mExportVarsName;
+}
+
+
+void ScriptCompiled::getExportFuncNameList(std::vector<std::string> &funcList) {
+  funcList = mExportFuncsName;
+}
+
 
 void ScriptCompiled::getExportFuncList(size_t funcListSize, void **funcList) {
   if (funcList) {

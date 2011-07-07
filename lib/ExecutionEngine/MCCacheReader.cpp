@@ -48,6 +48,8 @@ MCCacheReader::~MCCacheReader() {
   if (mpHeader) { free(mpHeader); }
   if (mpCachedDependTable) { free(mpCachedDependTable); }
   if (mpPragmaList) { free(mpPragmaList); }
+  if (mpVarNameList) { free(mpVarNameList); }
+  if (mpFuncNameList) { free(mpFuncNameList); }
 }
 
 ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
@@ -83,7 +85,9 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
              && readPragmaList()
              && readObjectSlotList()
              && readObjFile()
-             && relocate()
+             && readVarNameList()
+             && readFuncNameList()
+             //&& relocate()
              ;
 
   return result ? mpResult.take() : NULL;
@@ -333,6 +337,20 @@ bool MCCacheReader::readExportVarList() {
   return true;
 }
 
+bool MCCacheReader::readVarNameList() {
+  CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpVarNameList, export_var_name_list);
+  vector<char const *> const &strPool = mpResult->mStringPool;
+
+  for (size_t i = 0; i < export_var_name_list_raw->count; ++i) {
+    mpResult->mpExportVars->cached_addr_list[i] =
+      rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_var_name_list_raw->strp_indexs[i]]);
+#if DEBUG_MCJIT_REFLECT
+    LOGD("Get symbol address: %s -> %p",
+      strPool[export_var_name_list_raw->strp_indexs[i]], mpResult->mpExportVars->cached_addr_list[i]);
+#endif
+  }
+  return true;
+}
 
 bool MCCacheReader::readExportFuncList() {
   CACHE_READER_READ_SECTION(OBCC_ExportFuncList,
@@ -340,6 +358,21 @@ bool MCCacheReader::readExportFuncList() {
   return true;
 }
 
+
+bool MCCacheReader::readFuncNameList() {
+  CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpFuncNameList, export_func_name_list);
+  vector<char const *> const &strPool = mpResult->mStringPool;
+
+  for (size_t i = 0; i < export_func_name_list_raw->count; ++i) {
+    mpResult->mpExportFuncs->cached_addr_list[i] =
+      rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_func_name_list_raw->strp_indexs[i]]);
+#if DEBUG_MCJIT_REFLECT
+    LOGD("Get function address: %s -> %p",
+      strPool[export_func_name_list_raw->strp_indexs[i]], mpResult->mpExportFuncs->cached_addr_list[i]);
+#endif
+  }
+  return true;
+}
 
 bool MCCacheReader::readPragmaList() {
   CACHE_READER_READ_SECTION(OBCC_PragmaList, mpPragmaList, pragma_list);
@@ -409,24 +442,6 @@ bool MCCacheReader::readRelocationTable() {
 
 
 bool MCCacheReader::relocate() {
-  void *rootPtr = rsloaderGetSymbolAddress(mpResult->mRSExecutable, "root");
-  int mRootOffset = reinterpret_cast<char *>(rootPtr) -
-                    reinterpret_cast<char *>(mpHeader->root_base_addr);
-  for (size_t i = 0; i < mpResult->getExportVarCount(); ++i) {
-    // Variable is optimized out by libbcc. Don't relocate.
-    if (mpResult->mpExportVars->cached_addr_list[i] == 0x00) continue;
-
-    mpResult->mpExportVars->cached_addr_list[i] =
-    reinterpret_cast<void *>(
-        reinterpret_cast<char *>(mpResult->mpExportVars->cached_addr_list[i])
-        + mRootOffset);
-  }
-  for (size_t i = 0; i < mpResult->getExportFuncCount(); ++i) {
-    mpResult->mpExportFuncs->cached_addr_list[i] =
-    reinterpret_cast<void *>(
-        reinterpret_cast<char *>(mpResult->mpExportFuncs->cached_addr_list[i])
-        + mRootOffset);
-  }
   return true;
 }
 
