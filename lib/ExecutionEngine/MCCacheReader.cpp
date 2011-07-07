@@ -80,8 +80,6 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
              && checkStringPool()
              && readDependencyTable()
              && checkDependency()
-             && readExportVarList()
-             && readExportFuncList()
              && readPragmaList()
              && readObjectSlotList()
              && readObjFile()
@@ -202,8 +200,6 @@ bool MCCacheReader::checkSectionOffsetAndSize() {
   CHECK_SECTION_OFFSET(str_pool);
   CHECK_SECTION_OFFSET(depend_tab);
   //CHECK_SECTION_OFFSET(reloc_tab);
-  CHECK_SECTION_OFFSET(export_var_list);
-  CHECK_SECTION_OFFSET(export_func_list);
   CHECK_SECTION_OFFSET(pragma_list);
 
 #undef CHECK_SECTION_OFFSET
@@ -331,15 +327,18 @@ bool MCCacheReader::checkDependency() {
   return true;
 }
 
-bool MCCacheReader::readExportVarList() {
-  CACHE_READER_READ_SECTION(OBCC_ExportVarList,
-                            mpResult->mpExportVars, export_var_list);
-  return true;
-}
-
 bool MCCacheReader::readVarNameList() {
   CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpVarNameList, export_var_name_list);
   vector<char const *> const &strPool = mpResult->mStringPool;
+
+  mpResult->mpExportVars = (OBCC_ExportVarList*)
+                            malloc(sizeof(size_t) +
+                                   sizeof(void*) * export_var_name_list_raw->count);
+  if (!mpResult->mpExportVars) {
+    LOGE("Unable to allocate for mpExportVars\n");
+    return false;
+  }
+  mpResult->mpExportVars->count = export_var_name_list_raw->count;
 
   for (size_t i = 0; i < export_var_name_list_raw->count; ++i) {
     mpResult->mpExportVars->cached_addr_list[i] =
@@ -352,16 +351,18 @@ bool MCCacheReader::readVarNameList() {
   return true;
 }
 
-bool MCCacheReader::readExportFuncList() {
-  CACHE_READER_READ_SECTION(OBCC_ExportFuncList,
-                            mpResult->mpExportFuncs, export_func_list);
-  return true;
-}
-
-
 bool MCCacheReader::readFuncNameList() {
   CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpFuncNameList, export_func_name_list);
   vector<char const *> const &strPool = mpResult->mStringPool;
+
+  mpResult->mpExportFuncs = (OBCC_ExportFuncList*)
+                            malloc(sizeof(size_t) +
+                                   sizeof(void*) * export_func_name_list_raw->count);
+  if (!mpResult->mpExportFuncs) {
+    LOGE("Unable to allocate for mpExportFuncs\n");
+    return false;
+  }
+  mpResult->mpExportFuncs->count = export_func_name_list_raw->count;
 
   for (size_t i = 0; i < export_func_name_list_raw->count; ++i) {
     mpResult->mpExportFuncs->cached_addr_list[i] =

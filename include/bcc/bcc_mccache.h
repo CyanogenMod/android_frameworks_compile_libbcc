@@ -54,14 +54,6 @@ struct MCO_Header {
   off_t reloc_tab_offset;
   size_t reloc_tab_size;
 
-  /* export variable list section */
-  off_t export_var_list_offset;
-  size_t export_var_list_size;
-
-  /* export function list section */
-  off_t export_func_list_offset;
-  size_t export_func_list_size;
-
   /* pragma list section */
   off_t pragma_list_offset;
   size_t pragma_list_size;

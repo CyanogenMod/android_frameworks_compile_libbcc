@@ -89,8 +89,6 @@ namespace bcc {
     bool readHeader();
     bool readStringPool();
     bool readDependencyTable();
-    bool readExportVarList();
-    bool readExportFuncList();
     bool readPragmaList();
     bool readObjectSlotList();
     bool readObjFile();
