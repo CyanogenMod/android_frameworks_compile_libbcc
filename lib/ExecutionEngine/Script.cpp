@@ -225,7 +225,8 @@ bool getInfoPath(std::string &infoPath) {
 }
 
 int Script::internalLoadCache() {
-  if (getBooleanProp("debug.bcc.nocache")) {
+  // Temporarly disable the cache.
+  if (1 || getBooleanProp("debug.bcc.nocache")) {
     // Android system environment property disable the cache mechanism by
     // setting "debug.bcc.nocache".  So we will not load the cache file any
     // way.
