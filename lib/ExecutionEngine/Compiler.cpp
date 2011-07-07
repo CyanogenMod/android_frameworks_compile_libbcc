@@ -39,6 +39,8 @@
 #include "llvm/CodeGen/RegAllocRegistry.h"
 #include "llvm/CodeGen/SchedulerRegistry.h"
 
+#include "llvm/MC/SubtargetFeature.h"
+
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Scalar.h"
 
@@ -47,16 +49,6 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetRegistry.h"
 #include "llvm/Target/TargetSelect.h"
-
-#if USE_DISASSEMBLER
-#include "llvm/MC/MCAsmInfo.h"
-#include "llvm/MC/MCDisassembler.h"
-#include "llvm/MC/MCInst.h"
-#include "llvm/MC/MCInstPrinter.h"
-#include "llvm/MC/SubtargetFeature.h"
-#include "llvm/Support/MemoryObject.h"
-#include "llvm/LLVMContext.h"
-#endif
 
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
@@ -81,33 +73,6 @@
 
 #include <string>
 #include <vector>
-
-namespace {
-
-#if USE_DISASSEMBLER
-class BufferMemoryObject : public llvm::MemoryObject {
-private:
-  const uint8_t *mBytes;
-  uint64_t mLength;
-
-public:
-  BufferMemoryObject(const uint8_t *Bytes, uint64_t Length)
-    : mBytes(Bytes), mLength(Length) {
-  }
-
-  virtual uint64_t getBase() const { return 0; }
-  virtual uint64_t getExtent() const { return mLength; }
-
-  virtual int readByte(uint64_t Addr, uint8_t *Byte) const {
-    if (Addr > getExtent())
-      return -1;
-    *Byte = mBytes[Addr];
-    return 0;
-  }
-};
-#endif
-
-}; // namespace anonymous
 
 namespace bcc {
 
@@ -175,28 +140,20 @@ void Compiler::GlobalInitialization() {
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
-#if USE_DISASSEMBLER
-  LLVMInitializeARMDisassembler();
-  LLVMInitializeARMAsmPrinter();
-#endif
 #endif
 
 #if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN)
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
-#if USE_DISASSEMBLER
-  LLVMInitializeX86Disassembler();
-  LLVMInitializeX86AsmPrinter();
-#endif
 #endif
 
 #if defined(DEFAULT_X64_CODEGEN) || defined(PROVIDE_X64_CODEGEN)
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
-#if USE_DISASSEMBLER
-  LLVMInitializeX86Disassembler();
-  LLVMInitializeX86AsmPrinter();
 #endif
+
+#if USE_DISASSEMBLER
+  InitializeDisassembler();
 #endif
 
   // -O0: llvm::CodeGenOpt::None
@@ -413,6 +370,7 @@ int Compiler::compile() {
                    ExportVarMetadata, ExportFuncMetadata) != 0) {
     goto on_bcc_compile_error;
   }
+
 #if USE_DISASSEMBLER && DEBUG_MCJIT_DISASSEMBLE
   {
     // Get MC codegen emitted function name list
@@ -425,7 +383,8 @@ int Compiler::compile() {
       void *func = rsloaderGetSymbolAddress(mRSExecutable, func_list[i]);
       if (func) {
         size_t size = rsloaderGetSymbolSize(mRSExecutable, func_list[i]);
-        Disassemble(Target, TM, func_list[i], (unsigned char const *)func, size);
+        Disassemble(DEBUG_MCJIT_DISASSEMBLER_FILE,
+                    Target, TM, func_list[i], (unsigned char const *)func, size);
       }
     }
   }
@@ -900,78 +859,6 @@ Compiler::~Compiler() {
 
   // llvm::llvm_shutdown();
 }
-
-#if USE_MCJIT && USE_DISASSEMBLER
-void Compiler::Disassemble(llvm::Target const *Target,
-                           llvm::TargetMachine *TM,
-                           std::string const &Name,
-                           unsigned char const *Func,
-                           size_t FuncSize) {
-  llvm::raw_ostream *OS;
-
-#if USE_DISASSEMBLER_FILE
-  std::string ErrorInfo;
-  OS = new llvm::raw_fd_ostream("/data/local/tmp/mcjit-dis.s", ErrorInfo,
-                                llvm::raw_fd_ostream::F_Append);
-
-  if (!ErrorInfo.empty()) {    // some errors occurred
-    // LOGE("Error in creating disassembly file");
-    delete OS;
-    return;
-  }
-#else
-  OS = &llvm::outs();
-#endif
-
-  *OS << "MC/ Disassembled code: " << Name << "\n";
-
-  const llvm::MCAsmInfo *AsmInfo;
-  const llvm::MCDisassembler *Disassmbler;
-  llvm::MCInstPrinter *IP;
-
-  AsmInfo = Target->createAsmInfo(Compiler::Triple);
-  Disassmbler = Target->createMCDisassembler();
-  IP = Target->createMCInstPrinter(*TM,
-                                   AsmInfo->getAssemblerDialect(),
-                                   *AsmInfo);
-
-  const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Func, FuncSize);
-
-  uint64_t Size;
-  uint64_t Index;
-
-  for (Index = 0; Index < FuncSize; Index += Size) {
-    llvm::MCInst Inst;
-
-    if (Disassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
-                                    /* REMOVED */ llvm::nulls())) {
-      OS->indent(4);
-      OS->write("0x", 2);
-      OS->write_hex((uint32_t)Func + Index);
-      OS->write(": 0x", 4);
-      OS->write_hex(*(uint32_t *)(Func + Index));
-      IP->printInst(&Inst, *OS);
-      *OS << "\n";
-    } else {
-      if (Size == 0)
-        Size = 1;  // skip illegible bytes
-    }
-  }
-
-  *OS << "\n";
-  delete BufferMObj;
-
-  delete AsmInfo;
-  delete Disassmbler;
-  delete IP;
-
-#if USE_DISASSEMBLER_FILE
-  // If you want the disassemble results write to file, uncomment this.
-  ((llvm::raw_fd_ostream*)OS)->close();
-  delete OS;
-#endif
-}
-#endif
 
 
 }  // namespace bcc

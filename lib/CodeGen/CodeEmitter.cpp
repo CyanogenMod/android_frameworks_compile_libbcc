@@ -18,6 +18,10 @@
 
 #include "Config.h"
 
+#if USE_DISASSEMBLER
+#include "Disassembler/Disassembler.h"
+#endif
+
 #include "CodeMemoryManager.h"
 #include "Runtime.h"
 #include "ScriptCompiled.h"
@@ -42,17 +46,8 @@
 
 #include "llvm/ExecutionEngine/GenericValue.h"
 
-#include "llvm/MC/MCAsmInfo.h"
-#include "llvm/MC/MCDisassembler.h"
-#include "llvm/MC/MCInst.h"
-#include "llvm/MC/MCInstPrinter.h"
-
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
-
-#if USE_DISASSEMBLER
-#include "llvm/Support/MemoryObject.h"
-#endif
 
 #include "llvm/Support/Host.h"
 
@@ -79,34 +74,6 @@
 #include <stddef.h>
 
 
-namespace {
-
-#if USE_DISASSEMBLER
-class BufferMemoryObject : public llvm::MemoryObject {
-private:
-  const uint8_t *mBytes;
-  uint64_t mLength;
-
-public:
-  BufferMemoryObject(const uint8_t *Bytes, uint64_t Length)
-    : mBytes(Bytes), mLength(Length) {
-  }
-
-  virtual uint64_t getBase() const { return 0; }
-  virtual uint64_t getExtent() const { return mLength; }
-
-  virtual int readByte(uint64_t Addr, uint8_t *Byte) const {
-    if (Addr > getExtent())
-      return -1;
-    *Byte = mBytes[Addr];
-    return 0;
-  }
-};
-#endif
-
-}; // namespace anonymous
-
-
 namespace bcc {
 
 // Will take the ownership of @MemMgr
@@ -120,22 +87,12 @@ CodeEmitter::CodeEmitter(ScriptCompiled *result, CodeMemoryManager *pMemMgr)
       mpConstantPool(NULL),
       mpJumpTable(NULL),
       mpMMI(NULL),
-#if USE_DISASSEMBLER
-      mpAsmInfo(NULL),
-      mpDisassmbler(NULL),
-      mpIP(NULL),
-#endif
       mpSymbolLookupFn(NULL),
       mpSymbolLookupContext(NULL) {
 }
 
 
 CodeEmitter::~CodeEmitter() {
-#if USE_DISASSEMBLER
-  delete mpAsmInfo;
-  delete mpDisassmbler;
-  delete mpIP;
-#endif
 }
 
 
@@ -999,11 +956,15 @@ void *CodeEmitter::GetLazyFunctionStub(llvm::Function *F) {
   // JIT, not the address of the external function.
   UpdateGlobalMapping(F, Stub);
 
-  if (!Actual)
+  if (!Actual) {
     PendingFunctions.insert(F);
-  else
-    Disassemble(F->getName(), reinterpret_cast<uint8_t*>(Stub),
-                SL.Size, true);
+  } else {
+#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
+    Disassemble(DEBUG_OLD_JIT_DISASSEMBLER_FILE,
+                mpTarget, mpTargetMachine, F->getName(),
+                (unsigned char const *)Stub, SL.Size);
+#endif
+  }
 
   return Stub;
 }
@@ -1166,75 +1127,6 @@ void *CodeEmitter::GetExternalFunctionStub(void *FnAddr) {
 }
 
 
-void CodeEmitter::Disassemble(const llvm::StringRef &Name,
-                              uint8_t *Start, size_t Length, bool IsStub) {
-
-#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
-  llvm::raw_ostream *OS;
-
-#if USE_DISASSEMBLER_FILE
-  std::string ErrorInfo;
-  OS = new llvm::raw_fd_ostream("/data/local/tmp/old-jit.s",
-                                ErrorInfo,
-                                llvm::raw_fd_ostream::F_Append);
-
-  if (!ErrorInfo.empty()) {    // some errors occurred
-    // LOGE("Error in creating disassembly file");
-    delete OS;
-    return;
-  }
-#else
-  OS = &llvm::outs();
-#endif
-
-  *OS << "JIT: Disassembled code: " << Name << ((IsStub) ? " (stub)" : "")
-      << "\n";
-
-  if (mpAsmInfo == NULL)
-    mpAsmInfo = mpTarget->createAsmInfo(Compiler::Triple);
-  if (mpDisassmbler == NULL)
-    mpDisassmbler = mpTarget->createMCDisassembler();
-  if (mpIP == NULL)
-    mpIP = mpTarget->createMCInstPrinter(*mpTargetMachine,
-                                         mpAsmInfo->getAssemblerDialect(),
-                                         *mpAsmInfo);
-
-  const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Start,
-                                                                Length);
-  uint64_t Size;
-  uint64_t Index;
-
-  for (Index = 0; Index < Length; Index += Size) {
-    llvm::MCInst Inst;
-
-    if (mpDisassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
-          /* REMOVED */ llvm::nulls())) {
-      (*OS).indent(4)
-           .write("0x", 2)
-           .write_hex((uint32_t) Start + Index)
-           .write(": 0x", 4);
-      (*OS).write_hex((uint32_t) *(uint32_t*)(Start+Index));
-      mpIP->printInst(&Inst, *OS);
-      *OS << "\n";
-    } else {
-      if (Size == 0)
-        Size = 1;  // skip illegible bytes
-    }
-  }
-
-  *OS << "\n";
-  delete BufferMObj;
-
-#if USE_DISASSEMBLER_FILE
-  // If you want the disassemble results write to file, uncomment this.
-  ((llvm::raw_fd_ostream*)OS)->close();
-  delete OS;
-#endif
-
-#endif // USE_DISASSEMBLER
-}
-
-
 void CodeEmitter::setTargetMachine(llvm::TargetMachine &TM) {
   mpTargetMachine = &TM;
 
@@ -1312,15 +1204,6 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
 
   if (llvm::MachineJumpTableInfo *MJTI = F.getJumpTableInfo())
     emitJumpTableInfo(MJTI);
-
-  // FnStart is the start of the text, not the start of the constant pool
-  // and other per-function data.
-  uint8_t *FnStart =
-      reinterpret_cast<uint8_t*>(
-          GetPointerToGlobalIfAvailable(F.getFunction()));
-
-  // FnEnd is the end of the function's machine code.
-  uint8_t *FnEnd = CurBufferPtr;
 
   if (!mRelocations.empty()) {
     //ptrdiff_t BufferOffset = BufferBegin - mpMemMgr->getCodeMemBase();
@@ -1408,7 +1291,20 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
   // Mark code region readable and executable if it's not so already.
   mpMemMgr->setMemoryExecutable();
 
-  Disassemble(F.getFunction()->getName(), FnStart, FnEnd - FnStart, false);
+#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
+  // FnStart is the start of the text, not the start of the constant pool
+  // and other per-function data.
+  uint8_t *FnStart =
+      reinterpret_cast<uint8_t*>(
+          GetPointerToGlobalIfAvailable(F.getFunction()));
+
+  // FnEnd is the end of the function's machine code.
+  uint8_t *FnEnd = CurBufferPtr;
+
+  Disassemble(DEBUG_OLD_JIT_DISASSEMBLER_FILE,
+              mpTarget, mpTargetMachine, F.getFunction()->getName(),
+              (unsigned char const *)FnStart, FnEnd - FnStart);
+#endif
 
   return false;
 }
@@ -1532,8 +1428,11 @@ void CodeEmitter::updateFunctionStub(const llvm::Function *F) {
   mpTJI->emitFunctionStub(F, Addr, *this);
   finishGVStub();
 
-  Disassemble(F->getName(), reinterpret_cast<uint8_t*>(Stub),
-              SL.Size, true);
+#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
+  Disassemble(DEBUG_OLD_JIT_DISASSEMBLER_FILE,
+              mpTarget, mpTargetMachine, F->getName(),
+              (unsigned char const *)Stub, SL.Size);
+#endif
 
   PendingFunctions.erase(I);
 }

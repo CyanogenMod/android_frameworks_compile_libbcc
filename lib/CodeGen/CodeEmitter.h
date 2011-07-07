@@ -45,11 +45,6 @@ namespace llvm {
   class MachineFunction;
   class MachineJumpTableInfo;
   class MachineModuleInfo;
-#if USE_DISASSEMBLER
-  class MCAsmInfo;
-  class MCDisassembler;
-  class MCInstPrinter;
-#endif
   class MCSymbol;
   class Target;
   class TargetData;
@@ -142,12 +137,6 @@ namespace bcc {
 
     std::map<void*, void*> ExternalFnToStubMap;
 
-#if USE_DISASSEMBLER
-    const llvm::MCAsmInfo *mpAsmInfo;
-    const llvm::MCDisassembler *mpDisassmbler;
-    llvm::MCInstPrinter *mpIP;
-#endif
-
   public:
     // Resolver to undefined symbol in CodeEmitter
     BCCSymbolLookupFn mpSymbolLookupFn;
@@ -157,9 +146,6 @@ namespace bcc {
     explicit CodeEmitter(ScriptCompiled *result, CodeMemoryManager *pMemMgr);
 
     virtual ~CodeEmitter();
-
-    void Disassemble(const llvm::StringRef &Name, uint8_t *Start,
-                     size_t Length, bool IsStub);
 
     global_addresses_const_iterator global_address_begin() const {
       return mGlobalAddressMap.begin();
