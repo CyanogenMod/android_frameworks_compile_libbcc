@@ -248,6 +248,8 @@ void Compiler::GlobalInitialization() {
 #if USE_CACHE
   // Read in SHA1 checksum of libbcc and libRS.
   readSHA1(sha1LibBCC_SHA1, sizeof(sha1LibBCC_SHA1), pathLibBCC_SHA1);
+
+  calcFileSHA1(sha1LibRS, pathLibRS);
 #endif
 
   GlobalInitialized = true;
