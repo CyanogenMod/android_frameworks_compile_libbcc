@@ -225,8 +225,7 @@ bool getInfoPath(std::string &infoPath) {
 }
 
 int Script::internalLoadCache() {
-  // Temporarly disable the cache.
-  if (1 || getBooleanProp("debug.bcc.nocache")) {
+  if (getBooleanProp("debug.bcc.nocache")) {
     // Android system environment property disable the cache mechanism by
     // setting "debug.bcc.nocache".  So we will not load the cache file any
     // way.
@@ -274,6 +273,7 @@ int Script::internalLoadCache() {
 
   // Dependencies
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+  reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
   for (size_t i = 0; i < 2; ++i) {
     if (mSourceList[i]) {
@@ -410,6 +410,7 @@ int Script::internalCompile() {
 #ifdef TARGET_BUILD
       // Dependencies
       writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+      writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 #endif
 
       for (size_t i = 0; i < 2; ++i) {
