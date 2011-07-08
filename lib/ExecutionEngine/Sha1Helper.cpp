@@ -32,6 +32,9 @@ namespace bcc {
 unsigned char sha1LibBCC_SHA1[20];
 char const *pathLibBCC_SHA1 = "/system/lib/libbcc_sha1.so";
 
+unsigned char sha1LibRS[20];
+char const *pathLibRS = "/system/lib/libRS.so";
+
 void calcSHA1(unsigned char *result, char const *data, size_t size) {
   SHA1_CTX hashContext;
 

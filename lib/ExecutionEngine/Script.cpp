@@ -273,6 +273,7 @@ int Script::internalLoadCache() {
 
   // Dependencies
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+  reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
   for (size_t i = 0; i < 2; ++i) {
     if (mSourceList[i]) {
@@ -409,6 +410,7 @@ int Script::internalCompile() {
 #ifdef TARGET_BUILD
       // Dependencies
       writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+      writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 #endif
 
       for (size_t i = 0; i < 2; ++i) {
