@@ -434,12 +434,7 @@ int main(int argc, char** argv)
     char ext[MAXEXT];
 #endif
     unsigned char err;
-
-    // Read from STDIN
-    sha1file(NULL, digest);
-    for (j = 0; j < HASHSIZE; j++)
-        printf("%02x", digest[j]);
-    return 0;
+    const char *binary_output_file = 0;
 
     for (i = 1; i < argc; i++)
     {
@@ -447,6 +442,10 @@ int main(int argc, char** argv)
         {
             switch (argv[i][1])
             {
+                case 'B':
+                    ++i;
+                    binary_output_file = argv[i];
+                    break;
                 case 'c':
                 case 'C':
                     check = 1;
@@ -460,6 +459,22 @@ int main(int argc, char** argv)
             }
         }
     }
+
+    // Read from STDIN
+    sha1file(NULL, digest);
+    if (binary_output_file) {
+      FILE *fout = fopen(binary_output_file, "wb");
+      if (!fout) {
+        fprintf(stderr, "Error: Can not write to %s.\n", binary_output_file);
+        return 1;
+      }
+      fwrite(digest, 1, HASHSIZE, fout);
+      fclose(fout);
+      return 0;
+    }
+    for (j = 0; j < HASHSIZE; j++)
+        printf("%02x", digest[j]);
+    return 0;
 
     for (i=1; i<argc; i++)
     {

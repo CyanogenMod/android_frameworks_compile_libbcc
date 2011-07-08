@@ -28,6 +28,9 @@ namespace bcc {
   void calcSHA1(unsigned char *result, char const *data, size_t size);
 
   void calcFileSHA1(unsigned char *result, char const *filename);
+
+  // Read binary representation of sha1 from filename.
+  void readSHA1(unsigned char *result, int resultsize, char const *filename);
 }
 
 #endif // BCC_SHA1HELPER_H

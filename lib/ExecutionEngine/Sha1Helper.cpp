@@ -30,7 +30,7 @@
 namespace bcc {
 
 unsigned char sha1LibBCC_SHA1[20];
-char const *pathLibBCC_SHA1 = "/system/lib/libbcc_sha1.so";
+char const *pathLibBCC_SHA1 = "/system/lib/libbcc.so.sha1";
 
 void calcSHA1(unsigned char *result, char const *data, size_t size) {
   SHA1_CTX hashContext;
@@ -79,6 +79,16 @@ void calcFileSHA1(unsigned char *result, char const *filename) {
   }
 
   SHA1Final(result, &hashContext);
+}
+
+void readSHA1(unsigned char *result, int result_size, char const *filename) {
+  FileHandle file;
+  if (file.open(filename, OpenMode::Read) < 0) {
+    LOGE("Unable to read binary sha1 file %s\n", filename);
+    memset(result, '\0', result_size);
+    return;
+  }
+  file.read((char *)result, result_size);
 }
 
 } // namespace bcc

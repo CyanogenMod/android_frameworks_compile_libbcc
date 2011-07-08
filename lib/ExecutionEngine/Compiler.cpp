@@ -246,8 +246,8 @@ void Compiler::GlobalInitialization() {
      llvm::createLinearScanRegisterAllocator);
 
 #if USE_CACHE
-  // Calculate the SHA1 checksum of libbcc and libRS.
-  calcFileSHA1(sha1LibBCC_SHA1, pathLibBCC_SHA1);
+  // Read in SHA1 checksum of libbcc and libRS.
+  readSHA1(sha1LibBCC_SHA1, sizeof(sha1LibBCC_SHA1), pathLibBCC_SHA1);
 #endif
 
   GlobalInitialized = true;
