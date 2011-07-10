@@ -18,6 +18,7 @@
 
 #include "Config.h"
 
+#include "DebugHelper.h"
 #include "ExecutionEngine/Compiler.h"
 
 #include "llvm/MC/MCAsmInfo.h"
@@ -88,23 +89,20 @@ void Disassemble(char const *OutputFileName,
                  std::string const &Name,
                  unsigned char const *Func,
                  size_t FuncSize) {
-  llvm::raw_ostream *OS;
 
-#if USE_DISASSEMBLER_FILE
   std::string ErrorInfo;
-  OS = new llvm::raw_fd_ostream(OutputFileName, ErrorInfo,
-                                llvm::raw_fd_ostream::F_Append);
 
-  if (!ErrorInfo.empty()) {    // some errors occurred
-    // LOGE("Error in creating disassembly file");
-    delete OS;
+  // Open the disassembler output file
+  llvm::raw_fd_ostream OS(OutputFileName, ErrorInfo,
+                          llvm::raw_fd_ostream::F_Append);
+
+  if (!ErrorInfo.empty()) {
+    LOGE("Unable to open disassembler output file: %s\n", OutputFileName);
     return;
   }
-#else
-  OS = &llvm::outs();
-#endif
 
-  *OS << "Disassembled code: " << Name << "\n";
+  // Disassemble the given function
+  OS << "Disassembled code: " << Name << "\n";
 
   const llvm::MCAsmInfo *AsmInfo;
   const llvm::MCDisassembler *Disassmbler;
@@ -126,30 +124,28 @@ void Disassemble(char const *OutputFileName,
 
     if (Disassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
                                     /* REMOVED */ llvm::nulls())) {
-      OS->indent(4);
-      OS->write("0x", 2);
-      OS->write_hex((uint32_t)Func + Index);
-      OS->write(": 0x", 4);
-      OS->write_hex(*(uint32_t *)(Func + Index));
-      IP->printInst(&Inst, *OS);
-      *OS << "\n";
+      OS.indent(4);
+      OS.write("0x", 2);
+      OS.write_hex((uint32_t)Func + Index);
+      OS.write(": 0x", 4);
+      OS.write_hex(*(uint32_t *)(Func + Index));
+      IP->printInst(&Inst, OS);
+      OS << "\n";
     } else {
       if (Size == 0)
         Size = 1;  // skip illegible bytes
     }
   }
 
-  *OS << "\n";
+  OS << "\n";
+
   delete BufferMObj;
 
   delete AsmInfo;
   delete Disassmbler;
   delete IP;
 
-#if USE_DISASSEMBLER_FILE
-  ((llvm::raw_fd_ostream*)OS)->close();
-  delete OS;
-#endif
+  OS.close();
 }
 
 } // namespace bcc

@@ -37,7 +37,6 @@ libbcc_USE_OLD_JIT := $(call libbcc_GET_CONFIG,USE_OLD_JIT)
 libbcc_USE_MCJIT := $(call libbcc_GET_CONFIG,USE_MCJIT)
 libbcc_USE_CACHE := $(call libbcc_GET_CONFIG,USE_CACHE)
 libbcc_USE_DISASSEMBLER := $(call libbcc_GET_CONFIG,USE_DISASSEMBLER)
-libbcc_USE_DISASSEMBLER_FILE := $(call libbcc_GET_CONFIG,USE_DISASSEMBLER_FILE)
 libbcc_USE_LIBBCC_SHA1SUM := $(call libbcc_GET_CONFIG,USE_LIBBCC_SHA1SUM)
 
 # Source Files
