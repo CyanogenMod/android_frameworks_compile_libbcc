@@ -56,7 +56,10 @@ namespace bcc {
 #endif
     };
 
-    char const *mCachePath;
+#if USE_CACHE
+    std::string mCacheDir;
+    std::string mCacheName;
+#endif
 
     bool mIsContextSlotNotAvail;
 
@@ -72,7 +75,7 @@ namespace bcc {
 
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               mCachePath(NULL), mIsContextSlotNotAvail(false),
+               mIsContextSlotNotAvail(false),
                mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
       Compiler::GlobalInitialization();
 
@@ -96,7 +99,9 @@ namespace bcc {
                       char const *path,
                       unsigned long flags);
 
-    int prepareExecutable(char const *cachePath, unsigned long flags);
+    int prepareExecutable(char const *cacheDir,
+                          char const *cacheName,
+                          unsigned long flags);
 
     char const *getCompilerErrorMessage();
 

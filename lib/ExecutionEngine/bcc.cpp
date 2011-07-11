@@ -26,6 +26,8 @@
 #include "DebugHelper.h"
 #include "Script.h"
 
+#include <string>
+
 #include <utils/StopWatch.h>
 
 using namespace bcc;
@@ -104,16 +106,65 @@ extern "C" int bccLinkFile(BCCScriptRef script,
 }
 
 
+inline static bool parseOldStyleCachePath(std::string &cacheDir,
+                                          std::string &cacheName,
+                                          std::string const &path) {
+  size_t found0 = path.find("@");
+  size_t found1 = path.rfind("@");
+  size_t found2 = std::string::npos;
+
+  if (found0 == found1 ||
+      found0 == std::string::npos ||
+      found1 == std::string::npos) {
+    LOGE("Ill formatted resource name '%s'. The name should contain 2 @s",
+         path.c_str());
+    return false;
+  }
+
+  std::string ext(".oBCC");
+
+  if (path.size() > ext.size() &&
+      path.compare(path.size() - ext.size(), ext.size(), ext) == 0) {
+    found2 = path.size() - ext.size();
+  }
+
+  cacheDir = path.substr(0, found0);
+  cacheName = path.substr(found1 + 1, found2 - found1 - 1);
+
+  LOGD("cacheDir = %s\n", cacheDir.c_str());
+  LOGD("cacheName = %s\n", cacheName.c_str());
+  return true;
+}
+
+
 extern "C" int bccPrepareExecutable(BCCScriptRef script,
                                     char const *cachePath,
                                     unsigned long flags) {
+  BCC_FUNC_LOGGER();
+
+  std::string cacheDir, cacheName;
+  if (!parseOldStyleCachePath(cacheDir, cacheName, cachePath)) {
+    return 1;
+  }
+
+  return bccPrepareExecutableEx(script,
+                                cacheDir.c_str(),
+                                cacheName.c_str(),
+                                flags);
+}
+
+
+extern "C" int bccPrepareExecutableEx(BCCScriptRef script,
+                                      char const *cacheDir,
+                                      char const *cacheName,
+                                      unsigned long flags) {
   BCC_FUNC_LOGGER();
 
 #if defined(__arm__)
   android::StopWatch compileTimer("bcc: PrepareExecutable time");
 #endif
 
-  return unwrap(script)->prepareExecutable(cachePath, flags);
+  return unwrap(script)->prepareExecutable(cacheDir, cacheName, flags);
 }
 
 

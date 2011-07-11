@@ -172,7 +172,9 @@ int Script::addSourceFile(size_t idx,
 }
 
 
-int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
+int Script::prepareExecutable(char const *cacheDir,
+                              char const *cacheName,
+                              unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
     LOGE("Invalid operation: %s\n", __func__);
@@ -180,10 +182,19 @@ int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
   }
 
 #if USE_CACHE
-  // Load Cache File
-  mCachePath = cachePath;
-  if (cachePath && internalLoadCache() == 0) {
-    return 0;
+  if (cacheDir && cacheName) {
+    // Set Cache Directory and File Name
+    mCacheDir = cacheDir;
+    mCacheName = cacheName;
+
+    if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/') {
+      mCacheDir.push_back('/'); // Ensure mCacheDir is end with '/'
+    }
+
+    // Load Cache File
+    if (internalLoadCache() == 0) {
+      return 0;
+    }
   }
 #endif
 
@@ -196,34 +207,6 @@ int Script::prepareExecutable(char const *cachePath, unsigned long flags) {
 
 
 #if USE_CACHE
-bool getObjPath(std::string &objPath) {
-  size_t found0 = objPath.find("@");
-  size_t found1 = objPath.rfind("@");
-
-  if (found0 == found1 ||
-      found0 == std::string::npos ||
-      found1 == std::string::npos) {
-    LOGE("Ill formatted resource name '%s'. The name should contain 2 @s",
-         objPath.c_str());
-    return false;
-  }
-
-  objPath.replace(found0, found1 - found0 + 1, "", 0);
-  objPath.resize(objPath.length() - 3);
-
-  LOGV("objPath = %s", objPath.c_str());
-  return true;
-}
-
-bool getInfoPath(std::string &infoPath) {
-  getObjPath(infoPath);
-  infoPath.erase(infoPath.size() - 1, 1);
-  infoPath.append("info");
-
-  LOGV("infoPath = %s", infoPath.c_str());
-  return true;
-}
-
 int Script::internalLoadCache() {
   if (getBooleanProp("debug.bcc.nocache")) {
     // Android system environment property disable the cache mechanism by
@@ -232,36 +215,36 @@ int Script::internalLoadCache() {
     return 1;
   }
 
-  if (!mCachePath) {
+  if (mCacheDir.empty() || mCacheName.empty()) {
     // The application developer has not specify the cachePath, so
     // we don't know where to open the cache file.
     return 1;
   }
-  FileHandle objFile, infoFile;
 
-  std::string objPath(mCachePath);
-  std::string infoPath(mCachePath);
-
-#if USE_MCJIT
-  getObjPath(objPath);
-  getInfoPath(infoPath);
+#if USE_OLD_JIT
+  std::string objPath(mCacheDir + mCacheName + ".oBCC");
+#elif USE_MCJIT
+  std::string objPath(mCacheDir + mCacheName + ".o");
+  std::string infoPath(mCacheDir + mCacheName + ".info");
 #endif
 
+  FileHandle objFile;
   if (objFile.open(objPath.c_str(), OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
     return 1;
   }
 
-#if USE_OLD_JIT
-  CacheReader reader;
-#endif
-
-#if USE_MCJIT
+#if !USE_OLD_JIT && USE_MCJIT
+  FileHandle infoFile;
   if (infoFile.open(infoPath.c_str(), OpenMode::Read) < 0) {
     // Unable to open the cache file in read mode.
     return 1;
   }
+#endif
 
+#if USE_OLD_JIT
+  CacheReader reader;
+#elif USE_MCJIT
   MCCacheReader reader;
 
   // Register symbol lookup function
@@ -282,13 +265,12 @@ int Script::internalLoadCache() {
   }
 
   // Read cache file
-#if USE_MCJIT
+#if USE_OLD_JIT
+  ScriptCached *cached = reader.readCacheFile(&objFile, this);
+#elif USE_MCJIT
   ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);
 #endif
 
-#if USE_OLD_JIT
-  ScriptCached *cached = reader.readCacheFile(&objFile, this);
-#endif
 
   if (!cached) {
     mIsContextSlotNotAvail = reader.isContextSlotNotAvail();
@@ -366,43 +348,44 @@ int Script::internalCompile() {
   // Note: If the address of the context is not in the context slot, then
   // we don't have to cache it.
 
-  if (mCachePath &&
+  if (!mCacheDir.empty() &&
+      !mCacheName.empty() &&
 #if USE_OLD_JIT
       !mIsContextSlotNotAvail &&
       ContextManager::get().isManagingContext(getContext()) &&
 #endif
       !getBooleanProp("debug.bcc.nocache")) {
 
-    FileHandle infoFile, objFile;
+    FileHandle objFile;
 
-    std::string objPath(mCachePath);
-    std::string infoPath(mCachePath);
-
-#if USE_MCJIT
-    getObjPath(objPath);
-    getInfoPath(infoPath);
+#if USE_OLD_JIT
+    std::string objPath(mCacheDir + mCacheName + ".oBCC");
+#elif USE_MCJIT
+    FileHandle infoFile;
+    std::string objPath(mCacheDir + mCacheName + ".o");
+    std::string infoPath(mCacheDir + mCacheName + ".info");
 #endif
+
 
     // Remove the file if it already exists before writing the new file.
     // The old file may still be mapped elsewhere in memory and we do not want
     // to modify its contents.  (The same script may be running concurrently in
     // the same process or a different process!)
     ::unlink(objPath.c_str());
-#if USE_MCJIT
+#if !USE_OLD_JIT && USE_MCJIT
     ::unlink(infoPath.c_str());
 #endif
 
     if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0
-#if USE_MCJIT
+#if !USE_OLD_JIT && USE_MCJIT
         && infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0
 #endif
-	) {
+       ) {
 
-#if USE_MCJIT
-      MCCacheWriter writer;
-#endif
 #if USE_OLD_JIT
       CacheWriter writer;
+#elif USE_MCJIT
+      MCCacheWriter writer;
 #endif
 
 #ifdef TARGET_BUILD
@@ -428,8 +411,7 @@ int Script::internalCompile() {
 
 #if USE_OLD_JIT
       if (!writer.writeCacheFile(&objFile, this, libRS_threadable)) {
-#endif
-#if USE_MCJIT
+#elif USE_MCJIT
       if (!writer.writeCacheFile(&objFile, &infoFile, this, libRS_threadable)) {
 #endif
         objFile.truncate();
@@ -440,7 +422,7 @@ int Script::internalCompile() {
                objPath.c_str(), strerror(errno));
         }
 
-#if USE_MCJIT
+#if !USE_OLD_JIT && USE_MCJIT
         infoFile.truncate();
         infoFile.close();
 

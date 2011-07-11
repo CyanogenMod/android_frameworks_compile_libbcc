@@ -109,9 +109,15 @@ int bccLinkFile(BCCScriptRef script,
                 char const *path,
                 unsigned long flags);
 
+// Deprecated (Use bccPrepareExecutableEx instead)
 int bccPrepareExecutable(BCCScriptRef script,
                          char const *cachePath,
                          unsigned long flags);
+
+int bccPrepareExecutableEx(BCCScriptRef script,
+                           char const *cacheDir,
+                           char const *cacheName,
+                           unsigned long flags);
 
 void *bccGetFuncAddr(BCCScriptRef script, char const *funcname);
 
