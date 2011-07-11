@@ -22,6 +22,8 @@
 #define DEBUG_MCJIT_DISASSEMBLE 0
 
 #define USE_DISASSEMBLER_FILE 0
+#define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/data/local/tmp/oldjit-dis.s"
+#define DEBUG_MCJIT_DISASSEMBLER_FILE "/data/local/tmp/mcjit-dis.s"
 
 #define USE_LOGGER 1
 

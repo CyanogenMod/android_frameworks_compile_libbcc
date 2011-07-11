@@ -26,6 +26,10 @@
 #include "librsloader.h"
 #endif
 
+#if USE_DISASSEMBLER
+#include "Disassembler/Disassembler.h"
+#endif
+
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
@@ -106,14 +110,6 @@ namespace bcc {
 
     // Loaded and relocated executable
     RSExecRef mRSExecutable;
-
-#if USE_DISASSEMBLER
-    void Disassemble(llvm::Target const *Target,
-                     llvm::TargetMachine *TM,
-                     std::string const &name,
-                     unsigned char const *code,
-                     size_t size);
-#endif
 #endif
 
     BCCSymbolLookupFn mpSymbolLookupFn;
@@ -128,6 +124,10 @@ namespace bcc {
     Compiler(ScriptCompiled *result);
 
     static void GlobalInitialization();
+
+    static std::string const &getTargetTriple() {
+      return Triple;
+    }
 
     void setCachePath(const char *cachePath) {
       mCachePath = cachePath;

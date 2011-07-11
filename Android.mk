@@ -51,7 +51,8 @@ libbcc_SRC_FILES := \
   lib/ExecutionEngine/RuntimeStub.c \
   lib/ExecutionEngine/Script.cpp \
   lib/ExecutionEngine/ScriptCompiled.cpp \
-  lib/ExecutionEngine/SourceInfo.cpp
+  lib/ExecutionEngine/SourceInfo.cpp \
+  lib/Disassembler/Disassembler.cpp
 
 ifeq ($(libbcc_USE_OLD_JIT),1)
 libbcc_SRC_FILES += \
@@ -215,6 +216,7 @@ LOCAL_C_INCLUDES := \
   $(RSLOADER_ROOT_PATH)/android \
   $(LOCAL_PATH)/lib/ExecutionEngine \
   $(LOCAL_PATH)/lib/CodeGen \
+  $(LOCAL_PATH)/lib \
   $(LOCAL_PATH)/helper \
   $(LOCAL_PATH)/include \
   $(LOCAL_PATH)
@@ -300,6 +302,7 @@ LOCAL_C_INCLUDES := \
   $(RSLOADER_ROOT_PATH)/android \
   $(LOCAL_PATH)/lib/ExecutionEngine \
   $(LOCAL_PATH)/lib/CodeGen \
+  $(LOCAL_PATH)/lib \
   $(LOCAL_PATH)/helper \
   $(LOCAL_PATH)/include \
   $(LOCAL_PATH)
