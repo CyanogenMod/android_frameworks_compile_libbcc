@@ -41,8 +41,6 @@ MCCacheWriter::~MCCacheWriter() {
   CHECK_AND_FREE(mpHeaderSection);
   CHECK_AND_FREE(mpStringPoolSection);
   CHECK_AND_FREE(mpDependencyTableSection);
-  CHECK_AND_FREE(mpExportVarListSection);
-  CHECK_AND_FREE(mpExportFuncListSection);
   CHECK_AND_FREE(mpPragmaListSection);
   CHECK_AND_FREE(mpObjectSlotSection);
   CHECK_AND_FREE(mpExportVarNameListSection);
@@ -67,8 +65,6 @@ bool MCCacheWriter::writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
              && prepareExportVarNameList()
              && prepareExportFuncNameList()
              && prepareStringPool()
-             && prepareExportVarList()
-             && prepareExportFuncList()
              && prepareObjectSlotList()
              && calcSectionOffset()
              && writeAll()
@@ -223,27 +219,6 @@ bool MCCacheWriter::prepareStringPool() {
 }
 
 
-bool MCCacheWriter::prepareExportVarList() {
-  size_t varCount = mpOwner->getExportVarCount();
-  size_t listSize = sizeof(OBCC_ExportVarList) + sizeof(void *) * varCount;
-
-  OBCC_ExportVarList *list = (OBCC_ExportVarList *)malloc(listSize);
-
-  if (!list) {
-    LOGE("Unable to allocate for export variable list\n");
-    return false;
-  }
-
-  mpExportVarListSection = list;
-  mpHeaderSection->export_var_list_size = listSize;
-
-  list->count = static_cast<size_t>(varCount);
-
-  mpOwner->getExportVarList(varCount, list->cached_addr_list);
-  return true;
-}
-
-
 bool MCCacheWriter::prepareExportVarNameList() {
   size_t varCount = mpOwner->getExportVarCount();
   size_t listSize = sizeof(OBCC_String_Ptr) + sizeof(size_t) * varCount;
@@ -264,27 +239,6 @@ bool MCCacheWriter::prepareExportVarNameList() {
   for (size_t i = 0; i < varCount; ++i) {
     list->strp_indexs[i] = addString(varNameList[i].c_str(), varNameList[i].length());
   }
-  return true;
-}
-
-
-bool MCCacheWriter::prepareExportFuncList() {
-  size_t funcCount = mpOwner->getExportFuncCount();
-  size_t listSize = sizeof(OBCC_ExportFuncList) + sizeof(void *) * funcCount;
-
-  OBCC_ExportFuncList *list = (OBCC_ExportFuncList *)malloc(listSize);
-
-  if (!list) {
-    LOGE("Unable to allocate for export function list\n");
-    return false;
-  }
-
-  mpExportFuncListSection = list;
-  mpHeaderSection->export_func_list_size = listSize;
-
-  list->count = static_cast<size_t>(funcCount);
-
-  mpOwner->getExportFuncList(funcCount, list->cached_addr_list);
   return true;
 }
 
@@ -354,8 +308,6 @@ bool MCCacheWriter::calcSectionOffset() {
 
   OFFSET_INCREASE(str_pool);
   OFFSET_INCREASE(depend_tab);
-  OFFSET_INCREASE(export_var_list);
-  OFFSET_INCREASE(export_func_list);
   OFFSET_INCREASE(pragma_list);
   OFFSET_INCREASE(func_table);
   OFFSET_INCREASE(object_slot_list);
@@ -393,8 +345,6 @@ bool MCCacheWriter::writeAll() {
 
   WRITE_SECTION_SIMPLE(str_pool, mpStringPoolSection);
   WRITE_SECTION_SIMPLE(depend_tab, mpDependencyTableSection);
-  WRITE_SECTION_SIMPLE(export_var_list, mpExportVarListSection);
-  WRITE_SECTION_SIMPLE(export_func_list, mpExportFuncListSection);
   WRITE_SECTION_SIMPLE(pragma_list, mpPragmaListSection);
   WRITE_SECTION_SIMPLE(object_slot_list, mpObjectSlotSection);
 
