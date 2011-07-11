@@ -57,7 +57,7 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
                                            Script *S) {
   // Check file handle
   if (!objFile || objFile->getFD() < 0 || !infoFile || infoFile->getFD() < 0) {
-    return false;
+    return NULL;
   }
 
   mObjFile = objFile;
