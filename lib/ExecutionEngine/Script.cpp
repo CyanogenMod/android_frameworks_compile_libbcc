@@ -353,8 +353,6 @@ int Script::internalCompile() {
     }
   }
 
-  mCompiled->setCachePath(mCachePath);
-
   // Compile and JIT the code
   if (mCompiled->compile() != 0) {
     LOGE("Unable to compile.\n");

@@ -70,11 +70,6 @@ namespace bcc {
 
     ~ScriptCompiled();
 
-    void setCachePath(char const *cachePath) {
-      mCompiler.setCachePath(cachePath);
-      return;
-    }
-
     llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM) {
       return mCompiler.parseBitcodeFile(MEM);
     }

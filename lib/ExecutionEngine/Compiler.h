@@ -90,8 +90,6 @@ namespace bcc {
 
 
   private:
-    const char *mCachePath;
-
     ScriptCompiled *mpResult;
 
     std::string mError;
@@ -127,11 +125,6 @@ namespace bcc {
 
     static std::string const &getTargetTriple() {
       return Triple;
-    }
-
-    void setCachePath(const char *cachePath) {
-      mCachePath = cachePath;
-      return;
     }
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
