@@ -112,7 +112,7 @@ int bccLinkFile(BCCScriptRef script,
 // Deprecated (Use bccPrepareExecutableEx instead)
 int bccPrepareExecutable(BCCScriptRef script,
                          char const *cachePath,
-                         unsigned long flags);
+                         unsigned long flags) __attribute__((deprecated));
 
 int bccPrepareExecutableEx(BCCScriptRef script,
                            char const *cacheDir,

@@ -94,7 +94,9 @@ API
 
 * **bccLinkBC** - Set the library bitcode for linking
 
-* **bccPrepareExecutable** - Create the in-memory executable by either
+* **bccPrepareExecutable** - *deprecated* - Use bccPrepareExecutableEx instead
+
+* **bccPrepareExecutableEx** - Create the in-memory executable by either
   just-in-time compilation or cache loading
 
 * **bccGetFuncAddr** - Get the entry address of the function
