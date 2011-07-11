@@ -199,7 +199,7 @@ static BCCScriptRef loadScript() {
 
   bccRegisterSymbolCallback(script, lookupSymbol, NULL);
 
-  if (bccPrepareExecutable(script, "cache.oBCC", 0) != 0) {
+  if (bccPrepareExecutableEx(script, ".", "cache", 0) != 0) {
     fprintf(stderr, "bcc: FAILS to prepare executable.\n");
     bccDisposeScript(script);
     return NULL;
