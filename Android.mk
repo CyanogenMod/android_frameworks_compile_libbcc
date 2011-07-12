@@ -76,15 +76,6 @@ libbcc_C_INCLUDES := \
   $(LOCAL_PATH)/include \
   $(LOCAL_PATH)
 
-# Build Host SHA1 Command Line
-# ========================================================
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := helper/sha1.c
-LOCAL_MODULE := sha1sum
-LOCAL_MODULE_TAGS := optional
-LOCAL_CFLAGS += -DCMDLINE
-include $(BUILD_HOST_EXECUTABLE)
-
 # Calculate SHA1 checksum for libbcc.so and libRS.so
 # ========================================================
 include $(CLEAR_VARS)
@@ -96,11 +87,12 @@ include $(BUILD_SYSTEM)/base_rules.mk
 libbcc_SHA1_SRCS := $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
     $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so
 
+libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/gen-sha1-stamp.py
+
 $(LOCAL_BUILT_MODULE): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
-$(LOCAL_BUILT_MODULE) : $(libbcc_SHA1_SRCS) \
-                       $(HOST_OUT_EXECUTABLES)/sha1sum
+$(LOCAL_BUILT_MODULE): $(libbcc_SHA1_SRCS) $(libbcc_GEN_SHA1_STAMP)
 	$(hide) mkdir -p $(dir $@) && \
-          cat $(PRIVATE_SHA1_SRCS) | $(HOST_OUT_EXECUTABLES)/sha1sum -B $@
+          $(libbcc_GEN_SHA1_STAMP) $@ $(PRIVATE_SHA1_SRCS)
 
 #
 # Shared library for target
