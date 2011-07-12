@@ -68,10 +68,6 @@ libbcc_SRC_FILES += \
   helper/sha1.c
 endif
 
-FULL_PATH_libbcc_SRC_FILES := \
-  $(addprefix $(LOCAL_PATH)/, $(libbcc_SRC_FILES)) \
-  $(sort $(shell find $(LOCAL_PATH) -name "*.h"))
-
 # Build Host SHA1 Command Line
 # ========================================================
 include $(CLEAR_VARS)
