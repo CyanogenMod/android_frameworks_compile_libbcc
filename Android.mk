@@ -166,53 +166,9 @@ else
   endif
 endif
 
-ifeq ($(TARGET_ARCH),arm)
-  LOCAL_STATIC_LIBRARIES := \
-    libLLVMARMCodeGen \
-    libLLVMARMInfo
-else
-  ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
-    LOCAL_STATIC_LIBRARIES := \
-      libLLVMX86CodeGen \
-      libLLVMX86Info \
-      libLLVMX86Utils
-  else
-    $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
-  endif
-endif
-
 ifeq ($(libbcc_USE_MCJIT),1)
   LOCAL_STATIC_LIBRARIES += librsloader
 endif
-
-LOCAL_STATIC_LIBRARIES += \
-  libLLVMBitReader \
-  libLLVMSelectionDAG \
-  libLLVMAsmPrinter \
-  libLLVMCodeGen \
-  libLLVMLinker \
-  libLLVMJIT \
-  libLLVMTarget \
-  libLLVMMC \
-  libLLVMScalarOpts \
-  libLLVMInstCombine \
-  libLLVMipo \
-  libLLVMipa \
-  libLLVMTransformUtils \
-  libLLVMCore \
-  libLLVMAnalysis \
-  libLLVMSupport
-
-LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
-
-LOCAL_C_INCLUDES := \
-  $(RSLOADER_ROOT_PATH)/android \
-  $(LOCAL_PATH)/lib/ExecutionEngine \
-  $(LOCAL_PATH)/lib/CodeGen \
-  $(LOCAL_PATH)/lib \
-  $(LOCAL_PATH)/helper \
-  $(LOCAL_PATH)/include \
-  $(LOCAL_PATH)
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
   ifeq ($(TARGET_ARCH),arm)
@@ -228,10 +184,52 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
       $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
     endif
   endif
-  LOCAL_STATIC_LIBRARIES += \
-    libLLVMMCParser \
-    $(LOCAL_STATIC_LIBRARIES)
 endif
+
+ifeq ($(TARGET_ARCH),arm)
+  LOCAL_STATIC_LIBRARIES += \
+    libLLVMARMCodeGen \
+    libLLVMARMInfo
+else
+  ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
+    LOCAL_STATIC_LIBRARIES += \
+      libLLVMX86CodeGen \
+      libLLVMX86Info \
+      libLLVMX86Utils
+  else
+    $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+  endif
+endif
+
+LOCAL_STATIC_LIBRARIES += \
+  libLLVMAsmPrinter \
+  libLLVMBitReader \
+  libLLVMSelectionDAG \
+  libLLVMCodeGen \
+  libLLVMLinker \
+  libLLVMJIT \
+  libLLVMScalarOpts \
+  libLLVMInstCombine \
+  libLLVMipo \
+  libLLVMipa \
+  libLLVMTransformUtils \
+  libLLVMAnalysis \
+  libLLVMTarget \
+  libLLVMMCParser \
+  libLLVMMC \
+  libLLVMCore \
+  libLLVMSupport
+
+LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
+
+LOCAL_C_INCLUDES := \
+  $(RSLOADER_ROOT_PATH)/android \
+  $(LOCAL_PATH)/lib/ExecutionEngine \
+  $(LOCAL_PATH)/lib/CodeGen \
+  $(LOCAL_PATH)/lib \
+  $(LOCAL_PATH)/helper \
+  $(LOCAL_PATH)/include \
+  $(LOCAL_PATH)
 
 # Modules that need get installed if and only if the target libbcc.so is installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
@@ -262,31 +260,39 @@ ifeq ($(libbcc_USE_MCJIT),1)
   LOCAL_STATIC_LIBRARIES += librsloader
 endif
 
+ifeq ($(libbcc_USE_DISASSEMBLER),1)
+  LOCAL_STATIC_LIBRARIES += \
+    libLLVMARMDisassembler \
+    libLLVMARMAsmPrinter \
+    libLLVMX86Disassembler \
+    libLLVMMCParser
+endif
+
 LOCAL_STATIC_LIBRARIES += \
   libcutils \
   libutils \
+  libLLVMARMCodeGen \
+  libLLVMARMInfo \
   libLLVMX86CodeGen \
   libLLVMX86Info \
   libLLVMX86Utils \
   libLLVMX86AsmPrinter \
-  libLLVMARMCodeGen \
-  libLLVMARMInfo \
+  libLLVMAsmPrinter \
   libLLVMBitReader \
   libLLVMSelectionDAG \
-  libLLVMAsmPrinter \
-  libLLVMMCParser \
   libLLVMCodeGen \
   libLLVMLinker \
   libLLVMJIT \
-  libLLVMMC \
   libLLVMScalarOpts \
   libLLVMInstCombine \
   libLLVMipo \
   libLLVMipa \
   libLLVMTransformUtils \
-  libLLVMCore \
-  libLLVMTarget \
   libLLVMAnalysis \
+  libLLVMTarget \
+  libLLVMMCParser \
+  libLLVMMC \
+  libLLVMCore \
   libLLVMSupport
 
 LOCAL_LDLIBS := -ldl -lpthread
@@ -311,15 +317,6 @@ else
   else
     $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
   endif
-endif
-
-ifeq ($(libbcc_USE_DISASSEMBLER),1)
-LOCAL_STATIC_LIBRARIES := \
-  libLLVMARMDisassembler \
-  libLLVMARMAsmPrinter \
-  libLLVMX86Disassembler \
-  libLLVMMCParser \
-  $(LOCAL_STATIC_LIBRARIES)
 endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
