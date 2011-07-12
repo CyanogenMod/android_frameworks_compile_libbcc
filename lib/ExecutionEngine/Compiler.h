@@ -19,8 +19,8 @@
 
 #include <bcc/bcc.h>
 
-#include "CodeEmitter.h"
-#include "CodeMemoryManager.h"
+#include "CodeGen/CodeEmitter.h"
+#include "CodeGen/CodeMemoryManager.h"
 
 #if USE_MCJIT
 #include "librsloader.h"

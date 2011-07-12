@@ -14,7 +14,7 @@
 #ifndef BCC_CODEMEMORYMANAGER_H
 #define BCC_CODEMEMORYMANAGER_H
 
-#include "Compiler.h"
+#include "ExecutionEngine/Compiler.h"
 
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 

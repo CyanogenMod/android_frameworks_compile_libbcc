@@ -68,6 +68,14 @@ libbcc_SRC_FILES += \
   helper/sha1.c
 endif
 
+# Include File Search Path
+libbcc_C_INCLUDES := \
+  $(RSLOADER_ROOT_PATH)/android \
+  $(LOCAL_PATH)/lib \
+  $(LOCAL_PATH)/helper \
+  $(LOCAL_PATH)/include \
+  $(LOCAL_PATH)
+
 # Build Host SHA1 Command Line
 # ========================================================
 include $(CLEAR_VARS)
@@ -222,14 +230,7 @@ LOCAL_STATIC_LIBRARIES += \
 
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
-LOCAL_C_INCLUDES := \
-  $(RSLOADER_ROOT_PATH)/android \
-  $(LOCAL_PATH)/lib/ExecutionEngine \
-  $(LOCAL_PATH)/lib/CodeGen \
-  $(LOCAL_PATH)/lib \
-  $(LOCAL_PATH)/helper \
-  $(LOCAL_PATH)/include \
-  $(LOCAL_PATH)
+LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
 # Modules that need get installed if and only if the target libbcc.so is installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
@@ -297,14 +298,7 @@ LOCAL_STATIC_LIBRARIES += \
 
 LOCAL_LDLIBS := -ldl -lpthread
 
-LOCAL_C_INCLUDES := \
-  $(RSLOADER_ROOT_PATH)/android \
-  $(LOCAL_PATH)/lib/ExecutionEngine \
-  $(LOCAL_PATH)/lib/CodeGen \
-  $(LOCAL_PATH)/lib \
-  $(LOCAL_PATH)/helper \
-  $(LOCAL_PATH)/include \
-  $(LOCAL_PATH)
+LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
 # definitions for LLVM
 LOCAL_CFLAGS += -DDEBUG_CODEGEN=1

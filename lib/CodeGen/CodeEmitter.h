@@ -17,7 +17,7 @@
 #include <bcc/bcc.h>
 #include <bcc/bcc_assert.h>
 #include <bcc/bcc_cache.h>
-#include "bcc_internal.h"
+#include "ExecutionEngine/bcc_internal.h"
 
 #include "Config.h"
 
