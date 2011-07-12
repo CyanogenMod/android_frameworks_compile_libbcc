@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-ifneq ($(TARGET_SIMULATOR),true)
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -49,5 +48,3 @@ $(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(clcore_bc_files)
 $(LOCAL_BUILT_MODULE) : $(clcore_bc_files) $(clcore_LLVM_LINK)
 	@mkdir -p $(dir $@)
 	$(hide) $(clcore_LLVM_LINK) $(PRIVATE_BC_FILES) -o $@
-
-endif

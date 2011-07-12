@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-ifneq ($(TARGET_SIMULATOR),true)
-
 local_cflags_for_libbcc := -Wall -Wno-unused-parameter -Werror
 ifneq ($(TARGET_BUILD_VARIANT),eng)
 local_cflags_for_libbcc += -D__DISABLE_ASSERTS
@@ -334,5 +332,3 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 # Build children
 # ========================================================
 include $(call all-makefiles-under,$(LOCAL_PATH))
-
-endif # TARGET_SIMULATOR != true
