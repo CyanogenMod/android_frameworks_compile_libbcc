@@ -36,8 +36,19 @@ namespace llvm {
   class Module;
 }
 
+static bool bccBuildStampPrinted = false;
+
+static void bccPrintBuildStamp() {
+  if (!bccBuildStampPrinted) {
+    LOGI("LIBBCC build time: %s", bccGetBuildTime());
+    LOGI("LIBBCC build revision: %s", bccGetBuildRev());
+    bccBuildStampPrinted = true;
+  }
+}
+
 extern "C" BCCScriptRef bccCreateScript() {
   BCC_FUNC_LOGGER();
+  bccPrintBuildStamp();
   return wrap(new bcc::Script());
 }
 
