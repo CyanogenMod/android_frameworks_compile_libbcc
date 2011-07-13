@@ -137,6 +137,9 @@ LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 # use below instead.
 LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
+# Generate build stamp (Build time + Build git revision + Build Semi SHA1)
+include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
+
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
 
@@ -193,6 +196,9 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMSupport
 
 LOCAL_LDLIBS := -ldl -lpthread
+
+# Generate build stamp (Build time + Build git revision + Build Semi SHA1)
+include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
 
 # definitions for LLVM
 LOCAL_CFLAGS += -DDEBUG_CODEGEN=1

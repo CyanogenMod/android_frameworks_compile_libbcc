@@ -152,6 +152,12 @@ void bccGetObjectSlotList(BCCScriptRef script,
                           size_t objectSlotListSize,
                           uint32_t *objectSlotList);
 
+char const *bccGetBuildTime();
+
+char const *bccGetBuildRev();
+
+char const *bccGetBuildSHA1();
+
 #ifdef __cplusplus
 };
 #endif
