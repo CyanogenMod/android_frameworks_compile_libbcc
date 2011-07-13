@@ -11,6 +11,7 @@ def get_repo_revision(repo_dir):
     if not os.path.exists(os.path.join(repo_dir, '.git')):
         return 'Unknown (not git)'
 
+    # Get the HEAD revision
     proc = subprocess.Popen(['git', 'log', '-1', '--format=%H'],
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
@@ -18,7 +19,19 @@ def get_repo_revision(repo_dir):
     out, err = proc.communicate()
     proc.wait()
 
-    return out.strip() + ' (git)'
+    rev_sha1 = out.strip()
+
+    # Working Directory Modified
+    proc = subprocess.Popen(['git', 'status'],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            cwd=repo_dir)
+    out, err = proc.communicate()
+    proc.wait()
+
+    mod = ' modified' if out.find('(work directory clean)') == -1 else ''
+
+    return rev_sha1 + mod + ' (git)'
 
 def compute_sha1(path, global_hasher = None):
     f = open(path, 'rb')
