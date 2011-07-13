@@ -71,7 +71,6 @@ struct OBCC_Header {
   size_t object_slot_list_size;
 
   /* context section */
-  off_t context_offset;
   char *context_cached_addr;
   uint32_t context_parity_checksum;
 

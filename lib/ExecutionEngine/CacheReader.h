@@ -36,8 +36,9 @@ namespace bcc {
 
   class CacheReader {
   private:
-    FileHandle *mFile;
-    off_t mFileSize;
+    FileHandle *mObjFile;
+    FileHandle *mInfoFile;
+    off_t mInfoFileSize;
 
     OBCC_Header *mpHeader;
     OBCC_DependencyTable *mpCachedDependTable;
@@ -53,7 +54,7 @@ namespace bcc {
 
   public:
     CacheReader()
-      : mFile(NULL), mFileSize(0), mpHeader(NULL),
+      : mObjFile(NULL), mInfoFile(NULL), mInfoFileSize(0), mpHeader(NULL),
         mpCachedDependTable(NULL), mpPragmaList(NULL), mpFuncTable(NULL),
         mIsContextSlotNotAvail(false) {
     }
@@ -67,7 +68,9 @@ namespace bcc {
                            std::make_pair((uint32_t)resType, sha1)));
     }
 
-    ScriptCached *readCacheFile(FileHandle *file, Script *s);
+    ScriptCached *readCacheFile(FileHandle *objFile,
+                                FileHandle *infoFile,
+                                Script *s);
 
     bool isContextSlotNotAvail() const {
       return mIsContextSlotNotAvail;
