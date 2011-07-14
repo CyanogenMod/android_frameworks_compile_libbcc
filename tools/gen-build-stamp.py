@@ -35,7 +35,7 @@ def get_repo_revision(repo_dir):
     out, err = proc.communicate()
     proc.wait()
 
-    if out.find('(work directory clean)') == -1:
+    if out.find('(working directory clean)') == -1:
       mod = ' modified'
     else:
       mod = ''
