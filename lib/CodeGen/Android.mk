@@ -42,6 +42,7 @@ LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_C_INCLUDES += $(libbcc_C_INCLUDES)
 LOCAL_SRC_FILES := $(libbcc_codegen_SRC_FILES)
 
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_STATIC_LIBRARY)
 
@@ -62,6 +63,7 @@ LOCAL_C_INCLUDES += $(libbcc_C_INCLUDES)
 
 LOCAL_SRC_FILES := $(libbcc_codegen_SRC_FILES)
 
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_STATIC_LIBRARY)
 

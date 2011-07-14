@@ -145,6 +145,7 @@ LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
 include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
 
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
 
@@ -223,6 +224,7 @@ else
   endif
 endif
 
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
 

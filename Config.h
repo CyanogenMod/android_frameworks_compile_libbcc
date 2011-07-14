@@ -1,12 +1,11 @@
 #ifndef BCC_CONFIG_H
 #define BCC_CONFIG_H
 
+#include "ConfigFromMk.h"
+
 //---------------------------------------------------------------------------
 // Configuration for JIT & MC Assembler
 //---------------------------------------------------------------------------
-#define USE_OLD_JIT 0
-#define USE_MCJIT 1
-
 #if !USE_OLD_JIT && !USE_MCJIT
 #error "You should choose at least one code generation method."
 #endif
@@ -15,22 +14,8 @@
 // Configuration for libbcc
 //---------------------------------------------------------------------------
 
-#define USE_CACHE 1
-
-#define USE_DISASSEMBLER 1
-#define DEBUG_OLD_JIT_DISASSEMBLE 0
-#define DEBUG_MCJIT_DISASSEMBLE 0
-
 #define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/data/local/tmp/oldjit-dis.s"
 #define DEBUG_MCJIT_DISASSEMBLER_FILE "/data/local/tmp/mcjit-dis.s"
-
-#define USE_LOGGER 1
-
-#define USE_FUNC_LOGGER 0
-
-#define DEBUG_BCC_REFLECT 0
-
-#define DEBUG_MCJIT_REFLECT 0
 
 //---------------------------------------------------------------------------
 // Configuration for ContextManager

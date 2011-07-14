@@ -19,26 +19,28 @@
 # Root Path for Other Projects
 #=====================================================================
 
-LLVM_ROOT_PATH := external/llvm
-
-LIBBCC_ROOT_PATH := frameworks/compile/libbcc
-
-RSLOADER_ROOT_PATH := frameworks/compile/linkloader
+LLVM_ROOT_PATH      := external/llvm
+LIBBCC_ROOT_PATH    := frameworks/compile/libbcc
+RSLOADER_ROOT_PATH  := frameworks/compile/linkloader
 
 
 #=====================================================================
-# Extract Configuration from Config.h
+# Configurations
 #=====================================================================
 
-libbcc_GET_CONFIG = $(shell cat "$(LIBBCC_ROOT_PATH)/Config.h" | \
-                            grep "^\#define $1 [01]$$" | \
-                            cut -d ' ' -f 3)
+libbcc_USE_OLD_JIT                  := 0
+libbcc_USE_MCJIT                    := 1
 
-libbcc_USE_OLD_JIT			:= $(call libbcc_GET_CONFIG,USE_OLD_JIT)
-libbcc_USE_MCJIT			:= $(call libbcc_GET_CONFIG,USE_MCJIT)
-libbcc_USE_CACHE			:= $(call libbcc_GET_CONFIG,USE_CACHE)
-libbcc_USE_DISASSEMBLER		:= $(call libbcc_GET_CONFIG,USE_DISASSEMBLER)
-libbcc_USE_LIBBCC_SHA1SUM	:= $(call libbcc_GET_CONFIG,USE_LIBBCC_SHA1SUM)
+libbcc_USE_CACHE                    := 1
+
+libbcc_USE_DISASSEMBLER             := 1
+libbcc_DEBUG_OLD_JIT_DISASSEMBLE    := 0
+libbcc_DEBUG_MC_JIT_DISASSEMBLE     := 0
+
+libbcc_USE_LOGGER                   := 1
+libbcc_USE_FUNC_LOGGER              := 0
+libbcc_DEBUG_BCC_REFLECT            := 0
+libbcc_DEBUG_MCJIT_REFLECT          := 0
 
 
 #=====================================================================
