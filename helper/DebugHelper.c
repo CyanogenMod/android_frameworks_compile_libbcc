@@ -7,7 +7,7 @@
 
 #define LOG_BUF_SIZE 1024
 
-#if !defined(__arm__)
+#if USE_LOGGER && !defined(__arm__)
 int __android_log_print(int prio, const char *tag, const char *fmt, ...) {
   va_list ap;
   char buf[LOG_BUF_SIZE];
@@ -26,4 +26,4 @@ int __android_log_write(int prio, const char *tag, const char *msg) {
 
   return fprintf(stderr, "[%s] %s", tag, msg);
 }
-#endif // !defined(__arm__)
+#endif // USE_LOGGER && !defined(__arm__)
