@@ -50,7 +50,7 @@ $(GEN): PRIVATE_DEPS := $(LOCAL_LIBBCC_LIB_DEPS)
 $(GEN): PRIVATE_CUSTOM_TOOL = $(PRIVATE_PATH)/tools/gen-build-stamp.py \
                               $(PRIVATE_PATH) $(PRIVATE_DEPS) > $@
 $(GEN): $(LOCAL_PATH)/tools/gen-build-stamp.py $(LOCAL_LIBBCC_LIB_DEPS) \
-        $(wildcard $(LOCAL_PATH)/.git/*)
+        $(wildcard $(LOCAL_PATH)/.git/COMMIT_EDITMSG)
 	$(transform-generated-source)
 
 LOCAL_GENERATED_SOURCES += $(GEN)
