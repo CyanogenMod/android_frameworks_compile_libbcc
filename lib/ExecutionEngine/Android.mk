@@ -23,7 +23,6 @@ include $(LOCAL_PATH)/../../libbcc-config.mk
 #=====================================================================
 
 libbcc_executionengine_SRC_FILES := \
-  bcc.cpp \
   Compiler.cpp \
   ContextManager.cpp \
   FileHandle.cpp \
