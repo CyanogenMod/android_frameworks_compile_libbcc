@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
 import datetime
-import hashlib
 import os
 import re
 import sys
 import subprocess
+
+try:
+    import hashlib
+    sha1 = hashlib.sha1
+except ImportError, e:
+    import sha
+    sha1 = sha.sha
 
 def get_repo_revision(repo_dir):
     if not os.path.exists(os.path.join(repo_dir, '.git')):
@@ -29,13 +35,16 @@ def get_repo_revision(repo_dir):
     out, err = proc.communicate()
     proc.wait()
 
-    mod = ' modified' if out.find('(work directory clean)') == -1 else ''
+    if out.find('(work directory clean)') == -1:
+      mod = ' modified'
+    else:
+      mod = ''
 
     return rev_sha1 + mod + ' (git)'
 
 def compute_sha1(path, global_hasher = None):
     f = open(path, 'rb')
-    hasher = hashlib.sha1()
+    hasher = sha1()
     while True:
         buf = f.read(512)
         hasher.update(buf)
@@ -47,7 +56,7 @@ def compute_sha1(path, global_hasher = None):
     return hasher.hexdigest()
 
 def compute_sha1_list(paths):
-    hasher = hashlib.sha1()
+    hasher = sha1()
     sha1sums = []
     for path in paths:
         sha1sums.append(compute_sha1(path, hasher))

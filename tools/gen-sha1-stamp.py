@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 
-import hashlib
 import sys
+
+try:
+    import hashlib
+    sha1 = hashlib.sha1
+except ImportError, e:
+    import sha
+    sha1 = sha.sha
 
 def compute_sha1(h, path):
     f = open(path, 'rb')
@@ -13,7 +19,7 @@ def compute_sha1(h, path):
     f.close()
 
 def compute_sha1_list(path_list):
-    h = hashlib.sha1()
+    h = sha1()
     for path in path_list:
         compute_sha1(h, path)
     return h.digest()
