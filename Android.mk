@@ -178,8 +178,7 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
   else
     ifeq ($(TARGET_ARCH),x86)
       LOCAL_STATIC_LIBRARIES += \
-        libLLVMX86Disassembler \
-        libLLVMX86AsmPrinter
+        libLLVMX86Disassembler
     else
       $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
     endif
@@ -195,7 +194,8 @@ else
     LOCAL_STATIC_LIBRARIES += \
       libLLVMX86CodeGen \
       libLLVMX86Info \
-      libLLVMX86Utils
+      libLLVMX86Utils \
+      libLLVMX86AsmPrinter
   else
     $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
   endif
