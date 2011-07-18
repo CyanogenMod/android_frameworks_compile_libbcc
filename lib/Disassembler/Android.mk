@@ -37,7 +37,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbccDisassembler
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_CFLAGS += $(local_cflags_for_libbcc)
+LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 LOCAL_SRC_FILES := $(libbcc_disassembler_SRC_FILES)
 
@@ -54,8 +54,10 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbccDisassembler
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_CFLAGS += $(local_cflags_for_libbcc)
+
+LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
+
 LOCAL_SRC_FILES := $(libbcc_disassembler_SRC_FILES)
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
