@@ -23,12 +23,12 @@
 #endif
 
 #include "CodeMemoryManager.h"
-#include "Runtime.h"
-#include "ScriptCompiled.h"
+#include "ExecutionEngine/Runtime.h"
+#include "ExecutionEngine/ScriptCompiled.h"
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
-#include "bcc_internal.h"
+#include "ExecutionEngine/bcc_internal.h"
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"

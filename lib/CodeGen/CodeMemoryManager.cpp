@@ -17,7 +17,7 @@
 #include <cutils/log.h>
 
 #include "CodeMemoryManager.h"
-#include "ContextManager.h"
+#include "ExecutionEngine/ContextManager.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
