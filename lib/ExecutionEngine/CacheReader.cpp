@@ -49,13 +49,17 @@ CacheReader::~CacheReader() {
   if (mpFuncTable) { free(mpFuncTable); }
 }
 
-ScriptCached *CacheReader::readCacheFile(FileHandle *file, Script *S) {
+ScriptCached *CacheReader::readCacheFile(FileHandle *objFile,
+                                         FileHandle *infoFile,
+                                         Script *S) {
   // Check file handle
-  if (!file || file->getFD() < 0) {
+  if (!objFile || objFile->getFD() < 0 ||
+      !infoFile || infoFile->getFD() < 0) {
     return NULL;
   }
 
-  mFile = file;
+  mObjFile = objFile;
+  mInfoFile = infoFile;
 
   // Allocate ScriptCached object
   mpResult.reset(new (nothrow) ScriptCached(S));
@@ -91,16 +95,26 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *file, Script *S) {
 
 bool CacheReader::checkFileSize() {
   struct stat stfile;
-  if (fstat(mFile->getFD(), &stfile) < 0) {
-    LOGE("Unable to stat cache file.\n");
+
+  if (fstat(mInfoFile->getFD(), &stfile) < 0) {
+    LOGE("Unable to stat metadata information file.\n");
     return false;
   }
 
-  mFileSize = stfile.st_size;
+  mInfoFileSize = stfile.st_size;
 
-  if (mFileSize < (off_t)sizeof(OBCC_Header) ||
-      mFileSize < (off_t)ContextManager::ContextSize) {
-    LOGE("Cache file is too small to be correct.\n");
+  if (mInfoFileSize < (off_t)sizeof(OBCC_Header)) {
+    LOGE("Metadata information file is too small to be correct.\n");
+    return false;
+  }
+
+  if (fstat(mObjFile->getFD(), &stfile) < 0) {
+    LOGE("Unable to stat executable file.\n");
+    return false;
+  }
+
+  if (stfile.st_size < (off_t)ContextManager::ContextSize) {
+    LOGE("Executable file is too small to be correct.\n");
     return false;
   }
 
@@ -109,7 +123,7 @@ bool CacheReader::checkFileSize() {
 
 
 bool CacheReader::readHeader() {
-  if (mFile->seek(0, SEEK_SET) != 0) {
+  if (mInfoFile->seek(0, SEEK_SET) != 0) {
     LOGE("Unable to seek to 0. (reason: %s)\n", strerror(errno));
     return false;
   }
@@ -120,7 +134,7 @@ bool CacheReader::readHeader() {
     return false;
   }
 
-  if (mFile->read(reinterpret_cast<char *>(mpHeader), sizeof(OBCC_Header)) !=
+  if (mInfoFile->read((char *)mpHeader, sizeof(OBCC_Header)) !=
       (ssize_t)sizeof(OBCC_Header)) {
     LOGE("Unable to read cache header.\n");
     return false;
@@ -179,7 +193,7 @@ bool CacheReader::checkSectionOffsetAndSize() {
     off_t offset = mpHeader-> NAME##_offset;                                \
     off_t size = (off_t)mpHeader-> NAME##_size;                             \
                                                                             \
-    if (mFileSize < offset || mFileSize < offset + size) {                  \
+    if (mInfoFileSize < offset || mInfoFileSize < offset + size) {          \
       LOGE(#NAME " section overflow.\n");                                   \
       return false;                                                         \
     }                                                                       \
@@ -204,20 +218,8 @@ bool CacheReader::checkSectionOffsetAndSize() {
 
 #undef CHECK_SECTION_OFFSET
 
-  if (mFileSize < mpHeader->context_offset ||
-      mFileSize < (off_t)mpHeader->context_offset +
-                  (off_t)ContextManager::ContextSize) {
-    LOGE("context section overflow.\n");
-    return false;
-  }
-
-  long pagesize = sysconf(_SC_PAGESIZE);
-  if (mpHeader->context_offset % pagesize != 0) {
-    LOGE("context offset must aligned to pagesize.\n");
-    return false;
-  }
-
   // TODO(logan): Move this to some where else.
+  long pagesize = sysconf(_SC_PAGESIZE);
   if ((uintptr_t)mpHeader->context_cached_addr % pagesize != 0) {
     LOGE("cached address is not aligned to pagesize.\n");
     return false;
@@ -238,12 +240,12 @@ bool CacheReader::checkSectionOffsetAndSize() {
   /* We have to ensure that some one will deallocate NAME##_raw */          \
   AUTO_MANAGED_HOLDER = NAME##_raw;                                         \
                                                                             \
-  if (mFile->seek(mpHeader->NAME##_offset, SEEK_SET) == -1) {               \
+  if (mInfoFile->seek(mpHeader->NAME##_offset, SEEK_SET) == -1) {           \
     LOGE("Unable to seek to " #NAME " section\n");                          \
     return false;                                                           \
   }                                                                         \
                                                                             \
-  if (mFile->read(reinterpret_cast<char *>(NAME##_raw),                     \
+  if (mInfoFile->read(reinterpret_cast<char *>(NAME##_raw),                 \
                   mpHeader->NAME##_size) != (ssize_t)mpHeader->NAME##_size) \
   {                                                                         \
     LOGE("Unable to read " #NAME ".\n");                                    \
@@ -403,8 +405,7 @@ bool CacheReader::readFuncTable() {
 bool CacheReader::readContext() {
   mpResult->mContext =
     ContextManager::get().allocateContext(mpHeader->context_cached_addr,
-                                          mFile->getFD(),
-                                          mpHeader->context_offset);
+                                          mObjFile->getFD(), 0);
 
   if (!mpResult->mContext) {
     // Unable to allocate at cached address.  Give up.

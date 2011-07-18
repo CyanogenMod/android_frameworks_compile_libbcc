@@ -222,7 +222,8 @@ int Script::internalLoadCache() {
   }
 
 #if USE_OLD_JIT
-  std::string objPath(mCacheDir + mCacheName + ".oBCC");
+  std::string objPath(mCacheDir + mCacheName + ".jit-image");
+  std::string infoPath(mCacheDir + mCacheName + ".oBCC"); // TODO: .info instead
 #elif USE_MCJIT
   std::string objPath(mCacheDir + mCacheName + ".o");
   std::string infoPath(mCacheDir + mCacheName + ".info");
@@ -230,17 +231,15 @@ int Script::internalLoadCache() {
 
   FileHandle objFile;
   if (objFile.open(objPath.c_str(), OpenMode::Read) < 0) {
-    // Unable to open the cache file in read mode.
+    // Unable to open the executable file in read mode.
     return 1;
   }
 
-#if !USE_OLD_JIT && USE_MCJIT
   FileHandle infoFile;
   if (infoFile.open(infoPath.c_str(), OpenMode::Read) < 0) {
-    // Unable to open the cache file in read mode.
+    // Unable to open the metadata information file in read mode.
     return 1;
   }
-#endif
 
 #if USE_OLD_JIT
   CacheReader reader;
@@ -265,12 +264,7 @@ int Script::internalLoadCache() {
   }
 
   // Read cache file
-#if USE_OLD_JIT
-  ScriptCached *cached = reader.readCacheFile(&objFile, this);
-#elif USE_MCJIT
   ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);
-#endif
-
 
   if (!cached) {
     mIsContextSlotNotAvail = reader.isContextSlotNotAvail();
@@ -356,12 +350,10 @@ int Script::internalCompile() {
 #endif
       !getBooleanProp("debug.bcc.nocache")) {
 
-    FileHandle objFile;
-
 #if USE_OLD_JIT
-    std::string objPath(mCacheDir + mCacheName + ".oBCC");
+    std::string objPath(mCacheDir + mCacheName + ".jit-image");
+    std::string infoPath(mCacheDir + mCacheName + ".oBCC");
 #elif USE_MCJIT
-    FileHandle infoFile;
     std::string objPath(mCacheDir + mCacheName + ".o");
     std::string infoPath(mCacheDir + mCacheName + ".info");
 #endif
@@ -376,11 +368,11 @@ int Script::internalCompile() {
     ::unlink(infoPath.c_str());
 #endif
 
-    if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0
-#if !USE_OLD_JIT && USE_MCJIT
-        && infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0
-#endif
-       ) {
+    FileHandle objFile;
+    FileHandle infoFile;
+
+    if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0 &&
+        infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0) {
 
 #if USE_OLD_JIT
       CacheWriter writer;
@@ -409,11 +401,7 @@ int Script::internalCompile() {
                                         "__isThreadable");
       }
 
-#if USE_OLD_JIT
-      if (!writer.writeCacheFile(&objFile, this, libRS_threadable)) {
-#elif USE_MCJIT
       if (!writer.writeCacheFile(&objFile, &infoFile, this, libRS_threadable)) {
-#endif
         objFile.truncate();
         objFile.close();
 
@@ -422,7 +410,6 @@ int Script::internalCompile() {
                objPath.c_str(), strerror(errno));
         }
 
-#if !USE_OLD_JIT && USE_MCJIT
         infoFile.truncate();
         infoFile.close();
 
@@ -430,7 +417,6 @@ int Script::internalCompile() {
           LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
                infoPath.c_str(), strerror(errno));
         }
-#endif
       }
     }
   }

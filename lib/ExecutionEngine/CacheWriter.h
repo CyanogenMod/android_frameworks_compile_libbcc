@@ -33,7 +33,8 @@ namespace bcc {
   private:
     Script *mpOwner;
 
-    FileHandle *mFile;
+    FileHandle *mObjFile;
+    FileHandle *mInfoFile;
 
     std::vector<std::pair<char const *, size_t> > mStringPool;
 
@@ -60,7 +61,9 @@ namespace bcc {
 
     ~CacheWriter();
 
-    bool writeCacheFile(FileHandle *file, Script *S,
+    bool writeCacheFile(FileHandle *objFile,
+                        FileHandle *infoFile,
+                        Script *S,
                         uint32_t libRS_threadable);
 
     void addDependency(OBCC_ResourceType resType,

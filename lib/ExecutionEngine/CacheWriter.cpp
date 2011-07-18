@@ -50,13 +50,17 @@ CacheWriter::~CacheWriter() {
 #undef CHECK_AND_FREE
 }
 
-bool CacheWriter::writeCacheFile(FileHandle *file, Script *S,
+bool CacheWriter::writeCacheFile(FileHandle *objFile,
+                                 FileHandle *infoFile,
+                                 Script *S,
                                  uint32_t libRS_threadable) {
-  if (!file || file->getFD() < 0) {
+  if (!objFile || objFile->getFD() < 0 ||
+      !infoFile || infoFile->getFD() < 0) {
     return false;
   }
 
-  mFile = file;
+  mObjFile = objFile;
+  mInfoFile = infoFile;
   mpOwner = S;
 
   bool result = prepareHeader(libRS_threadable)
@@ -355,15 +359,6 @@ bool CacheWriter::calcSectionOffset() {
   OFFSET_INCREASE(object_slot_list);
 
 #undef OFFSET_INCREASE
-
-  // Context
-  long pagesize = sysconf(_SC_PAGESIZE);
-  size_t context_offset_rem = offset % pagesize;
-  if (context_offset_rem) {
-    offset += pagesize - context_offset_rem;
-  }
-
-  mpHeaderSection->context_offset = offset;
   return true;
 }
 
@@ -384,12 +379,12 @@ bool CacheWriter::calcContextChecksum() {
 bool CacheWriter::writeAll() {
 #define WRITE_SECTION(NAME, OFFSET, SIZE, SECTION)                          \
   do {                                                                      \
-    if (mFile->seek(OFFSET, SEEK_SET) == -1) {                              \
+    if (mInfoFile->seek(OFFSET, SEEK_SET) == -1) {                          \
       LOGE("Unable to seek to " #NAME " section for writing.\n");           \
       return false;                                                         \
     }                                                                       \
                                                                             \
-    if (mFile->write(reinterpret_cast<char *>(SECTION), (SIZE)) !=          \
+    if (mInfoFile->write(reinterpret_cast<char *>(SECTION), (SIZE)) !=      \
         static_cast<ssize_t>(SIZE)) {                                       \
       LOGE("Unable to write " #NAME " section to cache file.\n");           \
       return false;                                                         \
@@ -413,12 +408,17 @@ bool CacheWriter::writeAll() {
   WRITE_SECTION_SIMPLE(func_table, mpFuncTableSection);
   WRITE_SECTION_SIMPLE(object_slot_list, mpObjectSlotSection);
 
-  WRITE_SECTION(context, mpHeaderSection->context_offset,
-                ContextManager::ContextSize,
-                mpOwner->getContext());
-
 #undef WRITE_SECTION_SIMPLE
 #undef WRITE_SECTION
+
+
+  // Write Context to Executable File
+  char const *context = (char const *)mpOwner->getContext();
+  size_t context_size = ContextManager::ContextSize;
+  if (mObjFile->write(context, context_size) != (ssize_t)context_size) {
+    LOGE("Unable to write context image to executable file\n");
+    return false;
+  }
 
   return true;
 }
