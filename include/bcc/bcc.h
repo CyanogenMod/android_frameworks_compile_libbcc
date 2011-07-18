@@ -20,8 +20,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bcc/bcc_checksum.h"
-
 /*-------------------------------------------------------------------------*/
 
 /* libbcc script opaque type */
