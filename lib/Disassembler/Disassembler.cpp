@@ -108,10 +108,9 @@ void Disassemble(char const *OutputFileName,
   const llvm::MCDisassembler *Disassmbler;
   llvm::MCInstPrinter *IP;
 
-  AsmInfo = Target->createAsmInfo(Compiler::getTargetTriple());
+  AsmInfo = Target->createMCAsmInfo(Compiler::getTargetTriple());
   Disassmbler = Target->createMCDisassembler();
-  IP = Target->createMCInstPrinter(*TM,
-                                   AsmInfo->getAssemblerDialect(),
+  IP = Target->createMCInstPrinter(AsmInfo->getAssemblerDialect(),
                                    *AsmInfo);
 
   const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Func, FuncSize);

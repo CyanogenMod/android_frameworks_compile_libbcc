@@ -99,11 +99,13 @@ endif
 ifeq ($(TARGET_ARCH),arm)
   LOCAL_STATIC_LIBRARIES += \
     libLLVMARMCodeGen \
+    libLLVMARMDesc \
     libLLVMARMInfo
 else
   ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
     LOCAL_STATIC_LIBRARIES += \
       libLLVMX86CodeGen \
+      libLLVMX86Desc \
       libLLVMX86Info \
       libLLVMX86Utils \
       libLLVMX86AsmPrinter
@@ -140,7 +142,7 @@ LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 # and reduces the size of libbcc.so by about 800k.
 # As libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2,
 # use below instead.
-LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
+LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
 include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
@@ -183,8 +185,10 @@ LOCAL_STATIC_LIBRARIES += \
   libcutils \
   libutils \
   libLLVMARMCodeGen \
+  libLLVMARMDesc \
   libLLVMARMInfo \
   libLLVMX86CodeGen \
+  libLLVMX86Desc \
   libLLVMX86Info \
   libLLVMX86Utils \
   libLLVMX86AsmPrinter \
