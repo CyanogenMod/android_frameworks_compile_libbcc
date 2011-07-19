@@ -138,11 +138,13 @@ void Compiler::GlobalInitialization() {
   Features.push_back("-vmlx");
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
+  LLVMInitializeARMMCAsmInfo();
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
 #endif
 
 #if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN)
+  LLVMInitializeX86MCAsmInfo();
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
 #endif
