@@ -18,7 +18,10 @@
 
 #include "Config.h"
 
-#include "ContextManager.h"
+#if USE_OLD_JIT
+#include "OldJIT/ContextManager.h"
+#endif
+
 #include "DebugHelper.h"
 #include "FileHandle.h"
 #include "Runtime.h"

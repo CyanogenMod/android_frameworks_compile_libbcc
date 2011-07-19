@@ -18,11 +18,18 @@
 
 #include "Config.h"
 
-#include "CacheReader.h"
-#include "CacheWriter.h"
+#if USE_OLD_JIT
+#include "OldJIT/CacheReader.h"
+#include "OldJIT/CacheWriter.h"
+#endif
+
 #include "MCCacheReader.h"
 #include "MCCacheWriter.h"
-#include "ContextManager.h"
+
+#if USE_OLD_JIT
+#include "OldJIT/ContextManager.h"
+#endif
+
 #include "DebugHelper.h"
 #include "FileHandle.h"
 #include "ScriptCompiled.h"
@@ -684,6 +691,7 @@ void Script::getObjectSlotList(size_t objectSlotListSize,
 }
 
 
+#if USE_OLD_JIT
 char *Script::getContext() {
   switch (mStatus) {
 
@@ -703,6 +711,7 @@ char *Script::getContext() {
     }
   }
 }
+#endif
 
 
 int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {

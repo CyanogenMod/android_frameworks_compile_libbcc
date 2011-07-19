@@ -24,7 +24,6 @@ include $(LOCAL_PATH)/../../libbcc-config.mk
 
 libbcc_executionengine_SRC_FILES := \
   Compiler.cpp \
-  ContextManager.cpp \
   FileHandle.cpp \
   Runtime.c \
   RuntimeStub.c \
@@ -32,14 +31,27 @@ libbcc_executionengine_SRC_FILES := \
   ScriptCompiled.cpp \
   SourceInfo.cpp
 
-ifeq ($(libbcc_USE_CACHE),1)
+ifeq ($(libbcc_USE_OLD_JIT),1)
 libbcc_executionengine_SRC_FILES += \
-  CacheReader.cpp \
-  CacheWriter.cpp \
-  ScriptCached.cpp \
-  Sha1Helper.cpp \
+  OldJIT/ContextManager.cpp
+endif
+
+ifeq ($(libbcc_USE_CACHE),1)
+ifeq ($(libbcc_USE_OLD_JIT),1)
+libbcc_executionengine_SRC_FILES += \
+  OldJIT/CacheReader.cpp \
+  OldJIT/CacheWriter.cpp
+endif
+
+ifeq ($(libbcc_USE_MCJIT),1)
+libbcc_executionengine_SRC_FILES += \
   MCCacheWriter.cpp \
   MCCacheReader.cpp
+endif
+
+libbcc_executionengine_SRC_FILES += \
+  ScriptCached.cpp \
+  Sha1Helper.cpp
 endif
 
 

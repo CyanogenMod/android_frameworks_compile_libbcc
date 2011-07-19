@@ -66,7 +66,9 @@ namespace bcc {
 
     FuncTable mFunctions;
 
+#if USE_OLD_JIT
     char *mContext;
+#endif
 
 #if USE_MCJIT
     RSExecRef mRSExecutable;
@@ -79,8 +81,14 @@ namespace bcc {
 
   public:
     ScriptCached(Script *owner)
-      : mpOwner(owner), mpExportVars(NULL), mpExportFuncs(NULL),
-        mpObjectSlotList(NULL), mContext(NULL), mpStringPoolRaw(NULL),
+      : mpOwner(owner),
+        mpExportVars(NULL),
+        mpExportFuncs(NULL),
+        mpObjectSlotList(NULL),
+#if USE_OLD_JIT
+        mContext(NULL),
+#endif
+        mpStringPoolRaw(NULL),
         mLibRSThreadable(false) {
     }
 
@@ -122,9 +130,11 @@ namespace bcc {
     void getObjectSlotList(size_t objectSlotListSize,
                            uint32_t *objectSlotList);
 
+#if USE_OLD_JIT
     char *getContext() {
       return mContext;
     }
+#endif
 
     // Dirty hack for libRS.
     // TODO(all): This should be removed in the future.

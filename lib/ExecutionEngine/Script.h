@@ -140,7 +140,9 @@ namespace bcc {
 
     int registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
 
+#if USE_OLD_JIT
     char *getContext();
+#endif
 
 
     void setError(int error) {

@@ -16,7 +16,6 @@
 
 #include "MCCacheWriter.h"
 
-#include "ContextManager.h"
 #include "DebugHelper.h"
 #include "FileHandle.h"
 #include "Script.h"

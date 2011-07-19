@@ -17,12 +17,15 @@
 #include "ScriptCompiled.h"
 
 #include "bcc_internal.h"
-#include "ContextManager.h"
+#if USE_OLD_JIT
+#include "OldJIT/ContextManager.h"
+#endif
 #include "DebugHelper.h"
 
 namespace bcc {
 
 ScriptCompiled::~ScriptCompiled() {
+#if USE_OLD_JIT
   // Deallocate the BCC context
   if (mContext) {
     ContextManager::get().deallocateContext(mContext);
@@ -35,6 +38,7 @@ ScriptCompiled::~ScriptCompiled() {
       delete I->second;
     }
   }
+#endif
 }
 
 void ScriptCompiled::getExportVarList(size_t varListSize, void **varList) {

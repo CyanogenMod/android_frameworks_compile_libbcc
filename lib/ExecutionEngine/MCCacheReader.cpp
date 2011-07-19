@@ -16,7 +16,6 @@
 
 #include "MCCacheReader.h"
 
-#include "ContextManager.h"
 #include "DebugHelper.h"
 #include "FileHandle.h"
 #include "ScriptCached.h"

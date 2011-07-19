@@ -61,11 +61,17 @@ namespace bcc {
 
     FuncInfoMap mEmittedFunctions;
 
+#if USE_OLD_JIT
     char *mContext; // Context of BCC script (code and data)
+#endif
 
   public:
     ScriptCompiled(Script *owner)
-      : mpOwner(owner), mCompiler(this), mContext(NULL) {
+      : mpOwner(owner), mCompiler(this)
+#if USE_OLD_JIT
+        , mContext(NULL)
+#endif
+    {
     }
 
     ~ScriptCompiled();
@@ -131,9 +137,12 @@ namespace bcc {
     void getObjectSlotList(size_t objectSlotListSize,
                            uint32_t *objectSlotList);
 
+#if USE_OLD_JIT
     char *getContext() {
       return mContext;
     }
+#endif
+
 #if USE_MCJIT
     const char *getELF() const {
       return &*mCompiler.getELF().begin();

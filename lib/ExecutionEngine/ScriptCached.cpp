@@ -20,7 +20,10 @@
 
 #include <bcc/bcc_cache.h>
 
-#include "ContextManager.h"
+#if USE_OLD_JIT
+#include "OldJIT/ContextManager.h"
+#endif
+
 #include "DebugHelper.h"
 
 #include <stdlib.h>
@@ -29,9 +32,11 @@ namespace bcc {
 
 ScriptCached::~ScriptCached() {
   // Deallocate the bcc script context
+#if USE_OLD_JIT
   if (mContext) {
     ContextManager::get().deallocateContext(mContext);
   }
+#endif
 
   // Deallocate string pool, exported var list, exported func list
   if (mpStringPoolRaw) { free(mpStringPoolRaw); }

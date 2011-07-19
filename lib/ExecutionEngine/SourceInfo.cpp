@@ -17,10 +17,14 @@
 #include "SourceInfo.h"
 
 #if USE_CACHE
-#include "CacheReader.h"
-#include "CacheWriter.h"
+#if USE_OLD_JIT
+#include "OldJIT/CacheReader.h"
+#include "OldJIT/CacheWriter.h"
+#endif
+#if USE_MCJIT
 #include "MCCacheWriter.h"
 #include "MCCacheReader.h"
+#endif
 #endif
 
 #include "DebugHelper.h"
@@ -188,10 +192,15 @@ template <typename T> void SourceInfo::introDependency(T &checker) {
   }
 }
 
+#if USE_OLD_JIT
 template void SourceInfo::introDependency<CacheReader>(CacheReader &);
 template void SourceInfo::introDependency<CacheWriter>(CacheWriter &);
+#endif
+
+#if USE_MCJIT
 template void SourceInfo::introDependency<MCCacheWriter>(MCCacheWriter &);
 template void SourceInfo::introDependency<MCCacheReader>(MCCacheReader &);
+#endif
 #endif // USE_CACHE
 
 
