@@ -47,7 +47,7 @@ LOCAL_SRC_FILES := \
   main.cpp \
   disassem.cpp
 
-LOCAL_SHARED_LIBRARIES := libdl libstlport libbcc
+LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc
 
 LOCAL_C_INCLUDES := \
   bionic \

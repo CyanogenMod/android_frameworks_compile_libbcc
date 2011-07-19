@@ -26,18 +26,6 @@
 typedef struct BCCOpaqueScript *BCCScriptRef;
 
 
-/* Function information struct */
-struct BCCFuncInfo {
-  char const *name;
-  void *addr;
-  size_t size;
-};
-
-#if !defined(__cplusplus)
-typedef struct BCCFuncInfo BCCFuncInfo;
-#endif
-
-
 /* Symbol lookup function type */
 typedef void *(*BCCSymbolLookupFn)(void *context, char const *symbolName);
 
@@ -119,38 +107,13 @@ int bccPrepareExecutableEx(BCCScriptRef script,
 
 void *bccGetFuncAddr(BCCScriptRef script, char const *funcname);
 
-
-
-size_t bccGetExportVarCount(BCCScriptRef script);
-
 void bccGetExportVarList(BCCScriptRef script,
                          size_t varListSize,
                          void **varList);
 
-size_t bccGetExportFuncCount(BCCScriptRef script);
-
 void bccGetExportFuncList(BCCScriptRef script,
                           size_t funcListSize,
                           void **funcList);
-
-size_t bccGetPragmaCount(BCCScriptRef script);
-
-void bccGetPragmaList(BCCScriptRef script,
-                      size_t pragmaListSize,
-                      char const **keyList,
-                      char const **valueList);
-
-size_t bccGetFuncCount(BCCScriptRef script);
-
-void bccGetFuncInfoList(BCCScriptRef script,
-                        size_t funcInfoListSize,
-                        BCCFuncInfo *funcInfoList);
-
-size_t bccGetObjectSlotCount(BCCScriptRef script);
-
-void bccGetObjectSlotList(BCCScriptRef script,
-                          size_t objectSlotListSize,
-                          uint32_t *objectSlotList);
 
 char const *bccGetBuildTime();
 

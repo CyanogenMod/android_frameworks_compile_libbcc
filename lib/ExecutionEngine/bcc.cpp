@@ -152,12 +152,6 @@ extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
 }
 
 
-extern "C" size_t bccGetExportVarCount(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
-  return unwrap(script)->getExportVarCount();
-}
-
-
 extern "C" void bccGetExportVarList(BCCScriptRef script,
                                     size_t varListSize,
                                     void **varList) {
@@ -179,12 +173,6 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
     }
 #endif
   }
-}
-
-
-extern "C" size_t bccGetExportFuncCount(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
-  return unwrap(script)->getExportFuncCount();
 }
 
 
@@ -211,79 +199,3 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
   }
 }
 
-
-extern "C" size_t bccGetPragmaCount(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
-  return unwrap(script)->getPragmaCount();
-}
-
-
-extern "C" void bccGetPragmaList(BCCScriptRef script,
-                                 size_t pragmaListSize,
-                                 const char **keyList,
-                                 const char **valueList) {
-  BCC_FUNC_LOGGER();
-  unwrap(script)->getPragmaList(pragmaListSize, keyList, valueList);
-
-#if DEBUG_BCC_REFLECT
-  if (keyList && valueList) {
-    size_t count = unwrap(script)->getPragmaCount();
-    LOGD("PragmaCount = %lu\n", (unsigned long)count);
-
-    if (count > pragmaListSize) {
-      count = pragmaListSize;
-    }
-
-    for (size_t i = 0; i < count; ++i) {
-      LOGD("Pragma[%lu] = (%s , %s)\n",
-           (unsigned long)i, keyList[i], valueList[i]);
-    }
-  }
-#endif
-}
-
-
-extern "C" size_t bccGetFuncCount(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
-  return unwrap(script)->getFuncCount();
-}
-
-
-extern "C" void bccGetFuncInfoList(BCCScriptRef script,
-                                   size_t funcInfoListSize,
-                                   BCCFuncInfo *funcInfoList) {
-  BCC_FUNC_LOGGER();
-
-  if (funcInfoList) {
-    unwrap(script)->getFuncInfoList(funcInfoListSize, funcInfoList);
-  }
-}
-
-
-extern "C" size_t bccGetObjectSlotCount(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
-  return unwrap(script)->getObjectSlotCount();
-}
-
-
-extern "C" void bccGetObjectSlotList(BCCScriptRef script,
-                                     size_t objectSlotListSize,
-                                     uint32_t *objectSlotList) {
-  BCC_FUNC_LOGGER();
-
-  if (objectSlotList) {
-    unwrap(script)->getObjectSlotList(objectSlotListSize, objectSlotList);
-#if DEBUG_BCC_REFLECT
-    size_t count = unwrap(script)->getObjectSlotCount();
-    LOGD("ObjectSlotCount = %lu\n", (unsigned long)count);
-
-    if (count > objectSlotListSize) {
-      count = objectSlotListSize;
-    }
-
-    for (size_t i = 0; i < count; ++i) {
-      LOGD("ObjectSlotList[%lu] = %d\n", (unsigned long)i, objectSlotList[i]);
-    }
-#endif
-  }
-}
