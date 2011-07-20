@@ -73,6 +73,7 @@ static void disassemble_printf(const char *fmt, ...) {
 }
 
 static int disassemble(BCCScriptRef script, FILE* out) {
+  /* Removed by srhines
   disasmOut = out;
   disasm_interface_t  di;
   di.di_readword = disassemble_readword;
@@ -101,6 +102,7 @@ static int disassemble(BCCScriptRef script, FILE* out) {
     }
     delete [] infos;
   }
+  */
 
   return 1;
 }
@@ -209,6 +211,7 @@ static BCCScriptRef loadScript() {
 }
 
 static void printPragma(BCCScriptRef script) {
+/* Removed by srhines
   size_t numPragma = bccGetPragmaCount(script);
   if (numPragma) {
     char const ** keyList = new char const *[numPragma];
@@ -222,6 +225,7 @@ static void printPragma(BCCScriptRef script) {
     delete [] keyList;
     delete [] valueList;
   }
+*/
 }
 
 static int runMain(BCCScriptRef script, int argc, char** argv) {

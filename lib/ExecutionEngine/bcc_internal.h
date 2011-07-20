@@ -37,8 +37,12 @@ namespace llvm {
 namespace bcc {
   class Script;
 
-  // Alias BCCFuncInfo to bcc::FuncInfo
-  typedef struct BCCFuncInfo FuncInfo;
+  /* Function information struct */
+  struct FuncInfo {
+    char const *name;
+    void *addr;
+    size_t size;
+  };
 
   BCC_OPAQUE_TYPE_CONVERSION(bcc::Script *, BCCScriptRef);
   BCC_OPAQUE_TYPE_CONVERSION(llvm::Module *, LLVMModuleRef);

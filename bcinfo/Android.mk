@@ -21,6 +21,14 @@ endif
 
 LOCAL_PATH := $(call my-dir)
 
+libbcinfo_SRC_FILES := bcinfo.cpp
+libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
+libbcinfo_STATIC_LIBRARIES := \
+  libLLVMBitReader \
+  libLLVMBitWriter \
+  libLLVMCore \
+  libLLVMSupport \
+
 LLVM_ROOT_PATH := external/llvm
 
 include $(CLEAR_VARS)
@@ -30,20 +38,36 @@ LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_MODULE_TAGS := optional
 intermediates := $(local-intermediates-dir)
 
-LOCAL_SRC_FILES := bcinfo.cpp
+LOCAL_SRC_FILES := $(libbcinfo_SRC_FILES)
 
 LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 
-LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/../include
+LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
-LOCAL_STATIC_LIBRARIES += \
-  libLLVMBitReader \
-  libLLVMBitWriter \
-  libLLVMCore \
-  libLLVMSupport \
-
+LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_SHARED_LIBRARIES := libcutils libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libbcinfo
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_MODULE_TAGS := optional
+LOCAL_IS_HOST_MODULE := true
+
+LOCAL_SRC_FILES := $(libbcinfo_SRC_FILES)
+
+LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
+
+LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
+
+LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
+LOCAL_STATIC_LIBRARIES += libcutils
+
+LOCAL_LDLIBS := -ldl -lpthread
+
+include $(LLVM_ROOT_PATH)/llvm-host-build.mk
+include $(BUILD_HOST_SHARED_LIBRARY)
+
