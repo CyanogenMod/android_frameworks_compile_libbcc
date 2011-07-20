@@ -185,10 +185,6 @@ void Compiler::GlobalInitialization() {
   llvm::FloatABIType = llvm::FloatABI::Soft;
   llvm::UseSoftFloat = false;
 
-  // BCC needs all unknown symbols resolved at JIT/compilation time.
-  // So we don't need any dynamic relocation model.
-  llvm::TargetMachine::setRelocationModel(llvm::Reloc::Static);
-
 #if defined(DEFAULT_X64_CODEGEN)
   // Data address in X86_64 architecture may reside in a far-away place
   llvm::TargetMachine::setCodeModel(llvm::CodeModel::Medium);
@@ -343,7 +339,8 @@ int Compiler::compile() {
     FeaturesStr = F.getString();
   }
 
-  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr);
+  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
+                                   llvm::Reloc::Static);
   if (TM == NULL) {
     setError("Failed to create target machine implementation for the"
              " specified triple '" + Triple + "'");

@@ -275,7 +275,7 @@ namespace bcc {
 
     // Stores the data in @Val of type @Ty at address @Addr.
     void StoreValueToMemory(const llvm::GenericValue &Val, void *Addr,
-                            const llvm::Type *Ty);
+                            llvm::Type *Ty);
 
     // Recursive function to apply a @Constant value into the specified memory
     // location @Addr.
@@ -311,13 +311,13 @@ namespace bcc {
 
     // Return the address of the specified global variable, possibly emitting it
     // to memory if needed. This is used by the Emitter.
-    void *GetOrEmitGlobalVariable(const llvm::GlobalVariable *GV);
+    void *GetOrEmitGlobalVariable(llvm::GlobalVariable *GV);
 
     // This method abstracts memory allocation of global variable so that the
     // JIT can allocate thread local variables depending on the target.
-    void *GetMemoryForGV(const llvm::GlobalVariable *GV);
+    void *GetMemoryForGV(llvm::GlobalVariable *GV);
 
-    void EmitGlobalVariable(const llvm::GlobalVariable *GV);
+    void EmitGlobalVariable(llvm::GlobalVariable *GV);
 
     void *GetPointerToGVIndirectSym(llvm::GlobalValue *V, void *Reference);
 
