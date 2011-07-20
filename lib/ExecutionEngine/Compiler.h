@@ -26,10 +26,6 @@
 #include "librsloader.h"
 #endif
 
-#if USE_DISASSEMBLER
-#include "Disassembler/Disassembler.h"
-#endif
-
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"

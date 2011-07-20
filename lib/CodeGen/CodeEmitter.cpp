@@ -18,7 +18,7 @@
 
 #include "Config.h"
 
-#if USE_DISASSEMBLER
+#if DEBUG_OLD_JIT_DISASSEMBLER
 #include "Disassembler/Disassembler.h"
 #endif
 
@@ -959,7 +959,7 @@ void *CodeEmitter::GetLazyFunctionStub(llvm::Function *F) {
   if (!Actual) {
     PendingFunctions.insert(F);
   } else {
-#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
+#if DEBUG_OLD_JIT_DISASSEMBLER
     Disassemble(DEBUG_OLD_JIT_DISASSEMBLER_FILE,
                 mpTarget, mpTargetMachine, F->getName(),
                 (unsigned char const *)Stub, SL.Size);
@@ -1291,7 +1291,7 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
   // Mark code region readable and executable if it's not so already.
   mpMemMgr->setMemoryExecutable();
 
-#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
+#if DEBUG_OLD_JIT_DISASSEMBLER
   // FnStart is the start of the text, not the start of the constant pool
   // and other per-function data.
   uint8_t *FnStart =
@@ -1428,7 +1428,7 @@ void CodeEmitter::updateFunctionStub(const llvm::Function *F) {
   mpTJI->emitFunctionStub(F, Addr, *this);
   finishGVStub();
 
-#if USE_DISASSEMBLER && DEBUG_OLD_JIT_DISASSEMBLE
+#if DEBUG_OLD_JIT_DISASSEMBLER
   Disassemble(DEBUG_OLD_JIT_DISASSEMBLER_FILE,
               mpTarget, mpTargetMachine, F->getName(),
               (unsigned char const *)Stub, SL.Size);

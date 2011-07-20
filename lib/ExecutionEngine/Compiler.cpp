@@ -22,6 +22,10 @@
 #include "OldJIT/ContextManager.h"
 #endif
 
+#if USE_DISASSEMBLER
+#include "Disassembler/Disassembler.h"
+#endif
+
 #include "DebugHelper.h"
 #include "FileHandle.h"
 #include "Runtime.h"
@@ -374,7 +378,7 @@ int Compiler::compile() {
     goto on_bcc_compile_error;
   }
 
-#if USE_DISASSEMBLER && DEBUG_MCJIT_DISASSEMBLE
+#if DEBUG_MCJIT_DISASSEMBLER
   {
     // Get MC codegen emitted function name list
     size_t func_list_size = rsloaderGetFuncCount(mRSExecutable);

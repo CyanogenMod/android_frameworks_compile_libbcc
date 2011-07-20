@@ -11,8 +11,24 @@
 #endif
 
 //---------------------------------------------------------------------------
-// Configuration for libbcc
+// Configuration for Disassembler
 //---------------------------------------------------------------------------
+
+#if !USE_OLD_JIT
+#undef DEBUG_OLD_JIT_DISASSEMBLER
+#define DEBUG_OLD_JIT_DISASSEMBLER 0
+#endif
+
+#if !USE_MCJIT
+#undef DEBUG_MCJIT_DISASSEMBLER
+#define DEBUG_MCJIT_DISASSEMBLER 0
+#endif
+
+#if DEBUG_OLD_JIT_DISASSEMBLER || DEBUG_MCJIT_DISASSEMBLER
+#define USE_DISASSEMBLER 1
+#else
+#define USE_DISASSEMBLER 0
+#endif
 
 #define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/data/local/tmp/oldjit-dis.s"
 #define DEBUG_MCJIT_DISASSEMBLER_FILE "/data/local/tmp/mcjit-dis.s"
