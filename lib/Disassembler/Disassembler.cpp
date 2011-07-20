@@ -69,17 +69,11 @@ namespace bcc {
 void InitializeDisassembler() {
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMDisassembler();
-  LLVMInitializeARMAsmPrinter();
 #endif
 
-#if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN)
+#if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN) || \
+    defined(DEFAULT_X64_CODEGEN) || defined(PROVIDE_X64_CODEGEN)
   LLVMInitializeX86Disassembler();
-  LLVMInitializeX86AsmPrinter();
-#endif
-
-#if defined(DEFAULT_X64_CODEGEN) || defined(PROVIDE_X64_CODEGEN)
-  LLVMInitializeX86Disassembler();
-  LLVMInitializeX86AsmPrinter();
 #endif
 }
 
