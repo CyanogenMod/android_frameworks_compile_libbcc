@@ -1270,6 +1270,18 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
 
   // Now that we've succeeded in emitting the function.
   mpCurEmitFunction->size = CurBufferPtr - BufferBegin;
+
+#if DEBUG_OLD_JIT_DISASSEMBLER
+  // FnStart is the start of the text, not the start of the constant pool
+  // and other per-function data.
+  uint8_t *FnStart =
+      reinterpret_cast<uint8_t*>(
+          GetPointerToGlobalIfAvailable(F.getFunction()));
+
+  // FnEnd is the end of the function's machine code.
+  uint8_t *FnEnd = CurBufferPtr;
+#endif
+
   BufferBegin = CurBufferPtr = 0;
 
   if (F.getFunction()->hasName()) {
@@ -1290,15 +1302,6 @@ bool CodeEmitter::finishFunction(llvm::MachineFunction &F) {
   mpMemMgr->setMemoryExecutable();
 
 #if DEBUG_OLD_JIT_DISASSEMBLER
-  // FnStart is the start of the text, not the start of the constant pool
-  // and other per-function data.
-  uint8_t *FnStart =
-      reinterpret_cast<uint8_t*>(
-          GetPointerToGlobalIfAvailable(F.getFunction()));
-
-  // FnEnd is the end of the function's machine code.
-  uint8_t *FnEnd = CurBufferPtr;
-
   Disassemble(DEBUG_OLD_JIT_DISASSEMBLER_FILE,
               mpTarget, mpTargetMachine, F.getFunction()->getName(),
               (unsigned char const *)FnStart, FnEnd - FnStart);
