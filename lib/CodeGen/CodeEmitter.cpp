@@ -167,7 +167,7 @@ unsigned int CodeEmitter::GetConstantPoolSizeInBytes(
     llvm::MachineConstantPoolEntry CPE = Constants[i];
     unsigned int AlignMask = CPE.getAlignment() - 1;
     Size = (Size + AlignMask) & ~AlignMask;
-    const llvm::Type *Ty = CPE.getType();
+    llvm::Type *Ty = CPE.getType();
     Size += mpTD->getTypeAllocSize(Ty);
   }
 
@@ -189,9 +189,7 @@ void CodeEmitter::GetConstantValue(const llvm::Constant *C,
         // Compute the index
         llvm::SmallVector<llvm::Value*, 8> Indices(CE->op_begin() + 1,
                                                    CE->op_end());
-        uint64_t Offset = mpTD->getIndexedOffset(Op0->getType(),
-                                                 &Indices[0],
-                                                 Indices.size());
+        uint64_t Offset = mpTD->getIndexedOffset(Op0->getType(), Indices);
 
         GetConstantValue(Op0, Result);
         Result.PointerVal =
@@ -597,7 +595,7 @@ void CodeEmitter::GetConstantValue(const llvm::Constant *C,
 // Stores the data in @Val of type @Ty at address @Addr.
 void CodeEmitter::StoreValueToMemory(const llvm::GenericValue &Val,
                                      void *Addr,
-                                     const llvm::Type *Ty) {
+                                     llvm::Type *Ty) {
   const unsigned int StoreBytes = mpTD->getTypeStoreSize(Ty);
 
   switch (Ty->getTypeID()) {
@@ -768,7 +766,7 @@ void CodeEmitter::emitConstantPool(llvm::MachineConstantPool *MCP) {
 
     InitializeConstantToMemory(CPE.Val.ConstVal, (void*) CAddr);
 
-    const llvm::Type *Ty = CPE.Val.ConstVal->getType();
+    llvm::Type *Ty = CPE.Val.ConstVal->getType();
     Offset += mpTD->getTypeAllocSize(Ty);
   }
 #endif
@@ -808,7 +806,7 @@ void CodeEmitter::emitJumpTableInfo(llvm::MachineJumpTableInfo *MJTI) {
   if (JT.empty() || mpJumpTableBase == 0)
     return;
 
-  bccAssert(llvm::TargetMachine::getRelocationModel() == llvm::Reloc::Static &&
+  bccAssert(mpTargetMachine->getRelocationModel() == llvm::Reloc::Static &&
             (MJTI->getEntrySize(*mpTD) == sizeof(mpTD /* a pointer type */)) &&
             "Cross JIT'ing?");
 
@@ -1018,7 +1016,7 @@ void *CodeEmitter::GetPointerToNamedSymbol(const std::string &Name,
 
 // Return the address of the specified global variable, possibly emitting it
 // to memory if needed. This is used by the Emitter.
-void *CodeEmitter::GetOrEmitGlobalVariable(const llvm::GlobalVariable *GV) {
+void *CodeEmitter::GetOrEmitGlobalVariable(llvm::GlobalVariable *GV) {
   void *Ptr = GetPointerToGlobalIfAvailable(GV);
   if (Ptr)
     return Ptr;
@@ -1041,10 +1039,10 @@ void *CodeEmitter::GetOrEmitGlobalVariable(const llvm::GlobalVariable *GV) {
 
 // This method abstracts memory allocation of global variable so that the
 // JIT can allocate thread local variables depending on the target.
-void *CodeEmitter::GetMemoryForGV(const llvm::GlobalVariable *GV) {
+void *CodeEmitter::GetMemoryForGV(llvm::GlobalVariable *GV) {
   void *Ptr;
 
-  const llvm::Type *GlobalType = GV->getType()->getElementType();
+  llvm::Type *GlobalType = GV->getType()->getElementType();
   size_t S = mpTD->getTypeAllocSize(GlobalType);
   size_t A = mpTD->getPreferredAlignment(GV);
 
@@ -1077,7 +1075,7 @@ void *CodeEmitter::GetMemoryForGV(const llvm::GlobalVariable *GV) {
 }
 
 
-void CodeEmitter::EmitGlobalVariable(const llvm::GlobalVariable *GV) {
+void CodeEmitter::EmitGlobalVariable(llvm::GlobalVariable *GV) {
   void *GA = GetPointerToGlobalIfAvailable(GV);
 
   if (GV->isThreadLocal())
