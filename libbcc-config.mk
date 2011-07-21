@@ -33,14 +33,32 @@ libbcc_USE_MCJIT                    := 1
 
 libbcc_USE_CACHE                    := 1
 
-libbcc_USE_DISASSEMBLER             := 1
-libbcc_DEBUG_OLD_JIT_DISASSEMBLE    := 0
-libbcc_DEBUG_MC_JIT_DISASSEMBLE     := 0
+libbcc_DEBUG_OLD_JIT_DISASSEMBLER   := 0
+libbcc_DEBUG_MCJIT_DISASSEMBLER     := 0
 
 libbcc_USE_LOGGER                   := 1
 libbcc_USE_FUNC_LOGGER              := 0
 libbcc_DEBUG_BCC_REFLECT            := 0
 libbcc_DEBUG_MCJIT_REFLECT          := 0
+
+
+#=====================================================================
+# Automatic Configurations
+#=====================================================================
+
+ifeq ($(libbcc_USE_OLD_JIT),0)
+libbcc_DEBUG_OLD_JIT_DISASSEMBLER := 0
+endif
+
+ifeq ($(libbcc_USE_MCJIT),0)
+libbcc_DEBUG_MCJIT_DISASSEMBLER := 0
+endif
+
+ifeq ($(libbcc_DEBUG_OLD_JIT_DISASSEMBLER)$(libbcc_DEBUG_MCJIT_DISASSEMBLER),00)
+libbcc_USE_DISASSEMBLER := 0
+else
+libbcc_USE_DISASSEMBLER := 1
+endif
 
 
 #=====================================================================
