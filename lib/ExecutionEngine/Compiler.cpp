@@ -308,7 +308,7 @@ int Compiler::linkModule(llvm::Module *moduleWith) {
 }
 
 
-int Compiler::compile() {
+int Compiler::compile(bool compileOnly) {
   llvm::Target const *Target = NULL;
   llvm::TargetData *TD = NULL;
   llvm::TargetMachine *TM = NULL;
@@ -370,9 +370,75 @@ int Compiler::compile() {
 #endif
 
 #if USE_MCJIT
-  if (runMCCodeGen(new llvm::TargetData(*TD), TM,
-                   ExportVarMetadata, ExportFuncMetadata) != 0) {
+  if (runMCCodeGen(new llvm::TargetData(*TD), TM) != 0) {
     goto on_bcc_compile_error;
+  }
+
+  if (compileOnly)
+    return 0;
+
+  // Load the ELF Object
+  mRSExecutable =
+    rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
+                       mEmittedELFExecutable.size(),
+                       &resolveSymbolAdapter, this);
+
+  if (!mRSExecutable) {
+    setError("Fail to load emitted ELF relocatable file");
+    goto on_bcc_compile_error;
+  }
+
+  if (ExportVarMetadata) {
+    ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
+    std::vector<std::string> &varNameList = mpResult->mExportVarsName;
+
+    for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
+      if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
+        llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
+        if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef ExportVarName =
+            static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
+
+          varList.push_back(
+            rsloaderGetSymbolAddress(mRSExecutable,
+                                     ExportVarName.str().c_str()));
+          varNameList.push_back(ExportVarName.str());
+#if DEBUG_MCJIT_REFLECT
+          LOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
+               varList.back());
+#endif
+          continue;
+        }
+      }
+
+      varList.push_back(NULL);
+    }
+  }
+
+  if (ExportFuncMetadata) {
+    ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
+    std::vector<std::string> &funcNameList = mpResult->mExportFuncsName;
+
+    for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
+      if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
+        llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
+        if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef ExportFuncName =
+            static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
+
+          funcList.push_back(
+            rsloaderGetSymbolAddress(mRSExecutable,
+                                     ExportFuncName.str().c_str()));
+          funcNameList.push_back(ExportFuncName.str());
+#if DEBUG_MCJIT_RELECT
+          LOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+               funcList.back());
+#endif
+        }
+      }
+    }
   }
 
 #if DEBUG_MCJIT_DISASSEMBLER
@@ -599,9 +665,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
 
 
 #if USE_MCJIT
-int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
-                           llvm::NamedMDNode const *ExportVarMetadata,
-                           llvm::NamedMDNode const *ExportFuncMetadata) {
+int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
   // Decorate mEmittedELFExecutable with formatted ostream
   llvm::raw_svector_ostream OutSVOS(mEmittedELFExecutable);
 
@@ -624,75 +688,6 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
 
   MCCodeGenPasses.run(*mModule);
   OutSVOS.flush();
-
-  // Load the ELF Object
-  mRSExecutable =
-    rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
-                       mEmittedELFExecutable.size(),
-                       &resolveSymbolAdapter, this);
-
-  if (!mRSExecutable) {
-    setError("Fail to load emitted ELF relocatable file");
-    return 1;
-  }
-
-#if !USE_OLD_JIT
-  // Note: If old JIT is compiled then we prefer the old version instead of the
-  // new version.
-
-  if (ExportVarMetadata) {
-    ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
-    std::vector<std::string> &varNameList = mpResult->mExportVarsName;
-
-    for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
-      if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
-        llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
-        if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportVarName =
-            static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
-
-          varList.push_back(
-            rsloaderGetSymbolAddress(mRSExecutable,
-                                     ExportVarName.str().c_str()));
-          varNameList.push_back(ExportVarName.str());
-#if DEBUG_MCJIT_REFLECT
-          LOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
-               varList.back());
-#endif
-          continue;
-        }
-      }
-
-      varList.push_back(NULL);
-    }
-  }
-
-  if (ExportFuncMetadata) {
-    ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
-    std::vector<std::string> &funcNameList = mpResult->mExportFuncsName;
-
-    for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
-      if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
-        llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
-        if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportFuncName =
-            static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
-
-          funcList.push_back(
-            rsloaderGetSymbolAddress(mRSExecutable,
-                                     ExportFuncName.str().c_str()));
-          funcNameList.push_back(ExportFuncName.str());
-#if DEBUG_MCJIT_RELECT
-          LOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
-               funcList.back());
-#endif
-        }
-      }
-    }
-  }
-#endif // !USE_OLD_JIT
   return 0;
 }
 #endif // USE_MCJIT

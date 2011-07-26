@@ -117,6 +117,14 @@ extern "C" int bccLinkFile(BCCScriptRef script,
 }
 
 
+extern "C" int bccPrepareSharedObject(BCCScriptRef script,
+                                      char const *cacheDir,
+                                      char const *cacheName,
+                                      unsigned long flags) {
+  return unwrap(script)->prepareSharedObject(cacheDir, cacheName, flags);
+}
+
+
 extern "C" int bccPrepareExecutable(BCCScriptRef script,
                                     char const *cacheDir,
                                     char const *cacheName,

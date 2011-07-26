@@ -75,6 +75,7 @@ namespace bcc {
     }
 
     ScriptCached *readCacheFile(FileHandle *objFile, FileHandle *infoFile, Script *s);
+    bool checkCacheFile(FileHandle *objFile, FileHandle *infoFile, Script *S);
 
     bool isContextSlotNotAvail() const {
       return mIsContextSlotNotAvail;

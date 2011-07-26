@@ -103,6 +103,10 @@ namespace bcc {
                           char const *cacheName,
                           unsigned long flags);
 
+    int prepareSharedObject(char const *cacheDir,
+                          char const *cacheName,
+                          unsigned long flags);
+
     char const *getCompilerErrorMessage();
 
     void *lookup(const char *name);
@@ -159,9 +163,9 @@ namespace bcc {
 
   private:
 #if USE_CACHE
-    int internalLoadCache();
+    int internalLoadCache(bool checkOnly);
 #endif
-    int internalCompile();
+    int internalCompile(bool compileOnly);
 
   };
 

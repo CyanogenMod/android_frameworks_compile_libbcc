@@ -153,7 +153,7 @@ namespace bcc {
 
     int linkModule(llvm::Module *module);
 
-    int compile();
+    int compile(bool compileOnly);
 
     char const *getErrorMessage() {
       return mError.c_str();
@@ -171,9 +171,7 @@ namespace bcc {
                    llvm::NamedMDNode const *ExportVarMetadata,
                    llvm::NamedMDNode const *ExportFuncMetadata);
 
-    int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
-                     llvm::NamedMDNode const *ExportVarMetadata,
-                     llvm::NamedMDNode const *ExportFuncMetadata);
+    int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM);
 
 #if USE_MCJIT
     static void *resolveSymbolAdapter(void *context, char const *name);

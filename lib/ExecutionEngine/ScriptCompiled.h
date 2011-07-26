@@ -88,8 +88,8 @@ namespace bcc {
       return mCompiler.linkModule(module);
     }
 
-    int compile() {
-      return mCompiler.compile();
+    int compile(bool compileOnly) {
+      return mCompiler.compile(compileOnly);
     }
 
     char const *getCompilerErrorMessage() {

@@ -54,9 +54,24 @@ MCCacheReader::~MCCacheReader() {
 ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
                                            FileHandle *infoFile,
                                            Script *S) {
+  bool result = checkCacheFile(objFile, infoFile, S)
+             && readPragmaList()
+             && readObjectSlotList()
+             && readObjFile()
+             && readVarNameList()
+             && readFuncNameList()
+             //&& relocate()
+             ;
+
+  return result ? mpResult.take() : NULL;
+}
+
+bool MCCacheReader::checkCacheFile(FileHandle *objFile,
+                                            FileHandle *infoFile,
+                                            Script *S) {
   // Check file handle
   if (!objFile || objFile->getFD() < 0 || !infoFile || infoFile->getFD() < 0) {
-    return NULL;
+    return false;
   }
 
   mObjFile = objFile;
@@ -67,7 +82,7 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
 
   if (!mpResult) {
     LOGE("Unable to allocate ScriptCached object.\n");
-    return NULL;
+    return false;
   }
 
   bool result = checkFileSize()
@@ -79,15 +94,9 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
              && checkStringPool()
              && readDependencyTable()
              && checkDependency()
-             && readPragmaList()
-             && readObjectSlotList()
-             && readObjFile()
-             && readVarNameList()
-             && readFuncNameList()
-             //&& relocate()
              ;
 
-  return result ? mpResult.take() : NULL;
+  return result;
 }
 
 

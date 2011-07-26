@@ -178,6 +178,32 @@ int Script::addSourceFile(size_t idx,
   return 0;
 }
 
+int Script::prepareSharedObject(char const *cacheDir,
+                                char const *cacheName,
+                                unsigned long flags) {
+#if USE_CACHE
+  if (cacheDir && cacheName) {
+    // Set Cache Directory and File Name
+    mCacheDir = cacheDir;
+    mCacheName = cacheName;
+
+    if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/') {
+      mCacheDir.push_back('/'); // Ensure mCacheDir is end with '/'
+    }
+
+    // Check Cache File
+    if (internalLoadCache(true) == 0) {
+      return 0;
+    }
+  }
+#endif
+  int status = internalCompile(true);
+  if (status != 0) {
+    LOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+  }
+  return status;
+}
+
 
 int Script::prepareExecutable(char const *cacheDir,
                               char const *cacheName,
@@ -199,13 +225,13 @@ int Script::prepareExecutable(char const *cacheDir,
     }
 
     // Load Cache File
-    if (internalLoadCache() == 0) {
+    if (internalLoadCache(false) == 0) {
       return 0;
     }
   }
 #endif
 
-  int status = internalCompile();
+  int status = internalCompile(false);
   if (status != 0) {
     LOGE("LLVM error message: %s\n", getCompilerErrorMessage());
   }
@@ -214,7 +240,7 @@ int Script::prepareExecutable(char const *cacheDir,
 
 
 #if USE_CACHE
-int Script::internalLoadCache() {
+int Script::internalLoadCache(bool checkOnly) {
   if (getBooleanProp("debug.bcc.nocache")) {
     // Android system environment property disable the cache mechanism by
     // setting "debug.bcc.nocache".  So we will not load the cache file any
@@ -270,6 +296,9 @@ int Script::internalLoadCache() {
     }
   }
 
+  if (checkOnly)
+    return reader.checkCacheFile(&objFile, &infoFile, this);
+
   // Read cache file
   ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);
 
@@ -291,7 +320,7 @@ int Script::internalLoadCache() {
 }
 #endif
 
-int Script::internalCompile() {
+int Script::internalCompile(bool compileOnly) {
   // Create the ScriptCompiled object
   mCompiled = new (std::nothrow) ScriptCompiled(this);
 
@@ -337,7 +366,7 @@ int Script::internalCompile() {
   }
 
   // Compile and JIT the code
-  if (mCompiled->compile() != 0) {
+  if (mCompiled->compile(compileOnly) != 0) {
     LOGE("Unable to compile.\n");
     return 1;
   }
