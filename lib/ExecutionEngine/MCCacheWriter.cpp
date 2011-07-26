@@ -97,10 +97,6 @@ bool MCCacheWriter::prepareHeader(uint32_t libRS_threadable) {
   header->sizeof_size_t = sizeof(size_t);
   header->sizeof_ptr_t = sizeof(void *);
 
-  header->root_base_addr = mpOwner->lookup("root");
-
-  LOGD("Lookup root() address [%p]", header->root_base_addr);
-
   // libRS is threadable dirty hack
   // TODO: This should be removed in the future
   header->libRS_threadable = libRS_threadable;

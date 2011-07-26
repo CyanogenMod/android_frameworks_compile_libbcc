@@ -95,6 +95,11 @@ int bccLinkFile(BCCScriptRef script,
                 char const *path,
                 unsigned long flags);
 
+int bccPrepareSharedObject(BCCScriptRef script,
+                         char const *cacheDir,
+                         char const *cacheName,
+                         unsigned long flags);
+
 int bccPrepareExecutable(BCCScriptRef script,
                          char const *cacheDir,
                          char const *cacheName,

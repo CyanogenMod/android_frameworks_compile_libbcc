@@ -297,7 +297,7 @@ int Script::internalLoadCache(bool checkOnly) {
   }
 
   if (checkOnly)
-    return reader.checkCacheFile(&objFile, &infoFile, this);
+    return !reader.checkCacheFile(&objFile, &infoFile, this);
 
   // Read cache file
   ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);

@@ -40,8 +40,6 @@ struct MCO_Header {
   uint8_t sizeof_size_t;
   uint8_t sizeof_ptr_t;
 
-  void *root_base_addr;
-
   /* string pool section */
   off_t str_pool_offset;
   size_t str_pool_size;
