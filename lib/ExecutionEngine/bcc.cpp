@@ -129,14 +129,6 @@ extern "C" int bccPrepareExecutable(BCCScriptRef script,
                                     char const *cacheDir,
                                     char const *cacheName,
                                     unsigned long flags) {
-  return bccPrepareExecutableEx(script, cacheDir, cacheName, flags);
-}
-
-
-extern "C" int bccPrepareExecutableEx(BCCScriptRef script,
-                                      char const *cacheDir,
-                                      char const *cacheName,
-                                      unsigned long flags) {
   BCC_FUNC_LOGGER();
 
 #if defined(__arm__)

@@ -105,11 +105,6 @@ int bccPrepareExecutable(BCCScriptRef script,
                          char const *cacheName,
                          unsigned long flags);
 
-int bccPrepareExecutableEx(BCCScriptRef script,
-                           char const *cacheDir,
-                           char const *cacheName,
-                           unsigned long flags);
-
 void *bccGetFuncAddr(BCCScriptRef script, char const *funcname);
 
 void bccGetExportVarList(BCCScriptRef script,
