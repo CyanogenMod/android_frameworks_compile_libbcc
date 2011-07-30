@@ -257,34 +257,6 @@ Compiler::Compiler(ScriptCompiled *result)
 }
 
 
-#if USE_MCJIT
-// input objPath: For example,
-//                 /data/user/0/com.example.android.rs.fountain/cache/
-//                     @com.example.android.rs.fountain:raw@fountain.oBCC
-// output objPath: /data/user/0/com.example.android.rs.fountain/cache/
-//                     fountain.o
-//
-bool Compiler::getObjPath(std::string &objPath) {
-  size_t found0 = objPath.find("@");
-  size_t found1 = objPath.rfind("@");
-
-  if (found0 == found1 ||
-      found0 == std::string::npos ||
-      found1 == std::string::npos) {
-    LOGE("Ill formatted resource name '%s'. The name should contain 2 @s",
-         objPath.c_str());
-    return false;
-  }
-
-  objPath.replace(found0, found1 - found0 + 1, "", 0);
-  objPath.resize(objPath.length() - 3);
-
-  LOGV("objPath = %s", objPath.c_str());
-  return true;
-}
-#endif
-
-
 llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
   llvm::Module *result = llvm::ParseBitcodeFile(MEM, *mContext, &mError);
 

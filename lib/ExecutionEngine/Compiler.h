@@ -135,8 +135,6 @@ namespace bcc {
 #endif
 
 #if USE_MCJIT
-    bool getObjPath(std::string &objPath);
-
     void *getSymbolAddress(char const *name);
 
     const llvm::SmallVector<char, 1024> &getELF() const {
