@@ -18,6 +18,7 @@
 #define BCC_SCRIPTCOMPILED_H
 
 #include "Compiler.h"
+#include "Script.h"
 
 #include <bcc/bcc.h>
 
@@ -32,8 +33,6 @@ namespace llvm {
 }
 
 namespace bcc {
-  class Script;
-
   class ScriptCompiled {
     friend class Compiler;
     friend class CodeEmitter;
@@ -136,6 +135,10 @@ namespace bcc {
 
     void getObjectSlotList(size_t objectSlotListSize,
                            uint32_t *objectSlotList);
+
+    std::vector<char const *> const & getUserDefinedExternalSymbols() const {
+      return mpOwner->getUserDefinedExternalSymbols();
+    }
 
 #if USE_OLD_JIT
     char *getContext() {

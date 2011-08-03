@@ -22,6 +22,9 @@
 
 #include "Compiler.h"
 
+#include <vector>
+#include <string>
+
 #include <stddef.h>
 
 namespace llvm {
@@ -69,6 +72,9 @@ namespace bcc {
     // Note: mSourceList[1] (library source)
     // TODO(logan): Generalize this, use vector or SmallVector instead!
 
+    // External Function List
+    std::vector<char const *> mUserDefinedExternalSymbols;
+
     // Register Symbol Lookup Function
     BCCSymbolLookupFn mpExtSymbolLookupFn;
     void *mpExtSymbolLookupFnContext;
@@ -98,6 +104,14 @@ namespace bcc {
     int addSourceFile(size_t idx,
                       char const *path,
                       unsigned long flags);
+
+    void markExternalSymbol(char const *name) {
+      mUserDefinedExternalSymbols.push_back(name);
+    }
+
+    std::vector<char const *> const &getUserDefinedExternalSymbols() const {
+      return mUserDefinedExternalSymbols;
+    }
 
     int prepareExecutable(char const *cacheDir,
                           char const *cacheName,

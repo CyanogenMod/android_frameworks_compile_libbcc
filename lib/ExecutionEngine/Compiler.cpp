@@ -78,6 +78,8 @@
 
 #include <string.h>
 
+#include <algorithm>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -706,9 +708,20 @@ int Compiler::runLTO(llvm::TargetData *TD,
     }
   }
 
+  // TODO(logan): Remove this after we have finished the
+  // bccMarkExternalSymbol API.
+
   // root() and init() are born to be exported
   ExportSymbols.push_back("root");
   ExportSymbols.push_back("init");
+
+  // User-defined exporting symbols
+  std::vector<char const *> const &UserDefinedExternalSymbols =
+    mpResult->getUserDefinedExternalSymbols();
+
+  std::copy(UserDefinedExternalSymbols.begin(),
+            UserDefinedExternalSymbols.end(),
+            std::back_inserter(ExportSymbols));
 
   // We now create passes list performing LTO. These are copied from
   // (including comments) llvm::createStandardLTOPasses().

@@ -117,6 +117,12 @@ extern "C" int bccLinkFile(BCCScriptRef script,
 }
 
 
+extern "C" void bccMarkExternalSymbol(BCCScriptRef script, char const *name) {
+  BCC_FUNC_LOGGER();
+  unwrap(script)->markExternalSymbol(name);
+}
+
+
 extern "C" int bccPrepareSharedObject(BCCScriptRef script,
                                       char const *cacheDir,
                                       char const *cacheName,

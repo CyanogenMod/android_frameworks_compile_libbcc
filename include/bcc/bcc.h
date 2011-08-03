@@ -95,6 +95,8 @@ int bccLinkFile(BCCScriptRef script,
                 char const *path,
                 unsigned long flags);
 
+void bccMarkExternalSymbol(BCCScriptRef script, char const *name);
+
 int bccPrepareSharedObject(BCCScriptRef script,
                          char const *cacheDir,
                          char const *cacheName,
