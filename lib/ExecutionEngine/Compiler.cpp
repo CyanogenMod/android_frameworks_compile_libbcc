@@ -148,6 +148,8 @@ void Compiler::GlobalInitialization() {
 
 #if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMMCAsmInfo();
+  LLVMInitializeARMMCCodeGenInfo();
+  LLVMInitializeARMMCSubtargetInfo();
   LLVMInitializeARMAsmPrinter();
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
@@ -156,6 +158,8 @@ void Compiler::GlobalInitialization() {
 #if defined(DEFAULT_X86_CODEGEN) || defined(PROVIDE_X86_CODEGEN) || \
     defined(DEFAULT_X64_CODEGEN) || defined(PROVIDE_X64_CODEGEN)
   LLVMInitializeX86MCAsmInfo();
+  LLVMInitializeX86MCCodeGenInfo();
+  LLVMInitializeX86MCSubtargetInfo();
   LLVMInitializeX86AsmPrinter();
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
