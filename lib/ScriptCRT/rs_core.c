@@ -1,6 +1,42 @@
 #include "rs_types.rsh"
 #include "rs_cl.rsh"
 
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class Allocation owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsAllocation.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsAllocationGetDimX(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * allocations.
+ *
+ *****************************************************************************/
+typedef struct Allocation {
+    char __pad[44];
+    struct Hal {
+        struct State {
+            uint32_t dimensionX;
+            uint32_t dimensionY;
+            uint32_t dimensionZ;
+            uint32_t elementSizeBytes;
+            bool hasMipmaps;
+            bool hasFaces;
+            bool hasReferences;
+        } state;
+
+        struct DrvState {
+            void * mallocPtr;
+        } drvState;
+    } mHal;
+} Allocation_t;
+
 /* Declaration of 4 basic functions in libRS */
 extern void __attribute__((overloadable))
     rsDebug(const char *, float, float);
@@ -203,3 +239,62 @@ extern uchar __attribute__((overloadable, always_inline)) rsClamp(uchar amount, 
 extern char __attribute__((overloadable, always_inline)) rsClamp(char amount, char low, char high) {
     return amount < low ? low : (amount > high ? high : amount);
 }
+
+// Opaque Allocation type operations
+extern uint32_t __attribute__((overloadable))
+    rsAllocationGetDimX(rs_allocation a) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    return alloc->mHal.state.dimensionX;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsAllocationGetDimY(rs_allocation a) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    return alloc->mHal.state.dimensionY;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsAllocationGetDimZ(rs_allocation a) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    return alloc->mHal.state.dimensionZ;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsAllocationGetDimLOD(rs_allocation a) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    return alloc->mHal.state.hasMipmaps;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsAllocationGetDimFaces(rs_allocation a) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    return alloc->mHal.state.hasFaces;
+}
+
+extern const void * __attribute__((overloadable))
+        rsGetElementAt(rs_allocation a, uint32_t x) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    return &p[eSize * x];
+}
+
+extern const void * __attribute__((overloadable))
+        rsGetElementAt(rs_allocation a, uint32_t x, uint32_t y) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t dimX = alloc->mHal.state.dimensionX;
+    return &p[eSize * (x + y * dimX)];
+}
+
+extern const void * __attribute__((overloadable))
+        rsGetElementAt(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t dimX = alloc->mHal.state.dimensionX;
+    const uint32_t dimY = alloc->mHal.state.dimensionY;
+    return &p[eSize * (x + y * dimX + z * dimX * dimY)];
+}
+
