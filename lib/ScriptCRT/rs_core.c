@@ -1,5 +1,4 @@
-#include "rs_types.rsh"
-#include "rs_cl.rsh"
+#include "rs_core.rsh"
 
 /*****************************************************************************
  * CAUTION
