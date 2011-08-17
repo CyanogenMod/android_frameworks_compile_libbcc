@@ -41,6 +41,10 @@ static const llvm::StringRef ExportVarMetadataName = "#rs_export_var";
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportFuncMetadataName = "#rs_export_func";
 
+// Name of metadata node where exported ForEach signature information resides
+// (should be synced with slang_rs_metadata.h)
+static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
+
 // Name of metadata node where RS object slot info resides (should be
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
@@ -48,19 +52,25 @@ static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
 
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mBitcode(bitcode), mBitcodeSize(bitcodeSize), mExportVarCount(0),
-      mExportFuncCount(0), mPragmaCount(0), mPragmaKeyList(NULL),
+      mExportFuncCount(0), mExportForEachSignatureCount(0),
+      mExportForEachSignatureList(NULL), mPragmaCount(0), mPragmaKeyList(NULL),
       mPragmaValueList(NULL), mObjectSlotCount(0), mObjectSlotList(NULL) {
 }
 
 
 MetadataExtractor::~MetadataExtractor() {
+  delete [] mExportForEachSignatureList;
+  mExportForEachSignatureList = NULL;
+
   if (mPragmaCount > 0) {
     for (size_t i = 0; i < mPragmaCount; i++) {
       if (mPragmaKeyList) {
         delete [] mPragmaKeyList[i];
+        mPragmaKeyList[i] = NULL;
       }
       if (mPragmaValueList) {
         delete [] mPragmaValueList[i];
+        mPragmaValueList[i] = NULL;
       }
     }
   }
@@ -157,6 +167,43 @@ void MetadataExtractor::populatePragmaMetadata(
 }
 
 
+bool MetadataExtractor::populateForEachMetadata(
+    const llvm::NamedMDNode *ExportForEachMetadata) {
+  if (!ExportForEachMetadata) {
+    return true;
+  }
+
+  mExportForEachSignatureCount = ExportForEachMetadata->getNumOperands();
+  if (!mExportForEachSignatureCount) {
+    return true;
+  }
+
+  uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
+
+  for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
+    llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(i);
+    if (SigNode != NULL && SigNode->getNumOperands() == 1) {
+      llvm::Value *SigVal = SigNode->getOperand(0);
+      if (SigVal->getValueID() == llvm::Value::MDStringVal) {
+        llvm::StringRef SigString =
+            static_cast<llvm::MDString*>(SigVal)->getString();
+        uint32_t Signature = 0;
+        if (SigString.getAsInteger(10, Signature)) {
+          LOGE("Non-integer signature value '%s'", SigString.str().c_str());
+          return false;
+        }
+        TmpSigList[i] = Signature;
+      }
+    }
+  }
+
+  mExportForEachSignatureList = TmpSigList;
+
+  return true;
+}
+
+
+
 bool MetadataExtractor::extract() {
   if (!mBitcode || !mBitcodeSize) {
     LOGE("Invalid/empty bitcode");
@@ -181,6 +228,8 @@ bool MetadataExtractor::extract() {
       module->getNamedMetadata(ExportVarMetadataName);
   const llvm::NamedMDNode *ExportFuncMetadata =
       module->getNamedMetadata(ExportFuncMetadataName);
+  const llvm::NamedMDNode *ExportForEachMetadata =
+      module->getNamedMetadata(ExportForEachMetadataName);
   const llvm::NamedMDNode *PragmaMetadata =
       module->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
@@ -192,6 +241,11 @@ bool MetadataExtractor::extract() {
 
   if (ExportFuncMetadata) {
     mExportFuncCount = ExportFuncMetadata->getNumOperands();
+  }
+
+  if (!populateForEachMetadata(ExportForEachMetadata)) {
+    LOGE("Could not populate ForEach signature metadata");
+    return false;
   }
 
   populatePragmaMetadata(PragmaMetadata);

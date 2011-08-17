@@ -33,6 +33,8 @@ class MetadataExtractor {
 
   size_t mExportVarCount;
   size_t mExportFuncCount;
+  size_t mExportForEachSignatureCount;
+  const uint32_t *mExportForEachSignatureList;
 
   size_t mPragmaCount;
   const char **mPragmaKeyList;
@@ -42,6 +44,7 @@ class MetadataExtractor {
   const uint32_t *mObjectSlotList;
 
   // Helper functions for extraction
+  bool populateForEachMetadata(const llvm::NamedMDNode *ExportForEachMetadata);
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
   void populatePragmaMetadata(const llvm::NamedMDNode *PragmaMetadata);
 
@@ -75,6 +78,20 @@ class MetadataExtractor {
    */
   size_t getExportFuncCount() const {
     return mExportFuncCount;
+  }
+
+  /**
+   * \return number of exported ForEach functions in this script/module.
+   */
+  size_t getExportForEachSignatureCount() const {
+    return mExportForEachSignatureCount;
+  }
+
+  /**
+   * \return array of ForEach function signatures.
+   */
+  const uint32_t *getExportForEachSignatureList() const {
+    return mExportForEachSignatureList;
   }
 
   /**

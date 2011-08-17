@@ -82,6 +82,14 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
 
   printf("exportVarCount: %u\n", ME->getExportVarCount());
   printf("exportFuncCount: %u\n", ME->getExportFuncCount());
+
+  printf("exportForEachSignatureCount: %u\n",
+         ME->getExportForEachSignatureCount());
+  const uint32_t *sigList = ME->getExportForEachSignatureList();
+  for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
+    printf("exportForEachSignatureList[%u]: %u\n", i, sigList[i]);
+  }
+
   printf("pragmaCount: %u\n", ME->getPragmaCount());
   const char **keyList = ME->getPragmaKeyList();
   const char **valueList = ME->getPragmaValueList();
