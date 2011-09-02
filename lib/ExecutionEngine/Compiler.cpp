@@ -715,9 +715,10 @@ int Compiler::runLTO(llvm::TargetData *TD,
   // TODO(logan): Remove this after we have finished the
   // bccMarkExternalSymbol API.
 
-  // root() and init() are born to be exported
+  // root(), init(), and .rs.dtor() are born to be exported
   ExportSymbols.push_back("root");
   ExportSymbols.push_back("init");
+  ExportSymbols.push_back(".rs.dtor");
 
   // User-defined exporting symbols
   std::vector<char const *> const &UserDefinedExternalSymbols =
