@@ -129,24 +129,26 @@ void Compiler::GlobalInitialization() {
   // Set Triple, CPU and Features here
   Triple = TARGET_TRIPLE_STRING;
 
-  Features.push_back("+vfp3");
-
   // NOTE: Currently, we have to turn off the support for NEON explicitly.
   // Since the ARMCodeEmitter.cpp is not ready for JITing NEON
   // instructions.
-#if ARCH_ARM_HAVE_NEON
-  Features.push_back("+d32");
+#if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
+#if defined(ARCH_ARM_HAVE_VFP)
+  Features.push_back("+vfp3");
+#if !defined(ARCH_ARM_HAVE_VFP_D32)
+  Features.push_back("+d16");
+#endif
+#endif
+
+// FIXME - Temporarily disable NEON
+#if 0 && defined(ARCH_ARM_HAVE_NEON)
   Features.push_back("+neon");
   Features.push_back("+neonfp");
 #else
-  Features.push_back("+d16");
   Features.push_back("-neon");
   Features.push_back("-neonfp");
 #endif
 
-  Features.push_back("-vmlx");
-
-#if defined(DEFAULT_ARM_CODEGEN) || defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMMCAsmInfo();
   LLVMInitializeARMMCCodeGenInfo();
   LLVMInitializeARMMCSubtargetInfo();
