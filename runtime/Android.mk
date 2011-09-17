@@ -86,4 +86,5 @@ else
   endif
 endif
 
+include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
 include $(BUILD_STATIC_LIBRARY)

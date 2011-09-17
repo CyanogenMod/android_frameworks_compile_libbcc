@@ -54,45 +54,37 @@
 // Configuration for CodeGen and CompilerRT
 //---------------------------------------------------------------------------
 
-#if defined(__arm__)
-  #define DEFAULT_ARM_CODEGEN
-  #define PROVIDE_ARM_CODEGEN
-#elif defined(__i386__)
-  #define DEFAULT_X86_CODEGEN
-  #define PROVIDE_X86_CODEGEN
-#elif defined(__x86_64__)
-  #define DEFAULT_X64_CODEGEN
-  #define PROVIDE_X64_CODEGEN
-#endif
-
 #if defined(FORCE_ARM_CODEGEN)
-  #define DEFAULT_ARM_CODEGEN
-  #undef DEFAULT_X86_CODEGEN
-  #undef DEFAULT_X64_CODEGEN
   #define PROVIDE_ARM_CODEGEN
-  #undef PROVIDE_X86_CODEGEN
-  #undef PROVIDE_X64_CODEGEN
+  #define DEFAULT_ARM_CODEGEN
+
 #elif defined(FORCE_X86_CODEGEN)
-  #undef DEFAULT_ARM_CODEGEN
-  #define DEFAULT_X86_CODEGEN
-  #undef DEFAULT_X64_CODEGEN
-  #undef PROVIDE_ARM_CODEGEN
   #define PROVIDE_X86_CODEGEN
-  #undef PROVIDE_X64_CODEGEN
-#elif defined(FORCE_X64_CODEGEN)
-  #undef DEFAULT_ARM_CODEGEN
-  #undef DEFAULT_X86_CODEGEN
-  #define DEFAULT_X64_CODEGEN
-  #undef PROVIDE_ARM_CODEGEN
-  #undef PROVIDE_X86_CODEGEN
-  #define PROVIDE_X64_CODEGEN
+
+  #if defined(__i386__)
+    #define DEFAULT_X86_CODEGEN
+  #elif defined(__x86_64__)
+    #define DEFAULT_X86_64_CODEGEN
+  #endif
+
+#else
+  #define PROVIDE_ARM_CODEGEN
+  #define PROVIDE_X86_CODEGEN
+
+  #if defined(__arm__)
+    #define DEFAULT_ARM_CODEGEN
+  #elif defined(__i386__)
+    #define DEFAULT_X86_CODEGEN
+  #elif defined(__x86_64__)
+    #define DEFAULT_X86_64_CODEGEN
+  #endif
 #endif
 
 #if defined(DEFAULT_ARM_CODEGEN)
   #define TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
 #elif defined(DEFAULT_X86_CODEGEN)
   #define TARGET_TRIPLE_STRING "i686-unknown-linux"
-#elif defined(DEFAULT_X64_CODEGEN)
+#elif defined(DEFAULT_X86_64_CODEGEN)
   #define TARGET_TRIPLE_STRING "x86_64-unknown-linux"
 #endif
 
