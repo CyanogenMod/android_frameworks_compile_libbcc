@@ -170,6 +170,13 @@ void MetadataExtractor::populatePragmaMetadata(
 bool MetadataExtractor::populateForEachMetadata(
     const llvm::NamedMDNode *ExportForEachMetadata) {
   if (!ExportForEachMetadata) {
+    // Handle legacy case for pre-ICS bitcode that doesn't contain a metadata
+    // section for ForEach. We generate a full signature for a "root" function
+    // which means that we need to set the bottom 5 bits in the mask.
+    mExportForEachSignatureCount = 1;
+    uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
+    TmpSigList[0] = 0x1f;
+    mExportForEachSignatureList = TmpSigList;
     return true;
   }
 
