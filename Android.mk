@@ -138,11 +138,12 @@ LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 # Modules that need get installed if and only if the target libbcc.so is installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 
-# -Wl,--exclude-libs=ALL would hide most of the symbols in the shared library
-# and reduces the size of libbcc.so by about 800k.
-# As libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2,
-# use below instead.
-LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
+# -Wl,--exclude-libs=ALL only applies to library archives. It would hide most of
+# the symbols in this shared library.
+# It reduces the size of libbcc.so by about 800k.
+# Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2.
+LOCAL_LDFLAGS += -Wl,--exclude-libs=ALL
+#LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis :libLLVMBitReader:libLLVMCore:libLLVMSupport:librsloader
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
 include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
