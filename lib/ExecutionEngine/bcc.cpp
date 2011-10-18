@@ -137,9 +137,7 @@ extern "C" int bccPrepareExecutable(BCCScriptRef script,
                                     unsigned long flags) {
   BCC_FUNC_LOGGER();
 
-#if defined(__arm__)
   android::StopWatch compileTimer("bcc: PrepareExecutable time");
-#endif
 
   return unwrap(script)->prepareExecutable(cacheDir, cacheName, flags);
 }

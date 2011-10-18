@@ -48,9 +48,7 @@ void calcSHA1(unsigned char *result, char const *data, size_t size) {
 
 
 void calcFileSHA1(unsigned char *result, char const *filename) {
-#if defined(__arm__)
   android::StopWatch calcFileSHA1Timer("calcFileSHA1 time");
-#endif
 
   FileHandle file;
 
