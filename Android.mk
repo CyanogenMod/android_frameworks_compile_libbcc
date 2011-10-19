@@ -139,11 +139,10 @@ LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 
 # -Wl,--exclude-libs=ALL only applies to library archives. It would hide most of
-# the symbols in this shared library.
-# It reduces the size of libbcc.so by about 800k.
+# the symbols in this shared library. As a result, it reduced the size of libbcc.so
+# by about 800k in 2010.
 # Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2.
-LOCAL_LDFLAGS += -Wl,--exclude-libs=ALL
-#LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis :libLLVMBitReader:libLLVMCore:libLLVMSupport:librsloader
+LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
 include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
