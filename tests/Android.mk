@@ -50,10 +50,9 @@ LOCAL_SRC_FILES := \
 LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc
 
 LOCAL_C_INCLUDES := \
-  bionic \
-  external/stlport/stlport \
   $(LOCAL_PATH)/../include
 
 LOCAL_MODULE_TAGS := tests
 
+include external/stlport/libstlport.mk
 include $(BUILD_EXECUTABLE)
