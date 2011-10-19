@@ -70,25 +70,6 @@ ifneq ($(TARGET_BUILD_VARIANT),eng)
 libbcc_CFLAGS += -D__DISABLE_ASSERTS
 endif
 
-ifeq ($(TARGET_ARCH),arm)
-  libbcc_CFLAGS += -DFORCE_ARM_CODEGEN=1
-  ifeq (true,$(ARCH_ARM_HAVE_VFP))
-    libbcc_CFLAGS += -DARCH_ARM_HAVE_VFP
-    ifeq (true,$(ARCH_ARM_HAVE_VFP_D32))
-      libbcc_CFLAGS += -DARCH_ARM_HAVE_VFP_D32
-    endif
-  endif
-  ifeq (true,$(ARCH_ARM_HAVE_NEON))
-    libbcc_CFLAGS += -DARCH_ARM_HAVE_NEON
-  endif
-else
-  ifeq ($(TARGET_ARCH),x86)
-    libbcc_CFLAGS += -DFORCE_X86_CODEGEN=1
-  else
-    $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
-  endif
-endif
-
 # Include File Search Path
 libbcc_C_INCLUDES := \
   $(RSLOADER_ROOT_PATH)/android \
