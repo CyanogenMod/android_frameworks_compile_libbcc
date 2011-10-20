@@ -26,14 +26,14 @@
 
 #else // !USE_LOGGER
 
-#undef LOGV
+#undef ALOGV
 #undef LOGI
 #undef LOGD
 #undef LOGW
 #undef LOGE
 #undef LOGA
 
-#define LOGV(...)
+#define ALOGV(...)
 #define LOGI(...)
 #define LOGD(...)
 #define LOGW(...)
