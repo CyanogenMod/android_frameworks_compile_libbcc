@@ -54,12 +54,12 @@
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/Target/TargetRegistry.h"
-#include "llvm/Target/TargetSelect.h"
 
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
 
 #include "llvm/Type.h"
 #include "llvm/GlobalValue.h"
@@ -154,19 +154,15 @@ void Compiler::GlobalInitialization() {
 #endif // DEFAULT_ARM_CODEGEN
 
 #if defined(PROVIDE_ARM_CODEGEN)
-  LLVMInitializeARMMCAsmInfo();
-  LLVMInitializeARMMCCodeGenInfo();
-  LLVMInitializeARMMCSubtargetInfo();
   LLVMInitializeARMAsmPrinter();
+  LLVMInitializeARMTargetMC();
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
 #endif
 
 #if defined(PROVIDE_X86_CODEGEN)
-  LLVMInitializeX86MCAsmInfo();
-  LLVMInitializeX86MCCodeGenInfo();
-  LLVMInitializeX86MCSubtargetInfo();
   LLVMInitializeX86AsmPrinter();
+  LLVMInitializeX86TargetMC();
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
 #endif
@@ -196,15 +192,6 @@ void Compiler::GlobalInitialization() {
   //
   llvm::FloatABIType = llvm::FloatABI::Soft;
   llvm::UseSoftFloat = false;
-
-#if defined(DEFAULT_X86_64_CODEGEN)
-  // Data address in X86_64 architecture may reside in a far-away place
-  llvm::TargetMachine::setCodeModel(llvm::CodeModel::Medium);
-#else
-  // This is set for the linker (specify how large of the virtual addresses
-  // we can access for all unknown symbols.)
-  llvm::TargetMachine::setCodeModel(llvm::CodeModel::Small);
-#endif
 
   // Register the scheduler
   llvm::RegisterScheduler::setDefault(llvm::createDefaultScheduler);
@@ -282,7 +269,9 @@ llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
 
 
 int Compiler::linkModule(llvm::Module *moduleWith) {
-  if (llvm::Linker::LinkModules(mModule, moduleWith, &mError) != 0) {
+  if (llvm::Linker::LinkModules(mModule, moduleWith,
+                                llvm::Linker::DestroySource,
+                                &mError) != 0) {
     return hasError();
   }
 
@@ -323,8 +312,18 @@ int Compiler::compile(bool compileOnly) {
     FeaturesStr = F.getString();
   }
 
+#if defined(DEFAULT_X86_64_CODEGEN)
+  // Data address in X86_64 architecture may reside in a far-away place
   TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
-                                   llvm::Reloc::Static);
+                                   llvm::Reloc::Static,
+                                   llvm::CodeModel::Medium);
+#else
+  // This is set for the linker (specify how large of the virtual addresses
+  // we can access for all unknown symbols.)
+  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
+                                   llvm::Reloc::Static,
+                                   llvm::CodeModel::Small);
+#endif
   if (TM == NULL) {
     setError("Failed to create target machine implementation for the"
              " specified triple '" + Triple + "'");

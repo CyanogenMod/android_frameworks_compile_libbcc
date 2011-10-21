@@ -375,7 +375,7 @@ Type *BitcodeReader::getTypeByID(unsigned ID) {
 
   // If we have a forward reference, the only possible case is when it is to a
   // named struct.  Just create a placeholder for now.
-  return TypeList[ID] = StructType::createNamed(Context, "");
+  return TypeList[ID] = StructType::create(Context, "");
 }
 
 /// FIXME: Remove in LLVM 3.1, only used by ParseOldTypeTable.
@@ -643,7 +643,7 @@ bool BitcodeReader::ParseTypeTableBody() {
         Res->setName(TypeName);
         TypeList[NumRecords] = 0;
       } else  // Otherwise, create a new struct.
-        Res = StructType::createNamed(Context, TypeName);
+        Res = StructType::create(Context, TypeName);
       TypeName.clear();
       
       SmallVector<Type*, 8> EltTys;
@@ -672,7 +672,7 @@ bool BitcodeReader::ParseTypeTableBody() {
         Res->setName(TypeName);
         TypeList[NumRecords] = 0;
       } else  // Otherwise, create a new struct with no body.
-        Res = StructType::createNamed(Context, TypeName);
+        Res = StructType::create(Context, TypeName);
       TypeName.clear();
       ResultTy = Res;
       break;
@@ -806,7 +806,7 @@ RestartScan:
       break;
     case bitc::TYPE_CODE_OPAQUE:    // OPAQUE
       if (NextTypeID < TypeList.size() && TypeList[NextTypeID] == 0)
-        ResultTy = StructType::createNamed(Context, "");
+        ResultTy = StructType::create(Context, "");
       break;
     case bitc::TYPE_CODE_STRUCT_OLD: {// STRUCT_OLD
       if (NextTypeID >= TypeList.size()) break;
@@ -817,7 +817,7 @@ RestartScan:
 
       // Set a type.
       if (TypeList[NextTypeID] == 0)
-        TypeList[NextTypeID] = StructType::createNamed(Context, "");
+        TypeList[NextTypeID] = StructType::create(Context, "");
 
       std::vector<Type*> EltTys;
       for (unsigned i = 1, e = Record.size(); i != e; ++i) {
@@ -936,7 +936,7 @@ bool BitcodeReader::ParseOldTypeSymbolTable() {
 
       // Only apply the type name to a struct type with no name.
       if (StructType *STy = dyn_cast<StructType>(TypeList[TypeID]))
-        if (!STy->isAnonymous() && !STy->hasName())
+        if (!STy->isLiteral() && !STy->hasName())
           STy->setName(TypeName);
       TypeName.clear();
       break;
@@ -1380,11 +1380,11 @@ bool BitcodeReader::ParseConstants() {
         Elts.push_back(ValueList.getConstantFwdRef(Record[i+1], ElTy));
       }
       if (BitCode == bitc::CST_CODE_CE_INBOUNDS_GEP)
-        V = ConstantExpr::getInBoundsGetElementPtr(Elts[0], &Elts[1],
-                                                   Elts.size()-1);
+        V = ConstantExpr::getInBoundsGetElementPtr(Elts[0],
+          llvm::ArrayRef<llvm::Constant*>(&Elts[1], Elts.size() - 1));
       else
-        V = ConstantExpr::getGetElementPtr(Elts[0], &Elts[1],
-                                           Elts.size()-1);
+        V = ConstantExpr::getGetElementPtr(Elts[0],
+          llvm::ArrayRef<llvm::Constant*>(&Elts[1], Elts.size() - 1));
       break;
     }
     case bitc::CST_CODE_CE_SELECT:  // CE_SELECT: [opval#, opval#, opval#]
@@ -2215,7 +2215,7 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
         GEPIdx.push_back(Op);
       }
 
-      I = GetElementPtrInst::Create(BasePtr, GEPIdx.begin(), GEPIdx.end());
+      I = GetElementPtrInst::Create(BasePtr, GEPIdx);
       InstructionList.push_back(I);
       if (BitCode == bitc::FUNC_CODE_INST_INBOUNDS_GEP)
         cast<GetElementPtrInst>(I)->setIsInBounds(true);
