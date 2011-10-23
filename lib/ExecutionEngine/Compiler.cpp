@@ -121,8 +121,10 @@ const llvm::StringRef Compiler::ObjectSlotMetadataName = "#rs_object_slots";
 //////////////////////////////////////////////////////////////////////////////
 
 void Compiler::GlobalInitialization() {
-  if (GlobalInitialized)
+  if (GlobalInitialized) {
     return;
+  }
+
   // if (!llvm::llvm_is_multithreaded())
   //   llvm::llvm_start_multithreaded();
 
@@ -138,19 +140,16 @@ void Compiler::GlobalInitialization() {
 #endif
 #endif
 
-  // NOTE: Currently, we have to turn off the support for NEON explicitly.
-  // Since the ARMCodeEmitter.cpp is not ready for JITing NEON
-  // instructions.
-
-  // FIXME: Re-enable NEON when ARMCodeEmitter supports NEON.
-#define USE_ARM_NEON 0
-#if USE_ARM_NEON
+#if defined(ARCH_ARM_HAVE_NEON)
   Features.push_back("+neon");
   Features.push_back("+neonfp");
-#else
+#endif
+
+#if defined(DISABLE_ARCH_ARM_HAVE_NEON)
   Features.push_back("-neon");
   Features.push_back("-neonfp");
-#endif // USE_ARM_NEON
+#endif
+
 #endif // DEFAULT_ARM_CODEGEN
 
 #if defined(PROVIDE_ARM_CODEGEN)
