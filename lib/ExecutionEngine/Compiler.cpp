@@ -143,6 +143,9 @@ void Compiler::GlobalInitialization() {
 #if defined(ARCH_ARM_HAVE_NEON)
   Features.push_back("+neon");
   Features.push_back("+neonfp");
+#else
+  Features.push_back("-neon");
+  Features.push_back("-neonfp");
 #endif
 
 #if defined(DISABLE_ARCH_ARM_HAVE_NEON)
