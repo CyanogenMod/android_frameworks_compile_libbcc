@@ -204,7 +204,7 @@ void Compiler::GlobalInitialization() {
   llvm::RegisterRegAlloc::setDefault
     ((CodeGenOptLevel == llvm::CodeGenOpt::None) ?
      llvm::createFastRegisterAllocator :
-     llvm::createLinearScanRegisterAllocator);
+     llvm::createGreedyRegisterAllocator);
 
 #if USE_CACHE
   // Read in SHA1 checksum of libbcc and libRS.
