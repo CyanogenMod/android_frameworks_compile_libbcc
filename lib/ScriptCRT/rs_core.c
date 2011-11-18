@@ -36,6 +36,99 @@ typedef struct Allocation {
     } mHal;
 } Allocation_t;
 
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class ProgramStore owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsProgramStore.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsgProgramStoreGetDepthFunc(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * allocations.
+ *
+ *****************************************************************************/
+typedef struct ProgramStore {
+    char __pad[36];
+    struct {
+        struct {
+            bool ditherEnable;
+            bool colorRWriteEnable;
+            bool colorGWriteEnable;
+            bool colorBWriteEnable;
+            bool colorAWriteEnable;
+            rs_blend_src_func blendSrc;
+            rs_blend_dst_func blendDst;
+            bool depthWriteEnable;
+            rs_depth_func depthFunc;
+        } state;
+    } mHal;
+} ProgramStore_t;
+
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class ProgramRaster owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsProgramRaster.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsgProgramRasterGetCullMode(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * allocations.
+ *
+ *****************************************************************************/
+typedef struct ProgramRaster {
+    char __pad[36];
+    struct {
+        struct {
+            bool pointSprite;
+            rs_cull_mode cull;
+        } state;
+    } mHal;
+} ProgramRaster_t;
+
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class Sampler owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsSampler.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsgProgramRasterGetMagFilter(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * allocations.
+ *
+ *****************************************************************************/
+typedef struct Sampler {
+    char __pad[32];
+    struct {
+        struct {
+            rs_sampler_value magFilter;
+            rs_sampler_value minFilter;
+            rs_sampler_value wrapS;
+            rs_sampler_value wrapT;
+            rs_sampler_value wrapR;
+            float aniso;
+        } state;
+    } mHal;
+} Sampler_t;
+
+
 /* Declaration of 4 basic functions in libRS */
 extern void __attribute__((overloadable))
     rsDebug(const char *, float, float);
@@ -297,4 +390,100 @@ extern const void * __attribute__((overloadable))
     const uint32_t dimX = alloc->mHal.state.dimensionX;
     const uint32_t dimY = alloc->mHal.state.dimensionY;
     return &p[eSize * (x + y * dimX + z * dimX * dimY)];
+}
+
+extern rs_depth_func __attribute__((overloadable))
+        rsgProgramStoreGetDepthFunc(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.depthFunc;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramStoreGetDepthMask(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.depthWriteEnable;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramStoreGetColorMaskR(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.colorRWriteEnable;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramStoreGetColorMaskG(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.colorGWriteEnable;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramStoreGetColorMaskB(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.colorBWriteEnable;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramStoreGetColorMaskA(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.colorAWriteEnable;
+}
+
+extern rs_blend_src_func __attribute__((overloadable))
+        rsgProgramStoreGetBlendSrcFunc(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.blendSrc;
+}
+
+extern rs_blend_dst_func __attribute__((overloadable))
+        rsgProgramStoreGetBlendDstFunc(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.blendDst;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramStoreGetDitherEnabled(rs_program_store ps) {
+    ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    return prog->mHal.state.ditherEnable;
+}
+
+extern bool __attribute__((overloadable))
+        rsgProgramRasterGetPointSpriteEnabled(rs_program_raster pr) {
+    ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
+    return prog->mHal.state.pointSprite;
+}
+
+extern rs_cull_mode __attribute__((overloadable))
+        rsgProgramRasterGetCullMode(rs_program_raster pr) {
+    ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
+    return prog->mHal.state.cull;
+}
+
+extern rs_sampler_value __attribute__((overloadable))
+        rsgSamplerGetMinification(rs_sampler s) {
+    Sampler_t *prog = (Sampler_t *)s.p;
+    return prog->mHal.state.minFilter;
+}
+
+extern rs_sampler_value __attribute__((overloadable))
+        rsgSamplerGetMagnification(rs_sampler s) {
+    Sampler_t *prog = (Sampler_t *)s.p;
+    return prog->mHal.state.magFilter;
+}
+
+extern rs_sampler_value __attribute__((overloadable))
+        rsgSamplerGetWrapS(rs_sampler s) {
+    Sampler_t *prog = (Sampler_t *)s.p;
+    return prog->mHal.state.wrapS;
+}
+
+extern rs_sampler_value __attribute__((overloadable))
+        rsgSamplerGetWrapT(rs_sampler s) {
+    Sampler_t *prog = (Sampler_t *)s.p;
+    return prog->mHal.state.wrapT;
+}
+
+extern float __attribute__((overloadable))
+        rsgSamplerGetAnisotropy(rs_sampler s) {
+    Sampler_t *prog = (Sampler_t *)s.p;
+    return prog->mHal.state.aniso;
 }
