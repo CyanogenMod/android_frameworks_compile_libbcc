@@ -32,8 +32,8 @@
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/Target/TargetRegistry.h"
-#include "llvm/Target/TargetSelect.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
 
 #include "llvm/LLVMContext.h"
 
@@ -98,13 +98,15 @@ void Disassemble(char const *OutputFileName,
   OS << "Disassembled code: " << Name << "\n";
 
   const llvm::MCAsmInfo *AsmInfo;
+  const llvm::MCSubtargetInfo *SubtargetInfo;
   const llvm::MCDisassembler *Disassmbler;
   llvm::MCInstPrinter *IP;
 
   AsmInfo = Target->createMCAsmInfo(Compiler::getTargetTriple());
-  Disassmbler = Target->createMCDisassembler();
+  SubtargetInfo = Target->createMCSubtargetInfo(Compiler::getTargetTriple(), "", "");
+  Disassmbler = Target->createMCDisassembler(*SubtargetInfo);
   IP = Target->createMCInstPrinter(AsmInfo->getAssemblerDialect(),
-                                   *AsmInfo);
+                                   *AsmInfo, *SubtargetInfo);
 
   const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Func, FuncSize);
 
@@ -115,13 +117,13 @@ void Disassemble(char const *OutputFileName,
     llvm::MCInst Inst;
 
     if (Disassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
-                                    /* REMOVED */ llvm::nulls())) {
+                           /* REMOVED */ llvm::nulls(), llvm::nulls())) {
       OS.indent(4);
       OS.write("0x", 2);
       OS.write_hex((uint32_t)Func + Index);
       OS.write(": 0x", 4);
       OS.write_hex(*(uint32_t *)(Func + Index));
-      IP->printInst(&Inst, OS);
+      IP->printInst(&Inst, OS, "");
       OS << "\n";
     } else {
       if (Size == 0)

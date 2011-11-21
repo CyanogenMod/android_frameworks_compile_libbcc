@@ -53,7 +53,7 @@
 
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetRegistry.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetJITInfo.h"
 
 #include "llvm/Constant.h"
