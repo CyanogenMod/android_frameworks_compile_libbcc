@@ -30,8 +30,13 @@
 #define USE_DISASSEMBLER 0
 #endif
 
+#if defined(__HOST__)
+#define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/tmp/oldjit-dis.s"
+#define DEBUG_MCJIT_DISASSEMBLER_FILE "/tmp/mcjit-dis.s"
+#else
 #define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/data/local/tmp/oldjit-dis.s"
 #define DEBUG_MCJIT_DISASSEMBLER_FILE "/data/local/tmp/mcjit-dis.s"
+#endif // defined(__HOST__)
 
 //---------------------------------------------------------------------------
 // Configuration for ContextManager
