@@ -91,6 +91,20 @@ namespace bcc {
 
 bool Compiler::GlobalInitialized = false;
 
+
+#if !defined(__HOST__)
+  #define TARGET_TRIPLE_STRING  DEFAULT_TARGET_TRIPLE_STRING
+#else
+// In host TARGET_TRIPLE_STRING is a variable to allow cross-compilation.
+  #if defined(__cplusplus)
+    extern "C" {
+  #endif
+      char *TARGET_TRIPLE_STRING = (char*)DEFAULT_TARGET_TRIPLE_STRING;
+  #if defined(__cplusplus)
+    };
+  #endif
+#endif
+
 // Code generation optimization level for the compiler
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
 

@@ -28,6 +28,8 @@ LOCAL_SRC_FILES := \
 LOCAL_SHARED_LIBRARIES := \
   libbcinfo
 
+LOCAL_CFLAGS += -D__HOST__
+
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 

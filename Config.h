@@ -86,11 +86,11 @@
 #endif
 
 #if defined(DEFAULT_ARM_CODEGEN)
-  #define TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
+  #define DEFAULT_TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
 #elif defined(DEFAULT_X86_CODEGEN)
-  #define TARGET_TRIPLE_STRING "i686-unknown-linux"
+  #define DEFAULT_TARGET_TRIPLE_STRING "i686-unknown-linux"
 #elif defined(DEFAULT_X86_64_CODEGEN)
-  #define TARGET_TRIPLE_STRING "x86_64-unknown-linux"
+  #define DEFAULT_TARGET_TRIPLE_STRING "x86_64-unknown-linux"
 #endif
 
 #if (defined(__VFP_FP__) && !defined(__SOFTFP__))

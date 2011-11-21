@@ -35,6 +35,8 @@ LOCAL_MODULE_TAGS := tests
 
 LOCAL_LDLIBS = -ldl
 
+LOCAL_CFLAGS += -D__HOST__
+
 include $(BUILD_HOST_EXECUTABLE)
 
 # Executable for target

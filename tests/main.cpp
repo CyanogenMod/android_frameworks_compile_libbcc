@@ -29,6 +29,20 @@
 
 #include <unistd.h>
 
+#if defined(__HOST__)
+  #if defined(__cplusplus)
+    extern "C" {
+  #endif
+      extern char *TARGET_TRIPLE_STRING;
+  #if defined(__cplusplus)
+    };
+  #endif
+#define GETOPT_OPTIONS  "C:RST"
+#else
+#define GETOPT_OPTIONS  "RST"
+#endif
+
+
 #if defined(__arm__)
 #define PROVIDE_ARM_DISASSEMBLY
 #endif
@@ -124,10 +138,16 @@ extern int optind;
 static int parseOption(int argc, char** argv)
 {
   int c;
-  while ((c = getopt (argc, argv, "RST")) != -1) {
+  while ((c = getopt (argc, argv, GETOPT_OPTIONS)) != -1) {
     opterr = 0;
 
     switch(c) {
+    #if defined(__HOST__)
+      case 'C':
+        TARGET_TRIPLE_STRING = optarg;
+        break;
+    #endif
+
       case 'R':
         runResults = true;
         break;
