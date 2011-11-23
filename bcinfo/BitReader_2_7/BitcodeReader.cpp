@@ -590,7 +590,7 @@ bool BitcodeReader::ParseTypeTableBody() {
       ResultTy = PointerType::get(ResultTy, AddressSpace);
       break;
     }
-    case bitc::TYPE_CODE_FUNCTION: {
+    case bitc::TYPE_CODE_FUNCTION_OLD: {
       // FIXME: attrid is dead, remove it in LLVM 3.0
       // FUNCTION: [vararg, attrid, retty, paramty x N]
       if (Record.size() < 3)
@@ -846,7 +846,7 @@ RestartScan:
         ResultTy = PointerType::get(ResultTy, AddressSpace);
       break;
     }
-    case bitc::TYPE_CODE_FUNCTION: {
+    case bitc::TYPE_CODE_FUNCTION_OLD: {
       // FIXME: attrid is dead, remove it in LLVM 3.0
       // FUNCTION: [vararg, attrid, retty, paramty x N]
       if (Record.size() < 3)
