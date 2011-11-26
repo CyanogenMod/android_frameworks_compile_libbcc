@@ -24,6 +24,6 @@ int __android_log_write(int prio, const char *tag, const char *msg) {
     tag = "";
   }
 
-  return fprintf(stderr, "[%s] %s", tag, msg);
+  return fprintf(stderr, "[%s] %s\n", tag, msg);
 }
 #endif // USE_LOGGER && !defined(__arm__)
