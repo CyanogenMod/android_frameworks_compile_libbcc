@@ -22,6 +22,8 @@ include $(LOCAL_PATH)/../libbcc-config.mk
 # Device Static Library: libbccCompilerRT
 #=====================================================================
 
+ifneq ($(TARGET_ARCH),mips)
+
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbccCompilerRT
@@ -88,3 +90,5 @@ endif
 
 include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
 include $(BUILD_STATIC_LIBRARY)
+
+endif # ifneq($(TARGET_ARCH),mips)

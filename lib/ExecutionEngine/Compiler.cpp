@@ -176,6 +176,13 @@ void Compiler::GlobalInitialization() {
   LLVMInitializeARMTarget();
 #endif
 
+#if defined(PROVIDE_MIPS_CODEGEN)
+  LLVMInitializeMipsAsmPrinter();
+  LLVMInitializeMipsTargetMC();
+  LLVMInitializeMipsTargetInfo();
+  LLVMInitializeMipsTarget();
+#endif
+
 #if defined(PROVIDE_X86_CODEGEN)
   LLVMInitializeX86AsmPrinter();
   LLVMInitializeX86TargetMC();

@@ -37,10 +37,14 @@ ifeq ($(LOCAL_IS_HOST_MODULE),) # Target Build
       LOCAL_CFLAGS += -DARCH_ARM_HAVE_NEON
     endif
   else
-    ifeq ($(TARGET_ARCH),x86)
-      LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
+    ifeq ($(TARGET_ARCH),mips)
+      LOCAL_CFLAGS += -DFORCE_MIPS_CODEGEN
     else
-      $(error Unsupported architecture $(TARGET_ARCH))
+      ifeq ($(TARGET_ARCH),x86)
+        LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
+      else
+        $(error Unsupported architecture $(TARGET_ARCH))
+      endif
     endif
   endif
 

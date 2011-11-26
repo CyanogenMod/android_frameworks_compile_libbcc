@@ -42,6 +42,8 @@
 // Configuration for ContextManager
 //---------------------------------------------------------------------------
 
+#if USE_OLD_JIT
+
 // Note: Most of the code should NOT use these constants.  Use the public
 // static member of ContextManager instead, which is type-safe.  For example,
 // if you need BCC_CONTEXT_FIXED_ADDR_, then you should write:
@@ -55,6 +57,8 @@
 
 #define BCC_CONTEXT_DATA_SIZE_ (128 * 1024)
 
+#endif // USE_OLD_JIT
+
 //---------------------------------------------------------------------------
 // Configuration for CodeGen and CompilerRT
 //---------------------------------------------------------------------------
@@ -62,6 +66,10 @@
 #if defined(FORCE_ARM_CODEGEN)
   #define PROVIDE_ARM_CODEGEN
   #define DEFAULT_ARM_CODEGEN
+
+#elif defined(FORCE_MIPS_CODEGEN)
+  #define PROVIDE_MIPS_CODEGEN
+  #define DEFAULT_MIPS_CODEGEN
 
 #elif defined(FORCE_X86_CODEGEN)
   #define PROVIDE_X86_CODEGEN
@@ -74,10 +82,13 @@
 
 #else
   #define PROVIDE_ARM_CODEGEN
+  #define PROVIDE_MIPS_CODEGEN
   #define PROVIDE_X86_CODEGEN
 
   #if defined(__arm__)
     #define DEFAULT_ARM_CODEGEN
+  #elif defined(__mips__)
+    #define DEFAULT_MIPS_CODEGEN
   #elif defined(__i386__)
     #define DEFAULT_X86_CODEGEN
   #elif defined(__x86_64__)
@@ -87,6 +98,8 @@
 
 #if defined(DEFAULT_ARM_CODEGEN)
   #define DEFAULT_TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
+#elif defined(DEFAULT_MIPS_CODEGEN)
+  #define DEFAULT_TARGET_TRIPLE_STRING "mipsel-none-linux-gnueabi"
 #elif defined(DEFAULT_X86_CODEGEN)
   #define DEFAULT_TARGET_TRIPLE_STRING "i686-unknown-linux"
 #elif defined(DEFAULT_X86_64_CODEGEN)

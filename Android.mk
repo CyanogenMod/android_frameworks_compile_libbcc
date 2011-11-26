@@ -73,9 +73,11 @@ LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
 LOCAL_SRC_FILES := lib/ExecutionEngine/bcc.cpp
 
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  $(libbcc_WHOLE_STATIC_LIBRARIES) \
-  libbccCompilerRT
+LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
+
+ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),arm x86))
+LOCAL_WHOLE_STATIC_LIBRARIES += libbccCompilerRT
+endif
 
 ifeq ($(libbcc_USE_MCJIT),1)
   LOCAL_STATIC_LIBRARIES += librsloader
@@ -87,11 +89,15 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
       libLLVMARMDisassembler \
       libLLVMARMAsmPrinter
   else
-    ifeq ($(TARGET_ARCH),x86)
-      LOCAL_STATIC_LIBRARIES += \
-        libLLVMX86Disassembler
+    ifeq ($(TARGET_ARCH),mips)
+	  $(error "Disassembler is not available for MIPS architecture")
     else
-      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+      ifeq ($(TARGET_ARCH),x86)
+        LOCAL_STATIC_LIBRARIES += \
+          libLLVMX86Disassembler
+      else
+        $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+      endif
     endif
   endif
 endif
@@ -102,15 +108,23 @@ ifeq ($(TARGET_ARCH),arm)
     libLLVMARMDesc \
     libLLVMARMInfo
 else
-  ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
+  ifeq ($(TARGET_ARCH), mips)
     LOCAL_STATIC_LIBRARIES += \
-      libLLVMX86CodeGen \
-      libLLVMX86Desc \
-      libLLVMX86Info \
-      libLLVMX86Utils \
-      libLLVMX86AsmPrinter
+      libLLVMMipsCodeGen \
+      libLLVMMipsAsmPrinter \
+      libLLVMMipsDesc \
+      libLLVMMipsInfo
   else
-    $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+    ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
+      LOCAL_STATIC_LIBRARIES += \
+        libLLVMX86CodeGen \
+        libLLVMX86Desc \
+        libLLVMX86Info \
+        libLLVMX86Utils \
+        libLLVMX86AsmPrinter
+    else
+      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+    endif
   endif
 endif
 
@@ -135,13 +149,19 @@ LOCAL_STATIC_LIBRARIES += \
 
 LOCAL_SHARED_LIBRARIES := libdl libcutils libutils libstlport
 
-# Modules that need get installed if and only if the target libbcc.so is installed.
+# Modules that need get installed if and only if the target libbcc.so is
+# installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 
-# -Wl,--exclude-libs=ALL only applies to library archives. It would hide most of
-# the symbols in this shared library. As a result, it reduced the size of libbcc.so
-# by about 800k in 2010.
-# Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by pixelflinger2.
+# Link-Time Optimization on libbcc.so
+#
+# -Wl,--exclude-libs=ALL only applies to library archives. It would hide most
+# of the symbols in this shared library. As a result, it reduced the size of
+# libbcc.so by about 800k in 2010.
+#
+# Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by
+# pixelflinger2.
+
 LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
@@ -155,6 +175,7 @@ include $(BUILD_SHARED_LIBRARY)
 #=====================================================================
 # Host Shared Library libbcc
 #=====================================================================
+
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcc
@@ -183,16 +204,24 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
 endif
 
 LOCAL_STATIC_LIBRARIES += \
-  libcutils \
-  libutils \
   libLLVMARMCodeGen \
   libLLVMARMDesc \
-  libLLVMARMInfo \
+  libLLVMARMInfo
+
+LOCAL_STATIC_LIBRARIES += \
+  libLLVMMipsCodeGen \
+  libLLVMMipsAsmPrinter \
+  libLLVMMipsDesc \
+  libLLVMMipsInfo
+
+LOCAL_STATIC_LIBRARIES += \
   libLLVMX86CodeGen \
   libLLVMX86Desc \
-  libLLVMX86Info \
-  libLLVMX86Utils \
   libLLVMX86AsmPrinter \
+  libLLVMX86Info \
+  libLLVMX86Utils
+
+LOCAL_STATIC_LIBRARIES += \
   libLLVMAsmPrinter \
   libLLVMBitReader \
   libLLVMSelectionDAG \
@@ -211,23 +240,14 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMCore \
   libLLVMSupport
 
+LOCAL_STATIC_LIBRARIES += \
+  libcutils \
+  libutils
+
 LOCAL_LDLIBS := -ldl -lpthread
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
 include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
-
-# definitions for LLVM
-LOCAL_CFLAGS += -DDEBUG_CODEGEN=1
-
-ifeq ($(TARGET_ARCH),arm)
-  LOCAL_CFLAGS += -DFORCE_ARM_CODEGEN=1
-else
-  ifeq ($(TARGET_ARCH),x86)
-    LOCAL_CFLAGS += -DFORCE_X86_CODEGEN=1
-  else
-    $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
-  endif
-endif
 
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
