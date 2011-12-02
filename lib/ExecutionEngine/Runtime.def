@@ -93,7 +93,7 @@ DEF_LLVM_RUNTIME(__addvsi3)
 #if !defined(__i386__) && !defined(__SSE2__)
     DEF_LLVM_RUNTIME(__ashldi3)
 #endif
-#ifndef ANDROID // has one in bionic
+#if !defined(ANDROID) /* has one in bionic */
     DEF_LLVM_RUNTIME(__ashrdi3)
 #endif
 #if defined(__mips__)
@@ -111,7 +111,7 @@ DEF_LLVM_RUNTIME(__cmpdi2)
 DEF_LLVM_RUNTIME(__ctzdi2)
 DEF_LLVM_RUNTIME(__ctzsi2)
 
-#ifndef ANDROID // no complex extension
+#if !defined(ANDROID) /* no complex extension */
     DEF_LLVM_RUNTIME(__divdc3)
 #endif
 
@@ -122,7 +122,7 @@ DEF_GENERIC_OR_VFP_RUNTIME(__divdf3)
 #endif
 DEF_LLVM_RUNTIME(__divsi3)
 
-#ifndef ANDROID // no complex extension
+#if !defined(ANDROID) /* no complex extension */
     DEF_LLVM_RUNTIME(__divsc3)
 #endif
 
