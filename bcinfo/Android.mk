@@ -33,6 +33,7 @@ LOCAL_PATH := $(call my-dir)
 
 libbcinfo_SRC_FILES := \
   BitcodeTranslator.cpp \
+  BitcodeWrapper.cpp \
   MetadataExtractor.cpp
 
 libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
