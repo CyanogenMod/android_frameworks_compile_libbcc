@@ -27,7 +27,7 @@ typedef struct {
   void *mPtr;
 } RuntimeFunction;
 
-#if defined(__arm__)
+#if defined(__arm__) || defined(__mips__)
   #define DEF_GENERIC_RUNTIME(func)   \
     extern void *func;
   #define DEF_VFP_RUNTIME(func) \
@@ -38,7 +38,7 @@ typedef struct {
 #endif
 
 static const RuntimeFunction gRuntimes[] = {
-#if defined(__arm__)
+#if defined(__arm__) || defined(__mips__)
   #define DEF_GENERIC_RUNTIME(func)   \
     { #func, (void*) &func },
   // TODO: enable only when target support VFP

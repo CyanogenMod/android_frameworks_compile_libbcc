@@ -96,6 +96,9 @@ DEF_LLVM_RUNTIME(__addvsi3)
 #ifndef ANDROID // has one in bionic
     DEF_LLVM_RUNTIME(__ashrdi3)
 #endif
+#if defined(__mips__)
+    DEF_GENERIC_RUNTIME(__ashrdi3)
+#endif
 
 #ifdef USE_VFP_RUNTIME
 //    DEF_GENERIC_RUNTIME(__bswapdi2)
