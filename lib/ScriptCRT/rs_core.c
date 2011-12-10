@@ -28,6 +28,8 @@ typedef struct Allocation {
             bool hasMipmaps;
             bool hasFaces;
             bool hasReferences;
+
+            void * usrPtr;
         } state;
 
         struct DrvState {
