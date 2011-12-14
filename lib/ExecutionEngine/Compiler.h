@@ -177,7 +177,8 @@ namespace bcc {
 
     int runLTO(llvm::TargetData *TD,
                llvm::NamedMDNode const *ExportVarMetadata,
-               llvm::NamedMDNode const *ExportFuncMetadata);
+               llvm::NamedMDNode const *ExportFuncMetadata,
+               llvm::CodeGenOpt::Level OptimizationLevel);
 
     bool hasError() const {
       return !mError.empty();

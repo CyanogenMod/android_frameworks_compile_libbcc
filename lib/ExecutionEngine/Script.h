@@ -29,6 +29,7 @@
 
 namespace llvm {
   class Module;
+  class GDBJITRegistrar;
 }
 
 namespace bcc {
@@ -180,7 +181,6 @@ namespace bcc {
     int internalLoadCache(bool checkOnly);
 #endif
     int internalCompile(bool compileOnly);
-
   };
 
 } // namespace bcc
