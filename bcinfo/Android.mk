@@ -43,6 +43,7 @@ libbcinfo_STATIC_LIBRARIES := \
   libLLVMCore \
   libLLVMSupport \
   libLLVMBitReader_2_7 \
+  libLLVMBitReader_3_0
 
 LLVM_ROOT_PATH := external/llvm
 

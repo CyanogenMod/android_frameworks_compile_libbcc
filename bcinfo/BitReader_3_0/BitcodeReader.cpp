@@ -13,6 +13,7 @@
 
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "BitcodeReader.h"
+#include "BitReader_3_0.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/InlineAsm.h"
@@ -20,12 +21,313 @@
 #include "llvm/Module.h"
 #include "llvm/Operator.h"
 #include "llvm/AutoUpgrade.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/CFG.h"
+#include "llvm/Support/IRBuilder.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/OperandTraits.h"
 using namespace llvm;
+using namespace llvm_3_0;
+
+#define TYPE_BLOCK_ID_OLD_3_0         10
+#define TYPE_SYMTAB_BLOCK_ID_OLD_3_0  13
+#define TYPE_CODE_STRUCT_OLD_3_0      10
+
+namespace {
+  void FindExnAndSelIntrinsics(BasicBlock *BB, CallInst *&Exn,
+                                      CallInst *&Sel,
+                                      SmallPtrSet<BasicBlock*, 8> &Visited) {
+    if (!Visited.insert(BB)) return;
+
+    for (BasicBlock::iterator
+           I = BB->begin(), E = BB->end(); I != E; ++I) {
+      if (CallInst *CI = dyn_cast<CallInst>(I)) {
+        switch (CI->getCalledFunction()->getIntrinsicID()) {
+        default: break;
+        case Intrinsic::eh_exception:
+          assert(!Exn && "Found more than one eh.exception call!");
+          Exn = CI;
+          break;
+        case Intrinsic::eh_selector:
+          assert(!Sel && "Found more than one eh.selector call!");
+          Sel = CI;
+          break;
+        }
+
+        if (Exn && Sel) return;
+      }
+    }
+
+    if (Exn && Sel) return;
+
+    for (succ_iterator I = succ_begin(BB), E = succ_end(BB); I != E; ++I) {
+      FindExnAndSelIntrinsics(*I, Exn, Sel, Visited);
+      if (Exn && Sel) return;
+    }
+  }
+
+
+
+  /// TransferClausesToLandingPadInst - Transfer the exception handling clauses
+  /// from the eh_selector call to the new landingpad instruction.
+  void TransferClausesToLandingPadInst(LandingPadInst *LPI,
+                                              CallInst *EHSel) {
+    LLVMContext &Context = LPI->getContext();
+    unsigned N = EHSel->getNumArgOperands();
+
+    for (unsigned i = N - 1; i > 1; --i) {
+      if (const ConstantInt *CI = dyn_cast<ConstantInt>(EHSel->getArgOperand(i))){
+        unsigned FilterLength = CI->getZExtValue();
+        unsigned FirstCatch = i + FilterLength + !FilterLength;
+        assert(FirstCatch <= N && "Invalid filter length");
+
+        if (FirstCatch < N)
+          for (unsigned j = FirstCatch; j < N; ++j) {
+            Value *Val = EHSel->getArgOperand(j);
+            if (!Val->hasName() || Val->getName() != "llvm.eh.catch.all.value") {
+              LPI->addClause(EHSel->getArgOperand(j));
+            } else {
+              GlobalVariable *GV = cast<GlobalVariable>(Val);
+              LPI->addClause(GV->getInitializer());
+            }
+          }
+
+        if (!FilterLength) {
+          // Cleanup.
+          LPI->setCleanup(true);
+        } else {
+          // Filter.
+          SmallVector<Constant *, 4> TyInfo;
+          TyInfo.reserve(FilterLength - 1);
+          for (unsigned j = i + 1; j < FirstCatch; ++j)
+            TyInfo.push_back(cast<Constant>(EHSel->getArgOperand(j)));
+          ArrayType *AType =
+            ArrayType::get(!TyInfo.empty() ? TyInfo[0]->getType() :
+                           PointerType::getUnqual(Type::getInt8Ty(Context)),
+                           TyInfo.size());
+          LPI->addClause(ConstantArray::get(AType, TyInfo));
+        }
+
+        N = i;
+      }
+    }
+
+    if (N > 2)
+      for (unsigned j = 2; j < N; ++j) {
+        Value *Val = EHSel->getArgOperand(j);
+        if (!Val->hasName() || Val->getName() != "llvm.eh.catch.all.value") {
+          LPI->addClause(EHSel->getArgOperand(j));
+        } else {
+          GlobalVariable *GV = cast<GlobalVariable>(Val);
+          LPI->addClause(GV->getInitializer());
+        }
+      }
+  }
+
+
+  /// This function upgrades the old pre-3.0 exception handling system to the new
+  /// one. N.B. This will be removed in 3.1.
+  void UpgradeExceptionHandling(Module *M) {
+    Function *EHException = M->getFunction("llvm.eh.exception");
+    Function *EHSelector = M->getFunction("llvm.eh.selector");
+    if (!EHException || !EHSelector)
+      return;
+
+    LLVMContext &Context = M->getContext();
+    Type *ExnTy = PointerType::getUnqual(Type::getInt8Ty(Context));
+    Type *SelTy = Type::getInt32Ty(Context);
+    Type *LPadSlotTy = StructType::get(ExnTy, SelTy, NULL);
+
+    // This map links the invoke instruction with the eh.exception and eh.selector
+    // calls associated with it.
+    DenseMap<InvokeInst*, std::pair<Value*, Value*> > InvokeToIntrinsicsMap;
+    for (Module::iterator
+           I = M->begin(), E = M->end(); I != E; ++I) {
+      Function &F = *I;
+
+      for (Function::iterator
+             II = F.begin(), IE = F.end(); II != IE; ++II) {
+        BasicBlock *BB = &*II;
+        InvokeInst *Inst = dyn_cast<InvokeInst>(BB->getTerminator());
+        if (!Inst) continue;
+        BasicBlock *UnwindDest = Inst->getUnwindDest();
+        if (UnwindDest->isLandingPad()) continue; // Already converted.
+
+        SmallPtrSet<BasicBlock*, 8> Visited;
+        CallInst *Exn = 0;
+        CallInst *Sel = 0;
+        FindExnAndSelIntrinsics(UnwindDest, Exn, Sel, Visited);
+        assert(Exn && Sel && "Cannot find eh.exception and eh.selector calls!");
+        InvokeToIntrinsicsMap[Inst] = std::make_pair(Exn, Sel);
+      }
+    }
+
+    // This map stores the slots where the exception object and selector value are
+    // stored within a function.
+    DenseMap<Function*, std::pair<Value*, Value*> > FnToLPadSlotMap;
+    SmallPtrSet<Instruction*, 32> DeadInsts;
+    for (DenseMap<InvokeInst*, std::pair<Value*, Value*> >::iterator
+           I = InvokeToIntrinsicsMap.begin(), E = InvokeToIntrinsicsMap.end();
+         I != E; ++I) {
+      InvokeInst *Invoke = I->first;
+      BasicBlock *UnwindDest = Invoke->getUnwindDest();
+      Function *F = UnwindDest->getParent();
+      std::pair<Value*, Value*> EHIntrinsics = I->second;
+      CallInst *Exn = cast<CallInst>(EHIntrinsics.first);
+      CallInst *Sel = cast<CallInst>(EHIntrinsics.second);
+
+      // Store the exception object and selector value in the entry block.
+      Value *ExnSlot = 0;
+      Value *SelSlot = 0;
+      if (!FnToLPadSlotMap[F].first) {
+        BasicBlock *Entry = &F->front();
+        ExnSlot = new AllocaInst(ExnTy, "exn", Entry->getTerminator());
+        SelSlot = new AllocaInst(SelTy, "sel", Entry->getTerminator());
+        FnToLPadSlotMap[F] = std::make_pair(ExnSlot, SelSlot);
+      } else {
+        ExnSlot = FnToLPadSlotMap[F].first;
+        SelSlot = FnToLPadSlotMap[F].second;
+      }
+
+      if (!UnwindDest->getSinglePredecessor()) {
+        // The unwind destination doesn't have a single predecessor. Create an
+        // unwind destination which has only one predecessor.
+        BasicBlock *NewBB = BasicBlock::Create(Context, "new.lpad",
+                                               UnwindDest->getParent());
+        BranchInst::Create(UnwindDest, NewBB);
+        Invoke->setUnwindDest(NewBB);
+
+        // Fix up any PHIs in the original unwind destination block.
+        for (BasicBlock::iterator
+               II = UnwindDest->begin(); isa<PHINode>(II); ++II) {
+          PHINode *PN = cast<PHINode>(II);
+          int Idx = PN->getBasicBlockIndex(Invoke->getParent());
+          if (Idx == -1) continue;
+          PN->setIncomingBlock(Idx, NewBB);
+        }
+
+        UnwindDest = NewBB;
+      }
+
+      IRBuilder<> Builder(Context);
+      Builder.SetInsertPoint(UnwindDest, UnwindDest->getFirstInsertionPt());
+
+      Value *PersFn = Sel->getArgOperand(1);
+      LandingPadInst *LPI = Builder.CreateLandingPad(LPadSlotTy, PersFn, 0);
+      Value *LPExn = Builder.CreateExtractValue(LPI, 0);
+      Value *LPSel = Builder.CreateExtractValue(LPI, 1);
+      Builder.CreateStore(LPExn, ExnSlot);
+      Builder.CreateStore(LPSel, SelSlot);
+
+      TransferClausesToLandingPadInst(LPI, Sel);
+
+      DeadInsts.insert(Exn);
+      DeadInsts.insert(Sel);
+    }
+
+    // Replace the old intrinsic calls with the values from the landingpad
+    // instruction(s). These values were stored in allocas for us to use here.
+    for (DenseMap<InvokeInst*, std::pair<Value*, Value*> >::iterator
+           I = InvokeToIntrinsicsMap.begin(), E = InvokeToIntrinsicsMap.end();
+         I != E; ++I) {
+      std::pair<Value*, Value*> EHIntrinsics = I->second;
+      CallInst *Exn = cast<CallInst>(EHIntrinsics.first);
+      CallInst *Sel = cast<CallInst>(EHIntrinsics.second);
+      BasicBlock *Parent = Exn->getParent();
+
+      std::pair<Value*,Value*> ExnSelSlots = FnToLPadSlotMap[Parent->getParent()];
+
+      IRBuilder<> Builder(Context);
+      Builder.SetInsertPoint(Parent, Exn);
+      LoadInst *LPExn = Builder.CreateLoad(ExnSelSlots.first, "exn.load");
+      LoadInst *LPSel = Builder.CreateLoad(ExnSelSlots.second, "sel.load");
+
+      Exn->replaceAllUsesWith(LPExn);
+      Sel->replaceAllUsesWith(LPSel);
+    }
+
+    // Remove the dead instructions.
+    for (SmallPtrSet<Instruction*, 32>::iterator
+           I = DeadInsts.begin(), E = DeadInsts.end(); I != E; ++I) {
+      Instruction *Inst = *I;
+      Inst->eraseFromParent();
+    }
+
+    // Replace calls to "llvm.eh.resume" with the 'resume' instruction. Load the
+    // exception and selector values from the stored place.
+    Function *EHResume = M->getFunction("llvm.eh.resume");
+    if (!EHResume) return;
+
+    while (!EHResume->use_empty()) {
+      CallInst *Resume = cast<CallInst>(EHResume->use_back());
+      BasicBlock *BB = Resume->getParent();
+
+      IRBuilder<> Builder(Context);
+      Builder.SetInsertPoint(BB, Resume);
+
+      Value *LPadVal =
+        Builder.CreateInsertValue(UndefValue::get(LPadSlotTy),
+                                  Resume->getArgOperand(0), 0, "lpad.val");
+      LPadVal = Builder.CreateInsertValue(LPadVal, Resume->getArgOperand(1),
+                                          1, "lpad.val");
+      Builder.CreateResume(LPadVal);
+
+      // Remove all instructions after the 'resume.'
+      BasicBlock::iterator I = Resume;
+      while (I != BB->end()) {
+        Instruction *Inst = &*I++;
+        Inst->eraseFromParent();
+      }
+    }
+  }
+
+
+  /// This function strips all debug info intrinsics, except for llvm.dbg.declare.
+  /// If an llvm.dbg.declare intrinsic is invalid, then this function simply
+  /// strips that use.
+  void CheckDebugInfoIntrinsics(Module *M) {
+    if (Function *FuncStart = M->getFunction("llvm.dbg.func.start")) {
+      while (!FuncStart->use_empty())
+        cast<CallInst>(FuncStart->use_back())->eraseFromParent();
+      FuncStart->eraseFromParent();
+    }
+
+    if (Function *StopPoint = M->getFunction("llvm.dbg.stoppoint")) {
+      while (!StopPoint->use_empty())
+        cast<CallInst>(StopPoint->use_back())->eraseFromParent();
+      StopPoint->eraseFromParent();
+    }
+
+    if (Function *RegionStart = M->getFunction("llvm.dbg.region.start")) {
+      while (!RegionStart->use_empty())
+        cast<CallInst>(RegionStart->use_back())->eraseFromParent();
+      RegionStart->eraseFromParent();
+    }
+
+    if (Function *RegionEnd = M->getFunction("llvm.dbg.region.end")) {
+      while (!RegionEnd->use_empty())
+        cast<CallInst>(RegionEnd->use_back())->eraseFromParent();
+      RegionEnd->eraseFromParent();
+    }
+
+    if (Function *Declare = M->getFunction("llvm.dbg.declare")) {
+      if (!Declare->use_empty()) {
+        DbgDeclareInst *DDI = cast<DbgDeclareInst>(Declare->use_back());
+        if (!isa<MDNode>(DDI->getArgOperand(0)) ||
+            !isa<MDNode>(DDI->getArgOperand(1))) {
+          while (!Declare->use_empty()) {
+            CallInst *CI = cast<CallInst>(Declare->use_back());
+            CI->eraseFromParent();
+          }
+          Declare->eraseFromParent();
+        }
+      }
+    }
+  }
+} // end anonymous namespace
 
 void BitcodeReader::FreeState() {
   if (BufferOwned)
@@ -394,7 +696,7 @@ Type *BitcodeReader::getTypeByID(unsigned ID) {
   // The type table size is always specified correctly.
   if (ID >= TypeList.size())
     return 0;
-  
+
   if (Type *Ty = TypeList[ID])
     return Ty;
 
@@ -407,7 +709,7 @@ Type *BitcodeReader::getTypeByID(unsigned ID) {
 Type *BitcodeReader::getTypeByIDOrNull(unsigned ID) {
   if (ID >= TypeList.size())
     TypeList.resize(ID+1);
-  
+
   return TypeList[ID];
 }
 
@@ -521,7 +823,7 @@ bool BitcodeReader::ParseAttributeBlock() {
 bool BitcodeReader::ParseTypeTable() {
   if (Stream.EnterSubBlock(bitc::TYPE_BLOCK_ID_NEW))
     return Error("Malformed block record");
-  
+
   return ParseTypeTableBody();
 }
 
@@ -533,7 +835,7 @@ bool BitcodeReader::ParseTypeTableBody() {
   unsigned NumRecords = 0;
 
   SmallString<64> TypeName;
-  
+
   // Read all the records for this type table.
   while (1) {
     unsigned Code = Stream.ReadCode();
@@ -627,7 +929,7 @@ bool BitcodeReader::ParseTypeTableBody() {
         else
           break;
       }
-      
+
       ResultTy = getTypeByID(Record[2]);
       if (ResultTy == 0 || ArgTys.size() < Record.size()-3)
         return Error("invalid type in function type");
@@ -646,7 +948,7 @@ bool BitcodeReader::ParseTypeTableBody() {
         else
           break;
       }
-      
+
       ResultTy = getTypeByID(Record[1]);
       if (ResultTy == 0 || ArgTys.size() < Record.size()-2)
         return Error("invalid type in function type");
@@ -677,10 +979,10 @@ bool BitcodeReader::ParseTypeTableBody() {
     case bitc::TYPE_CODE_STRUCT_NAMED: { // STRUCT: [ispacked, eltty x N]
       if (Record.size() < 1)
         return Error("Invalid STRUCT type record");
-      
+
       if (NumRecords >= TypeList.size())
         return Error("invalid TYPE table");
-      
+
       // Check to see if this was forward referenced, if so fill in the temp.
       StructType *Res = cast_or_null<StructType>(TypeList[NumRecords]);
       if (Res) {
@@ -689,7 +991,7 @@ bool BitcodeReader::ParseTypeTableBody() {
       } else  // Otherwise, create a new struct.
         Res = StructType::create(Context, TypeName);
       TypeName.clear();
-      
+
       SmallVector<Type*, 8> EltTys;
       for (unsigned i = 1, e = Record.size(); i != e; ++i) {
         if (Type *T = getTypeByID(Record[i]))
@@ -709,7 +1011,7 @@ bool BitcodeReader::ParseTypeTableBody() {
 
       if (NumRecords >= TypeList.size())
         return Error("invalid TYPE table");
-      
+
       // Check to see if this was forward referenced, if so fill in the temp.
       StructType *Res = cast_or_null<StructType>(TypeList[NumRecords]);
       if (Res) {
@@ -720,7 +1022,7 @@ bool BitcodeReader::ParseTypeTableBody() {
       TypeName.clear();
       ResultTy = Res;
       break;
-    }        
+    }
     case bitc::TYPE_CODE_ARRAY:     // ARRAY: [numelts, eltty]
       if (Record.size() < 2)
         return Error("Invalid ARRAY type record");
@@ -749,48 +1051,48 @@ bool BitcodeReader::ParseTypeTableBody() {
 
 // FIXME: Remove in LLVM 3.1
 bool BitcodeReader::ParseOldTypeTable() {
-  if (Stream.EnterSubBlock(bitc::TYPE_BLOCK_ID_OLD))
+  if (Stream.EnterSubBlock(TYPE_BLOCK_ID_OLD_3_0))
     return Error("Malformed block record");
 
   if (!TypeList.empty())
     return Error("Multiple TYPE_BLOCKs found!");
-  
-  
+
+
   // While horrible, we have no good ordering of types in the bc file.  Just
   // iteratively parse types out of the bc file in multiple passes until we get
   // them all.  Do this by saving a cursor for the start of the type block.
   BitstreamCursor StartOfTypeBlockCursor(Stream);
-  
+
   unsigned NumTypesRead = 0;
-  
+
   SmallVector<uint64_t, 64> Record;
 RestartScan:
   unsigned NextTypeID = 0;
   bool ReadAnyTypes = false;
-  
+
   // Read all the records for this type table.
   while (1) {
     unsigned Code = Stream.ReadCode();
     if (Code == bitc::END_BLOCK) {
       if (NextTypeID != TypeList.size())
         return Error("Invalid type forward reference in TYPE_BLOCK_ID_OLD");
-      
+
       // If we haven't read all of the types yet, iterate again.
       if (NumTypesRead != TypeList.size()) {
         // If we didn't successfully read any types in this pass, then we must
         // have an unhandled forward reference.
         if (!ReadAnyTypes)
           return Error("Obsolete bitcode contains unhandled recursive type");
-        
+
         Stream = StartOfTypeBlockCursor;
         goto RestartScan;
       }
-      
+
       if (Stream.ReadBlockEnd())
         return Error("Error at end of type table block");
       return false;
     }
-    
+
     if (Code == bitc::ENTER_SUBBLOCK) {
       // No known subblocks, always skip them.
       Stream.ReadSubBlockID();
@@ -798,12 +1100,12 @@ RestartScan:
         return Error("Malformed block record");
       continue;
     }
-    
+
     if (Code == bitc::DEFINE_ABBREV) {
       Stream.ReadAbbrevRecord();
       continue;
     }
-    
+
     // Read a record.
     Record.clear();
     Type *ResultTy = 0;
@@ -852,7 +1154,7 @@ RestartScan:
       if (NextTypeID < TypeList.size() && TypeList[NextTypeID] == 0)
         ResultTy = StructType::create(Context);
       break;
-    case bitc::TYPE_CODE_STRUCT_OLD: {// STRUCT_OLD
+    case TYPE_CODE_STRUCT_OLD_3_0: {// STRUCT_OLD
       if (NextTypeID >= TypeList.size()) break;
       // If we already read it, don't reprocess.
       if (TypeList[NextTypeID] &&
@@ -873,7 +1175,7 @@ RestartScan:
 
       if (EltTys.size() != Record.size()-1)
         break;      // Not all elements are ready.
-      
+
       cast<StructType>(TypeList[NextTypeID])->setBody(EltTys, Record[0]);
       ResultTy = TypeList[NextTypeID];
       TypeList[NextTypeID] = 0;
@@ -938,24 +1240,24 @@ RestartScan:
         ResultTy = VectorType::get(ResultTy, Record[0]);
       break;
     }
-    
+
     if (NextTypeID >= TypeList.size())
       return Error("invalid TYPE table");
-    
+
     if (ResultTy && TypeList[NextTypeID] == 0) {
       ++NumTypesRead;
       ReadAnyTypes = true;
-      
+
       TypeList[NextTypeID] = ResultTy;
     }
-    
+
     ++NextTypeID;
   }
 }
 
 
 bool BitcodeReader::ParseOldTypeSymbolTable() {
-  if (Stream.EnterSubBlock(bitc::TYPE_SYMTAB_BLOCK_ID_OLD))
+  if (Stream.EnterSubBlock(TYPE_SYMTAB_BLOCK_ID_OLD_3_0))
     return Error("Malformed block record");
 
   SmallVector<uint64_t, 64> Record;
@@ -1171,7 +1473,7 @@ bool BitcodeReader::ParseMetadata() {
       unsigned Kind = Record[0];
       for (unsigned i = 1; i != RecordLength; ++i)
         Name[i-1] = Record[i];
-      
+
       unsigned NewKind = TheModule->getMDKindID(Name.str());
       if (!MDKindMap.insert(std::make_pair(Kind, NewKind)).second)
         return Error("Conflicting METADATA_KIND records");
@@ -1526,7 +1828,7 @@ bool BitcodeReader::ParseConstants() {
       Function *Fn =
         dyn_cast_or_null<Function>(ValueList.getConstantFwdRef(Record[1],FnTy));
       if (Fn == 0) return Error("Invalid CE_BLOCKADDRESS record");
-      
+
       GlobalVariable *FwdRef = new GlobalVariable(*Fn->getParent(),
                                                   Type::getInt8Ty(Context),
                                             false, GlobalValue::InternalLinkage,
@@ -1534,7 +1836,7 @@ bool BitcodeReader::ParseConstants() {
       BlockAddrFwdRefs[Fn].push_back(std::make_pair(Record[2], FwdRef));
       V = FwdRef;
       break;
-    }  
+    }
     }
 
     ValueList.AssignValue(V, NextCstNo);
@@ -1636,11 +1938,11 @@ bool BitcodeReader::ParseModule() {
         if (ParseTypeTable())
           return true;
         break;
-      case bitc::TYPE_BLOCK_ID_OLD:
+      case TYPE_BLOCK_ID_OLD_3_0:
         if (ParseOldTypeTable())
           return true;
         break;
-      case bitc::TYPE_SYMTAB_BLOCK_ID_OLD:
+      case TYPE_SYMTAB_BLOCK_ID_OLD_3_0:
         if (ParseOldTypeSymbolTable())
           return true;
         break;
@@ -2099,7 +2401,7 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
   unsigned CurBBNo = 0;
 
   DebugLoc LastLoc;
-  
+
   // Read all the records.
   SmallVector<uint64_t, 64> Record;
   while (1) {
@@ -2154,24 +2456,24 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
         FunctionBBs[i] = BasicBlock::Create(Context, "", F);
       CurBB = FunctionBBs[0];
       continue;
-        
+
     case bitc::FUNC_CODE_DEBUG_LOC_AGAIN:  // DEBUG_LOC_AGAIN
       // This record indicates that the last instruction is at the same
       // location as the previous instruction with a location.
       I = 0;
-        
+
       // Get the last instruction emitted.
       if (CurBB && !CurBB->empty())
         I = &CurBB->back();
       else if (CurBBNo && FunctionBBs[CurBBNo-1] &&
                !FunctionBBs[CurBBNo-1]->empty())
         I = &FunctionBBs[CurBBNo-1]->back();
-        
+
       if (I == 0) return Error("Invalid DEBUG_LOC_AGAIN record");
       I->setDebugLoc(LastLoc);
       I = 0;
       continue;
-        
+
     case bitc::FUNC_CODE_DEBUG_LOC: {      // DEBUG_LOC: [line, col, scope, ia]
       I = 0;     // Get the last instruction emitted.
       if (CurBB && !CurBB->empty())
@@ -2181,10 +2483,10 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
         I = &FunctionBBs[CurBBNo-1]->back();
       if (I == 0 || Record.size() < 4)
         return Error("Invalid FUNC_CODE_DEBUG_LOC record");
-      
+
       unsigned Line = Record[0], Col = Record[1];
       unsigned ScopeID = Record[2], IAID = Record[3];
-      
+
       MDNode *Scope = 0, *IA = 0;
       if (ScopeID) Scope = cast<MDNode>(MDValueList.getValueFwdRef(ScopeID-1));
       if (IAID)    IA = cast<MDNode>(MDValueList.getValueFwdRef(IAID-1));
@@ -2495,7 +2797,7 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
       I = IBI;
       break;
     }
-        
+
     case bitc::FUNC_CODE_INST_INVOKE: {
       // INVOKE: [attrs, cc, normBB, unwindBB, fnty, op0,op1,op2, ...]
       if (Record.size() < 4) return Error("Invalid INVOKE record");
@@ -2650,7 +2952,7 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
       if (getValueTypePair(Record, OpNum, NextValueNo, Op) ||
           OpNum+4 != Record.size())
         return Error("Invalid LOADATOMIC record");
-        
+
 
       AtomicOrdering Ordering = GetDecodedOrdering(Record[OpNum+2]);
       if (Ordering == NotAtomic || Ordering == Release ||
@@ -2865,15 +3167,15 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
       unsigned BlockIdx = RefList[i].first;
       if (BlockIdx >= FunctionBBs.size())
         return Error("Invalid blockaddress block #");
-    
+
       GlobalVariable *FwdRef = RefList[i].second;
       FwdRef->replaceAllUsesWith(BlockAddress::get(F, FunctionBBs[BlockIdx]));
       FwdRef->eraseFromParent();
     }
-    
+
     BlockAddrFwdRefs.erase(BAFRI);
   }
-  
+
   // Trim the value list down to the size it was before we parsed this function.
   ValueList.shrinkTo(ModuleValueListSize);
   MDValueList.shrinkTo(ModuleMDValueListSize);
@@ -2991,9 +3293,9 @@ bool BitcodeReader::MaterializeModule(Module *M, std::string *ErrInfo) {
 
 /// getLazyBitcodeModule - lazy function-at-a-time loading from a file.
 ///
-Module *llvm::getLazyBitcodeModule(MemoryBuffer *Buffer,
-                                   LLVMContext& Context,
-                                   std::string *ErrMsg) {
+Module *llvm_3_0::getLazyBitcodeModule(MemoryBuffer *Buffer,
+                                       LLVMContext& Context,
+                                       std::string *ErrMsg) {
   Module *M = new Module(Buffer->getBufferIdentifier(), Context);
   BitcodeReader *R = new BitcodeReader(Buffer, Context);
   M->setMaterializer(R);
@@ -3011,9 +3313,9 @@ Module *llvm::getLazyBitcodeModule(MemoryBuffer *Buffer,
 
 /// ParseBitcodeFile - Read the specified bitcode file, returning the module.
 /// If an error occurs, return null and fill in *ErrMsg if non-null.
-Module *llvm::ParseBitcodeFile(MemoryBuffer *Buffer, LLVMContext& Context,
-                               std::string *ErrMsg){
-  Module *M = getLazyBitcodeModule(Buffer, Context, ErrMsg);
+Module *llvm_3_0::ParseBitcodeFile(MemoryBuffer *Buffer, LLVMContext& Context,
+                                   std::string *ErrMsg){
+  Module *M = llvm_3_0::getLazyBitcodeModule(Buffer, Context, ErrMsg);
   if (!M) return 0;
 
   // Don't let the BitcodeReader dtor delete 'Buffer', regardless of whether
@@ -3029,9 +3331,9 @@ Module *llvm::ParseBitcodeFile(MemoryBuffer *Buffer, LLVMContext& Context,
   return M;
 }
 
-std::string llvm::getBitcodeTargetTriple(MemoryBuffer *Buffer,
-                                         LLVMContext& Context,
-                                         std::string *ErrMsg) {
+std::string llvm_3_0::getBitcodeTargetTriple(MemoryBuffer *Buffer,
+                                             LLVMContext& Context,
+                                             std::string *ErrMsg) {
   BitcodeReader *R = new BitcodeReader(Buffer, Context);
   // Don't let the BitcodeReader dtor delete 'Buffer'.
   R->setBufferOwned(false);
