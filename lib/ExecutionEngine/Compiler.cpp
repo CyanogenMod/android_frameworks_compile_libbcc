@@ -200,22 +200,6 @@ void Compiler::GlobalInitialization() {
   // -O3: llvm::CodeGenOpt::Aggressive
   CodeGenOptLevel = llvm::CodeGenOpt::Aggressive;
 
-  // Below are the global settings to LLVM
-
-  // Disable frame pointer elimination optimization
-  llvm::NoFramePointerElim = false;
-
-  // Use hardfloat ABI
-  //
-  // TODO(all): Need to detect the CPU capability and decide whether to use
-  // softfp. To use softfp, change following 2 lines to
-  //
-  // llvm::FloatABIType = llvm::FloatABI::Soft;
-  // llvm::UseSoftFloat = true;
-  //
-  llvm::FloatABIType = llvm::FloatABI::Soft;
-  llvm::UseSoftFloat = false;
-
   // Register the scheduler
   llvm::RegisterScheduler::setDefault(llvm::createDefaultScheduler);
 
@@ -316,10 +300,15 @@ int Compiler::compile(bool compileOnly) {
   llvm::NamedMDNode const *ExportFuncMetadata;
   llvm::NamedMDNode const *ObjectSlotMetadata;
 
+  llvm::TargetOptions Options;
+
+  llvm::CodeModel::Model CM;
+  llvm::Reloc::Model RM;
+
   if (mModule == NULL)  // No module was loaded
     return 0;
 
-  // Create TargetMachine
+  // Find LLVM Target
   Target = llvm::TargetRegistry::lookupTarget(Triple, mError);
   if (hasError())
     goto on_bcc_compile_error;
@@ -335,18 +324,34 @@ int Compiler::compile(bool compileOnly) {
     FeaturesStr = F.getString();
   }
 
+  // Setup LLVM Target Machine Options
+  // Disable frame pointer elimination optimization
+  Options.NoFramePointerElim = false;
+
+  // Use hardfloat ABI
+  //
+  // TODO(all): Need to detect the CPU capability and decide whether to use
+  // softfp. To use softfp, change following 2 lines to
+  //
+  // options.FloatABIType = llvm::FloatABI::Soft;
+  // options.UseSoftFloat = true;
+  Options.FloatABIType = llvm::FloatABI::Soft;
+  Options.UseSoftFloat = false;
+
 #if defined(DEFAULT_X86_64_CODEGEN)
   // Data address in X86_64 architecture may reside in a far-away place
-  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
-                                   llvm::Reloc::Static,
-                                   llvm::CodeModel::Medium);
+  CM = llvm::CodeModel::Medium;
 #else
   // This is set for the linker (specify how large of the virtual addresses
   // we can access for all unknown symbols.)
-  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
-                                   llvm::Reloc::Static,
-                                   llvm::CodeModel::Small);
+  CM = llvm::CodeModel::Small;
 #endif
+
+  RM = llvm::Reloc::Static;
+
+  // Create LLVM Target Machine
+  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr, Options, RM, CM);
+
   if (TM == NULL) {
     setError("Failed to create target machine implementation for the"
              " specified triple '" + Triple + "'");
