@@ -40,6 +40,55 @@ using namespace llvm_2_7;
 #define FUNC_CODE_INST_GETRESULT_2_7  25
 #define FUNC_CODE_DEBUG_LOC_2_7       32
 
+#define TYPE_BLOCK_ID_OLD_3_0         10
+#define TYPE_SYMTAB_BLOCK_ID_OLD_3_0  13
+#define TYPE_CODE_STRUCT_OLD_3_0      10
+
+namespace {
+  /// This function strips all debug info intrinsics, except for llvm.dbg.declare.
+  /// If an llvm.dbg.declare intrinsic is invalid, then this function simply
+  /// strips that use.
+  void CheckDebugInfoIntrinsics(Module *M) {
+    if (Function *FuncStart = M->getFunction("llvm.dbg.func.start")) {
+      while (!FuncStart->use_empty())
+        cast<CallInst>(FuncStart->use_back())->eraseFromParent();
+      FuncStart->eraseFromParent();
+    }
+    
+    if (Function *StopPoint = M->getFunction("llvm.dbg.stoppoint")) {
+      while (!StopPoint->use_empty())
+        cast<CallInst>(StopPoint->use_back())->eraseFromParent();
+      StopPoint->eraseFromParent();
+    }
+  
+    if (Function *RegionStart = M->getFunction("llvm.dbg.region.start")) {
+      while (!RegionStart->use_empty())
+        cast<CallInst>(RegionStart->use_back())->eraseFromParent();
+      RegionStart->eraseFromParent();
+    }
+  
+    if (Function *RegionEnd = M->getFunction("llvm.dbg.region.end")) {
+      while (!RegionEnd->use_empty())
+        cast<CallInst>(RegionEnd->use_back())->eraseFromParent();
+      RegionEnd->eraseFromParent();
+    }
+    
+    if (Function *Declare = M->getFunction("llvm.dbg.declare")) {
+      if (!Declare->use_empty()) {
+        DbgDeclareInst *DDI = cast<DbgDeclareInst>(Declare->use_back());
+        if (!isa<MDNode>(DDI->getArgOperand(0)) ||
+            !isa<MDNode>(DDI->getArgOperand(1))) {
+          while (!Declare->use_empty()) {
+            CallInst *CI = cast<CallInst>(Declare->use_back());
+            CI->eraseFromParent();
+          }
+          Declare->eraseFromParent();
+        }
+      }
+    }
+  }
+} // end anonymous namespace
+
 void BitcodeReader::FreeState() {
   if (BufferOwned)
     delete Buffer;
@@ -705,7 +754,7 @@ bool BitcodeReader::ParseTypeTableBody() {
 
 // FIXME: Remove in LLVM 3.1
 bool BitcodeReader::ParseOldTypeTable() {
-  if (Stream.EnterSubBlock(bitc::TYPE_BLOCK_ID_OLD))
+  if (Stream.EnterSubBlock(TYPE_BLOCK_ID_OLD_3_0))
     return Error("Malformed block record");
 
   if (!TypeList.empty())
@@ -808,7 +857,7 @@ RestartScan:
       if (NextTypeID < TypeList.size() && TypeList[NextTypeID] == 0)
         ResultTy = StructType::create(Context, "");
       break;
-    case bitc::TYPE_CODE_STRUCT_OLD: {// STRUCT_OLD
+    case TYPE_CODE_STRUCT_OLD_3_0: {// STRUCT_OLD
       if (NextTypeID >= TypeList.size()) break;
       // If we already read it, don't reprocess.
       if (TypeList[NextTypeID] &&
@@ -894,7 +943,7 @@ RestartScan:
 
 
 bool BitcodeReader::ParseOldTypeSymbolTable() {
-  if (Stream.EnterSubBlock(bitc::TYPE_SYMTAB_BLOCK_ID_OLD))
+  if (Stream.EnterSubBlock(TYPE_SYMTAB_BLOCK_ID_OLD_3_0))
     return Error("Malformed block record");
 
   SmallVector<uint64_t, 64> Record;
@@ -1592,11 +1641,11 @@ bool BitcodeReader::ParseModule() {
         if (ParseTypeTable())
           return true;
         break;
-      case bitc::TYPE_BLOCK_ID_OLD:
+      case TYPE_BLOCK_ID_OLD_3_0:
         if (ParseOldTypeTable())
           return true;
         break;
-      case bitc::TYPE_SYMTAB_BLOCK_ID_OLD:
+      case TYPE_SYMTAB_BLOCK_ID_OLD_3_0:
         if (ParseOldTypeSymbolTable())
           return true;
         break;
