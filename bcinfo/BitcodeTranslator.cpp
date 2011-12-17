@@ -17,6 +17,7 @@
 #include "bcinfo/BitcodeTranslator.h"
 
 #include "BitReader_2_7/BitReader_2_7.h"
+#include "BitReader_3_0/BitReader_3_0.h"
 
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
@@ -36,10 +37,17 @@ namespace bcinfo {
  * Define minimum and maximum target API versions. These correspond to the
  * same API levels used by the standard Android SDK.
  *
- * 11 - Honeycomb
- * 12 - Honeycomb MR1
- * 13 - Honeycomb MR2
- * 14 - Ice Cream Sandwich
+ * LLVM 2.7
+ *  11 - Honeycomb
+ *  12 - Honeycomb MR1
+ *  13 - Honeycomb MR2
+ *
+ * LLVM 3.0
+ *  14 - Ice Cream Sandwich
+ *  15 - Ice Cream Sandwich MR1
+ *
+ * LLVM 3.1
+ *  16 - Ice Cream Sandwich MR2
  */
 static const unsigned int kMinimumAPIVersion = 11;
 static const unsigned int kMaximumAPIVersion = BCINFO_API_VERSION;
@@ -49,7 +57,9 @@ static const unsigned int kCurrentAPIVersion = 10000;
  * The minimum version which does not require translation (i.e. is already
  * compatible with LLVM's default bitcode reader).
  */
-static const unsigned int kMinimumUntranslatedVersion = 14;
+static const unsigned int kMinimumUntranslatedVersion = 16;
+static const unsigned int kMinimumCompatibleVersion_LLVM_3_0 = 14;
+static const unsigned int kMinimumCompatibleVersion_LLVM_2_7 = 11;
 
 
 BitcodeTranslator::BitcodeTranslator(const char *bitcode, size_t bitcodeSize,
@@ -102,8 +112,17 @@ bool BitcodeTranslator::translate() {
   std::string error;
 
   // Module ownership is handled by the context, so we don't need to free it.
-  llvm::Module *module =
-      llvm_2_7::ParseBitcodeFile(MEM.get(), *mContext, &error);
+  llvm::Module *module = NULL;
+
+  if (mVersion >= kMinimumCompatibleVersion_LLVM_3_0) {
+    module = llvm_3_0::ParseBitcodeFile(MEM.get(), *mContext, &error);
+  } else if (mVersion >= kMinimumCompatibleVersion_LLVM_2_7) {
+    module = llvm_2_7::ParseBitcodeFile(MEM.get(), *mContext, &error);
+  } else {
+    LOGE("No compatible bitcode reader for API version %d", mVersion);
+    return false;
+  }
+
   if (!module) {
     LOGE("Could not parse bitcode file");
     LOGE("%s", error.c_str());
