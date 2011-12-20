@@ -149,7 +149,7 @@ extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
   void *addr = unwrap(script)->lookup(funcname);
 
 #if DEBUG_BCC_REFLECT
-  LOGD("Function Address: %s --> %p\n", funcname, addr);
+  ALOGD("Function Address: %s --> %p\n", funcname, addr);
 #endif
 
   return addr;
@@ -166,14 +166,14 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
 
 #if DEBUG_BCC_REFLECT
     size_t count = unwrap(script)->getExportVarCount();
-    LOGD("ExportVarCount = %lu\n", (unsigned long)count);
+    ALOGD("ExportVarCount = %lu\n", (unsigned long)count);
 
     if (count > varListSize) {
       count = varListSize;
     }
 
     for (size_t i = 0; i < count; ++i) {
-      LOGD("ExportVarList[%lu] = %p\n", (unsigned long)i, varList[i]);
+      ALOGD("ExportVarList[%lu] = %p\n", (unsigned long)i, varList[i]);
     }
 #endif
   }
@@ -190,14 +190,14 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
 
 #if DEBUG_BCC_REFLECT
     size_t count = unwrap(script)->getExportFuncCount();
-    LOGD("ExportFuncCount = %lu\n", (unsigned long)count);
+    ALOGD("ExportFuncCount = %lu\n", (unsigned long)count);
 
     if (count > funcListSize) {
       count = funcListSize;
     }
 
     for (size_t i = 0; i < count; ++i) {
-      LOGD("ExportFuncList[%lu] = %p\n", (unsigned long)i, funcList[i]);
+      ALOGD("ExportFuncList[%lu] = %p\n", (unsigned long)i, funcList[i]);
     }
 #endif
   }

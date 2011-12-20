@@ -28,14 +28,14 @@
 
 #undef ALOGV
 #undef LOGI
-#undef LOGD
+#undef ALOGD
 #undef LOGW
 #undef LOGE
 #undef LOGA
 
 #define ALOGV(...)
 #define LOGI(...)
-#define LOGD(...)
+#define ALOGD(...)
 #define LOGW(...)
 #define LOGE(...)
 #define LOGA(...)
@@ -57,11 +57,11 @@ namespace bcc {
 
   public:
     FuncLogger(char const *name) : mFuncName(name) {
-      LOGD("---> BEGIN: libbcc [ %s ]\n", name);
+      ALOGD("---> BEGIN: libbcc [ %s ]\n", name);
     }
 
     ~FuncLogger() {
-      LOGD("---> END: libbcc [ %s ]\n", mFuncName);
+      ALOGD("---> END: libbcc [ %s ]\n", mFuncName);
     }
   };
 } // namespace bcc

@@ -352,7 +352,7 @@ bool MCCacheReader::readVarNameList() {
     mpResult->mpExportVars->cached_addr_list[i] =
       rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_var_name_list_raw->strp_indexs[i]]);
 #if DEBUG_MCJIT_REFLECT
-    LOGD("Get symbol address: %s -> %p",
+    ALOGD("Get symbol address: %s -> %p",
       strPool[export_var_name_list_raw->strp_indexs[i]], mpResult->mpExportVars->cached_addr_list[i]);
 #endif
   }
@@ -376,7 +376,7 @@ bool MCCacheReader::readFuncNameList() {
     mpResult->mpExportFuncs->cached_addr_list[i] =
       rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_func_name_list_raw->strp_indexs[i]]);
 #if DEBUG_MCJIT_REFLECT
-    LOGD("Get function address: %s -> %p",
+    ALOGD("Get function address: %s -> %p",
       strPool[export_func_name_list_raw->strp_indexs[i]], mpResult->mpExportFuncs->cached_addr_list[i]);
 #endif
   }
@@ -434,7 +434,7 @@ bool MCCacheReader::readObjFile() {
     LOGE("Read file Error");
     return false;
   }
-  LOGD("Read object file size %d", (int)mEmittedELFExecutable.size());
+  ALOGD("Read object file size %d", (int)mEmittedELFExecutable.size());
   mpResult->mRSExecutable =
   rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
                      mEmittedELFExecutable.size(),
