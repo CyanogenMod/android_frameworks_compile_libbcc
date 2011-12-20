@@ -17,10 +17,20 @@
  * allocations.
  *
  *****************************************************************************/
+typedef enum {
+    RS_ALLOCATION_MIPMAP_NONE = 0,
+    RS_ALLOCATION_MIPMAP_FULL = 1,
+    RS_ALLOCATION_MIPMAP_ON_SYNC_TO_TEXTURE = 2
+} rs_allocation_mipmap_control;
+
 typedef struct Allocation {
-    char __pad[44];
+    char __pad[28];
     struct {
+        void * drv;
         struct {
+            const void *type;
+            uint32_t usageFlags;
+            rs_allocation_mipmap_control mipmapControl;
             uint32_t dimensionX;
             uint32_t dimensionY;
             uint32_t dimensionZ;
@@ -52,7 +62,7 @@ typedef struct Allocation {
  * accelerate functionality like rsgProgramStoreGetDepthFunc(). Without this
  * information, we would not be able to inline the bitcode, thus resulting in
  * potential runtime performance penalties for tight loops operating on
- * allocations.
+ * program store.
  *
  *****************************************************************************/
 typedef struct ProgramStore {
@@ -86,7 +96,7 @@ typedef struct ProgramStore {
  * accelerate functionality like rsgProgramRasterGetCullMode(). Without this
  * information, we would not be able to inline the bitcode, thus resulting in
  * potential runtime performance penalties for tight loops operating on
- * allocations.
+ * program raster.
  *
  *****************************************************************************/
 typedef struct ProgramRaster {
@@ -113,7 +123,7 @@ typedef struct ProgramRaster {
  * accelerate functionality like rsgProgramRasterGetMagFilter(). Without this
  * information, we would not be able to inline the bitcode, thus resulting in
  * potential runtime performance penalties for tight loops operating on
- * allocations.
+ * samplers.
  *
  *****************************************************************************/
 typedef struct Sampler {
@@ -129,6 +139,110 @@ typedef struct Sampler {
         } state;
     } mHal;
 } Sampler_t;
+
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class Element owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsElement.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsElementGetSubElementCount(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * elements.
+ *
+ *****************************************************************************/
+typedef struct Element {
+    char __pad[28];
+    struct {
+        void *drv;
+        struct {
+            rs_data_type dataType;
+            rs_data_kind dataKind;
+            uint32_t vectorSize;
+            uint32_t elementSizeBytes;
+
+            // Subelements
+            const void **fields;
+            uint32_t *fieldArraySizes;
+            const char **fieldNames;
+            uint32_t *fieldNameLengths;
+            uint32_t *fieldOffsetBytes;
+            uint32_t fieldsCount;
+        } state;
+    } mHal;
+} Element_t;
+
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class Type owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsType.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsAllocationGetElement(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * types.
+ *
+ *****************************************************************************/
+typedef struct Type {
+    char __pad[28];
+    struct {
+        void *drv;
+        struct {
+            const void * element;
+            uint32_t dimX;
+            uint32_t dimY;
+            uint32_t dimZ;
+            bool dimLOD;
+            bool faces;
+        } state;
+    } mHal;
+} Type_t;
+
+/*****************************************************************************
+ * CAUTION
+ *
+ * The following structure layout provides a more efficient way to access
+ * internal members of the C++ class Mesh owned by librs. Unfortunately,
+ * since this class has virtual members, we can't simply use offsetof() or any
+ * other compiler trickery to dynamically get the appropriate values at
+ * build-time. This layout may need to be updated whenever
+ * frameworks/base/libs/rs/rsMesh.h is modified.
+ *
+ * Having the layout information available in this file allows us to
+ * accelerate functionality like rsMeshGetVertexAllocationCount(). Without this
+ * information, we would not be able to inline the bitcode, thus resulting in
+ * potential runtime performance penalties for tight loops operating on
+ * meshes.
+ *
+ *****************************************************************************/
+typedef struct Mesh {
+    char __pad[28];
+    struct {
+        void *drv;
+        struct {
+            void **vertexBuffers;
+            uint32_t vertexBuffersCount;
+
+            // indexBuffers[i] could be NULL, in which case only primitives[i] is used
+            void **indexBuffers;
+            uint32_t indexBuffersCount;
+            rs_primitive *primitives;
+            uint32_t primitivesCount;
+        } state;
+    } mHal;
+} Mesh_t;
 
 
 /* Declaration of 4 basic functions in libRS */
@@ -394,6 +508,17 @@ extern const void * __attribute__((overloadable))
     return &p[eSize * (x + y * dimX + z * dimX * dimY)];
 }
 
+extern rs_element __attribute__((overloadable))
+        rsAllocationGetElement(rs_allocation a) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    Type_t *type = (Type_t *)alloc->mHal.state.type;
+    rs_element returnElem = {type->mHal.state.element};
+    return returnElem;
+}
+
+/**
+* Program Store
+*/
 extern rs_depth_func __attribute__((overloadable))
         rsgProgramStoreGetDepthFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
@@ -448,6 +573,9 @@ extern bool __attribute__((overloadable))
     return prog->mHal.state.ditherEnable;
 }
 
+/**
+* Program Raster
+*/
 extern bool __attribute__((overloadable))
         rsgProgramRasterGetPointSpriteEnabled(rs_program_raster pr) {
     ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
@@ -460,6 +588,9 @@ extern rs_cull_mode __attribute__((overloadable))
     return prog->mHal.state.cull;
 }
 
+/**
+* Sampler
+*/
 extern rs_sampler_value __attribute__((overloadable))
         rsgSamplerGetMinification(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
@@ -488,4 +619,137 @@ extern float __attribute__((overloadable))
         rsgSamplerGetAnisotropy(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
     return prog->mHal.state.aniso;
+}
+
+/**
+* Mesh
+*/
+extern uint32_t __attribute__((overloadable))
+        rsMeshGetVertexAllocationCount(rs_mesh m) {
+    Mesh_t *mesh = (Mesh_t *)m.p;
+    return mesh->mHal.state.vertexBuffersCount;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsMeshGetPrimitiveCount(rs_mesh m) {
+    Mesh_t *mesh = (Mesh_t *)m.p;
+    return mesh->mHal.state.primitivesCount;
+}
+
+extern rs_allocation __attribute__((overloadable))
+        rsMeshGetVertexAllocation(rs_mesh m, uint32_t index) {
+    Mesh_t *mesh = (Mesh_t *)m.p;
+    if (index >= mesh->mHal.state.vertexBuffersCount) {
+        rs_allocation nullAlloc = {0};
+        return nullAlloc;
+    }
+    rs_allocation returnAlloc = {mesh->mHal.state.vertexBuffers[index]};
+    return returnAlloc;
+}
+
+extern rs_allocation __attribute__((overloadable))
+        rsMeshGetIndexAllocation(rs_mesh m, uint32_t index) {
+    Mesh_t *mesh = (Mesh_t *)m.p;
+    if (index >= mesh->mHal.state.primitivesCount) {
+        rs_allocation nullAlloc = {0};
+        return nullAlloc;
+    }
+    rs_allocation returnAlloc = {mesh->mHal.state.indexBuffers[index]};
+    return returnAlloc;
+}
+
+extern rs_primitive __attribute__((overloadable))
+        rsMeshGetPrimitive(rs_mesh m, uint32_t index) {
+    Mesh_t *mesh = (Mesh_t *)m.p;
+    if (index >= mesh->mHal.state.primitivesCount) {
+        return RS_PRIMITIVE_POINT;
+    }
+    return mesh->mHal.state.primitives[index];
+}
+
+/**
+* Element
+*/
+extern uint32_t __attribute__((overloadable))
+        rsElementGetSubElementCount(rs_element e) {
+    Element_t *element = (Element_t *)e.p;
+    return element->mHal.state.fieldsCount;
+}
+
+extern rs_element __attribute__((overloadable))
+        rsElementGetSubElement(rs_element e, uint32_t index) {
+    Element_t *element = (Element_t *)e.p;
+    if (index >= element->mHal.state.fieldsCount) {
+        rs_element nullElem = {0};
+        return nullElem;
+    }
+    rs_element returnElem = {element->mHal.state.fields[index]};
+    return returnElem;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsElementGetSubElementNameLength(rs_element e, uint32_t index) {
+    Element_t *element = (Element_t *)e.p;
+    if (index >= element->mHal.state.fieldsCount) {
+        return 0;
+    }
+    return element->mHal.state.fieldNameLengths[index];
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsElementGetSubElementName(rs_element e, uint32_t index, char *name, uint32_t nameLength) {
+    Element_t *element = (Element_t *)e.p;
+    if (index >= element->mHal.state.fieldsCount ||
+        nameLength == 0 || name == 0) {
+        return 0;
+    }
+
+    uint32_t numToCopy = element->mHal.state.fieldNameLengths[index];
+    if (nameLength < numToCopy) {
+        numToCopy = nameLength;
+    }
+    // Place the null terminator manually, in case of partial string
+    numToCopy --;
+    name[numToCopy] = '\0';
+    const char *nameSource = element->mHal.state.fieldNames[index];
+    for (uint32_t i = 0; i < numToCopy; i ++) {
+        name[i] = nameSource[i];
+    }
+    return numToCopy;
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsElementGetSubElementArraySize(rs_element e, uint32_t index) {
+    Element_t *element = (Element_t *)e.p;
+    if (index >= element->mHal.state.fieldsCount) {
+        return 0;
+    }
+    return element->mHal.state.fieldArraySizes[index];
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsElementGetSubElementOffsetBytes(rs_element e, uint32_t index) {
+    Element_t *element = (Element_t *)e.p;
+    if (index >= element->mHal.state.fieldsCount) {
+        return 0;
+    }
+    return element->mHal.state.fieldOffsetBytes[index];
+}
+
+extern uint32_t __attribute__((overloadable))
+        rsElementGetSizeBytes(rs_element e) {
+    Element_t *element = (Element_t *)e.p;
+    return element->mHal.state.elementSizeBytes;
+}
+
+extern rs_data_type __attribute__((overloadable))
+        rsElementGetDataType(rs_element e) {
+    Element_t *element = (Element_t *)e.p;
+    return element->mHal.state.dataType;
+}
+
+extern rs_data_kind __attribute__((overloadable))
+        rsElementGetDataKind(rs_element e) {
+    Element_t *element = (Element_t *)e.p;
+    return element->mHal.state.dataKind;
 }
