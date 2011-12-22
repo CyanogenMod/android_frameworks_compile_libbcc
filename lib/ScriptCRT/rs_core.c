@@ -753,3 +753,9 @@ extern rs_data_kind __attribute__((overloadable))
     Element_t *element = (Element_t *)e.p;
     return element->mHal.state.dataKind;
 }
+
+extern uint32_t __attribute__((overloadable))
+        rsElementGetVectorSize(rs_element e) {
+    Element_t *element = (Element_t *)e.p;
+    return element->mHal.state.vectorSize;
+}
