@@ -416,7 +416,7 @@ int Compiler::compile(bool compileOnly) {
                                      ExportVarName.str().c_str()));
           varNameList.push_back(ExportVarName.str());
 #if DEBUG_MCJIT_REFLECT
-          LOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
+          ALOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
                varList.back());
 #endif
           continue;
@@ -444,7 +444,7 @@ int Compiler::compile(bool compileOnly) {
                                      ExportFuncName.str().c_str()));
           funcNameList.push_back(ExportFuncName.str());
 #if DEBUG_MCJIT_RELECT
-          LOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+          ALOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
 #endif
         }
@@ -496,7 +496,7 @@ int Compiler::compile(bool compileOnly) {
                            std::string(PragmaValue.data(),
                                        PragmaValue.size())));
 #if DEBUG_BCC_REFLECT
-          LOGD("compile(): Pragma: %s -> %s\n",
+          ALOGD("compile(): Pragma: %s -> %s\n",
                pragmaList.back().first.c_str(),
                pragmaList.back().second.c_str());
 #endif
@@ -523,7 +523,7 @@ int Compiler::compile(bool compileOnly) {
           }
           objectSlotList.push_back(USlot);
 #if DEBUG_BCC_REFLECT
-          LOGD("compile(): RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
+          ALOGD("compile(): RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
 #endif
         }
       }
@@ -623,7 +623,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
             if (ExportVarName == I->first->getName()) {
               varList.push_back(I->second);
 #if DEBUG_BCC_REFLECT
-              LOGD("runCodeGen(): Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
+              ALOGD("runCodeGen(): Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
 #endif
               break;
             }
@@ -632,7 +632,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
             continue;  // found
 
 #if DEBUG_BCC_REFLECT
-          LOGD("runCodeGen(): Exported VAR: %s @ %p\n",
+          ALOGD("runCodeGen(): Exported VAR: %s @ %p\n",
                ExportVarName.str().c_str(), (void *)0);
 #endif
         }
@@ -658,7 +658,7 @@ int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
             static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
           funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
 #if DEBUG_BCC_REFLECT
-          LOGD("runCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
+          ALOGD("runCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
 #endif
         }
