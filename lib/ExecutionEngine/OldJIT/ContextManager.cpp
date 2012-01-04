@@ -62,7 +62,7 @@ char *ContextManager::allocateContext() {
                           MAP_PRIVATE | MAP_ANON, -1, 0);
 
       if (result == addr) {
-        LOGI("Allocate bcc context. addr=%p\n", result);
+        ALOGI("Allocate bcc context. addr=%p\n", result);
         mContextSlotOccupied[i] = true;
         return static_cast<char *>(result);
       }
@@ -86,7 +86,7 @@ char *ContextManager::allocateContext() {
     return NULL;
   }
 
-  LOGI("Allocate bcc context. addr=%p\n", result);
+  ALOGI("Allocate bcc context. addr=%p\n", result);
   return static_cast<char *>(result);
 }
 
@@ -120,7 +120,7 @@ char *ContextManager::allocateContext(char *addr,
     return NULL;
   }
 
-  // LOGI("addr=%x, imageFd=%d, imageOffset=%x", addr, imageFd, imageOffset);
+  // ALOGI("addr=%x, imageFd=%d, imageOffset=%x", addr, imageFd, imageOffset);
   void *result = mmap(addr, ContextSize,
                       PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_PRIVATE, imageFd, imageOffset);
@@ -136,7 +136,7 @@ char *ContextManager::allocateContext(char *addr,
     return NULL;
   }
 
-  LOGI("Allocate bcc context. addr=%p\n", addr);
+  ALOGI("Allocate bcc context. addr=%p\n", addr);
   mContextSlotOccupied[slot] = true;
   return static_cast<char *>(result);
 }
@@ -149,7 +149,7 @@ void ContextManager::deallocateContext(char *addr) {
 
   llvm::MutexGuard Locked(mContextSlotOccupiedLock);
 
-  LOGI("Deallocate bcc context. addr=%p\n", addr);
+  ALOGI("Deallocate bcc context. addr=%p\n", addr);
 
   // Unmap
   if (munmap(addr, ContextSize) < 0) {

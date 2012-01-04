@@ -154,7 +154,7 @@ bool MCCacheReader::checkHeader() {
 
   if (memcmp(mpHeader->version, OBCC_VERSION, 4) != 0) {
     mpHeader->version[4 - 1] = '\0'; // ensure c-style string terminated
-    LOGI("Cache file format version mismatch: now %s cached %s\n",
+    ALOGI("Cache file format version mismatch: now %s cached %s\n",
          OBCC_VERSION, mpHeader->version);
     return false;
   }
