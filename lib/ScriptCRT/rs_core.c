@@ -511,6 +511,10 @@ extern const void * __attribute__((overloadable))
 extern rs_element __attribute__((overloadable))
         rsAllocationGetElement(rs_allocation a) {
     Allocation_t *alloc = (Allocation_t *)a.p;
+    if (alloc == NULL) {
+        rs_element nullElem = {0};
+        return nullElem;
+    }
     Type_t *type = (Type_t *)alloc->mHal.state.type;
     rs_element returnElem = {type->mHal.state.element};
     return returnElem;
@@ -522,54 +526,81 @@ extern rs_element __attribute__((overloadable))
 extern rs_depth_func __attribute__((overloadable))
         rsgProgramStoreGetDepthFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return RS_DEPTH_FUNC_INVALID;
+    }
     return prog->mHal.state.depthFunc;
 }
 
 extern bool __attribute__((overloadable))
         rsgProgramStoreGetDepthMask(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.depthWriteEnable;
 }
 
 extern bool __attribute__((overloadable))
         rsgProgramStoreGetColorMaskR(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.colorRWriteEnable;
 }
 
 extern bool __attribute__((overloadable))
         rsgProgramStoreGetColorMaskG(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.colorGWriteEnable;
 }
 
 extern bool __attribute__((overloadable))
         rsgProgramStoreGetColorMaskB(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.colorBWriteEnable;
 }
 
 extern bool __attribute__((overloadable))
         rsgProgramStoreGetColorMaskA(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.colorAWriteEnable;
 }
 
 extern rs_blend_src_func __attribute__((overloadable))
         rsgProgramStoreGetBlendSrcFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return RS_BLEND_SRC_INVALID;
+    }
     return prog->mHal.state.blendSrc;
 }
 
 extern rs_blend_dst_func __attribute__((overloadable))
         rsgProgramStoreGetBlendDstFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return RS_BLEND_DST_INVALID;
+    }
     return prog->mHal.state.blendDst;
 }
 
 extern bool __attribute__((overloadable))
         rsgProgramStoreGetDitherEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.ditherEnable;
 }
 
@@ -579,12 +610,18 @@ extern bool __attribute__((overloadable))
 extern bool __attribute__((overloadable))
         rsgProgramRasterGetPointSpriteEnabled(rs_program_raster pr) {
     ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
+    if (prog == NULL) {
+        return false;
+    }
     return prog->mHal.state.pointSprite;
 }
 
 extern rs_cull_mode __attribute__((overloadable))
         rsgProgramRasterGetCullMode(rs_program_raster pr) {
     ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
+    if (prog == NULL) {
+        return RS_CULL_INVALID;
+    }
     return prog->mHal.state.cull;
 }
 
@@ -594,30 +631,45 @@ extern rs_cull_mode __attribute__((overloadable))
 extern rs_sampler_value __attribute__((overloadable))
         rsgSamplerGetMinification(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
+    if (prog == NULL) {
+        return RS_SAMPLER_INVALID;
+    }
     return prog->mHal.state.minFilter;
 }
 
 extern rs_sampler_value __attribute__((overloadable))
         rsgSamplerGetMagnification(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
+    if (prog == NULL) {
+        return RS_SAMPLER_INVALID;
+    }
     return prog->mHal.state.magFilter;
 }
 
 extern rs_sampler_value __attribute__((overloadable))
         rsgSamplerGetWrapS(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
+    if (prog == NULL) {
+        return RS_SAMPLER_INVALID;
+    }
     return prog->mHal.state.wrapS;
 }
 
 extern rs_sampler_value __attribute__((overloadable))
         rsgSamplerGetWrapT(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
+    if (prog == NULL) {
+        return RS_SAMPLER_INVALID;
+    }
     return prog->mHal.state.wrapT;
 }
 
 extern float __attribute__((overloadable))
         rsgSamplerGetAnisotropy(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
+    if (prog == NULL) {
+        return 0.0f;
+    }
     return prog->mHal.state.aniso;
 }
 
@@ -627,19 +679,25 @@ extern float __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsMeshGetVertexAllocationCount(rs_mesh m) {
     Mesh_t *mesh = (Mesh_t *)m.p;
+    if (mesh == NULL) {
+        return 0;
+    }
     return mesh->mHal.state.vertexBuffersCount;
 }
 
 extern uint32_t __attribute__((overloadable))
         rsMeshGetPrimitiveCount(rs_mesh m) {
     Mesh_t *mesh = (Mesh_t *)m.p;
+    if (mesh == NULL) {
+        return 0;
+    }
     return mesh->mHal.state.primitivesCount;
 }
 
 extern rs_allocation __attribute__((overloadable))
         rsMeshGetVertexAllocation(rs_mesh m, uint32_t index) {
     Mesh_t *mesh = (Mesh_t *)m.p;
-    if (index >= mesh->mHal.state.vertexBuffersCount) {
+    if (mesh == NULL || index >= mesh->mHal.state.vertexBuffersCount) {
         rs_allocation nullAlloc = {0};
         return nullAlloc;
     }
@@ -650,7 +708,7 @@ extern rs_allocation __attribute__((overloadable))
 extern rs_allocation __attribute__((overloadable))
         rsMeshGetIndexAllocation(rs_mesh m, uint32_t index) {
     Mesh_t *mesh = (Mesh_t *)m.p;
-    if (index >= mesh->mHal.state.primitivesCount) {
+    if (mesh == NULL || index >= mesh->mHal.state.primitivesCount) {
         rs_allocation nullAlloc = {0};
         return nullAlloc;
     }
@@ -661,8 +719,8 @@ extern rs_allocation __attribute__((overloadable))
 extern rs_primitive __attribute__((overloadable))
         rsMeshGetPrimitive(rs_mesh m, uint32_t index) {
     Mesh_t *mesh = (Mesh_t *)m.p;
-    if (index >= mesh->mHal.state.primitivesCount) {
-        return RS_PRIMITIVE_POINT;
+    if (mesh == NULL || index >= mesh->mHal.state.primitivesCount) {
+        return RS_PRIMITIVE_INVALID;
     }
     return mesh->mHal.state.primitives[index];
 }
@@ -673,13 +731,16 @@ extern rs_primitive __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsElementGetSubElementCount(rs_element e) {
     Element_t *element = (Element_t *)e.p;
+    if (element == NULL) {
+        return 0;
+    }
     return element->mHal.state.fieldsCount;
 }
 
 extern rs_element __attribute__((overloadable))
         rsElementGetSubElement(rs_element e, uint32_t index) {
     Element_t *element = (Element_t *)e.p;
-    if (index >= element->mHal.state.fieldsCount) {
+    if (element == NULL || index >= element->mHal.state.fieldsCount) {
         rs_element nullElem = {0};
         return nullElem;
     }
@@ -690,7 +751,7 @@ extern rs_element __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsElementGetSubElementNameLength(rs_element e, uint32_t index) {
     Element_t *element = (Element_t *)e.p;
-    if (index >= element->mHal.state.fieldsCount) {
+    if (element == NULL || index >= element->mHal.state.fieldsCount) {
         return 0;
     }
     return element->mHal.state.fieldNameLengths[index];
@@ -699,7 +760,7 @@ extern uint32_t __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsElementGetSubElementName(rs_element e, uint32_t index, char *name, uint32_t nameLength) {
     Element_t *element = (Element_t *)e.p;
-    if (index >= element->mHal.state.fieldsCount ||
+    if (element == NULL || index >= element->mHal.state.fieldsCount ||
         nameLength == 0 || name == 0) {
         return 0;
     }
@@ -721,7 +782,7 @@ extern uint32_t __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsElementGetSubElementArraySize(rs_element e, uint32_t index) {
     Element_t *element = (Element_t *)e.p;
-    if (index >= element->mHal.state.fieldsCount) {
+    if (element == NULL || index >= element->mHal.state.fieldsCount) {
         return 0;
     }
     return element->mHal.state.fieldArraySizes[index];
@@ -730,7 +791,7 @@ extern uint32_t __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsElementGetSubElementOffsetBytes(rs_element e, uint32_t index) {
     Element_t *element = (Element_t *)e.p;
-    if (index >= element->mHal.state.fieldsCount) {
+    if (element == NULL || index >= element->mHal.state.fieldsCount) {
         return 0;
     }
     return element->mHal.state.fieldOffsetBytes[index];
@@ -739,23 +800,35 @@ extern uint32_t __attribute__((overloadable))
 extern uint32_t __attribute__((overloadable))
         rsElementGetSizeBytes(rs_element e) {
     Element_t *element = (Element_t *)e.p;
+    if (element == NULL) {
+        return 0;
+    }
     return element->mHal.state.elementSizeBytes;
 }
 
 extern rs_data_type __attribute__((overloadable))
         rsElementGetDataType(rs_element e) {
     Element_t *element = (Element_t *)e.p;
+    if (element == NULL) {
+        return RS_TYPE_INVALID;
+    }
     return element->mHal.state.dataType;
 }
 
 extern rs_data_kind __attribute__((overloadable))
         rsElementGetDataKind(rs_element e) {
     Element_t *element = (Element_t *)e.p;
+    if (element == NULL) {
+        return RS_KIND_INVALID;
+    }
     return element->mHal.state.dataKind;
 }
 
 extern uint32_t __attribute__((overloadable))
         rsElementGetVectorSize(rs_element e) {
     Element_t *element = (Element_t *)e.p;
+    if (element == NULL) {
+        return 0;
+    }
     return element->mHal.state.vectorSize;
 }
