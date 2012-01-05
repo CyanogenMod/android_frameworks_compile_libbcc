@@ -116,7 +116,7 @@ char *ContextManager::allocateContext(char *addr,
 
   llvm::MutexGuard Locked(mContextSlotOccupiedLock);
   if (mContextSlotOccupied[slot]) {
-    LOGW("Suggested bcc context slot has been occupied.\n");
+    ALOGW("Suggested bcc context slot has been occupied.\n");
     return NULL;
   }
 

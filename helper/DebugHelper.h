@@ -29,14 +29,14 @@
 #undef ALOGV
 #undef ALOGI
 #undef ALOGD
-#undef LOGW
+#undef ALOGW
 #undef LOGE
 #undef LOGA
 
 #define ALOGV(...)
 #define ALOGI(...)
 #define ALOGD(...)
-#define LOGW(...)
+#define ALOGW(...)
 #define LOGE(...)
 #define LOGA(...)
 
