@@ -40,8 +40,8 @@ static bool bccBuildStampPrinted = false;
 
 static void bccPrintBuildStamp() {
   if (!bccBuildStampPrinted) {
-    LOGI("LIBBCC build time: %s", bccGetBuildTime());
-    LOGI("LIBBCC build revision: %s", bccGetBuildRev());
+    ALOGI("LIBBCC build time: %s", bccGetBuildTime());
+    ALOGI("LIBBCC build revision: %s", bccGetBuildRev());
     bccBuildStampPrinted = true;
   }
 }
