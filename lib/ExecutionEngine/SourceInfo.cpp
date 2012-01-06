@@ -65,9 +65,9 @@ SourceInfo *SourceInfo::createFromBuffer(char const *resName,
   if (!resName && !(flags & BCC_SKIP_DEP_SHA1)) {
     result->flags |= BCC_SKIP_DEP_SHA1;
 
-    LOGW("It is required to give resName for sha1 dependency check.\n");
-    LOGW("Sha1sum dependency check will be skipped.\n");
-    LOGW("Set BCC_SKIP_DEP_SHA1 for flags to surpress this warning.\n");
+    ALOGW("It is required to give resName for sha1 dependency check.\n");
+    ALOGW("Sha1sum dependency check will be skipped.\n");
+    ALOGW("Set BCC_SKIP_DEP_SHA1 for flags to surpress this warning.\n");
   }
 
   if (result->flags & BCC_SKIP_DEP_SHA1) {
@@ -121,9 +121,9 @@ SourceInfo *SourceInfo::createFromModule(llvm::Module *module,
   if (! (flags & BCC_SKIP_DEP_SHA1)) {
     result->flags |= BCC_SKIP_DEP_SHA1;
 
-    LOGW("Unable to calculate sha1sum for llvm::Module.\n");
-    LOGW("Sha1sum dependency check will be skipped.\n");
-    LOGW("Set BCC_SKIP_DEP_SHA1 for flags to surpress this warning.\n");
+    ALOGW("Unable to calculate sha1sum for llvm::Module.\n");
+    ALOGW("Sha1sum dependency check will be skipped.\n");
+    ALOGW("Set BCC_SKIP_DEP_SHA1 for flags to surpress this warning.\n");
   }
 
   memset(result->sha1, '\0', 20);

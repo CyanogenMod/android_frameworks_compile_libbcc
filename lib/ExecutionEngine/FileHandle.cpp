@@ -55,7 +55,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
         continue;
       }
 
-      LOGW("Unable to open %s in %s mode.  (reason: %s)\n",
+      ALOGW("Unable to open %s in %s mode.  (reason: %s)\n",
            filename, open_mode_str[mode], strerror(errno));
 
       return -1;
@@ -63,7 +63,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
 
     // Try to lock the file
     if (flock(mFD, lock_flags[mode] | LOCK_NB) < 0) {
-      LOGW("Unable to acquire the lock immediately, block and wait now ...\n");
+      ALOGW("Unable to acquire the lock immediately, block and wait now ...\n");
 
       if (flock(mFD, lock_flags[mode]) < 0) {
         LOGE("Unable to acquire the lock. Retry ...\n");
@@ -98,7 +98,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
     return mFD;
   }
 
-  LOGW("Unable to open %s in %s mode.\n", filename, open_mode_str[mode]);
+  ALOGW("Unable to open %s in %s mode.\n", filename, open_mode_str[mode]);
   return -1;
 }
 
