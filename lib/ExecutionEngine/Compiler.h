@@ -50,6 +50,7 @@ namespace llvm {
 
 namespace bcc {
   class ScriptCompiled;
+  struct CompilerOption;
 
   class Compiler {
   private:
@@ -151,7 +152,7 @@ namespace bcc {
 
     int linkModule(llvm::Module *module);
 
-    int compile(bool compileOnly);
+    int compile(CompilerOption &option);
 
     char const *getErrorMessage() {
       return mError.c_str();

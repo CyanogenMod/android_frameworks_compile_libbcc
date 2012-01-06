@@ -33,6 +33,8 @@ namespace llvm {
 }
 
 namespace bcc {
+  struct CompilerOption;
+
   class ScriptCompiled {
     friend class Compiler;
     friend class CodeEmitter;
@@ -87,8 +89,8 @@ namespace bcc {
       return mCompiler.linkModule(module);
     }
 
-    int compile(bool compileOnly) {
-      return mCompiler.compile(compileOnly);
+    int compile(CompilerOption &option) {
+      return mCompiler.compile(option);
     }
 
     char const *getCompilerErrorMessage() {

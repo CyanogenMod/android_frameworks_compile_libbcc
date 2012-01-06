@@ -25,6 +25,7 @@
 
 #include "MCCacheReader.h"
 #include "MCCacheWriter.h"
+#include "CompilerOption.h"
 
 #if USE_OLD_JIT
 #include "OldJIT/ContextManager.h"
@@ -198,7 +199,10 @@ int Script::prepareSharedObject(char const *cacheDir,
     }
   }
 #endif
-  int status = internalCompile(true);
+
+  CompilerOption option;
+  option.LoadAfterCompile = false;
+  int status = internalCompile(option);
   if (status != 0) {
     ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
   }
@@ -232,7 +236,8 @@ int Script::prepareExecutable(char const *cacheDir,
   }
 #endif
 
-  int status = internalCompile(false);
+  CompilerOption option;
+  int status = internalCompile(option);
   if (status != 0) {
     ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
   }
@@ -321,7 +326,7 @@ int Script::internalLoadCache(bool checkOnly) {
 }
 #endif
 
-int Script::internalCompile(bool compileOnly) {
+int Script::internalCompile(CompilerOption &option) {
   // Create the ScriptCompiled object
   mCompiled = new (std::nothrow) ScriptCompiled(this);
 
@@ -367,7 +372,7 @@ int Script::internalCompile(bool compileOnly) {
   }
 
   // Compile and JIT the code
-  if (mCompiled->compile(compileOnly) != 0) {
+  if (mCompiled->compile(option) != 0) {
     ALOGE("Unable to compile.\n");
     return 1;
   }

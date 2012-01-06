@@ -31,6 +31,7 @@
 #include "Runtime.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
+#include "CompilerOption.h"
 
 #if USE_MCJIT
 #include "librsloader.h"
@@ -56,7 +57,6 @@
 
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
 
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
@@ -312,7 +312,7 @@ int Compiler::linkModule(llvm::Module *moduleWith) {
 }
 
 
-int Compiler::compile(bool compileOnly) {
+int Compiler::compile(CompilerOption &option) {
   llvm::Target const *Target = NULL;
   llvm::TargetData *TD = NULL;
   llvm::TargetMachine *TM = NULL;
@@ -324,11 +324,6 @@ int Compiler::compile(bool compileOnly) {
   llvm::NamedMDNode const *ExportFuncMetadata;
   llvm::NamedMDNode const *ObjectSlotMetadata;
 
-  llvm::TargetOptions Options;
-
-  llvm::CodeModel::Model CM;
-  llvm::Reloc::Model RM;
-
   if (mModule == NULL)  // No module was loaded
     return 0;
 
@@ -336,32 +331,6 @@ int Compiler::compile(bool compileOnly) {
   Target = llvm::TargetRegistry::lookupTarget(Triple, mError);
   if (hasError())
     goto on_bcc_compile_error;
-
-  // Determine code_model_is_medium
-#if defined(__HOST__)
-  bool code_model_is_medium;
-  bool no_frame_pointer_elimination;
-
-  {
-    // open a new scope otherwise compiler complains constructor of the folloinwg two being bypassed by previous 'goto' statement
-    const char *target_llvm_name = Target->getName();
-    const llvm::Triple::ArchType target_archtype = llvm::Triple::getArchTypeForLLVMName(target_llvm_name);
-    // Data address in X86_64 architecture may reside in a far-away place
-    code_model_is_medium = target_archtype == llvm::Triple::x86_64;
-    // Disable frame pointer elimination optimization for X86_64 and X86
-    no_frame_pointer_elimination = (target_archtype == llvm::Triple::x86_64 ||
-                                    target_archtype == llvm::Triple::x86);
-  }
-#elif defined(DEFAULT_X86_64_CODEGEN)
-  #define code_model_is_medium           true
-  #define no_frame_pointer_elimination   true
-#elif defined(DEFAULT_X86_CODEGEN)
-  #define code_model_is_medium           false
-  #define no_frame_pointer_elimination   true
-#else
-  #define code_model_is_medium           false
-  #define no_frame_pointer_elimination   false
-#endif
 
   if (!CPU.empty() || !Features.empty()) {
     llvm::SubtargetFeatures F;
@@ -374,27 +343,46 @@ int Compiler::compile(bool compileOnly) {
     FeaturesStr = F.getString();
   }
 
-  // Setup LLVM Target Machine Options
-  Options.NoFramePointerElim = no_frame_pointer_elimination;
+  // Determine if code_model_is_medium
+  // And determine if no_frame_pointer_elimination
+#if defined(__HOST__)
+  bool code_model_is_medium;
+  bool no_frame_pointer_elimination;
 
-  // Use hardfloat ABI
-  //
-  // TODO(all): Need to detect the CPU capability and decide whether to use
-  // softfp. To use softfp, change following 2 lines to
-  //
-  // options.FloatABIType = llvm::FloatABI::Soft;
-  // options.UseSoftFloat = true;
-  Options.FloatABIType = llvm::FloatABI::Soft;
-  Options.UseSoftFloat = false;
+  {
+    // open a new scope otherwise compiler complains constructor of the
+    // folloinwg two being bypassed by previous 'goto' statement
+    const char *target_llvm_name = Target->getName();
+    const llvm::Triple::ArchType target_archtype = llvm::Triple::getArchTypeForLLVMName(target_llvm_name);
+    // Data address in X86_64 architecture may reside in a far-away place
+    code_model_is_medium = target_archtype == llvm::Triple::x86_64;
+    // Disable frame pointer elimination optimization for X86_64 and X86
+    no_frame_pointer_elimination = (target_archtype == llvm::Triple::x86_64 ||
+                                    target_archtype == llvm::Triple::x86);
+  }
+#elif defined(DEFAULT_X86_64_CODEGEN)
+# define code_model_is_medium           true
+# define no_frame_pointer_elimination   true
+#elif defined(DEFAULT_X86_CODEGEN)
+# define code_model_is_medium           false
+# define no_frame_pointer_elimination   true
+#else
+# define code_model_is_medium           false
+# define no_frame_pointer_elimination   false
+#endif
+
+  // Setup LLVM Target Machine Options
+  option.TargetOpt.NoFramePointerElim = no_frame_pointer_elimination;
 
   // This is set for the linker (specify how large of the virtual addresses
   // we can access for all unknown symbols.)
-  CM = code_model_is_medium? llvm::CodeModel::Medium : llvm::CodeModel::Small;
-
-  RM = llvm::Reloc::Static;
+  option.CodeModelOpt = code_model_is_medium ? llvm::CodeModel::Medium : llvm::CodeModel::Small;
 
   // Create LLVM Target Machine
-  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr, Options, RM, CM);
+  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
+                                   option.TargetOpt,
+                                   option.RelocModelOpt,
+                                   option.CodeModelOpt);
 
   if (TM == NULL) {
     setError("Failed to create target machine implementation for the"
@@ -431,7 +419,7 @@ int Compiler::compile(bool compileOnly) {
     goto on_bcc_compile_error;
   }
 
-  if (compileOnly)
+  if (!option.LoadAfterCompile)
     return 0;
 
   // Load the ELF Object
