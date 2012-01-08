@@ -68,11 +68,11 @@ char *ContextManager::allocateContext() {
       }
 
       if (result && result != MAP_FAILED) {
-        LOGE("Unable to allocate. suggested=%p, result=%p\n", addr, result);
+        ALOGE("Unable to allocate. suggested=%p, result=%p\n", addr, result);
         munmap(result, ContextSize);
       }
 
-      LOGE("Unable to allocate. addr=%p.  Retry ...\n", addr);
+      ALOGE("Unable to allocate. addr=%p.  Retry ...\n", addr);
     }
     // Release mContextSlotOccupiedLock
   }
@@ -82,7 +82,7 @@ char *ContextManager::allocateContext() {
                       MAP_PRIVATE | MAP_ANON, -1, 0);
 
   if (!result || result == MAP_FAILED) {
-    LOGE("Unable to mmap. (reason: %s)\n", strerror(errno));
+    ALOGE("Unable to mmap. (reason: %s)\n", strerror(errno));
     return NULL;
   }
 
@@ -97,20 +97,20 @@ char *ContextManager::allocateContext(char *addr,
   // slot address.  And the image offset is aligned to the pagesize.
 
   if (imageFd < 0) {
-    LOGE("Invalid file descriptor for bcc context image\n");
+    ALOGE("Invalid file descriptor for bcc context image\n");
     return NULL;
   }
 
   unsigned long pagesize = (unsigned long)sysconf(_SC_PAGESIZE);
 
   if (imageOffset % pagesize > 0) {
-    LOGE("BCC context image offset is not aligned to page size\n");
+    ALOGE("BCC context image offset is not aligned to page size\n");
     return NULL;
   }
 
   ssize_t slot = getSlotIndexFromAddress(addr);
   if (slot < 0) {
-    LOGE("Suggested address is not a bcc context slot address\n");
+    ALOGE("Suggested address is not a bcc context slot address\n");
     return NULL;
   }
 
@@ -126,12 +126,12 @@ char *ContextManager::allocateContext(char *addr,
                       MAP_PRIVATE, imageFd, imageOffset);
 
   if (!result || result == MAP_FAILED) {
-    LOGE("Unable to allocate. addr=%p\n", addr);
+    ALOGE("Unable to allocate. addr=%p\n", addr);
     return NULL;
   }
 
   if (result != addr) {
-    LOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
+    ALOGE("Unable to allocate at suggested=%p, result=%p\n", addr, result);
     munmap(result, ContextSize);
     return NULL;
   }
@@ -153,7 +153,7 @@ void ContextManager::deallocateContext(char *addr) {
 
   // Unmap
   if (munmap(addr, ContextSize) < 0) {
-    LOGE("Unable to unmap. addr=%p (reason: %s)\n", addr, strerror(errno));
+    ALOGE("Unable to unmap. addr=%p (reason: %s)\n", addr, strerror(errno));
     return;
   }
 

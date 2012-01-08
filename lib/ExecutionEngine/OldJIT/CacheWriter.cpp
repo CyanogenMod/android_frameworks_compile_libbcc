@@ -85,7 +85,7 @@ bool CacheWriter::prepareHeader(uint32_t libRS_threadable) {
   OBCC_Header *header = (OBCC_Header *)malloc(sizeof(OBCC_Header));
 
   if (!header) {
-    LOGE("Unable to allocate for header.\n");
+    ALOGE("Unable to allocate for header.\n");
     return false;
   }
 
@@ -123,7 +123,7 @@ bool CacheWriter::prepareDependencyTable() {
   OBCC_DependencyTable *tab = (OBCC_DependencyTable *)malloc(tableSize);
 
   if (!tab) {
-    LOGE("Unable to allocate for dependency table section.\n");
+    ALOGE("Unable to allocate for dependency table section.\n");
     return false;
   }
 
@@ -155,7 +155,7 @@ bool CacheWriter::prepareFuncTable() {
   OBCC_FuncTable *tab = (OBCC_FuncTable *)malloc(tableSize);
 
   if (!tab) {
-    LOGE("Unable to allocate for function table section.\n");
+    ALOGE("Unable to allocate for function table section.\n");
     return false;
   }
 
@@ -190,7 +190,7 @@ bool CacheWriter::preparePragmaList() {
   OBCC_PragmaList *list = (OBCC_PragmaList *)malloc(listSize);
 
   if (!list) {
-    LOGE("Unable to allocate for pragma list\n");
+    ALOGE("Unable to allocate for pragma list\n");
     return false;
   }
 
@@ -240,7 +240,7 @@ bool CacheWriter::prepareStringPool() {
   OBCC_StringPool *pool = (OBCC_StringPool *)malloc(size);
 
   if (!pool) {
-    LOGE("Unable to allocate string pool.\n");
+    ALOGE("Unable to allocate string pool.\n");
     return false;
   }
 
@@ -275,7 +275,7 @@ bool CacheWriter::prepareExportVarList() {
   OBCC_ExportVarList *list = (OBCC_ExportVarList *)malloc(listSize);
 
   if (!list) {
-    LOGE("Unable to allocate for export variable list\n");
+    ALOGE("Unable to allocate for export variable list\n");
     return false;
   }
 
@@ -296,7 +296,7 @@ bool CacheWriter::prepareExportFuncList() {
   OBCC_ExportFuncList *list = (OBCC_ExportFuncList *)malloc(listSize);
 
   if (!list) {
-    LOGE("Unable to allocate for export function list\n");
+    ALOGE("Unable to allocate for export function list\n");
     return false;
   }
 
@@ -319,7 +319,7 @@ bool CacheWriter::prepareObjectSlotList() {
   OBCC_ObjectSlotList *list = (OBCC_ObjectSlotList *)malloc(listSize);
 
   if (!list) {
-    LOGE("Unable to allocate for object slot list\n");
+    ALOGE("Unable to allocate for object slot list\n");
     return false;
   }
 
@@ -380,13 +380,13 @@ bool CacheWriter::writeAll() {
 #define WRITE_SECTION(NAME, OFFSET, SIZE, SECTION)                          \
   do {                                                                      \
     if (mInfoFile->seek(OFFSET, SEEK_SET) == -1) {                          \
-      LOGE("Unable to seek to " #NAME " section for writing.\n");           \
+      ALOGE("Unable to seek to " #NAME " section for writing.\n");           \
       return false;                                                         \
     }                                                                       \
                                                                             \
     if (mInfoFile->write(reinterpret_cast<char *>(SECTION), (SIZE)) !=      \
         static_cast<ssize_t>(SIZE)) {                                       \
-      LOGE("Unable to write " #NAME " section to cache file.\n");           \
+      ALOGE("Unable to write " #NAME " section to cache file.\n");           \
       return false;                                                         \
     }                                                                       \
   } while (0)
@@ -416,7 +416,7 @@ bool CacheWriter::writeAll() {
   char const *context = (char const *)mpOwner->getContext();
   size_t context_size = ContextManager::ContextSize;
   if (mObjFile->write(context, context_size) != (ssize_t)context_size) {
-    LOGE("Unable to write context image to executable file\n");
+    ALOGE("Unable to write context image to executable file\n");
     return false;
   }
 

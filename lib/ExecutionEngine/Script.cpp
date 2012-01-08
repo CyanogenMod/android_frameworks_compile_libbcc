@@ -88,19 +88,19 @@ int Script::addSourceBC(size_t idx,
 
   if (!resName) {
     mErrorCode = BCC_INVALID_VALUE;
-    LOGE("Invalid argument: resName = NULL\n");
+    ALOGE("Invalid argument: resName = NULL\n");
     return 1;
   }
 
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
+    ALOGE("Bad operation: Adding source after bccPrepareExecutable\n");
     return 1;
   }
 
   if (!bitcode) {
     mErrorCode = BCC_INVALID_VALUE;
-    LOGE("Invalid argument: bitcode = NULL\n");
+    ALOGE("Invalid argument: bitcode = NULL\n");
     return 1;
   }
 
@@ -110,7 +110,7 @@ int Script::addSourceBC(size_t idx,
 
   if (!mSourceList[idx]) {
     mErrorCode = BCC_OUT_OF_MEMORY;
-    LOGE("Out of memory while adding source bitcode\n");
+    ALOGE("Out of memory while adding source bitcode\n");
     return 1;
   }
 
@@ -123,13 +123,13 @@ int Script::addSourceModule(size_t idx,
                             unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
+    ALOGE("Bad operation: Adding source after bccPrepareExecutable\n");
     return 1;
   }
 
   if (!module) {
     mErrorCode = BCC_INVALID_VALUE;
-    LOGE("Invalid argument: module = NULL\n");
+    ALOGE("Invalid argument: module = NULL\n");
     return 1;
   }
 
@@ -137,7 +137,7 @@ int Script::addSourceModule(size_t idx,
 
   if (!mSourceList[idx]) {
     mErrorCode = BCC_OUT_OF_MEMORY;
-    LOGE("Out of memory when add source module\n");
+    ALOGE("Out of memory when add source module\n");
     return 1;
   }
 
@@ -150,20 +150,20 @@ int Script::addSourceFile(size_t idx,
                           unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Bad operation: Adding source after bccPrepareExecutable\n");
+    ALOGE("Bad operation: Adding source after bccPrepareExecutable\n");
     return 1;
   }
 
   if (!path) {
     mErrorCode = BCC_INVALID_VALUE;
-    LOGE("Invalid argument: path = NULL\n");
+    ALOGE("Invalid argument: path = NULL\n");
     return 1;
   }
 
   struct stat sb;
   if (stat(path, &sb) != 0) {
     mErrorCode = BCC_INVALID_VALUE;
-    LOGE("File not found: %s\n", path);
+    ALOGE("File not found: %s\n", path);
     return 1;
   }
 
@@ -171,7 +171,7 @@ int Script::addSourceFile(size_t idx,
 
   if (!mSourceList[idx]) {
     mErrorCode = BCC_OUT_OF_MEMORY;
-    LOGE("Out of memory while adding source file\n");
+    ALOGE("Out of memory while adding source file\n");
     return 1;
   }
 
@@ -199,7 +199,7 @@ int Script::prepareSharedObject(char const *cacheDir,
 #endif
   int status = internalCompile(true);
   if (status != 0) {
-    LOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+    ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
   }
   return status;
 }
@@ -210,7 +210,7 @@ int Script::prepareExecutable(char const *cacheDir,
                               unsigned long flags) {
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Invalid operation: %s\n", __func__);
+    ALOGE("Invalid operation: %s\n", __func__);
     return 1;
   }
 
@@ -233,7 +233,7 @@ int Script::prepareExecutable(char const *cacheDir,
 
   int status = internalCompile(false);
   if (status != 0) {
-    LOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+    ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
   }
   return status;
 }
@@ -326,7 +326,7 @@ int Script::internalCompile(bool compileOnly) {
 
   if (!mCompiled) {
     mErrorCode = BCC_OUT_OF_MEMORY;
-    LOGE("Out of memory: %s %d\n", __FILE__, __LINE__);
+    ALOGE("Out of memory: %s %d\n", __FILE__, __LINE__);
     return 1;
   }
 
@@ -341,33 +341,33 @@ int Script::internalCompile(bool compileOnly) {
   // Parse Bitcode File (if necessary)
   for (size_t i = 0; i < 2; ++i) {
     if (mSourceList[i] && mSourceList[i]->prepareModule(mCompiled) != 0) {
-      LOGE("Unable to parse bitcode for source[%lu]\n", (unsigned long)i);
+      ALOGE("Unable to parse bitcode for source[%lu]\n", (unsigned long)i);
       return 1;
     }
   }
 
   // Set the main source module
   if (!mSourceList[0] || !mSourceList[0]->getModule()) {
-    LOGE("Source bitcode is not setted.\n");
+    ALOGE("Source bitcode is not setted.\n");
     return 1;
   }
 
   if (mCompiled->readModule(mSourceList[0]->takeModule()) != 0) {
-    LOGE("Unable to read source module\n");
+    ALOGE("Unable to read source module\n");
     return 1;
   }
 
   // Link the source module with the library module
   if (mSourceList[1]) {
     if (mCompiled->linkModule(mSourceList[1]->takeModule()) != 0) {
-      LOGE("Unable to link library module\n");
+      ALOGE("Unable to link library module\n");
       return 1;
     }
   }
 
   // Compile and JIT the code
   if (mCompiled->compile(compileOnly) != 0) {
-    LOGE("Unable to compile.\n");
+    ALOGE("Unable to compile.\n");
     return 1;
   }
 
@@ -442,7 +442,7 @@ int Script::internalCompile(bool compileOnly) {
         objFile.close();
 
         if (unlink(objPath.c_str()) != 0) {
-          LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
+          ALOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
                objPath.c_str(), strerror(errno));
         }
 
@@ -450,7 +450,7 @@ int Script::internalCompile(bool compileOnly) {
         infoFile.close();
 
         if (unlink(infoPath.c_str()) != 0) {
-          LOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
+          ALOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
                infoPath.c_str(), strerror(errno));
         }
       }
@@ -749,7 +749,7 @@ int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
 
   if (mStatus != ScriptStatus::Unknown) {
     mErrorCode = BCC_INVALID_OPERATION;
-    LOGE("Invalid operation: %s\n", __func__);
+    ALOGE("Invalid operation: %s\n", __func__);
     return 1;
   }
   return 0;

@@ -65,7 +65,7 @@ ScriptCached *CacheReader::readCacheFile(FileHandle *objFile,
   mpResult.reset(new (nothrow) ScriptCached(S));
 
   if (!mpResult) {
-    LOGE("Unable to allocate ScriptCached object.\n");
+    ALOGE("Unable to allocate ScriptCached object.\n");
     return NULL;
   }
 
@@ -97,24 +97,24 @@ bool CacheReader::checkFileSize() {
   struct stat stfile;
 
   if (fstat(mInfoFile->getFD(), &stfile) < 0) {
-    LOGE("Unable to stat metadata information file.\n");
+    ALOGE("Unable to stat metadata information file.\n");
     return false;
   }
 
   mInfoFileSize = stfile.st_size;
 
   if (mInfoFileSize < (off_t)sizeof(OBCC_Header)) {
-    LOGE("Metadata information file is too small to be correct.\n");
+    ALOGE("Metadata information file is too small to be correct.\n");
     return false;
   }
 
   if (fstat(mObjFile->getFD(), &stfile) < 0) {
-    LOGE("Unable to stat executable file.\n");
+    ALOGE("Unable to stat executable file.\n");
     return false;
   }
 
   if (stfile.st_size < (off_t)ContextManager::ContextSize) {
-    LOGE("Executable file is too small to be correct.\n");
+    ALOGE("Executable file is too small to be correct.\n");
     return false;
   }
 
@@ -124,19 +124,19 @@ bool CacheReader::checkFileSize() {
 
 bool CacheReader::readHeader() {
   if (mInfoFile->seek(0, SEEK_SET) != 0) {
-    LOGE("Unable to seek to 0. (reason: %s)\n", strerror(errno));
+    ALOGE("Unable to seek to 0. (reason: %s)\n", strerror(errno));
     return false;
   }
 
   mpHeader = (OBCC_Header *)malloc(sizeof(OBCC_Header));
   if (!mpHeader) {
-    LOGE("Unable to allocate for cache header.\n");
+    ALOGE("Unable to allocate for cache header.\n");
     return false;
   }
 
   if (mInfoFile->read((char *)mpHeader, sizeof(OBCC_Header)) !=
       (ssize_t)sizeof(OBCC_Header)) {
-    LOGE("Unable to read cache header.\n");
+    ALOGE("Unable to read cache header.\n");
     return false;
   }
 
@@ -152,7 +152,7 @@ bool CacheReader::readHeader() {
 
 bool CacheReader::checkHeader() {
   if (memcmp(mpHeader->magic, OBCC_MAGIC, 4) != 0) {
-    LOGE("Bad magic word\n");
+    ALOGE("Bad magic word\n");
     return false;
   }
 
@@ -172,14 +172,14 @@ bool CacheReader::checkMachineIntType() {
   bool isLittleEndian = (*reinterpret_cast<char *>(&number) == 1);
   if ((isLittleEndian && mpHeader->endianness != 'e') ||
       (!isLittleEndian && mpHeader->endianness != 'E')) {
-    LOGE("Machine endianness mismatch.\n");
+    ALOGE("Machine endianness mismatch.\n");
     return false;
   }
 
   if ((unsigned int)mpHeader->sizeof_off_t != sizeof(off_t) ||
       (unsigned int)mpHeader->sizeof_size_t != sizeof(size_t) ||
       (unsigned int)mpHeader->sizeof_ptr_t != sizeof(void *)) {
-    LOGE("Machine integer size mismatch.\n");
+    ALOGE("Machine integer size mismatch.\n");
     return false;
   }
 
@@ -194,17 +194,17 @@ bool CacheReader::checkSectionOffsetAndSize() {
     off_t size = (off_t)mpHeader-> NAME##_size;                             \
                                                                             \
     if (mInfoFileSize < offset || mInfoFileSize < offset + size) {          \
-      LOGE(#NAME " section overflow.\n");                                   \
+      ALOGE(#NAME " section overflow.\n");                                   \
       return false;                                                         \
     }                                                                       \
                                                                             \
     if (offset % sizeof(int) != 0) {                                        \
-      LOGE(#NAME " offset must aligned to %d.\n", (int)sizeof(int));        \
+      ALOGE(#NAME " offset must aligned to %d.\n", (int)sizeof(int));        \
       return false;                                                         \
     }                                                                       \
                                                                             \
     if (size < static_cast<off_t>(sizeof(size_t))) {                        \
-      LOGE(#NAME " size is too small to be correct.\n");                    \
+      ALOGE(#NAME " size is too small to be correct.\n");                    \
       return false;                                                         \
     }                                                                       \
   } while (0)
@@ -221,7 +221,7 @@ bool CacheReader::checkSectionOffsetAndSize() {
   // TODO(logan): Move this to some where else.
   long pagesize = sysconf(_SC_PAGESIZE);
   if ((uintptr_t)mpHeader->context_cached_addr % pagesize != 0) {
-    LOGE("cached address is not aligned to pagesize.\n");
+    ALOGE("cached address is not aligned to pagesize.\n");
     return false;
   }
 
@@ -233,7 +233,7 @@ bool CacheReader::checkSectionOffsetAndSize() {
   TYPE *NAME##_raw = (TYPE *)malloc(mpHeader->NAME##_size);                 \
                                                                             \
   if (!NAME##_raw) {                                                        \
-    LOGE("Unable to allocate for " #NAME "\n");                             \
+    ALOGE("Unable to allocate for " #NAME "\n");                             \
     return false;                                                           \
   }                                                                         \
                                                                             \
@@ -241,14 +241,14 @@ bool CacheReader::checkSectionOffsetAndSize() {
   AUTO_MANAGED_HOLDER = NAME##_raw;                                         \
                                                                             \
   if (mInfoFile->seek(mpHeader->NAME##_offset, SEEK_SET) == -1) {           \
-    LOGE("Unable to seek to " #NAME " section\n");                          \
+    ALOGE("Unable to seek to " #NAME " section\n");                          \
     return false;                                                           \
   }                                                                         \
                                                                             \
   if (mInfoFile->read(reinterpret_cast<char *>(NAME##_raw),                 \
                   mpHeader->NAME##_size) != (ssize_t)mpHeader->NAME##_size) \
   {                                                                         \
-    LOGE("Unable to read " #NAME ".\n");                                    \
+    ALOGE("Unable to read " #NAME ".\n");                                    \
     return false;                                                           \
   }
 
@@ -276,7 +276,7 @@ bool CacheReader::checkStringPool() {
   // Ensure that every c-style string is ended with '\0'
   for (size_t i = 0; i < poolR->count; ++i) {
     if (pool[i][poolR->list[i].length] != '\0') {
-      LOGE("The %lu-th string does not end with '\\0'.\n", (unsigned long)i);
+      ALOGE("The %lu-th string does not end with '\\0'.\n", (unsigned long)i);
       return false;
     }
   }
@@ -294,7 +294,7 @@ bool CacheReader::readDependencyTable() {
 
 bool CacheReader::checkDependency() {
   if (mDependencies.size() != mpCachedDependTable->count) {
-    LOGE("Dependencies count mismatch. (%lu vs %lu)\n",
+    ALOGE("Dependencies count mismatch. (%lu vs %lu)\n",
          (unsigned long)mDependencies.size(),
          (unsigned long)mpCachedDependTable->count);
     return false;
@@ -315,18 +315,18 @@ bool CacheReader::checkDependency() {
     unsigned char const *depCachedSHA1 = depCached->sha1;
 
     if (depName != depCachedName) {
-      LOGE("Cache dependency name mismatch:\n");
-      LOGE("  given:  %s\n", depName.c_str());
-      LOGE("  cached: %s\n", depCachedName);
+      ALOGE("Cache dependency name mismatch:\n");
+      ALOGE("  given:  %s\n", depName.c_str());
+      ALOGE("  cached: %s\n", depCachedName);
 
       return false;
     }
 
     if (memcmp(depSHA1, depCachedSHA1, 20) != 0) {
-      LOGE("Cache dependency %s sha1 mismatch:\n", depCachedName);
+      ALOGE("Cache dependency %s sha1 mismatch:\n", depCachedName);
 
 #define PRINT_SHA1(PREFIX, X, POSTFIX) \
-      LOGE(PREFIX "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" \
+      ALOGE(PREFIX "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" \
                   "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" POSTFIX, \
            X[0], X[1], X[2], X[3], X[4], X[5], X[6], X[7], X[8], X[9], \
            X[10],X[11],X[12],X[13],X[14],X[15],X[16],X[17],X[18],X[19]);
@@ -340,7 +340,7 @@ bool CacheReader::checkDependency() {
     }
 
     if (depType != depCachedType) {
-      LOGE("Cache dependency %s resource type mismatch.\n", depCachedName);
+      ALOGE("Cache dependency %s resource type mismatch.\n", depCachedName);
       return false;
     }
   }
@@ -429,7 +429,7 @@ bool CacheReader::checkContext() {
   }
 
   if (sum != 0) {
-    LOGE("Checksum check failed\n");
+    ALOGE("Checksum check failed\n");
     return false;
   }
 

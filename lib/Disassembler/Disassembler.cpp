@@ -90,7 +90,7 @@ void Disassemble(char const *OutputFileName,
                           llvm::raw_fd_ostream::F_Append);
 
   if (!ErrorInfo.empty()) {
-    LOGE("Unable to open disassembler output file: %s\n", OutputFileName);
+    ALOGE("Unable to open disassembler output file: %s\n", OutputFileName);
     return;
   }
 

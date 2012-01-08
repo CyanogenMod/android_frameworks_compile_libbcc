@@ -83,14 +83,14 @@ BitcodeTranslator::~BitcodeTranslator() {
 
 bool BitcodeTranslator::translate() {
   if (!mBitcode || !mBitcodeSize) {
-    LOGE("Invalid/empty bitcode");
+    ALOGE("Invalid/empty bitcode");
     return false;
   }
 
   if ((mVersion != kCurrentAPIVersion) &&
       ((mVersion < kMinimumAPIVersion) ||
        (mVersion > kMaximumAPIVersion))) {
-    LOGE("Invalid API version: %u is out of range ('%u' - '%u')", mVersion,
+    ALOGE("Invalid API version: %u is out of range ('%u' - '%u')", mVersion,
          kMinimumAPIVersion, kMaximumAPIVersion);
     return false;
   }
@@ -119,13 +119,13 @@ bool BitcodeTranslator::translate() {
   } else if (mVersion >= kMinimumCompatibleVersion_LLVM_2_7) {
     module = llvm_2_7::ParseBitcodeFile(MEM.get(), *mContext, &error);
   } else {
-    LOGE("No compatible bitcode reader for API version %d", mVersion);
+    ALOGE("No compatible bitcode reader for API version %d", mVersion);
     return false;
   }
 
   if (!module) {
-    LOGE("Could not parse bitcode file");
-    LOGE("%s", error.c_str());
+    ALOGE("Could not parse bitcode file");
+    ALOGE("%s", error.c_str());
     return false;
   }
 

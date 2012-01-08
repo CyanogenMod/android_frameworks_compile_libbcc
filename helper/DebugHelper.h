@@ -30,14 +30,14 @@
 #undef ALOGI
 #undef ALOGD
 #undef ALOGW
-#undef LOGE
+#undef ALOGE
 #undef LOGA
 
 #define ALOGV(...)
 #define ALOGI(...)
 #define ALOGD(...)
 #define ALOGW(...)
-#define LOGE(...)
+#define ALOGE(...)
 #define LOGA(...)
 
 #endif

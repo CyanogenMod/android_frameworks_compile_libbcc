@@ -47,7 +47,7 @@ CodeMemoryManager::CodeMemoryManager()
   mpCodeMem = ContextManager::get().allocateContext();
 
   if (!mpCodeMem) {
-    LOGE("Unable to allocate mpCodeMem\n");
+    ALOGE("Unable to allocate mpCodeMem\n");
     llvm::report_fatal_error("Failed to allocate memory for emitting "
                              "codes\n" + ErrMsg);
   }
@@ -194,7 +194,7 @@ uint8_t *CodeMemoryManager::allocateSpace(intptr_t Size, unsigned Alignment) {
 uint8_t *CodeMemoryManager::allocateGlobal(uintptr_t Size, unsigned Alignment) {
   if (getFreeGVMemSize() < Size) {
     // The code size excesses our limit
-    LOGE("No Global Memory");
+    ALOGE("No Global Memory");
     return NULL;
   }
 
