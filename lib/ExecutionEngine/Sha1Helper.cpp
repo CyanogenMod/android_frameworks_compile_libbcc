@@ -53,7 +53,7 @@ void calcFileSHA1(unsigned char *result, char const *filename) {
   FileHandle file;
 
   if (file.open(filename, OpenMode::Read) < 0) {
-    LOGE("Unable to calculate the sha1 checksum of %s\n", filename);
+    ALOGE("Unable to calculate the sha1 checksum of %s\n", filename);
     memset(result, '\0', 20);
     return;
   }
@@ -85,7 +85,7 @@ void calcFileSHA1(unsigned char *result, char const *filename) {
 void readSHA1(unsigned char *result, int result_size, char const *filename) {
   FileHandle file;
   if (file.open(filename, OpenMode::Read) < 0) {
-    LOGE("Unable to read binary sha1 file %s\n", filename);
+    ALOGE("Unable to read binary sha1 file %s\n", filename);
     memset(result, '\0', result_size);
     return;
   }

@@ -225,7 +225,7 @@ void Compiler::GlobalInitialization() {
 void Compiler::LLVMErrorHandler(void *UserData, const std::string &Message) {
   std::string *Error = static_cast<std::string*>(UserData);
   Error->assign(Message);
-  LOGE("%s", Message.c_str());
+  ALOGE("%s", Message.c_str());
   exit(1);
 }
 
@@ -267,7 +267,7 @@ llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
   llvm::Module *result = llvm::ParseBitcodeFile(MEM, *mContext, &mError);
 
   if (!result) {
-    LOGE("Unable to ParseBitcodeFile: %s\n", mError.c_str());
+    ALOGE("Unable to ParseBitcodeFile: %s\n", mError.c_str());
     return NULL;
   }
 
@@ -531,7 +531,7 @@ int Compiler::compile(bool compileOnly) {
   }
 
 on_bcc_compile_error:
-  // LOGE("on_bcc_compiler_error");
+  // ALOGE("on_bcc_compiler_error");
   if (TD) {
     delete TD;
   }
@@ -544,7 +544,7 @@ on_bcc_compile_error:
     return 0;
   }
 
-  // LOGE(getErrorMessage());
+  // ALOGE(getErrorMessage());
   return 1;
 }
 
@@ -864,7 +864,7 @@ void *Compiler::resolveSymbolAdapter(void *context, char const *name) {
     }
   }
 
-  LOGE("Unable to resolve symbol: %s\n", name);
+  ALOGE("Unable to resolve symbol: %s\n", name);
   return NULL;
 }
 #endif

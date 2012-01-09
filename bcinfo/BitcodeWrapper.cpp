@@ -40,14 +40,14 @@ BitcodeWrapper::~BitcodeWrapper() {
 
 bool BitcodeWrapper::unwrap() {
   if (!mBitcode || !mBitcodeSize) {
-    LOGE("Invalid/empty bitcode");
+    ALOGE("Invalid/empty bitcode");
     return false;
   }
 
   if (llvm::isBitcodeWrapper((const unsigned char*) mBitcode,
                              (const unsigned char*) mBitcodeEnd)) {
     if (mBitcodeSize < sizeof(mBCHeader)) {
-      LOGE("Invalid bitcode size");
+      ALOGE("Invalid bitcode size");
       return false;
     }
 
@@ -59,7 +59,7 @@ bool BitcodeWrapper::unwrap() {
     mFileType = BC_RAW;
     return true;
   } else {
-    LOGE("Not bitcode");
+    ALOGE("Not bitcode");
     mFileType = BC_NOT_BC;
     return false;
   }

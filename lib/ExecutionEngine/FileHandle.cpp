@@ -66,7 +66,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
       ALOGW("Unable to acquire the lock immediately, block and wait now ...\n");
 
       if (flock(mFD, lock_flags[mode]) < 0) {
-        LOGE("Unable to acquire the lock. Retry ...\n");
+        ALOGE("Unable to acquire the lock. Retry ...\n");
 
         ::close(mFD);
         mFD = -1;
@@ -172,7 +172,7 @@ off_t FileHandle::seek(off_t offset, int whence) {
 void FileHandle::truncate() {
   if (mFD >= 0) {
     if (ftruncate(mFD, 0) != 0) {
-      LOGE("Unable to truncate the file.\n");
+      ALOGE("Unable to truncate the file.\n");
     }
   }
 }

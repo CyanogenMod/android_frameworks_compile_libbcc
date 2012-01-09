@@ -142,7 +142,7 @@ int SourceInfo::prepareModule(ScriptCompiled *SC) {
           llvm::StringRef(buffer.bitcode, buffer.bitcodeSize)));
 
       if (!MEM.get()) {
-        LOGE("Unable to MemoryBuffer::getMemBuffer(addr=%p, size=%lu)\n",
+        ALOGE("Unable to MemoryBuffer::getMemBuffer(addr=%p, size=%lu)\n",
              buffer.bitcode, (unsigned long)buffer.bitcodeSize);
         return 1;
       }
@@ -156,7 +156,7 @@ int SourceInfo::prepareModule(ScriptCompiled *SC) {
       llvm::OwningPtr<llvm::MemoryBuffer> MEM;
 
       if (llvm::error_code ec = llvm::MemoryBuffer::getFile(file.path, MEM)) {
-        LOGE("Unable to MemoryBuffer::getFile(path=%s)\n", file.path);
+        ALOGE("Unable to MemoryBuffer::getFile(path=%s)\n", file.path);
         return 1;
       }
 

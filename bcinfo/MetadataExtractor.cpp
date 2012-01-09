@@ -110,7 +110,7 @@ bool MetadataExtractor::populateObjectSlotMetadata(
             static_cast<llvm::MDString*>(SlotMDS)->getString();
         uint32_t USlot = 0;
         if (Slot.getAsInteger(10, USlot)) {
-          LOGE("Non-integer object slot value '%s'", Slot.str().c_str());
+          ALOGE("Non-integer object slot value '%s'", Slot.str().c_str());
           return false;
         }
         TmpSlotList[i] = USlot;
@@ -196,7 +196,7 @@ bool MetadataExtractor::populateForEachMetadata(
             static_cast<llvm::MDString*>(SigVal)->getString();
         uint32_t Signature = 0;
         if (SigString.getAsInteger(10, Signature)) {
-          LOGE("Non-integer signature value '%s'", SigString.str().c_str());
+          ALOGE("Non-integer signature value '%s'", SigString.str().c_str());
           return false;
         }
         TmpSigList[i] = Signature;
@@ -213,7 +213,7 @@ bool MetadataExtractor::populateForEachMetadata(
 
 bool MetadataExtractor::extract() {
   if (!mBitcode || !mBitcodeSize) {
-    LOGE("Invalid/empty bitcode");
+    ALOGE("Invalid/empty bitcode");
     return false;
   }
 
@@ -226,8 +226,8 @@ bool MetadataExtractor::extract() {
   // Module ownership is handled by the context, so we don't need to free it.
   llvm::Module *module = llvm::ParseBitcodeFile(MEM.get(), *mContext, &error);
   if (!module) {
-    LOGE("Could not parse bitcode file");
-    LOGE("%s", error.c_str());
+    ALOGE("Could not parse bitcode file");
+    ALOGE("%s", error.c_str());
     return false;
   }
 
@@ -251,14 +251,14 @@ bool MetadataExtractor::extract() {
   }
 
   if (!populateForEachMetadata(ExportForEachMetadata)) {
-    LOGE("Could not populate ForEach signature metadata");
+    ALOGE("Could not populate ForEach signature metadata");
     return false;
   }
 
   populatePragmaMetadata(PragmaMetadata);
 
   if (!populateObjectSlotMetadata(ObjectSlotMetadata)) {
-    LOGE("Could not populate object slot metadata");
+    ALOGE("Could not populate object slot metadata");
     return false;
   }
 
