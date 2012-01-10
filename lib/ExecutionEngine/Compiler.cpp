@@ -44,8 +44,6 @@
 
 #include "llvm/Analysis/Passes.h"
 
-#include "llvm/Bitcode/ReaderWriter.h"
-
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/RegAllocRegistry.h"
 #include "llvm/CodeGen/SchedulerRegistry.h"
@@ -60,7 +58,6 @@
 
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 
@@ -277,25 +274,11 @@ Compiler::Compiler(ScriptCompiled *result)
 #endif
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
-    mContext(NULL),
     mModule(NULL),
     mHasLinked(false) /* Turn off linker */ {
   llvm::remove_fatal_error_handler();
   llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
-  mContext = new llvm::LLVMContext();
   return;
-}
-
-
-llvm::Module *Compiler::parseBitcodeFile(llvm::MemoryBuffer *MEM) {
-  llvm::Module *result = llvm::ParseBitcodeFile(MEM, *mContext, &mError);
-
-  if (!result) {
-    ALOGE("Unable to ParseBitcodeFile: %s\n", mError.c_str());
-    return NULL;
-  }
-
-  return result;
 }
 
 
@@ -916,9 +899,6 @@ void *Compiler::resolveSymbolAdapter(void *context, char const *name) {
 
 
 Compiler::~Compiler() {
-  delete mModule;
-  delete mContext;
-
 #if USE_MCJIT
   rsloaderDisposeExec(mRSExecutable);
 #endif

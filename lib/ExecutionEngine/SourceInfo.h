@@ -19,14 +19,15 @@
 
 #include "Config.h"
 
-#include <llvm/ADT/OwningPtr.h>
 #include <llvm/Module.h>
 
 #include <stddef.h>
 
-namespace bcc {
-  class ScriptCompiled;
+namespace llvm {
+  class LLVMContext;
+}
 
+namespace bcc {
   namespace SourceKind {
     enum SourceType {
       File,
@@ -39,9 +40,12 @@ namespace bcc {
   private:
     SourceKind::SourceType type;
 
-    llvm::OwningPtr<llvm::Module> module;
     // Note: module should not be a part of union.  Since, we are going to
     // use module to store the pointer to parsed bitcode.
+    llvm::Module *module;
+    // If true, the LLVM context behind the module is shared with others.
+    // Therefore, don't try to destroy the context it when destroy the module.
+    bool shared_context;
 
     union {
       struct {
@@ -62,7 +66,7 @@ namespace bcc {
 #endif
 
   private:
-    SourceInfo() { }
+    SourceInfo() : module(NULL), shared_context(false) { }
 
   public:
     static SourceInfo *createFromBuffer(char const *resName,
@@ -76,19 +80,22 @@ namespace bcc {
     static SourceInfo *createFromModule(llvm::Module *module,
                                         unsigned long flags);
 
-    llvm::Module *takeModule() {
-      return module.take();
+    inline llvm::Module *getModule() const {
+      return module;
     }
 
-    llvm::Module *getModule() const {
-      return module.get();
+    inline llvm::LLVMContext *getContext() const {
+      return (module) ? &module->getContext() : NULL;
     }
 
-    int prepareModule(ScriptCompiled *);
+    // Share with the given context if it's provided.
+    int prepareModule(llvm::LLVMContext *context = NULL);
 
 #if USE_CACHE
     template <typename T> void introDependency(T &checker);
 #endif
+
+    ~SourceInfo();
   };
 
 
