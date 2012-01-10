@@ -180,9 +180,10 @@ int Script::addSourceFile(size_t idx,
   return 0;
 }
 
-int Script::prepareSharedObject(char const *cacheDir,
-                                char const *cacheName,
-                                unsigned long flags) {
+int Script::prepareObject(char const *cacheDir,
+                          char const *cacheName,
+                          llvm::Reloc::Model RelocModel,
+                          unsigned long flags) {
 #if USE_CACHE
   if (cacheDir && cacheName) {
     // Set Cache Directory and File Name
@@ -201,6 +202,7 @@ int Script::prepareSharedObject(char const *cacheDir,
 #endif
 
   CompilerOption option;
+  option.RelocModelOpt = RelocModel;
   option.LoadAfterCompile = false;
   int status = internalCompile(option);
   if (status != 0) {

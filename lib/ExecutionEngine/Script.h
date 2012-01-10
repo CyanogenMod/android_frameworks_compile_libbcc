@@ -22,6 +22,8 @@
 
 #include "Compiler.h"
 
+#include <llvm/Support/CodeGen.h>
+
 #include <vector>
 #include <string>
 
@@ -118,9 +120,10 @@ namespace bcc {
                           char const *cacheName,
                           unsigned long flags);
 
-    int prepareSharedObject(char const *cacheDir,
-                          char const *cacheName,
-                          unsigned long flags);
+    int prepareObject(char const *cacheDir,
+                      char const *cacheName,
+                      llvm::Reloc::Model RelocModel,
+                      unsigned long flags);
 
     char const *getCompilerErrorMessage();
 
