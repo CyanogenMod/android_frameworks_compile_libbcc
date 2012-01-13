@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@
 #if USE_MCJIT
 #include "librsloader.h"
 #endif
+
+#include "Transforms/BCCTransforms.h"
 
 #include "llvm/ADT/StringRef.h"
 
@@ -366,6 +368,8 @@ int Compiler::compile(bool compileOnly) {
   ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
   PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
   ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
+
+  runInternalPasses();
 
   // Perform link-time optimization if we have multiple modules
   if (mHasLinked) {
@@ -702,6 +706,16 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
 }
 #endif // USE_MCJIT
 
+int Compiler::runInternalPasses() {
+  llvm::PassManager BCCPasses;
+
+  // Expand ForEach on CPU path to reduce launch overhead.
+  BCCPasses.add(createForEachExpandPass());
+
+  BCCPasses.run(*mModule);
+
+  return 0;
+}
 
 int Compiler::runLTO(llvm::TargetData *TD,
                      llvm::NamedMDNode const *ExportVarMetadata,
@@ -749,6 +763,7 @@ int Compiler::runLTO(llvm::TargetData *TD,
 
   // root(), init(), and .rs.dtor() are born to be exported
   ExportSymbols.push_back("root");
+  ExportSymbols.push_back("root.expand");
   ExportSymbols.push_back("init");
   ExportSymbols.push_back(".rs.dtor");
 
