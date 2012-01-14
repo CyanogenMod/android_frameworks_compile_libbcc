@@ -172,25 +172,25 @@ void Compiler::GlobalInitialization() {
 #endif
 
   if (target_archtype == llvm::Triple::arm) {
-#if defined(ARCH_ARM_HAVE_VFP)
+#  if defined(ARCH_ARM_HAVE_VFP)
     Features.push_back("+vfp3");
-#if !defined(ARCH_ARM_HAVE_VFP_D32)
+#  if !defined(ARCH_ARM_HAVE_VFP_D32)
     Features.push_back("+d16");
-#endif
-#endif
+#  endif
+#  endif
 
-#if defined(ARCH_ARM_HAVE_NEON)
+#  if defined(ARCH_ARM_HAVE_NEON)
     Features.push_back("+neon");
     Features.push_back("+neonfp");
-#else
+#  else
     Features.push_back("-neon");
     Features.push_back("-neonfp");
-#endif
+#  endif
 
-#if defined(DISABLE_ARCH_ARM_HAVE_NEON)
+#  if defined(DISABLE_ARCH_ARM_HAVE_NEON)
     Features.push_back("-neon");
     Features.push_back("-neonfp");
-#endif
+#  endif
   }
 
 #if defined(PROVIDE_ARM_CODEGEN)
