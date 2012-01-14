@@ -39,6 +39,7 @@
 #include "Transforms/BCCTransforms.h"
 
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/Triple.h"
 
 #include "llvm/Analysis/Passes.h"
 
@@ -147,29 +148,50 @@ void Compiler::GlobalInitialization() {
   // Set Triple, CPU and Features here
   Triple = TARGET_TRIPLE_STRING;
 
-#if defined(DEFAULT_ARM_CODEGEN)
+  // Determine target_archtype
+#if defined(__HOST__)
+  std::string Err;
+  llvm::Target const *Target = llvm::TargetRegistry::lookupTarget(Triple, Err);
+  llvm::Triple::ArchType target_archtype;
+  if (Target == 0) {
+    target_archtype = llvm::Triple::UnknownArch;
+  } else {
+    const char *target_llvm_name = Target->getName();
+    target_archtype = llvm::Triple::getArchTypeForLLVMName(target_llvm_name);
+  }
+#elif defined(DEFAULT_ARM_CODEGEN)
+  const llvm::Triple::ArchType target_archtype = llvm::Triple::arm;
+#elif defined(DEFAULT_MIPS_CODEGEN)
+  const llvm::Triple::ArchType target_archtype = llvm::Triple::mipsel;
+#elif defined(DEFAULT_X86_CODEGEN)
+  const llvm::Triple::ArchType target_archtype = llvm::Triple::x86;
+#elif defined(DEFAULT_X86_64_CODEGEN)
+  const llvm::Triple::ArchType target_archtype = llvm::Triple::x86_64;
+#else
+  const llvm::Triple::ArchType target_archtype = llvm::Triple::UnknownArch;
+#endif
 
+  if (target_archtype == llvm::Triple::arm) {
 #if defined(ARCH_ARM_HAVE_VFP)
-  Features.push_back("+vfp3");
+    Features.push_back("+vfp3");
 #if !defined(ARCH_ARM_HAVE_VFP_D32)
-  Features.push_back("+d16");
+    Features.push_back("+d16");
 #endif
 #endif
 
 #if defined(ARCH_ARM_HAVE_NEON)
-  Features.push_back("+neon");
-  Features.push_back("+neonfp");
+    Features.push_back("+neon");
+    Features.push_back("+neonfp");
 #else
-  Features.push_back("-neon");
-  Features.push_back("-neonfp");
+    Features.push_back("-neon");
+    Features.push_back("-neonfp");
 #endif
 
 #if defined(DISABLE_ARCH_ARM_HAVE_NEON)
-  Features.push_back("-neon");
-  Features.push_back("-neonfp");
+    Features.push_back("-neon");
+    Features.push_back("-neonfp");
 #endif
-
-#endif // DEFAULT_ARM_CODEGEN
+  }
 
 #if defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMAsmPrinter();
@@ -315,6 +337,32 @@ int Compiler::compile(bool compileOnly) {
   if (hasError())
     goto on_bcc_compile_error;
 
+  // Determine code_model_is_medium
+#if defined(__HOST__)
+  bool code_model_is_medium;
+  bool no_frame_pointer_elimination;
+
+  {
+    // open a new scope otherwise compiler complains constructor of the folloinwg two being bypassed by previous 'goto' statement
+    const char *target_llvm_name = Target->getName();
+    const llvm::Triple::ArchType target_archtype = llvm::Triple::getArchTypeForLLVMName(target_llvm_name);
+    // Data address in X86_64 architecture may reside in a far-away place
+    code_model_is_medium = target_archtype == llvm::Triple::x86_64;
+    // Disable frame pointer elimination optimization for X86_64 and X86
+    no_frame_pointer_elimination = (target_archtype == llvm::Triple::x86_64 ||
+                                    target_archtype == llvm::Triple::x86);
+  }
+#elif defined(DEFAULT_X86_64_CODEGEN)
+  #define code_model_is_medium           true
+  #define no_frame_pointer_elimination   true
+#elif defined(DEFAULT_X86_CODEGEN)
+  #define code_model_is_medium           false
+  #define no_frame_pointer_elimination   true
+#else
+  #define code_model_is_medium           false
+  #define no_frame_pointer_elimination   false
+#endif
+
   if (!CPU.empty() || !Features.empty()) {
     llvm::SubtargetFeatures F;
 
@@ -327,8 +375,7 @@ int Compiler::compile(bool compileOnly) {
   }
 
   // Setup LLVM Target Machine Options
-  // Disable frame pointer elimination optimization
-  Options.NoFramePointerElim = false;
+  Options.NoFramePointerElim = no_frame_pointer_elimination;
 
   // Use hardfloat ABI
   //
@@ -340,14 +387,9 @@ int Compiler::compile(bool compileOnly) {
   Options.FloatABIType = llvm::FloatABI::Soft;
   Options.UseSoftFloat = false;
 
-#if defined(DEFAULT_X86_64_CODEGEN)
-  // Data address in X86_64 architecture may reside in a far-away place
-  CM = llvm::CodeModel::Medium;
-#else
   // This is set for the linker (specify how large of the virtual addresses
   // we can access for all unknown symbols.)
-  CM = llvm::CodeModel::Small;
-#endif
+  CM = code_model_is_medium? llvm::CodeModel::Medium : llvm::CodeModel::Small;
 
   RM = llvm::Reloc::Static;
 
