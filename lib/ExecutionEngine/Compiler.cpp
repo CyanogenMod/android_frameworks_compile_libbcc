@@ -171,7 +171,7 @@ void Compiler::GlobalInitialization() {
   const llvm::Triple::ArchType target_archtype = llvm::Triple::UnknownArch;
 #endif
 
-  if (target_archtype == llvm::Triple::arm) {
+  if (target_archtype == llvm::Triple::arm || target_archtype == llvm::Triple::thumb) {
 #  if defined(ARCH_ARM_HAVE_VFP)
     Features.push_back("+vfp3");
 #  if !defined(ARCH_ARM_HAVE_VFP_D32)
