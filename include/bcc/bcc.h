@@ -53,6 +53,18 @@ typedef struct LLVMOpaqueModule *LLVMModuleRef;
 
 /*-------------------------------------------------------------------------*/
 
+/*
+ * Relocation model when prepare object, it provides 1-1 mapping to the enum
+ * llvm::Reloc::Model in llvm/Support/CodeGen.h
+ */
+typedef enum bccRelocModelEnum {
+  bccRelocDefault,  // Use default target-defined relocation model
+  bccRelocStatic,
+  bccRelocPIC,
+  bccRelocDynamicNoPIC
+} bccRelocModelEnum;
+
+/*-------------------------------------------------------------------------*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,10 +109,11 @@ int bccLinkFile(BCCScriptRef script,
 
 void bccMarkExternalSymbol(BCCScriptRef script, char const *name);
 
-int bccPrepareSharedObject(BCCScriptRef script,
-                         char const *cacheDir,
-                         char const *cacheName,
-                         unsigned long flags);
+int bccPrepareObject(BCCScriptRef script,
+                     char const *cacheDir,
+                     char const *cacheName,
+                     bccRelocModelEnum RelocModel,
+                     unsigned long flags);
 
 int bccPrepareExecutable(BCCScriptRef script,
                          char const *cacheDir,
