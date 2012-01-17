@@ -35,6 +35,7 @@ namespace bcc {
   class ScriptCompiled;
   class ScriptCached;
   class SourceInfo;
+  struct CompilerOption;
 
   namespace ScriptStatus {
     enum StatusType {
@@ -179,7 +180,7 @@ namespace bcc {
 #if USE_CACHE
     int internalLoadCache(bool checkOnly);
 #endif
-    int internalCompile(bool compileOnly);
+    int internalCompile(CompilerOption&);
 
   };
 
