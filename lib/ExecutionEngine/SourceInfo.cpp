@@ -34,6 +34,9 @@
 #include <bcc/bcc.h>
 #include <bcc/bcc_cache.h>
 
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Module.h>
+#include <llvm/LLVMContext.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -114,7 +117,7 @@ SourceInfo *SourceInfo::createFromModule(llvm::Module *module,
   }
 
   result->type = SourceKind::Module;
-  result->module.reset(module);
+  result->module = module;
   result->flags = flags;
 
 #if USE_CACHE
@@ -133,44 +136,63 @@ SourceInfo *SourceInfo::createFromModule(llvm::Module *module,
 }
 
 
-int SourceInfo::prepareModule(ScriptCompiled *SC) {
+int SourceInfo::prepareModule(llvm::LLVMContext *context) {
+  if (module)
+    return 0;
+
+  llvm::OwningPtr<llvm::MemoryBuffer> mem;
+  std::string errmsg;
+
   switch (type) {
   case SourceKind::Buffer:
     {
-      llvm::OwningPtr<llvm::MemoryBuffer> MEM(
-        llvm::MemoryBuffer::getMemBuffer(
+      mem.reset(llvm::MemoryBuffer::getMemBuffer(
           llvm::StringRef(buffer.bitcode, buffer.bitcodeSize)));
 
-      if (!MEM.get()) {
+      if (!mem.get()) {
         ALOGE("Unable to MemoryBuffer::getMemBuffer(addr=%p, size=%lu)\n",
-             buffer.bitcode, (unsigned long)buffer.bitcodeSize);
+              buffer.bitcode, (unsigned long)buffer.bitcodeSize);
         return 1;
       }
-
-      module.reset(SC->parseBitcodeFile(MEM.get()));
     }
     break;
 
   case SourceKind::File:
     {
-      llvm::OwningPtr<llvm::MemoryBuffer> MEM;
-
-      if (llvm::error_code ec = llvm::MemoryBuffer::getFile(file.path, MEM)) {
-        ALOGE("Unable to MemoryBuffer::getFile(path=%s)\n", file.path);
+      if (llvm::error_code ec = llvm::MemoryBuffer::getFile(file.path, mem)) {
+        ALOGE("Unable to MemoryBuffer::getFile(path=%s, %s)\n",
+              file.path, ec.message().c_str());
         return 1;
       }
-
-      module.reset(SC->parseBitcodeFile(MEM.get()));
     }
     break;
 
   default:
+    return 0;
     break;
   }
 
-  return (module.get()) ? 0 : 1;
+  if (context)
+    shared_context = true;
+  else
+    context = new llvm::LLVMContext();
+
+  module = llvm::ParseBitcodeFile(mem.get(), *context, &errmsg);
+  if (module == NULL) {
+    ALOGE("Unable to ParseBitcodeFile: %s\n", errmsg.c_str());
+    if (!shared_context)
+      delete context;
+  }
+
+  return (module == NULL);
 }
 
+SourceInfo::~SourceInfo() {
+  llvm::LLVMContext *context = &module->getContext();
+  delete module;
+  if (!shared_context)
+    delete context;
+}
 
 #if USE_CACHE
 template <typename T> void SourceInfo::introDependency(T &checker) {

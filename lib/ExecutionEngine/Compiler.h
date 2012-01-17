@@ -40,9 +40,7 @@
 
 
 namespace llvm {
-  class LLVMContext;
   class Module;
-  class MemoryBuffer;
   class NamedMDNode;
   class TargetData;
 }
@@ -110,7 +108,6 @@ namespace bcc {
     BCCSymbolLookupFn mpSymbolLookupFn;
     void *mpSymbolLookupContext;
 
-    llvm::LLVMContext *mContext;
     llvm::Module *mModule;
 
     bool mHasLinked;
@@ -142,8 +139,6 @@ namespace bcc {
       return mEmittedELFExecutable;
     }
 #endif
-
-    llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM);
 
     int readModule(llvm::Module *module) {
       mModule = module;

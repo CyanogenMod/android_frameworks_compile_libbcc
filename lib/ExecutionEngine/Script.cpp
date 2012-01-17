@@ -76,9 +76,8 @@ Script::~Script() {
     break;
   }
 
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 2; ++i)
     delete mSourceList[i];
-  }
 }
 
 
@@ -346,28 +345,25 @@ int Script::internalCompile(CompilerOption &option) {
                                       mpExtSymbolLookupFnContext);
   }
 
-  // Parse Bitcode File (if necessary)
-  for (size_t i = 0; i < 2; ++i) {
-    if (mSourceList[i] && mSourceList[i]->prepareModule(mCompiled) != 0) {
-      ALOGE("Unable to parse bitcode for source[%lu]\n", (unsigned long)i);
-      return 1;
-    }
-  }
-
-  // Set the main source module
-  if (!mSourceList[0] || !mSourceList[0]->getModule()) {
-    ALOGE("Source bitcode is not setted.\n");
+  if (!mSourceList[0]) {
+    ALOGE("Source bitcode is not set.\n");
     return 1;
   }
 
-  if (mCompiled->readModule(mSourceList[0]->takeModule()) != 0) {
+  // Parse Bitcode File (if necessary)
+  if (mSourceList[0]->prepareModule() != 0)
+    return 1;
+
+  // Set the main source module
+  if (mCompiled->readModule(mSourceList[0]->getModule()) != 0) {
     ALOGE("Unable to read source module\n");
     return 1;
   }
 
   // Link the source module with the library module
-  if (mSourceList[1]) {
-    if (mCompiled->linkModule(mSourceList[1]->takeModule()) != 0) {
+  if (mSourceList[1] &&
+      mSourceList[1]->prepareModule(mSourceList[0]->getContext())) {
+    if (mCompiled->linkModule(mSourceList[1]->getModule()) != 0) {
       ALOGE("Unable to link library module\n");
       return 1;
     }

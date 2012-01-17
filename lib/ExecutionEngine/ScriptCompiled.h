@@ -77,10 +77,6 @@ namespace bcc {
 
     ~ScriptCompiled();
 
-    llvm::Module *parseBitcodeFile(llvm::MemoryBuffer *MEM) {
-      return mCompiler.parseBitcodeFile(MEM);
-    }
-
     int readModule(llvm::Module *module) {
       return mCompiler.readModule(module);
     }
