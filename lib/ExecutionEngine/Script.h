@@ -98,9 +98,9 @@ namespace bcc {
 
     inline std::string getCacheInfoPath() const {
 #if USE_OLD_JIT
-      return std::string(mCacheDir + mCacheName + ".oBCC");
+      return getCachedObjectPath().append(".oBCC");
 #elif USE_MCJIT
-      return std::string(mCacheDir + mCacheName + ".info");
+      return getCachedObjectPath().append(".info");
 #endif
     }
 #endif
