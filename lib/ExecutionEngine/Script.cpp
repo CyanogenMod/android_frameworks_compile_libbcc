@@ -76,8 +76,9 @@ Script::~Script() {
     break;
   }
 
-  for (size_t i = 0; i < 2; ++i)
+  for (size_t i = 0; i < 2; ++i) {
     delete mSourceList[i];
+  }
 }
 
 
@@ -179,10 +180,10 @@ int Script::addSourceFile(size_t idx,
   return 0;
 }
 
-int Script::prepareObject(char const *cacheDir,
-                          char const *cacheName,
-                          llvm::Reloc::Model RelocModel,
-                          unsigned long flags) {
+int Script::prepareRelocatable(char const *cacheDir,
+                               char const *cacheName,
+                               llvm::Reloc::Model RelocModel,
+                               unsigned long flags) {
   mObjectType = ScriptObject::Relocatable;
 #if USE_CACHE
   if (cacheDir && cacheName) {
