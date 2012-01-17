@@ -185,8 +185,8 @@ namespace {
     }
 
     if (ArgVec.size() != 5) {
-      ALOGE("Incorrect number of arguments to function: %d",
-          (int) ArgVec.size());
+      ALOGE("Incorrect number of arguments to function: %zu",
+            ArgVec.size());
       return false;
     }
     llvm::Value *Arg_p = ArgVec[0];
