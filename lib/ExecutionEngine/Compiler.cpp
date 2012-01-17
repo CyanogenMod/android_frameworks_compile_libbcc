@@ -40,7 +40,6 @@
 #include "Transforms/BCCTransforms.h"
 
 #include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/Triple.h"
 
 #include "llvm/Analysis/Passes.h"
 
@@ -109,6 +108,7 @@ bool Compiler::GlobalInitialized = false;
 llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
 
 std::string Compiler::Triple;
+llvm::Triple::ArchType Compiler::ArchType;
 
 std::string Compiler::CPU;
 
@@ -145,30 +145,31 @@ void Compiler::GlobalInitialization() {
   // Set Triple, CPU and Features here
   Triple = TARGET_TRIPLE_STRING;
 
-  // Determine target_archtype
+  // Determine ArchType
 #if defined(__HOST__)
-  std::string Err;
-  llvm::Target const *Target = llvm::TargetRegistry::lookupTarget(Triple, Err);
-  llvm::Triple::ArchType target_archtype;
-  if (Target == 0) {
-    target_archtype = llvm::Triple::UnknownArch;
-  } else {
-    const char *target_llvm_name = Target->getName();
-    target_archtype = llvm::Triple::getArchTypeForLLVMName(target_llvm_name);
+  {
+    std::string Err;
+    llvm::Target const *Target = llvm::TargetRegistry::lookupTarget(Triple, Err);
+    if (Target == NULL) {
+      ArchType = llvm::Triple::getArchTypeForLLVMName(Target->getName());
+    } else {
+      ArchType = llvm::Triple::UnknownArch;
+      ALOGE("%s", Err.c_str());
+    }
   }
 #elif defined(DEFAULT_ARM_CODEGEN)
-  const llvm::Triple::ArchType target_archtype = llvm::Triple::arm;
+  ArchType = llvm::Triple::arm;
 #elif defined(DEFAULT_MIPS_CODEGEN)
-  const llvm::Triple::ArchType target_archtype = llvm::Triple::mipsel;
+  ArchType = llvm::Triple::mipsel;
 #elif defined(DEFAULT_X86_CODEGEN)
-  const llvm::Triple::ArchType target_archtype = llvm::Triple::x86;
+  ArchType = llvm::Triple::x86;
 #elif defined(DEFAULT_X86_64_CODEGEN)
-  const llvm::Triple::ArchType target_archtype = llvm::Triple::x86_64;
+  ArchType = llvm::Triple::x86_64;
 #else
-  const llvm::Triple::ArchType target_archtype = llvm::Triple::UnknownArch;
+  ArchType = llvm::Triple::UnknownArch;
 #endif
 
-  if (target_archtype == llvm::Triple::arm || target_archtype == llvm::Triple::thumb) {
+  if ((ArchType == llvm::Triple::arm) || (ArchType == llvm::Triple::thumb)) {
 #  if defined(ARCH_ARM_HAVE_VFP)
     Features.push_back("+vfp3");
 #  if !defined(ARCH_ARM_HAVE_VFP_D32)
@@ -325,41 +326,6 @@ int Compiler::compile(CompilerOption &option) {
 
     FeaturesStr = F.getString();
   }
-
-  // Determine if code_model_is_medium
-  // And determine if no_frame_pointer_elimination
-#if defined(__HOST__)
-  bool code_model_is_medium;
-  bool no_frame_pointer_elimination;
-
-  {
-    // open a new scope otherwise compiler complains constructor of the
-    // folloinwg two being bypassed by previous 'goto' statement
-    const char *target_llvm_name = Target->getName();
-    const llvm::Triple::ArchType target_archtype = llvm::Triple::getArchTypeForLLVMName(target_llvm_name);
-    // Data address in X86_64 architecture may reside in a far-away place
-    code_model_is_medium = target_archtype == llvm::Triple::x86_64;
-    // Disable frame pointer elimination optimization for X86_64 and X86
-    no_frame_pointer_elimination = (target_archtype == llvm::Triple::x86_64 ||
-                                    target_archtype == llvm::Triple::x86);
-  }
-#elif defined(DEFAULT_X86_64_CODEGEN)
-# define code_model_is_medium           true
-# define no_frame_pointer_elimination   true
-#elif defined(DEFAULT_X86_CODEGEN)
-# define code_model_is_medium           false
-# define no_frame_pointer_elimination   true
-#else
-# define code_model_is_medium           false
-# define no_frame_pointer_elimination   false
-#endif
-
-  // Setup LLVM Target Machine Options
-  option.TargetOpt.NoFramePointerElim = no_frame_pointer_elimination;
-
-  // This is set for the linker (specify how large of the virtual addresses
-  // we can access for all unknown symbols.)
-  option.CodeModelOpt = code_model_is_medium ? llvm::CodeModel::Medium : llvm::CodeModel::Small;
 
   // Create LLVM Target Machine
   TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
