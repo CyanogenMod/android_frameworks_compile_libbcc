@@ -183,6 +183,7 @@ int Script::prepareObject(char const *cacheDir,
                           char const *cacheName,
                           llvm::Reloc::Model RelocModel,
                           unsigned long flags) {
+  mObjectType = ScriptObject::Relocatable;
 #if USE_CACHE
   if (cacheDir && cacheName) {
     // Set Cache Directory and File Name
@@ -220,6 +221,7 @@ int Script::prepareExecutable(char const *cacheDir,
     return 1;
   }
 
+  mObjectType = ScriptObject::Executable;
 #if USE_CACHE
   if (cacheDir && cacheName) {
     // Set Cache Directory and File Name
@@ -261,13 +263,8 @@ int Script::internalLoadCache(bool checkOnly) {
     return 1;
   }
 
-#if USE_OLD_JIT
-  std::string objPath(mCacheDir + mCacheName + ".jit-image");
-  std::string infoPath(mCacheDir + mCacheName + ".oBCC"); // TODO: .info instead
-#elif USE_MCJIT
-  std::string objPath(mCacheDir + mCacheName + ".o");
-  std::string infoPath(mCacheDir + mCacheName + ".info");
-#endif
+  std::string objPath = getCachedObjectPath();
+  std::string infoPath = getCacheInfoPath();
 
   FileHandle objFile;
   if (objFile.open(objPath.c_str(), OpenMode::Read) < 0) {
@@ -390,14 +387,8 @@ int Script::internalCompile(CompilerOption &option) {
 #endif
       !getBooleanProp("debug.bcc.nocache")) {
 
-#if USE_OLD_JIT
-    std::string objPath(mCacheDir + mCacheName + ".jit-image");
-    std::string infoPath(mCacheDir + mCacheName + ".oBCC");
-#elif USE_MCJIT
-    std::string objPath(mCacheDir + mCacheName + ".o");
-    std::string infoPath(mCacheDir + mCacheName + ".info");
-#endif
-
+    std::string objPath = getCachedObjectPath();
+    std::string infoPath = getCacheInfoPath();
 
     // Remove the file if it already exists before writing the new file.
     // The old file may still be mapped elsewhere in memory and we do not want
