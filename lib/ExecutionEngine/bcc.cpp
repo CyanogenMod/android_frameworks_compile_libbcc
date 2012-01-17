@@ -29,6 +29,7 @@
 #include <string>
 
 #include <utils/StopWatch.h>
+
 #include <llvm/Support/CodeGen.h>
 
 using namespace bcc;
@@ -124,26 +125,38 @@ extern "C" void bccMarkExternalSymbol(BCCScriptRef script, char const *name) {
 }
 
 
-extern "C" int bccPrepareObject(BCCScriptRef script,
-                                char const *cacheDir,
-                                char const *cacheName,
-                                bccRelocModelEnum RelocModel,
-                                unsigned long flags) {
+extern "C" int bccPrepareRelocatable(BCCScriptRef script,
+                                     char const *cacheDir,
+                                     char const *cacheName,
+                                     bccRelocModelEnum RelocModel,
+                                     unsigned long flags) {
   BCC_FUNC_LOGGER();
   llvm::Reloc::Model RM;
 
   switch (RelocModel) {
-    case bccRelocDefault:      RM = llvm::Reloc::Default;      break;
-    case bccRelocStatic:       RM = llvm::Reloc::Static;       break;
-    case bccRelocPIC:          RM = llvm::Reloc::PIC_;         break;
-    case bccRelocDynamicNoPIC: RM = llvm::Reloc::DynamicNoPIC; break;
+    case bccRelocDefault: {
+      RM = llvm::Reloc::Default;
+      break;
+    }
+    case bccRelocStatic: {
+      RM = llvm::Reloc::Static;
+      break;
+    }
+    case bccRelocPIC: {
+      RM = llvm::Reloc::PIC_;
+      break;
+    }
+    case bccRelocDynamicNoPIC: {
+      RM = llvm::Reloc::DynamicNoPIC;
+      break;
+    }
     default: {
       ALOGE("Unrecognized relocation model for bccPrepareObject!");
       return BCC_INVALID_VALUE;
     }
   }
 
-  return unwrap(script)->prepareObject(cacheDir, cacheName, RM, flags);
+  return unwrap(script)->prepareRelocatable(cacheDir, cacheName, RM, flags);
 }
 
 

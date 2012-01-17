@@ -158,10 +158,10 @@ namespace bcc {
                           char const *cacheName,
                           unsigned long flags);
 
-    int prepareObject(char const *cacheDir,
-                      char const *cacheName,
-                      llvm::Reloc::Model RelocModel,
-                      unsigned long flags);
+    int prepareRelocatable(char const *cacheDir,
+                           char const *cacheName,
+                           llvm::Reloc::Model RelocModel,
+                           unsigned long flags);
 
     char const *getCompilerErrorMessage();
 
