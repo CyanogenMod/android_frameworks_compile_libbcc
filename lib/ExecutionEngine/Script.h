@@ -49,11 +49,20 @@ namespace bcc {
     };
   }
 
+  namespace ScriptObject {
+    enum ObjectType {
+      Unknown,
+      Relocatable,
+      Executable,
+    };
+  }
+
   class Script {
   private:
     int mErrorCode;
 
     ScriptStatus::StatusType mStatus;
+    ScriptObject::ObjectType mObjectType;
 
     union {
       ScriptCompiled *mCompiled;
@@ -65,6 +74,35 @@ namespace bcc {
 #if USE_CACHE
     std::string mCacheDir;
     std::string mCacheName;
+
+    inline std::string getCachedObjectPath() const {
+#if USE_OLD_JIT
+      return std::string(mCacheDir + mCacheName + ".jit-image");
+#elif USE_MCJIT
+      std::string objPath(mCacheDir + mCacheName);
+
+      // Append suffix depends on the object type
+      switch (mObjectType) {
+        case ScriptObject::Relocatable:
+        case ScriptObject::Executable: {
+          objPath.append(".o");
+          break;
+        }
+        default: {
+          assert(false && "Unknown onject type!");
+        }
+      }
+      return objPath;
+#endif
+    }
+
+    inline std::string getCacheInfoPath() const {
+#if USE_OLD_JIT
+      return std::string(mCacheDir + mCacheName + ".oBCC");
+#elif USE_MCJIT
+      return std::string(mCacheDir + mCacheName + ".info");
+#endif
+    }
 #endif
 
     bool mIsContextSlotNotAvail;
@@ -84,7 +122,7 @@ namespace bcc {
 
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               mIsContextSlotNotAvail(false),
+               mObjectType(ScriptObject::Unknown), mIsContextSlotNotAvail(false),
                mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
       Compiler::GlobalInitialization();
 
