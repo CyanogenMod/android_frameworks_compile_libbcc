@@ -251,18 +251,8 @@ int Script::prepareExecutable(char const *cacheDir,
 
 #if USE_CACHE
 int Script::internalLoadCache(bool checkOnly) {
-  if (getBooleanProp("debug.bcc.nocache")) {
-    // Android system environment property disable the cache mechanism by
-    // setting "debug.bcc.nocache".  So we will not load the cache file any
-    // way.
+  if (!isCacheable())
     return 1;
-  }
-
-  if (mCacheDir.empty() || mCacheName.empty()) {
-    // The application developer has not specify the cachePath, so
-    // we don't know where to open the cache file.
-    return 1;
-  }
 
   std::string objPath = getCachedObjectPath();
   std::string infoPath = getCacheInfoPath();
@@ -389,13 +379,12 @@ int Script::internalCompile(const CompilerOption &option) {
   // Note: If the address of the context is not in the context slot, then
   // we don't have to cache it.
 
-  if (!mCacheDir.empty() &&
-      !mCacheName.empty() &&
+  if (
 #if USE_OLD_JIT
       !mIsContextSlotNotAvail &&
       ContextManager::get().isManagingContext(getContext()) &&
 #endif
-      !getBooleanProp("debug.bcc.nocache")) {
+      isCacheable()) {
 
     std::string objPath = getCachedObjectPath();
     std::string infoPath = getCacheInfoPath();
@@ -758,6 +747,27 @@ int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
     return 1;
   }
   return 0;
+}
+
+bool Script::isCacheable() const {
+#if USE_CACHE
+  if (getBooleanProp("debug.bcc.nocache")) {
+    // Android system environment property: Disables the cache mechanism by
+    // setting "debug.bcc.nocache".  So we will not load the cache file any
+    // way.
+    return false;
+  }
+
+  if (mCacheDir.empty() || mCacheName.empty()) {
+    // The application developer has not specified the cachePath, so
+    // we don't know where to open the cache file.
+    return false;
+  }
+
+  return true;
+#else
+  return false;
+#endif
 }
 
 #if USE_MCJIT

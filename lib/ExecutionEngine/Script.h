@@ -204,6 +204,7 @@ namespace bcc {
     char *getContext();
 #endif
 
+    bool isCacheable() const;
 
     void setError(int error) {
       if (mErrorCode == BCC_NO_ERROR && error != BCC_NO_ERROR) {
