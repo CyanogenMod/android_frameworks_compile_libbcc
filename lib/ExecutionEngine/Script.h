@@ -89,7 +89,7 @@ namespace bcc {
           break;
         }
         default: {
-          assert(false && "Unknown onject type!");
+          assert(false && "Unknown object type!");
         }
       }
       return objPath;
