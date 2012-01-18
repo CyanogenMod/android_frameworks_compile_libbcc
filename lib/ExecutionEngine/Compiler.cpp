@@ -285,7 +285,7 @@ Compiler::Compiler(ScriptCompiled *result)
 
 int Compiler::linkModule(llvm::Module *moduleWith) {
   if (llvm::Linker::LinkModules(mModule, moduleWith,
-                                llvm::Linker::DestroySource,
+                                llvm::Linker::PreserveSource,
                                 &mError) != 0) {
     return hasError();
   }
