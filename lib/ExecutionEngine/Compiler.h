@@ -29,6 +29,7 @@
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Triple.h"
 #include "llvm/Target/TargetMachine.h"
 
 #include <stddef.h>
@@ -61,6 +62,7 @@ namespace bcc {
     // If given, this will be the name of the target triple to compile for.
     // If not given, the initial values defined in this file will be used.
     static std::string Triple;
+    static llvm::Triple::ArchType ArchType;
 
     static llvm::CodeGenOpt::Level CodeGenOptLevel;
 
@@ -119,6 +121,10 @@ namespace bcc {
 
     static std::string const &getTargetTriple() {
       return Triple;
+    }
+
+    static llvm::Triple::ArchType getTargetArchType() {
+      return ArchType;
     }
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {

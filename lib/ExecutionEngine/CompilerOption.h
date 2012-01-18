@@ -18,6 +18,7 @@
 #define BCC_COMPILER_OPTION_H
 
 #include "Config.h"
+#include "Compiler.h"
 
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/CodeGen.h"
@@ -34,9 +35,28 @@ typedef struct CompilerOption {
   // here means the configuration for running RenderScript (more specifically,
   // one can declare a CompilerOption object (call default constructor) and then
   // pass to the Compiler::compiler() without any modification for RenderScript,
-  // see Script::prepareExecutable(...))
+  // see Script::prepareExecutable(...)).
+  //
+  // Must be invoked after call Compiler::GlobalInitialization() at least once.
+  //
   CompilerOption() {
     //-- Setup options to llvm::TargetMachine --//
+
+    //-- Setup Frame Pointer Elimination Optimization --//
+#if defined(__HOST__)
+    // Disable frame pointer elimination optimization for X86_64 and X86
+    if ((Compiler::getTargetArchType() == llvm::Triple::x86_64) ||
+        (Compiler::getTargetArchType() == llvm::Triple::x86))
+      TargetOpt.NoFramePointerElim = true;
+    else
+      TargetOpt.NoFramePointerElim = false;
+#elif defined(DEFAULT_X86_64_CODEGEN)
+    TargetOpt.NoFramePointerElim = true;
+#elif defined(DEFAULT_X86_CODEGEN)
+    TargetOpt.NoFramePointerElim = true;
+#else
+    TargetOpt.NoFramePointerElim = false;
+#endif
 
     // Use hardfloat ABI
     //
@@ -50,6 +70,19 @@ typedef struct CompilerOption {
 
     //-- Setup relocation model  --//
     RelocModelOpt = llvm::Reloc::Static;
+
+    //-- Setup code model  --//
+#if defined(__HOST__)
+    // Data address in X86_64 architecture may reside in a far-away place
+    if (Compiler::getTargetArchType() == llvm::Triple::x86_64)
+      CodeModelOpt = llvm::CodeModel::Medium;
+    else
+      CodeModelOpt = llvm::CodeModel::Small;
+#elif defined(DEFAULT_X86_64_CODEGEN)
+    CodeModelOpt = llvm::CodeModel::Medium;
+#else
+    CodeModelOpt = llvm::CodeModel::Small;
+#endif
 
     //-- Load the result object after successful compilation  --//
     LoadAfterCompile = true;
