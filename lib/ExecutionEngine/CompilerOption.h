@@ -86,7 +86,6 @@ class CompilerOption {
     LoadAfterCompile = true;
   }
 
- private:
   llvm::TargetOptions TargetOpt;
   llvm::CodeModel::Model CodeModelOpt;
   llvm::Reloc::Model RelocModelOpt;
