@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,8 @@
 
 namespace bcc {
 
-typedef struct CompilerOption {
-  llvm::TargetOptions TargetOpt;
-  llvm::CodeModel::Model CodeModelOpt;
-  llvm::Reloc::Model RelocModelOpt;
-  bool LoadAfterCompile;
-
+class CompilerOption {
+ public:
   // Constructor setup "default configuration". The "default configuration"
   // here means the configuration for running RenderScript (more specifically,
   // one can declare a CompilerOption object (call default constructor) and then
@@ -89,7 +85,14 @@ typedef struct CompilerOption {
     //-- Load the result object after successful compilation  --//
     LoadAfterCompile = true;
   }
-} CompilerOption;
+
+ private:
+  llvm::TargetOptions TargetOpt;
+  llvm::CodeModel::Model CodeModelOpt;
+  llvm::Reloc::Model RelocModelOpt;
+  bool LoadAfterCompile;
+
+};
 
 } // namespace bcc
 
