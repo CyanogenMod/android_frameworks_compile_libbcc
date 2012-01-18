@@ -348,9 +348,19 @@ int Script::internalCompile(const CompilerOption &option) {
     return 1;
   }
 
-  // Parse Bitcode File (if necessary)
-  if (mSourceList[0]->prepareModule() != 0)
+  // Parse Source bitcode file (if necessary)
+  if (mSourceList[0]->prepareModule() != 0) {
+    ALOGE("Unable to setup source module\n");
     return 1;
+  }
+
+  // Parse Library bitcode file (if necessary)
+  if (mSourceList[1]) {
+    if (mSourceList[1]->prepareModule(mSourceList[0]->getContext()) != 0) {
+      ALOGE("Unable to setup library module\n");
+      return 1;
+    }
+  }
 
   // Set the main source module
   if (mCompiled->readModule(mSourceList[0]->getModule()) != 0) {
@@ -359,8 +369,7 @@ int Script::internalCompile(const CompilerOption &option) {
   }
 
   // Link the source module with the library module
-  if (mSourceList[1] &&
-      mSourceList[1]->prepareModule(mSourceList[0]->getContext())) {
+  if (mSourceList[1]) {
     if (mCompiled->linkModule(mSourceList[1]->getModule()) != 0) {
       ALOGE("Unable to link library module\n");
       return 1;
