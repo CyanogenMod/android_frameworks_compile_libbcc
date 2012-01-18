@@ -325,7 +325,7 @@ int Script::internalLoadCache(bool checkOnly) {
 }
 #endif
 
-int Script::internalCompile(CompilerOption &option) {
+int Script::internalCompile(const CompilerOption &option) {
   // Create the ScriptCompiled object
   mCompiled = new (std::nothrow) ScriptCompiled(this);
 

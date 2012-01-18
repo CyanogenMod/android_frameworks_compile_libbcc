@@ -153,7 +153,7 @@ namespace bcc {
 
     int linkModule(llvm::Module *module);
 
-    int compile(CompilerOption &option);
+    int compile(const CompilerOption &option);
 
     char const *getErrorMessage() {
       return mError.c_str();

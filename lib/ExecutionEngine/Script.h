@@ -221,7 +221,7 @@ namespace bcc {
 #if USE_CACHE
     int internalLoadCache(bool checkOnly);
 #endif
-    int internalCompile(CompilerOption&);
+    int internalCompile(const CompilerOption&);
 
   };
 

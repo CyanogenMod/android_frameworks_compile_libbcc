@@ -85,7 +85,7 @@ namespace bcc {
       return mCompiler.linkModule(module);
     }
 
-    int compile(CompilerOption &option) {
+    int compile(const CompilerOption &option) {
       return mCompiler.compile(option);
     }
 
