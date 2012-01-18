@@ -37,7 +37,7 @@ typedef struct CompilerOption {
   // pass to the Compiler::compiler() without any modification for RenderScript,
   // see Script::prepareExecutable(...)).
   //
-  // Must be invoked after call Compiler::GlobalInitialization() at least once.
+  // Must be invoked after calling Compiler::GlobalInitialization() at least once.
   //
   CompilerOption() {
     //-- Setup options to llvm::TargetMachine --//
@@ -46,10 +46,11 @@ typedef struct CompilerOption {
 #if defined(__HOST__)
     // Disable frame pointer elimination optimization for X86_64 and X86
     if ((Compiler::getTargetArchType() == llvm::Triple::x86_64) ||
-        (Compiler::getTargetArchType() == llvm::Triple::x86))
+        (Compiler::getTargetArchType() == llvm::Triple::x86)) {
       TargetOpt.NoFramePointerElim = true;
-    else
+    } else {
       TargetOpt.NoFramePointerElim = false;
+    }
 #elif defined(DEFAULT_X86_64_CODEGEN)
     TargetOpt.NoFramePointerElim = true;
 #elif defined(DEFAULT_X86_CODEGEN)

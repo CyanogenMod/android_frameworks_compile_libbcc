@@ -296,7 +296,7 @@ int Compiler::linkModule(llvm::Module *moduleWith) {
 }
 
 
-int Compiler::compile(CompilerOption &option) {
+int Compiler::compile(const CompilerOption &option) {
   llvm::Target const *Target = NULL;
   llvm::TargetData *TD = NULL;
   llvm::TargetMachine *TM = NULL;
