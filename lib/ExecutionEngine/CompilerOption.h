@@ -75,10 +75,11 @@ typedef struct CompilerOption {
     //-- Setup code model  --//
 #if defined(__HOST__)
     // Data address in X86_64 architecture may reside in a far-away place
-    if (Compiler::getTargetArchType() == llvm::Triple::x86_64)
+    if (Compiler::getTargetArchType() == llvm::Triple::x86_64) {
       CodeModelOpt = llvm::CodeModel::Medium;
-    else
+    } else {
       CodeModelOpt = llvm::CodeModel::Small;
+    }
 #elif defined(DEFAULT_X86_64_CODEGEN)
     CodeModelOpt = llvm::CodeModel::Medium;
 #else
