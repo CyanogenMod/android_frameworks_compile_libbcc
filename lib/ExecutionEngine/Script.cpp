@@ -184,22 +184,10 @@ int Script::prepareRelocatable(char const *cacheDir,
                                char const *cacheName,
                                llvm::Reloc::Model RelocModel,
                                unsigned long flags) {
-  mObjectType = ScriptObject::Relocatable;
 #if USE_CACHE
-  if (cacheDir && cacheName) {
-    // Set Cache Directory and File Name
-    mCacheDir = cacheDir;
-    mCacheName = cacheName;
-
-    if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/') {
-      mCacheDir.push_back('/'); // Ensure mCacheDir is end with '/'
-    }
-
-    // Check Cache File
-    if (internalLoadCache(true) == 0) {
-      return 0;
-    }
-  }
+  if (internalLoadCache(cacheDir, cacheName,
+                        ScriptObject::Relocatable, /* checkOnly */true) == 0)
+    return 0;
 #endif
 
   CompilerOption option;
@@ -222,22 +210,10 @@ int Script::prepareExecutable(char const *cacheDir,
     return 1;
   }
 
-  mObjectType = ScriptObject::Executable;
 #if USE_CACHE
-  if (cacheDir && cacheName) {
-    // Set Cache Directory and File Name
-    mCacheDir = cacheDir;
-    mCacheName = cacheName;
-
-    if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/') {
-      mCacheDir.push_back('/'); // Ensure mCacheDir is end with '/'
-    }
-
-    // Load Cache File
-    if (internalLoadCache(false) == 0) {
-      return 0;
-    }
-  }
+  if (internalLoadCache(cacheDir, cacheName,
+                        ScriptObject::Executable, /* checkOnly */false) == 0)
+    return 0;
 #endif
 
   CompilerOption option;
@@ -250,7 +226,22 @@ int Script::prepareExecutable(char const *cacheDir,
 
 
 #if USE_CACHE
-int Script::internalLoadCache(bool checkOnly) {
+int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
+                              ScriptObject::ObjectType objectType,
+                              bool checkOnly) {
+  mObjectType = objectType;
+
+  if ((cacheDir == NULL) || (cacheName == NULL))
+    return 1;
+
+  // Set cache file Name
+  mCacheName = cacheName;
+
+  // Santize the mCacheDir. Ensure that mCacheDir is end with '/'.
+  mCacheDir = cacheDir;
+  if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/')
+    mCacheDir.push_back('/');
+
   if (!isCacheable())
     return 1;
 
