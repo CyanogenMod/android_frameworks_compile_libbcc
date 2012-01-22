@@ -15,6 +15,7 @@
  */
 
 #include <bcinfo/BitcodeTranslator.h>
+#include <bcinfo/BitcodeWrapper.h>
 #include <bcinfo/MetadataExtractor.h>
 
 #include <ctype.h>
@@ -42,7 +43,7 @@ const char* inFile = NULL;
 extern int opterr;
 extern int optind;
 
-bool translate = false;
+bool translateFlag = false;
 
 static int parseOption(int argc, char** argv) {
   int c;
@@ -55,7 +56,7 @@ static int parseOption(int argc, char** argv) {
         break;
 
       case 't':
-        translate = true;
+        translateFlag = true;
         break;
 
       default:
@@ -162,17 +163,28 @@ int main(int argc, char** argv) {
   const char *translatedBitcode = NULL;
   size_t bitcodeSize = readBitcode(&bitcode);
 
-  unsigned int version = 14;
+  unsigned int version = 0;
 
-  if (translate) {
+  bcinfo::BitcodeWrapper bcWrapper((const char *)bitcode, bitcodeSize);
+  if (!bcWrapper.unwrap()) {
+    fprintf(stderr, "failed to unwrap bitcode wrapper\n");
+    return 2;
+  }
+
+  if (bcWrapper.getBCFileType() == bcinfo::BC_WRAPPER) {
+    version = bcWrapper.getTargetAPI();
+    printf("Found bitcodeWrapper\n");
+  } else if (translateFlag) {
     version = 12;
   }
+
+  printf("bitcodeVersion: %u\n", version);
 
   bcinfo::BitcodeTranslator *BT =
       new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version);
   if (!BT->translate()) {
     fprintf(stderr, "failed to translate bitcode\n");
-    return 2;
+    return 3;
   }
 
   bcinfo::MetadataExtractor *ME =
@@ -180,7 +192,7 @@ int main(int argc, char** argv) {
                                     BT->getTranslatedBitcodeSize());
   if (!ME->extract()) {
     fprintf(stderr, "failed to get metadata\n");
-    return 3;
+    return 4;
   }
 
   dumpMetadata(ME);
