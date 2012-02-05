@@ -220,7 +220,12 @@ namespace bcc {
 
   private:
 #if USE_CACHE
-    int internalLoadCache(bool checkOnly);
+    //
+    // It returns 0 if there's a cache hit.
+    //
+    // Side effect: it will set mCacheDir, mCacheName and mObjectType.
+    int internalLoadCache(char const *cacheDir, char const *cacheName,
+                          ScriptObject::ObjectType objectType, bool checkOnly);
 #endif
     int internalCompile(const CompilerOption&);
 
