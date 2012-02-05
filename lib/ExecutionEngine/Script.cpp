@@ -186,8 +186,9 @@ int Script::prepareRelocatable(char const *cacheDir,
                                unsigned long flags) {
 #if USE_CACHE
   if (internalLoadCache(cacheDir, cacheName,
-                        ScriptObject::Relocatable, /* checkOnly */true) == 0)
+                        ScriptObject::Relocatable, /* checkOnly */ true) == 0) {
     return 0;
+  }
 #endif
 
   CompilerOption option;
@@ -212,8 +213,9 @@ int Script::prepareExecutable(char const *cacheDir,
 
 #if USE_CACHE
   if (internalLoadCache(cacheDir, cacheName,
-                        ScriptObject::Executable, /* checkOnly */false) == 0)
+                        ScriptObject::Executable, /* checkOnly */ false) == 0) {
     return 0;
+  }
 #endif
 
   CompilerOption option;
@@ -231,19 +233,22 @@ int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
                               bool checkOnly) {
   mObjectType = objectType;
 
-  if ((cacheDir == NULL) || (cacheName == NULL))
+  if ((cacheDir == NULL) || (cacheName == NULL)) {
     return 1;
+  }
 
   // Set cache file Name
   mCacheName = cacheName;
 
-  // Santize the mCacheDir. Ensure that mCacheDir is end with '/'.
+  // Santize mCacheDir. Ensure that mCacheDir ends with '/'.
   mCacheDir = cacheDir;
-  if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/')
+  if (!mCacheDir.empty() && *mCacheDir.rbegin() != '/') {
     mCacheDir.push_back('/');
+  }
 
-  if (!isCacheable())
+  if (!isCacheable()) {
     return 1;
+  }
 
   std::string objPath = getCachedObjectPath();
   std::string infoPath = getCacheInfoPath();
