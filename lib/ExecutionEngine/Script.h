@@ -53,6 +53,7 @@ namespace bcc {
     enum ObjectType {
       Unknown,
       Relocatable,
+      SharedObject,
       Executable,
     };
   }
@@ -88,6 +89,12 @@ namespace bcc {
           objPath.append(".o");
           break;
         }
+
+        case ScriptObject::SharedObject: {
+          objPath.append(".so");
+          break;
+        }
+
         default: {
           assert(false && "Unknown object type!");
         }
@@ -157,6 +164,27 @@ namespace bcc {
     int prepareExecutable(char const *cacheDir,
                           char const *cacheName,
                           unsigned long flags);
+
+    /*
+     * Link the given bitcodes in mSourceList to shared object (.so).
+     *
+     * Currently, it requires one to provide the relocatable object files with
+     * given bitcodes to output a shared object.
+     *
+     * The usage of this function is flexible. You can have a relocatable object
+     * compiled before and pass it in objPath to generate shared object. If the
+     * objPath is NULL, we'll invoke prepareRelocatable() to get .o first (if
+     * you haven't done that yet) and then link the output relocatable object
+     * file. The latter case will have libbcc compile with USE_CACHE enabled.
+     *
+     * TODO: Currently, we only support to link the bitcodes in mSourceList[0].
+     *
+     */
+    int prepareSharedObject(char const *cacheDir,
+                            char const *cacheName,
+                            char const *objPath,
+                            char const *dsoPath,
+                            unsigned long flags);
 
     int prepareRelocatable(char const *cacheDir,
                            char const *cacheName,

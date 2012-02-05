@@ -160,6 +160,18 @@ extern "C" int bccPrepareRelocatable(BCCScriptRef script,
 }
 
 
+extern "C" int bccPrepareSharedObject(BCCScriptRef script,
+                                      char const *cacheDir,
+                                      char const *cacheName,
+                                      char const *objPath,
+                                      char const *dsoPath,
+                                      unsigned long flags) {
+  BCC_FUNC_LOGGER();
+  return unwrap(script)->prepareSharedObject(cacheDir, cacheName,
+                                             objPath, dsoPath, flags);
+}
+
+
 extern "C" int bccPrepareExecutable(BCCScriptRef script,
                                     char const *cacheDir,
                                     char const *cacheName,

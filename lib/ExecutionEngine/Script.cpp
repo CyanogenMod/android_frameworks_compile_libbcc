@@ -202,6 +202,16 @@ int Script::prepareRelocatable(char const *cacheDir,
 }
 
 
+int Script::prepareSharedObject(char const *cacheDir,
+                                char const *cacheName,
+                                char const *objPath,
+                                char const *dsoPath,
+                                unsigned long flags) {
+  // TODO: Support cached shared object.
+  return 1;
+}
+
+
 int Script::prepareExecutable(char const *cacheDir,
                               char const *cacheName,
                               unsigned long flags) {
