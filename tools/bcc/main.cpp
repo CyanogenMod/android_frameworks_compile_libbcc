@@ -37,24 +37,14 @@
   #if defined(__cplusplus)
     };
   #endif
-#define GETOPT_OPTIONS  "C:RST"
+#define GETOPT_OPTIONS  "C:RT"
 #else
-#define GETOPT_OPTIONS  "RST"
-#endif
-
-
-#if defined(__arm__)
-#define PROVIDE_ARM_DISASSEMBLY
-#endif
-
-#ifdef PROVIDE_ARM_DISASSEMBLY
-#include "disassem.h"
+#define GETOPT_OPTIONS  "RT"
 #endif
 
 #include <bcc/bcc.h>
 
 #include <vector>
-
 
 typedef int (*MainPtr)(int, char**);
 
@@ -66,66 +56,6 @@ static int run(MainPtr mainFunc, int argc, char** argv) {
 static void* lookupSymbol(void* pContext, const char* name) {
   return (void*) dlsym(RTLD_DEFAULT, name);
 }
-
-#ifdef PROVIDE_ARM_DISASSEMBLY
-
-static FILE* disasmOut;
-
-static u_int disassemble_readword(u_int address) {
-  return(*((u_int *)address));
-}
-
-static void disassemble_printaddr(u_int address) {
-  fprintf(disasmOut, "0x%08x", address);
-}
-
-static void disassemble_printf(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(disasmOut, fmt, ap);
-  va_end(ap);
-}
-
-static int disassemble(BCCScriptRef script, FILE* out) {
-  /* Removed by srhines
-  disasmOut = out;
-  disasm_interface_t  di;
-  di.di_readword = disassemble_readword;
-  di.di_printaddr = disassemble_printaddr;
-  di.di_printf = disassemble_printf;
-
-  size_t numFunctions = bccGetFuncCount(script);
-  fprintf(stderr, "Function Count: %lu\n", (unsigned long)numFunctions);
-  if (numFunctions) {
-    BCCFuncInfo *infos = new BCCFuncInfo[numFunctions];
-    bccGetFuncInfoList(script, numFunctions, infos);
-
-    for(size_t i = 0; i < numFunctions; i++) {
-      fprintf(stderr, "-----------------------------------------------------\n");
-      fprintf(stderr, "%s\n", infos[i].name);
-      fprintf(stderr, "-----------------------------------------------------\n");
-
-      unsigned long* pBase = (unsigned long*) infos[i].addr;
-      unsigned long* pEnd =
-        (unsigned long*) (((unsigned char*) infos[i].addr) + infos[i].size);
-
-      for(unsigned long* pInstruction = pBase; pInstruction < pEnd; pInstruction++) {
-        fprintf(out, "%08x: %08x  ", (int) pInstruction, (int) *pInstruction);
-        ::disasm(&di, (uint) pInstruction, 0);
-      }
-    }
-    delete [] infos;
-  }
-  */
-
-  return 1;
-}
-#else
-static int disassemble(BCCScriptRef script, FILE* out) {
-  fprintf(stderr, "Disassembler not supported on this build.\n");
-  return 1;
-}
-#endif // PROVIDE_ARM_DISASSEMBLY
 
 const char* inFile = NULL;
 bool printTypeInformation = false;
@@ -150,10 +80,6 @@ static int parseOption(int argc, char** argv)
 
       case 'R':
         runResults = true;
-        break;
-
-      case 'S':
-        printListing = true;
         break;
 
       case 'T':
@@ -294,11 +220,6 @@ int main(int argc, char** argv) {
 #endif
 
   printPragma(script);
-
-  if(printListing && !disassemble(script, stderr)) {
-    fprintf(stderr, "failed to disassemble\n");
-    return 5;
-  }
 
   if(runResults && !runMain(script, argc, argv)) {
     fprintf(stderr, "failed to execute\n");

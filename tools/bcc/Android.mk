@@ -46,8 +46,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := bcc
 
 LOCAL_SRC_FILES := \
-  main.cpp \
-  disassem.cpp
+  main.cpp
 
 LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc
 
