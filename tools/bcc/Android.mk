@@ -29,7 +29,7 @@ LOCAL_SHARED_LIBRARIES := \
   libbcc
 
 LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/../include
+  $(LOCAL_PATH)/../../include
 
 LOCAL_MODULE_TAGS := tests eng
 
@@ -52,7 +52,7 @@ LOCAL_SRC_FILES := \
 LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc
 
 LOCAL_C_INCLUDES := \
-  $(LOCAL_PATH)/../include
+  $(LOCAL_PATH)/../../include
 
 LOCAL_MODULE_TAGS := tests
 
