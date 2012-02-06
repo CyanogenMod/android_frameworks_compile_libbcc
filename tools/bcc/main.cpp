@@ -154,7 +154,7 @@ static BCCScriptRef loadScript() {
 
   BCCScriptRef script = bccCreateScript();
 
-  if (bccReadFile(script, inFile, /* flags */0) != 0) {
+  if (bccReadFile(script, inFile, /* flags */BCC_SKIP_DEP_SHA1) != 0) {
     fprintf(stderr, "bcc: FAILS to read bitcode");
     bccDisposeScript(script);
     return NULL;
@@ -188,7 +188,7 @@ static BCCScriptRef loadScript() {
     outFilename = output;
   }
 
-  if (bccPrepareExecutable(script, outDir, outFilename, 0) != 0) {
+  if (bccPrepareExecutable(script, outDir, outFilename, /* flags */0) != 0) {
     fprintf(stderr, "bcc: FAILS to prepare executable.\n");
     delete [] output;
     bccDisposeScript(script);
