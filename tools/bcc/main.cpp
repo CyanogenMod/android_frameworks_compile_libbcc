@@ -73,6 +73,7 @@ struct option_info {
 // forward declaration of option processing functions
 static int do_set_tripe(int, char **);
 static int do_run(int, char **);
+static int do_help(int, char **);
 
 static const struct option_info options[] = {
 #if defined(__HOST__)
@@ -81,12 +82,15 @@ static const struct option_info options[] = {
 
   { "R", 0, NULL,     "run root() method after successfully "
                       "load and compile.",                    do_run        },
+
+  { "h", 0, NULL,     "print this help.",                     do_help       },
 };
 #define NUM_OPTIONS (sizeof(options) / sizeof(struct option_info))
 
 static int parseOption(int argc, char** argv) {
   if (argc <= 1) {
-    return 1;
+    do_help(argc, argv);
+    return 0; // unreachable
   }
 
   // argv[i] is the current processing arguments from command line
@@ -227,3 +231,17 @@ static int do_run(int, char **) {
   runResults = true;
   return 0;
 }
+
+static int do_help(int, char **) {
+  printf("Usage: bcc [OPTION]... [input file]\n\n");
+  for (unsigned i = 0; i < NUM_OPTIONS; i++) {
+    const struct option_info *opt = &options[i];
+
+    printf("\t-%s", opt->option_name);
+    if (opt->argument_desc)
+      printf(" %s ", opt->argument_desc);
+    printf("\t%s\n", opt->help_message);
+  }
+  exit(0);
+}
+
