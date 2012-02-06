@@ -72,6 +72,7 @@ struct option_info {
 
 // forward declaration of option processing functions
 static int do_set_tripe(int, char **);
+static int do_set_input(int, char **);
 static int do_set_output(int, char **);
 static int do_run(int, char **);
 static int do_help(int, char **);
@@ -100,13 +101,14 @@ static int parseOption(int argc, char** argv) {
   // argv[i] is the current processing arguments from command line
   int i = 1;
   while (i < argc) {
+    const unsigned left_argc = argc - i - 1;
+
     if (argv[i][0] == '-') {
       // Find the corresponding option_info object
       unsigned opt_idx = 0;
       while (opt_idx < NUM_OPTIONS) {
         if (::strcmp(&argv[i][1], options[opt_idx].option_name) == 0) {
           const struct option_info *cur_option = &options[opt_idx];
-          const unsigned left_argc = argc - i - 1;
           if (left_argc < cur_option->min_option_argc) {
             fprintf(stderr, "%s: '%s' requires at least %u arguments", argv[0],
                     cur_option->option_name, cur_option->min_option_argc);
@@ -132,7 +134,7 @@ static int parseOption(int argc, char** argv) {
       }
     } else {
       if (inFile == NULL) {
-        inFile = argv[i];
+        do_set_input(left_argc, &argv[i]);
       } else {
         fprintf(stderr, "%s: single input file is allowed currently.", argv[0]);
         return 1;
@@ -147,18 +149,6 @@ static int parseOption(int argc, char** argv) {
 static BCCScriptRef loadScript() {
   if (!inFile) {
     fprintf(stderr, "input file required\n");
-    return NULL;
-  }
-
-  // Check the input file path
-  struct stat statInFile;
-  if (stat(inFile, &statInFile) < 0) {
-    fprintf(stderr, "Unable to stat input file: %s\n", strerror(errno));
-    return NULL;
-  }
-
-  if (!S_ISREG(statInFile.st_mode)) {
-    fprintf(stderr, "Input file should be a regular file.\n");
     return NULL;
   }
 
@@ -263,6 +253,23 @@ static int do_set_tripe(int, char **arg) {
   return 1;
 }
 #endif
+
+static int do_set_input(int, char **arg) {
+  // Check the input file path
+  struct stat statInFile;
+  if (stat(arg[0], &statInFile) < 0) {
+    fprintf(stderr, "Unable to stat input file: %s\n", strerror(errno));
+    return -1;
+  }
+
+  if (!S_ISREG(statInFile.st_mode)) {
+    fprintf(stderr, "Input file should be a regular file.\n");
+    return -1;
+  }
+
+  inFile = arg[0];
+  return 0;
+}
 
 static int do_set_output(int, char **arg) {
   char *lastSlash = strrchr(arg[1], '/');
