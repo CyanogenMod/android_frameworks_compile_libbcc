@@ -51,7 +51,7 @@ libbcc_SHA1_SRCS := \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so
 
-libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/gen-sha1-stamp.py
+libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
 
 $(LOCAL_BUILT_MODULE): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
 $(LOCAL_BUILT_MODULE): $(libbcc_SHA1_SRCS) $(libbcc_GEN_SHA1_STAMP)
