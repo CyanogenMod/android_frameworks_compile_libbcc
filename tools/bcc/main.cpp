@@ -37,9 +37,9 @@
   #if defined(__cplusplus)
     };
   #endif
-#define GETOPT_OPTIONS  "C:RT"
+#define GETOPT_OPTIONS  "C:R"
 #else
-#define GETOPT_OPTIONS  "RT"
+#define GETOPT_OPTIONS  "R"
 #endif
 
 #include <bcc/bcc.h>
@@ -58,7 +58,6 @@ static void* lookupSymbol(void* pContext, const char* name) {
 }
 
 const char* inFile = NULL;
-bool printTypeInformation = false;
 bool printListing = false;
 bool runResults = false;
 
@@ -80,10 +79,6 @@ static int parseOption(int argc, char** argv)
 
       case 'R':
         runResults = true;
-        break;
-
-      case 'T':
-        printTypeInformation = true;
         break;
 
       case '?':
@@ -211,13 +206,6 @@ int main(int argc, char** argv) {
     fprintf(stderr, "failed to load source\n");
     return 2;
   }
-
-#if 0
-  if(printTypeInformation && !reflection(script, stderr)) {
-    fprintf(stderr, "failed to retrieve type information\n");
-    return 3;
-  }
-#endif
 
   printPragma(script);
 
