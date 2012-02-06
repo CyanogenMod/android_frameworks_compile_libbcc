@@ -151,24 +151,6 @@ static BCCScriptRef loadScript() {
   return script;
 }
 
-static void printPragma(BCCScriptRef script) {
-/* Removed by srhines
-  size_t numPragma = bccGetPragmaCount(script);
-  if (numPragma) {
-    char const ** keyList = new char const *[numPragma];
-    char const ** valueList = new char const *[numPragma];
-
-    bccGetPragmaList(script, numPragma, keyList, valueList);
-    for(size_t i = 0; i < numPragma; ++i) {
-      fprintf(stderr, "#pragma %s(%s)\n", keyList[i], valueList[i]);
-    }
-
-    delete [] keyList;
-    delete [] valueList;
-  }
-*/
-}
-
 static int runMain(BCCScriptRef script, int argc, char** argv) {
   MainPtr mainPointer = (MainPtr)bccGetFuncAddr(script, "main");
 
@@ -206,8 +188,6 @@ int main(int argc, char** argv) {
     fprintf(stderr, "failed to load source\n");
     return 2;
   }
-
-  printPragma(script);
 
   if(runResults && !runMain(script, argc, argv)) {
     fprintf(stderr, "failed to execute\n");
