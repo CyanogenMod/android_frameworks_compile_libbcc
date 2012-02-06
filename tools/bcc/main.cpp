@@ -44,8 +44,6 @@
 
 #include <bcc/bcc.h>
 
-#include <vector>
-
 typedef int (*MainPtr)(int, char**);
 
 // This is a separate function so it can easily be set by breakpoint in gdb.
@@ -124,17 +122,9 @@ static BCCScriptRef loadScript() {
     return NULL;
   }
 
-  size_t bitcodeSize = statInFile.st_size;
-
-  std::vector<char> bitcode(bitcodeSize + 1, '\0');
-  size_t nread = fread(&*bitcode.begin(), 1, bitcodeSize, in);
-
-  if (nread != bitcodeSize)
-      fprintf(stderr, "Could not read all of file %s\n", inFile);
-
   BCCScriptRef script = bccCreateScript();
 
-  if (bccReadBC(script, "file", &*bitcode.begin(), bitcodeSize, 0) != 0) {
+  if (bccReadFile(script, inFile, /* flags */0) != 0) {
     fprintf(stderr, "bcc: FAILS to read bitcode");
     bccDisposeScript(script);
     return NULL;
