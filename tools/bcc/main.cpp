@@ -16,7 +16,6 @@
 
 #include <ctype.h>
 #include <dlfcn.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,8 +24,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <unistd.h>
 
 #if defined(__HOST__)
   #if defined(__cplusplus)
@@ -148,12 +145,6 @@ static BCCScriptRef loadScript() {
     return NULL;
   }
 
-  FILE *in = fopen(inFile, "r");
-  if (!in) {
-    fprintf(stderr, "Could not open input file %s\n", inFile);
-    return NULL;
-  }
-
   BCCScriptRef script = bccCreateScript();
 
   if (bccReadFile(script, inFile, /* flags */0) != 0) {
@@ -244,4 +235,3 @@ static int do_help(int, char **) {
   }
   exit(0);
 }
-
