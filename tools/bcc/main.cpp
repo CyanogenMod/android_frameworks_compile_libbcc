@@ -38,6 +38,8 @@
 
 #include <bcc/bcc.h>
 
+#define DEFAULT_OUTPUT_FILENAME "a.out"
+
 typedef int (*MainPtr)();
 
 // This is a separate function so it can easily be set by breakpoint in gdb.
@@ -50,6 +52,7 @@ static void* lookupSymbol(void* pContext, const char* name) {
 }
 
 const char* inFile = NULL;
+const char* outFile = NULL;
 bool runResults = false;
 
 struct option_info {
@@ -69,6 +72,7 @@ struct option_info {
 
 // forward declaration of option processing functions
 static int do_set_tripe(int, char **);
+static int do_set_output(int, char **);
 static int do_run(int, char **);
 static int do_help(int, char **);
 
@@ -76,6 +80,9 @@ static const struct option_info options[] = {
 #if defined(__HOST__)
   { "C", 1, "triple", "setup the triple string.",             do_set_tripe  },
 #endif
+
+  { "o", 1, "output", "write the result native to output "
+                      "file",                                 do_set_output },
 
   { "R", 0, NULL,     "run root() method after successfully "
                       "load and compile.",                    do_run        },
@@ -99,15 +106,23 @@ static int parseOption(int argc, char** argv) {
       while (opt_idx < NUM_OPTIONS) {
         if (::strcmp(&argv[i][1], options[opt_idx].option_name) == 0) {
           const struct option_info *cur_option = &options[opt_idx];
-          if ((argc - i - 1) < 0) {
-            fprintf(stderr, "%s: '%s' requires at least %u arguments",
-                    argv[0], cur_option->option_name, cur_option->min_option_argc);
+          const unsigned left_argc = argc - i - 1;
+          if (left_argc < cur_option->min_option_argc) {
+            fprintf(stderr, "%s: '%s' requires at least %u arguments", argv[0],
+                    cur_option->option_name, cur_option->min_option_argc);
             return 1;
           }
 
-          int result = cur_option->process((argc - i - 1), &argv[i]);
-          if (result >= 0)
+          int result = cur_option->process(left_argc, &argv[i]);
+          if (result >= 0) {
+            // consume the used arguments
             i += result;
+          } else {
+            // error occurs
+            return 1;
+          }
+
+          break;
         }
         ++opt_idx;
       }
@@ -117,12 +132,13 @@ static int parseOption(int argc, char** argv) {
       }
     } else {
       if (inFile == NULL) {
-        inFile = argv[i++];
+        inFile = argv[i];
       } else {
-        fprintf(stderr, "%s: only one input file is allowed currently.", argv[0]);
+        fprintf(stderr, "%s: single input file is allowed currently.", argv[0]);
         return 1;
       }
     }
+    i++;
   }
 
   return 0;
@@ -134,6 +150,7 @@ static BCCScriptRef loadScript() {
     return NULL;
   }
 
+  // Check the input file path
   struct stat statInFile;
   if (stat(inFile, &statInFile) < 0) {
     fprintf(stderr, "Unable to stat input file: %s\n", strerror(errno));
@@ -155,11 +172,40 @@ static BCCScriptRef loadScript() {
 
   bccRegisterSymbolCallback(script, lookupSymbol, NULL);
 
-  if (bccPrepareExecutable(script, ".", "cache", 0) != 0) {
+  char *output = NULL;
+  const char *outDir, *outFilename;
+
+  if (outFile != NULL) {
+    // Copy the outFile since we're going to modify it
+    size_t outFileLen = strlen(outFile);
+    output = new char [outFileLen + 1];
+    strncpy(output, outFile, outFileLen);
+  } else {
+    output = new char [(sizeof(DEFAULT_OUTPUT_FILENAME) - 1) + 1];
+    strncpy(output, DEFAULT_OUTPUT_FILENAME, sizeof(DEFAULT_OUTPUT_FILENAME) - 1);
+  }
+
+  char *lastSlash = strrchr(output, '/');
+  if (lastSlash) {
+    outDir = output;
+    *lastSlash = '\0';
+    // *lastSlash should not be the last character. We checked it in
+    // do_set_output().
+    outFilename = lastSlash + 1;
+  } else {
+    // no slash found
+    outDir = ".";
+    outFilename = output;
+  }
+
+  if (bccPrepareExecutable(script, outDir, outFilename, 0) != 0) {
     fprintf(stderr, "bcc: FAILS to prepare executable.\n");
+    delete [] output;
     bccDisposeScript(script);
     return NULL;
   }
+
+  delete [] output;
 
   return script;
 }
@@ -217,6 +263,17 @@ static int do_set_tripe(int, char **arg) {
   return 1;
 }
 #endif
+
+static int do_set_output(int, char **arg) {
+  char *lastSlash = strrchr(arg[1], '/');
+  if ((lastSlash != NULL) && *(lastSlash + 1) == '\0') {
+    fprintf(stderr, "bcc: output file cannot ends with '/'.");
+    return -1;
+  }
+
+  outFile = arg[1];
+  return 1;
+}
 
 static int do_run(int, char **) {
   runResults = true;
