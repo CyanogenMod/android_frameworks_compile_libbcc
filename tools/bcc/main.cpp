@@ -40,11 +40,11 @@
 
 #define DEFAULT_OUTPUT_FILENAME "a.out"
 
-typedef int (*MainPtr)();
+typedef int (*RootPtr)();
 
 // This is a separate function so it can easily be set by breakpoint in gdb.
-static int run(MainPtr mainFunc) {
-  return mainFunc();
+static int run(RootPtr rootFunc) {
+  return rootFunc();
 }
 
 static void* lookupSymbol(void* pContext, const char* name) {
@@ -60,7 +60,7 @@ enum OutputType {
 enum OutputType outType = OT_Executable;
 const char* inFile = NULL;
 const char* outFile = NULL;
-bool runResults = false;
+bool runRoot = false;
 
 struct option_info {
   const char *option_name;
@@ -82,7 +82,7 @@ static int optSetTripe(int, char **);
 static int optSetInput(int, char **);
 static int optSetOutput(int, char **);
 static int optOutputReloc(int, char **);
-static int optRun(int, char **);
+static int optRunRoot(int, char **);
 static int optHelp(int, char **);
 
 static const struct option_info options[] = {
@@ -97,7 +97,7 @@ static const struct option_info options[] = {
                       "file",                                 optSetOutput    },
 
   { "R", 0, NULL,     "run root() method after successfully "
-                      "load and compile.",                    optRun          },
+                      "load and compile.",                    optRunRoot      },
 
   { "h", 0, NULL,     "print this help.",                     optHelp         },
 };
@@ -244,22 +244,25 @@ static BCCScriptRef loadScript() {
 }
 
 static int runMain(BCCScriptRef script) {
-  MainPtr mainPointer = (MainPtr)bccGetFuncAddr(script, "main");
+  RootPtr rootPointer =
+      reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "main"));
 
-  if (!mainPointer) {
-    mainPointer = (MainPtr)bccGetFuncAddr(script, "root");
+  if (!rootPointer) {
+    RootPtr rootPointer =
+        reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "root"));
   }
-  if (!mainPointer) {
-    mainPointer = (MainPtr)bccGetFuncAddr(script, "_Z4rootv");
+  if (!rootPointer) {
+    RootPtr rootPointer =
+        reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "_Z4rootv"));
   }
-  if (!mainPointer) {
+  if (!rootPointer) {
     fprintf(stderr, "Could not find root or main or mangled root.\n");
     return 1;
   }
 
   fprintf(stderr, "Executing compiled code:\n");
 
-  int result = run(mainPointer);
+  int result = run(rootPointer);
   fprintf(stderr, "result: %d\n", result);
 
   return 0;
@@ -277,7 +280,7 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  if(runResults && runMain(script)) {
+  if(runRoot && runMain(script)) {
     fprintf(stderr, "failed to execute\n");
     return 6;
   }
@@ -330,8 +333,8 @@ static int optOutputReloc(int, char **) {
   return 0;
 }
 
-static int optRun(int, char **) {
-  runResults = true;
+static int optRunRoot(int, char **) {
+  runRoot = true;
   return 0;
 }
 
