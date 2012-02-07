@@ -188,10 +188,12 @@ int SourceInfo::prepareModule(llvm::LLVMContext *context) {
 }
 
 SourceInfo::~SourceInfo() {
-  llvm::LLVMContext *context = &module->getContext();
-  delete module;
-  if (!shared_context)
-    delete context;
+  if (module != NULL) {
+    llvm::LLVMContext *context = &module->getContext();
+    delete module;
+    if (!shared_context)
+      delete context;
+  }
 }
 
 #if USE_CACHE
