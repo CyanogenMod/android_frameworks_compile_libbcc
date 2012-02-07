@@ -54,7 +54,7 @@ LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
-LOCAL_MODULE_TAGS := tests
+LOCAL_MODULE_TAGS := optional
 
 include external/stlport/libstlport.mk
 include $(BUILD_EXECUTABLE)
