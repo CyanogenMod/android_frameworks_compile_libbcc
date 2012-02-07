@@ -84,6 +84,7 @@ static int optSetInput(int, char **);
 static int optSetOutput(int, char **);
 static int optOutputReloc(int, char **);
 static int optSetOutputPIC(int, char **);
+static int optSetOutputShared(int, char **);
 static int optRunRoot(int, char **);
 static int optHelp(int, char **);
 
@@ -100,6 +101,8 @@ static const struct option_info options[] = {
 
   { "o", 1, "output", "write the result native to output "
                       "file",                                 optSetOutput    },
+
+  { "shared", 0, NULL, "create a shared library.",         optSetOutputShared },
 
   { "R", 0, NULL,     "run root() method after successfully "
                       "load and compile.",                    optRunRoot      },
@@ -176,8 +179,6 @@ static BCCScriptRef loadScript() {
     return NULL;
   }
 
-  bccRegisterSymbolCallback(script, lookupSymbol, NULL);
-
   char *output = NULL;
   const char *outDir, *outFilename;
 
@@ -220,19 +221,37 @@ static BCCScriptRef loadScript() {
   }
 
   int bccResult;
+  const char *errMsg;
   switch (outType) {
     case OT_Executable: {
+      bccRegisterSymbolCallback(script, lookupSymbol, NULL);
       bccResult = bccPrepareExecutable(script, outDir, outFilename, 0);
+      errMsg = "failed to generate executable.";
       break;
     }
     case OT_Relocatable: {
       bccResult = bccPrepareRelocatable(script, outDir, outFilename,
                                         outRelocModel, /* flags */0);
+      errMsg = "failed to generate relocatable.";
       break;
     }
-    default:
     case OT_SharedObject: {
-      fprintf(stderr, "bcc: not supported currently.");
+      // Construct output library path
+      const size_t outDirLen = strlen(outDir);
+      const size_t outFilenameLen = strlen(outFilename);
+      char *outLib = new char [outDirLen + 1 /* for '/' */ +
+                               outFilenameLen + 3 /* .so */ + 1];
+
+      memcpy(outLib, outDir, outDirLen);
+      outLib[outDirLen] = '/';
+      memcpy(outLib + outDirLen + 1, outFilename, outFilenameLen);
+      strncpy(outLib + outDirLen + 1 + outFilenameLen, ".so", 3);
+
+      bccResult = bccPrepareSharedObject(script, outDir, outFilename, NULL,
+                                         outLib, /* flags */0);
+      delete [] outLib;
+
+      errMsg = "failed to generate shared library.";
       break;
     }
   }
@@ -242,7 +261,7 @@ static BCCScriptRef loadScript() {
   if (bccResult == 0) {
     return script;
   } else {
-    fprintf(stderr, "bcc: FAILS to prepare executable.\n");
+    fprintf(stderr, "bcc: %s\n", errMsg);
     bccDisposeScript(script);
     return NULL;
   }
@@ -335,6 +354,11 @@ static int optSetOutput(int, char **arg) {
 
 static int optOutputReloc(int, char **) {
   outType = OT_Relocatable;
+  return 0;
+}
+
+static int optSetOutputShared(int, char **) {
+  outType = OT_SharedObject;
   return 0;
 }
 
