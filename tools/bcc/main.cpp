@@ -51,6 +51,13 @@ static void* lookupSymbol(void* pContext, const char* name) {
   return (void*) dlsym(RTLD_DEFAULT, name);
 }
 
+enum OutputType {
+  OT_Executable,
+  OT_Relocatable,
+  OT_SharedObject
+};
+
+enum OutputType outType = OT_Executable;
 const char* inFile = NULL;
 const char* outFile = NULL;
 bool runResults = false;
@@ -74,6 +81,7 @@ struct option_info {
 static int do_set_tripe(int, char **);
 static int do_set_input(int, char **);
 static int do_set_output(int, char **);
+static int do_output_reloc(int, char **);
 static int do_run(int, char **);
 static int do_help(int, char **);
 
@@ -81,6 +89,9 @@ static const struct option_info options[] = {
 #if defined(__HOST__)
   { "C", 1, "triple", "setup the triple string.",             do_set_tripe  },
 #endif
+
+  { "c", 0, NULL,     "compile and assembler, but do not "
+                      "link",                                 do_output_reloc },
 
   { "o", 1, "output", "write the result native to output "
                       "file",                                 do_set_output },
@@ -171,12 +182,19 @@ static BCCScriptRef loadScript() {
     output = new char [outFileLen + 1];
     strncpy(output, outFile, outFileLen);
   } else {
-    output = new char [(sizeof(DEFAULT_OUTPUT_FILENAME) - 1) + 1];
-    strncpy(output, DEFAULT_OUTPUT_FILENAME, sizeof(DEFAULT_OUTPUT_FILENAME) - 1);
+    if (outType == OT_Executable) {
+      output = new char [(sizeof(DEFAULT_OUTPUT_FILENAME) - 1) + 1];
+      strncpy(output, DEFAULT_OUTPUT_FILENAME,
+                  sizeof(DEFAULT_OUTPUT_FILENAME) - 1);
+    } else {
+      size_t inFileLen = strlen(inFile);
+      output = new char [inFileLen + 1];
+      strncpy(output, inFile, inFileLen);
+    }
   }
 
   char *lastSlash = strrchr(output, '/');
-  if (lastSlash) {
+  if (lastSlash != NULL) {
     outDir = output;
     *lastSlash = '\0';
     // *lastSlash should not be the last character. We checked it in
@@ -188,16 +206,41 @@ static BCCScriptRef loadScript() {
     outFilename = output;
   }
 
-  if (bccPrepareExecutable(script, outDir, outFilename, /* flags */0) != 0) {
-    fprintf(stderr, "bcc: FAILS to prepare executable.\n");
-    delete [] output;
-    bccDisposeScript(script);
-    return NULL;
+  // Truncate the extension
+  const char *fileExtension = strrchr(outFilename, '.');
+  if (fileExtension != NULL) {
+    // The cast is always successful since outFilename is in the heap (i.e., the
+    // output.)
+    *(const_cast<char *>(fileExtension)) = '\0';
+  }
+
+  int bccResult;
+  switch (outType) {
+    case OT_Executable: {
+      bccResult = bccPrepareExecutable(script, outDir, outFilename, 0);
+      break;
+    }
+    case OT_Relocatable: {
+      bccResult = bccPrepareRelocatable(script, outDir, outFilename,
+                                        bccRelocPIC, /* flags */0);
+      break;
+    }
+    default:
+    case OT_SharedObject: {
+      fprintf(stderr, "bcc: not supported currently.");
+      break;
+    }
   }
 
   delete [] output;
 
-  return script;
+  if (bccResult == 0) {
+    return script;
+  } else {
+    fprintf(stderr, "bcc: FAILS to prepare executable.\n");
+    bccDisposeScript(script);
+    return NULL;
+  }
 }
 
 static int runMain(BCCScriptRef script) {
@@ -280,6 +323,11 @@ static int do_set_output(int, char **arg) {
 
   outFile = arg[1];
   return 1;
+}
+
+static int do_output_reloc(int, char **) {
+  outType = OT_Relocatable;
+  return 0;
 }
 
 static int do_run(int, char **) {
