@@ -58,6 +58,7 @@ enum OutputType {
 };
 
 enum OutputType outType = OT_Executable;
+enum bccRelocModelEnum outRelocModel = bccRelocDefault;
 const char* inFile = NULL;
 const char* outFile = NULL;
 bool runRoot = false;
@@ -82,6 +83,7 @@ static int optSetTripe(int, char **);
 static int optSetInput(int, char **);
 static int optSetOutput(int, char **);
 static int optOutputReloc(int, char **);
+static int optSetOutputPIC(int, char **);
 static int optRunRoot(int, char **);
 static int optHelp(int, char **);
 
@@ -92,6 +94,9 @@ static const struct option_info options[] = {
 
   { "c", 0, NULL,     "compile and assembler, but do not "
                       "link",                                 optOutputReloc  },
+
+  { "fPIC", 0, NULL,  "Generate position-independent code "
+                      "if possible",                          optSetOutputPIC },
 
   { "o", 1, "output", "write the result native to output "
                       "file",                                 optSetOutput    },
@@ -222,7 +227,7 @@ static BCCScriptRef loadScript() {
     }
     case OT_Relocatable: {
       bccResult = bccPrepareRelocatable(script, outDir, outFilename,
-                                        bccRelocPIC, /* flags */0);
+                                        outRelocModel, /* flags */0);
       break;
     }
     default:
@@ -333,6 +338,11 @@ static int optOutputReloc(int, char **) {
   return 0;
 }
 
+static int optSetOutputPIC(int, char **) {
+  outRelocModel = bccRelocPIC;
+  return 0;
+}
+
 static int optRunRoot(int, char **) {
   runRoot = true;
   return 0;
@@ -346,6 +356,8 @@ static int optHelp(int, char **) {
     printf("\t-%s", opt->option_name);
     if (opt->argument_desc)
       printf(" %s ", opt->argument_desc);
+    else
+      printf(" \t ");
     printf("\t%s\n", opt->help_message);
   }
   exit(0);
