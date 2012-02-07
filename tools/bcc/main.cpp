@@ -78,34 +78,34 @@ struct option_info {
 };
 
 // forward declaration of option processing functions
-static int do_set_tripe(int, char **);
-static int do_set_input(int, char **);
-static int do_set_output(int, char **);
-static int do_output_reloc(int, char **);
-static int do_run(int, char **);
-static int do_help(int, char **);
+static int optSetTripe(int, char **);
+static int optSetInput(int, char **);
+static int optSetOutput(int, char **);
+static int optOutputReloc(int, char **);
+static int optRun(int, char **);
+static int optHelp(int, char **);
 
 static const struct option_info options[] = {
 #if defined(__HOST__)
-  { "C", 1, "triple", "setup the triple string.",             do_set_tripe  },
+  { "C", 1, "triple", "setup the triple string.",             optSetTripe     },
 #endif
 
   { "c", 0, NULL,     "compile and assembler, but do not "
-                      "link",                                 do_output_reloc },
+                      "link",                                 optOutputReloc  },
 
   { "o", 1, "output", "write the result native to output "
-                      "file",                                 do_set_output },
+                      "file",                                 optSetOutput    },
 
   { "R", 0, NULL,     "run root() method after successfully "
-                      "load and compile.",                    do_run        },
+                      "load and compile.",                    optRun          },
 
-  { "h", 0, NULL,     "print this help.",                     do_help       },
+  { "h", 0, NULL,     "print this help.",                     optHelp         },
 };
 #define NUM_OPTIONS (sizeof(options) / sizeof(struct option_info))
 
 static int parseOption(int argc, char** argv) {
   if (argc <= 1) {
-    do_help(argc, argv);
+    optHelp(argc, argv);
     return 0; // unreachable
   }
 
@@ -145,7 +145,7 @@ static int parseOption(int argc, char** argv) {
       }
     } else {
       if (inFile == NULL) {
-        do_set_input(left_argc, &argv[i]);
+        optSetInput(left_argc, &argv[i]);
       } else {
         fprintf(stderr, "%s: single input file is allowed currently.", argv[0]);
         return 1;
@@ -198,7 +198,7 @@ static BCCScriptRef loadScript() {
     outDir = output;
     *lastSlash = '\0';
     // *lastSlash should not be the last character. We checked it in
-    // do_set_output().
+    // optset_output().
     outFilename = lastSlash + 1;
   } else {
     // no slash found
@@ -291,13 +291,13 @@ int main(int argc, char** argv) {
  * Functions to process the command line option.
  */
 #if defined(__HOST__)
-static int do_set_tripe(int, char **arg) {
+static int optSetTripe(int, char **arg) {
   TARGET_TRIPLE_STRING = arg[0];
   return 1;
 }
 #endif
 
-static int do_set_input(int, char **arg) {
+static int optSetInput(int, char **arg) {
   // Check the input file path
   struct stat statInFile;
   if (stat(arg[0], &statInFile) < 0) {
@@ -314,7 +314,7 @@ static int do_set_input(int, char **arg) {
   return 0;
 }
 
-static int do_set_output(int, char **arg) {
+static int optSetOutput(int, char **arg) {
   char *lastSlash = strrchr(arg[1], '/');
   if ((lastSlash != NULL) && *(lastSlash + 1) == '\0') {
     fprintf(stderr, "bcc: output file cannot ends with '/'.");
@@ -325,17 +325,17 @@ static int do_set_output(int, char **arg) {
   return 1;
 }
 
-static int do_output_reloc(int, char **) {
+static int optOutputReloc(int, char **) {
   outType = OT_Relocatable;
   return 0;
 }
 
-static int do_run(int, char **) {
+static int optRun(int, char **) {
   runResults = true;
   return 0;
 }
 
-static int do_help(int, char **) {
+static int optHelp(int, char **) {
   printf("Usage: bcc [OPTION]... [input file]\n\n");
   for (unsigned i = 0; i < NUM_OPTIONS; i++) {
     const struct option_info *opt = &options[i];
