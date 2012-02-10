@@ -114,9 +114,7 @@ DEF_LLVM_RUNTIME(__ctzsi2)
 
 DEF_GENERIC_OR_VFP_RUNTIME(__divdf3)
 
-#if !defined(__i386__)
-    DEF_LLVM_RUNTIME(__divdi3)
-#endif
+DEF_LLVM_RUNTIME(__divdi3)
 DEF_LLVM_RUNTIME(__divsi3)
 
 #ifndef ANDROID // no complex extension
@@ -180,9 +178,7 @@ DEF_GENERIC_OR_VFP_RUNTIME(__lesf2)
 DEF_VFP_RUNTIME(__ltdf2)
 DEF_VFP_RUNTIME(__ltsf2)
 
-#if !defined(__i386__)
-    DEF_LLVM_RUNTIME(__moddi3)
-#endif
+DEF_LLVM_RUNTIME(__moddi3)
 DEF_LLVM_RUNTIME(__modsi3)
 
 #ifndef ANDROID // no complex extension
@@ -232,14 +228,10 @@ DEF_LLVM_RUNTIME(__subvsi3)
 DEF_GENERIC_OR_VFP_RUNTIME(__truncdfsf2)
 
 DEF_LLVM_RUNTIME(__ucmpdi2)
-#if !defined(__i386__)
-    DEF_LLVM_RUNTIME(__udivdi3)
-#endif
+DEF_LLVM_RUNTIME(__udivdi3)
 DEF_LLVM_RUNTIME(__udivmoddi4)
 DEF_LLVM_RUNTIME(__udivsi3)
-#if !defined(__i386__)
-    DEF_LLVM_RUNTIME(__umoddi3)
-#endif
+DEF_LLVM_RUNTIME(__umoddi3)
 DEF_LLVM_RUNTIME(__umodsi3)
 
 DEF_GENERIC_OR_VFP_RUNTIME(__unorddf2)
