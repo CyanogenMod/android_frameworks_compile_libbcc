@@ -38,9 +38,8 @@ typedef struct Allocation {
             bool hasMipmaps;
             bool hasFaces;
             bool hasReferences;
-            int32_t surfaceTextureID;
-
             void * usrPtr;
+            int32_t surfaceTextureID;
         } state;
 
         struct DrvState {
