@@ -40,6 +40,7 @@ typedef struct Allocation {
             bool hasReferences;
             void * usrPtr;
             int32_t surfaceTextureID;
+            void * wndSurface;
         } state;
 
         struct DrvState {
