@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
              && readObjFile()
              && readVarNameList()
              && readFuncNameList()
+             && readForEachNameList()
              //&& relocate()
              ;
 
@@ -378,6 +379,30 @@ bool MCCacheReader::readFuncNameList() {
 #if DEBUG_MCJIT_REFLECT
     ALOGD("Get function address: %s -> %p",
       strPool[export_func_name_list_raw->strp_indexs[i]], mpResult->mpExportFuncs->cached_addr_list[i]);
+#endif
+  }
+  return true;
+}
+
+bool MCCacheReader::readForEachNameList() {
+  CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpForEachNameList, export_foreach_name_list);
+  vector<char const *> const &strPool = mpResult->mStringPool;
+
+  mpResult->mpExportForEach = (OBCC_ExportForEachList*)
+                              malloc(sizeof(size_t) +
+                                     sizeof(void*) * export_foreach_name_list_raw->count);
+  if (!mpResult->mpExportForEach) {
+    ALOGE("Unable to allocate for mpExportForEach\n");
+    return false;
+  }
+  mpResult->mpExportForEach->count = export_foreach_name_list_raw->count;
+
+  for (size_t i = 0; i < export_foreach_name_list_raw->count; ++i) {
+    mpResult->mpExportForEach->cached_addr_list[i] =
+      rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_foreach_name_list_raw->strp_indexs[i]]);
+#if DEBUG_MCJIT_REFLECT
+    ALOGE("Get foreach function address: %s -> %p",
+      strPool[export_foreach_name_list_raw->strp_indexs[i]], mpResult->mpExportForEach->cached_addr_list[i]);
 #endif
   }
   return true;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,9 +48,11 @@ namespace bcc {
 
     OBCC_String_Ptr *mpExportVarNameListSection;
     OBCC_String_Ptr *mpExportFuncNameListSection;
+    OBCC_String_Ptr *mpExportForEachNameListSection;
 
     std::vector<std::string> varNameList;
     std::vector<std::string> funcNameList;
+    std::vector<std::string> forEachNameList;
 
   public:
     MCCacheWriter()
@@ -81,6 +83,7 @@ namespace bcc {
 
     bool prepareExportVarNameList();
     bool prepareExportFuncNameList();
+    bool prepareExportForEachNameList();
 
     bool writeAll();
 

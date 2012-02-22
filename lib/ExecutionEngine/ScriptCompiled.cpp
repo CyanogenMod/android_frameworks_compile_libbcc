@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,11 @@ void ScriptCompiled::getExportFuncNameList(std::vector<std::string> &funcList) {
 }
 
 
+void ScriptCompiled::getExportForEachNameList(std::vector<std::string> &forEachList) {
+  forEachList = mExportForEachName;
+}
+
+
 void ScriptCompiled::getExportFuncList(size_t funcListSize, void **funcList) {
   if (funcList) {
     size_t funcCount = getExportFuncCount();
@@ -79,6 +84,24 @@ void ScriptCompiled::getExportFuncList(size_t funcListSize, void **funcList) {
          I = mExportFuncs.begin(), E = mExportFuncs.end();
          I != E && funcCount > 0; ++I, --funcCount) {
       *funcList++ = *I;
+    }
+  }
+}
+
+
+void ScriptCompiled::getExportForEachList(size_t forEachListSize,
+                                          void **forEachList) {
+  if (forEachList) {
+    size_t forEachCount = getExportForEachCount();
+
+    if (forEachCount > forEachListSize) {
+      forEachCount = forEachListSize;
+    }
+
+    for (ExportForEachList::const_iterator
+         I = mExportForEach.begin(), E = mExportForEach.end();
+         I != E && forEachCount > 0; ++I, --forEachCount) {
+      *forEachList++ = *I;
     }
   }
 }

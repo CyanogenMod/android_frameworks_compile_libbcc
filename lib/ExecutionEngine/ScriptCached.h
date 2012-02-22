@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,6 +61,7 @@ namespace bcc {
 
     OBCC_ExportVarList *mpExportVars;
     OBCC_ExportFuncList *mpExportFuncs;
+    OBCC_ExportForEachList *mpExportForEach;
     PragmaList mPragmas;
     OBCC_ObjectSlotList *mpObjectSlotList;
 
@@ -84,6 +85,7 @@ namespace bcc {
       : mpOwner(owner),
         mpExportVars(NULL),
         mpExportFuncs(NULL),
+        mpExportForEach(NULL),
         mpObjectSlotList(NULL),
 #if USE_OLD_JIT
         mContext(NULL),
@@ -105,6 +107,10 @@ namespace bcc {
       return mpExportFuncs->count;
     }
 
+    size_t getExportForEachCount() const {
+      return mpExportForEach->count;
+    }
+
     size_t getPragmaCount() const {
       return mPragmas.size();
     }
@@ -120,6 +126,8 @@ namespace bcc {
     void getExportVarList(size_t varListSize, void **varList);
 
     void getExportFuncList(size_t funcListSize, void **funcList);
+
+    void getExportForEachList(size_t forEachListSize, void **forEachList);
 
     void getPragmaList(size_t pragmaListSize,
                        char const **keyList,

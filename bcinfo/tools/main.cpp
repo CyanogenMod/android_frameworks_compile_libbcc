@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, The Android Open Source Project
+ * Copyright 2011-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,9 +86,11 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
 
   printf("exportForEachSignatureCount: %u\n",
          ME->getExportForEachSignatureCount());
+  const char **nameList = ME->getExportForEachNameList();
   const uint32_t *sigList = ME->getExportForEachSignatureList();
   for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
-    printf("exportForEachSignatureList[%u]: %u\n", i, sigList[i]);
+    printf("exportForEachSignatureList[%u]: %s - %u\n", i, nameList[i],
+           sigList[i]);
   }
 
   printf("pragmaCount: %u\n", ME->getPragmaCount());

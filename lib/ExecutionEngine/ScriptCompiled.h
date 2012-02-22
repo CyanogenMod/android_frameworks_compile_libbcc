@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ namespace bcc {
     typedef std::list<std::pair<std::string, std::string> > PragmaList;
     typedef std::list<void*> ExportVarList;
     typedef std::list<void*> ExportFuncList;
+    typedef std::list<void*> ExportForEachList;
     typedef std::map<std::string, FuncInfo *> FuncInfoMap;
     typedef std::list<uint32_t> ObjectSlotList;
 
@@ -55,8 +56,10 @@ namespace bcc {
 
     std::vector<std::string> mExportVarsName;
     std::vector<std::string> mExportFuncsName;
+    std::vector<std::string> mExportForEachName;
 
     ExportFuncList mExportFuncs;
+    ExportForEachList mExportForEach;
     PragmaList mPragmas;
     ObjectSlotList mObjectSlots;
 
@@ -104,6 +107,10 @@ namespace bcc {
       return mExportFuncs.size();
     }
 
+    size_t getExportForEachCount() const {
+      return mExportForEach.size();
+    }
+
     size_t getPragmaCount() const {
       return mPragmas.size();
     }
@@ -120,9 +127,13 @@ namespace bcc {
 
     void getExportFuncList(size_t funcListSize, void **funcList);
 
+    void getExportForEachList(size_t forEachListSize, void **forEachList);
+
     void getExportVarNameList(std::vector<std::string> &varList);
 
     void getExportFuncNameList(std::vector<std::string> &funcList);
+
+    void getExportForEachNameList(std::vector<std::string> &forEachList);
 
     void getPragmaList(size_t pragmaListSize,
                        char const **keyList,

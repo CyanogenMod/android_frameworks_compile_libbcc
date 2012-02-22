@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, The Android Open Source Project
+ * Copyright 2011-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,11 @@ static const llvm::StringRef ExportVarMetadataName = "#rs_export_var";
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportFuncMetadataName = "#rs_export_func";
 
+// Name of metadata node where exported ForEach name information resides
+// (should be synced with slang_rs_metadata.h)
+static const llvm::StringRef ExportForEachNameMetadataName =
+    "#rs_export_foreach_name";
+
 // Name of metadata node where exported ForEach signature information resides
 // (should be synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
@@ -53,25 +58,33 @@ static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mBitcode(bitcode), mBitcodeSize(bitcodeSize), mExportVarCount(0),
       mExportFuncCount(0), mExportForEachSignatureCount(0),
-      mExportForEachSignatureList(NULL), mPragmaCount(0), mPragmaKeyList(NULL),
-      mPragmaValueList(NULL), mObjectSlotCount(0), mObjectSlotList(NULL) {
+      mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
+      mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
+      mObjectSlotCount(0), mObjectSlotList(NULL) {
 }
 
 
 MetadataExtractor::~MetadataExtractor() {
+  if (mExportForEachNameList) {
+    for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
+        delete [] mExportForEachNameList[i];
+        mExportForEachNameList[i] = NULL;
+    }
+  }
+  delete [] mExportForEachNameList;
+  mExportForEachNameList = NULL;
+
   delete [] mExportForEachSignatureList;
   mExportForEachSignatureList = NULL;
 
-  if (mPragmaCount > 0) {
-    for (size_t i = 0; i < mPragmaCount; i++) {
-      if (mPragmaKeyList) {
-        delete [] mPragmaKeyList[i];
-        mPragmaKeyList[i] = NULL;
-      }
-      if (mPragmaValueList) {
-        delete [] mPragmaValueList[i];
-        mPragmaValueList[i] = NULL;
-      }
+  for (size_t i = 0; i < mPragmaCount; i++) {
+    if (mPragmaKeyList) {
+      delete [] mPragmaKeyList[i];
+      mPragmaKeyList[i] = NULL;
+    }
+    if (mPragmaValueList) {
+      delete [] mPragmaValueList[i];
+      mPragmaValueList[i] = NULL;
     }
   }
   delete [] mPragmaKeyList;
@@ -168,19 +181,25 @@ void MetadataExtractor::populatePragmaMetadata(
 
 
 bool MetadataExtractor::populateForEachMetadata(
-    const llvm::NamedMDNode *ExportForEachMetadata) {
-  if (!ExportForEachMetadata) {
+    const llvm::NamedMDNode *Names,
+    const llvm::NamedMDNode *Signatures) {
+  if (!Names || !Signatures) {
     // Handle legacy case for pre-ICS bitcode that doesn't contain a metadata
     // section for ForEach. We generate a full signature for a "root" function
     // which means that we need to set the bottom 5 bits in the mask.
     mExportForEachSignatureCount = 1;
+    char **TmpNameList = new char*[mExportForEachSignatureCount];
+    TmpNameList[0] = new char[5];
+    strncpy(TmpNameList[0], "root", 5);
+
     uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
     TmpSigList[0] = 0x1f;
+    mExportForEachNameList = (const char**)TmpNameList;
     mExportForEachSignatureList = TmpSigList;
     return true;
   }
 
-  mExportForEachSignatureCount = ExportForEachMetadata->getNumOperands();
+  mExportForEachSignatureCount = Signatures->getNumOperands();
   if (!mExportForEachSignatureCount) {
     return true;
   }
@@ -188,7 +207,7 @@ bool MetadataExtractor::populateForEachMetadata(
   uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
 
   for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
-    llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(i);
+    llvm::MDNode *SigNode = Signatures->getOperand(i);
     if (SigNode != NULL && SigNode->getNumOperands() == 1) {
       llvm::Value *SigVal = SigNode->getOperand(0);
       if (SigVal->getValueID() == llvm::Value::MDStringVal) {
@@ -205,6 +224,16 @@ bool MetadataExtractor::populateForEachMetadata(
   }
 
   mExportForEachSignatureList = TmpSigList;
+
+
+  mExportForEachNameList = new const char*[mExportForEachSignatureCount];
+
+  for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
+    llvm::MDNode *Name = Names->getOperand(i);
+    if (Name != NULL && Name->getNumOperands() == 1) {
+      mExportForEachNameList[i] = createStringFromValue(Name->getOperand(0));
+    }
+  }
 
   return true;
 }
@@ -235,6 +264,8 @@ bool MetadataExtractor::extract() {
       module->getNamedMetadata(ExportVarMetadataName);
   const llvm::NamedMDNode *ExportFuncMetadata =
       module->getNamedMetadata(ExportFuncMetadataName);
+  const llvm::NamedMDNode *ExportForEachNameMetadata =
+      module->getNamedMetadata(ExportForEachNameMetadataName);
   const llvm::NamedMDNode *ExportForEachMetadata =
       module->getNamedMetadata(ExportForEachMetadataName);
   const llvm::NamedMDNode *PragmaMetadata =
@@ -250,7 +281,8 @@ bool MetadataExtractor::extract() {
     mExportFuncCount = ExportFuncMetadata->getNumOperands();
   }
 
-  if (!populateForEachMetadata(ExportForEachMetadata)) {
+  if (!populateForEachMetadata(ExportForEachNameMetadata,
+                               ExportForEachMetadata)) {
     ALOGE("Could not populate ForEach signature metadata");
     return false;
   }

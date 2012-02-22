@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ ScriptCached::~ScriptCached() {
   if (mpStringPoolRaw) { free(mpStringPoolRaw); }
   if (mpExportVars) { free(mpExportVars); }
   if (mpExportFuncs) { free(mpExportFuncs); }
+  if (mpExportForEach) { free(mpExportForEach); }
   if (mpObjectSlotList) { free(mpObjectSlotList); }
 }
 
@@ -68,6 +69,21 @@ void ScriptCached::getExportFuncList(size_t funcListSize, void **funcList) {
 
     memcpy(funcList, mpExportFuncs->cached_addr_list,
            sizeof(void *) * funcCount);
+  }
+}
+
+
+void ScriptCached::getExportForEachList(size_t forEachListSize,
+                                        void **forEachList) {
+  if (forEachList) {
+    size_t forEachCount = getExportForEachCount();
+
+    if (forEachCount > forEachListSize) {
+      forEachCount = forEachListSize;
+    }
+
+    memcpy(forEachList, mpExportForEach->cached_addr_list,
+           sizeof(void *) * forEachCount);
   }
 }
 

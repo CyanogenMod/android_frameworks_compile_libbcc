@@ -32,9 +32,9 @@ namespace {
    * called via rsForEach() or "foreach_<NAME>". We create an inner loop for
    * the ForEach-able function to be invoked over the appropriate data cells
    * of the input/output allocations (adjusting other relevant parameters as
-   * we go). We currently only support doing this for compute "root" functions.
+   * we go). We support doing this for any ForEach-able compute kernels.
    * The new function name is the original function name followed by
-   * ".expanded". Note that we still generate code for the original function.
+   * ".expand". Note that we still generate code for the original function.
    */
   class ForEachExpandPass : public llvm::ModulePass {
   private:
@@ -43,7 +43,10 @@ namespace {
   llvm::Module *M;
   llvm::LLVMContext *C;
 
-  uint32_t getSignature(llvm::Function *F) {
+  std::vector<std::string>& mNames;
+  std::vector<uint32_t>& mSignatures;
+
+  uint32_t getRootSignature(llvm::Function *F) {
     const llvm::NamedMDNode *ExportForEachMetadata =
         M->getNamedMetadata("#rs_export_foreach");
 
@@ -62,10 +65,10 @@ namespace {
       return (1 << RootArgTys.size()) - 1;
     }
 
-    // We only handle the case for root() functions today, so this is
-    // hard-coded to look at only the first such function.
     bccAssert(ExportForEachMetadata->getNumOperands() > 0);
 
+    // We only handle the case for legacy root() functions here, so this is
+    // hard-coded to look at only the first such function.
     llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(0);
     if (SigNode != NULL && SigNode->getNumOperands() == 1) {
       llvm::Value *SigVal = SigNode->getOperand(0);
@@ -105,22 +108,26 @@ namespace {
   }
 
   public:
-  ForEachExpandPass()
-      : ModulePass(ID), M(NULL), C(NULL) {
+  ForEachExpandPass(std::vector<std::string>& Names,
+                    std::vector<uint32_t>& Signatures)
+      : ModulePass(ID), M(NULL), C(NULL), mNames(Names),
+        mSignatures(Signatures) {
   }
 
   /* Performs the actual optimization on a selected function. On success, the
    * Module will contain a new function of the name "<NAME>.expand" that
    * invokes <NAME>() in a loop with the appropriate parameters.
    */
-  bool ExpandFunction(llvm::Function *F) {
-    ALOGV("Expanding a ForEach-able Function");
+  bool ExpandFunction(llvm::Function *F, uint32_t Signature) {
+    ALOGV("Expanding ForEach-able Function %s", F->getName().str().c_str());
 
-    uint32_t Signature = getSignature(F);
     if (!Signature) {
-      // We couldn't determine how to expand this function based on its
-      // function signature.
-      return false;
+      Signature = getRootSignature(F);
+      if (!Signature) {
+        // We couldn't determine how to expand this function based on its
+        // function signature.
+        return false;
+      }
     }
 
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
@@ -210,7 +217,7 @@ namespace {
     llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
     Builder.CreateStore(Arg_x1, AX);
 
-    // Collect and construct the arguments for root().
+    // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator Args = F->arg_begin();
 
@@ -265,7 +272,7 @@ namespace {
     // Loop:
     Builder.SetInsertPoint(Loop);
 
-    // Populate the actual call to root().
+    // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
     llvm::Value *In = NULL;
@@ -328,15 +335,19 @@ namespace {
   }
 
   virtual bool runOnModule(llvm::Module &M) {
+    bool Changed = false;
     this->M = &M;
     C = &M.getContext();
 
-    llvm::Function *root = M.getFunction("root");
-    if (root && root->getReturnType()->isVoidTy()) {
-      return ExpandFunction(root);
+    bccAssert(mNames.size() == mSignatures.size());
+    for (int i = 0, e = mNames.size(); i != e; i++) {
+      llvm::Function *kernel = M.getFunction(mNames[i]);
+      if (kernel && kernel->getReturnType()->isVoidTy()) {
+        Changed |= ExpandFunction(kernel, mSignatures[i]);
+      }
     }
 
-    return false;
+    return Changed;
   }
 
   virtual const char *getPassName() const {
@@ -350,8 +361,9 @@ char ForEachExpandPass::ID = 0;
 
 namespace bcc {
 
-  llvm::ModulePass *createForEachExpandPass() {
-    return new ForEachExpandPass();
+  llvm::ModulePass *createForEachExpandPass(std::vector<std::string>& Names,
+                                            std::vector<uint32_t>& Signatures) {
+    return new ForEachExpandPass(Names, Signatures);
   }
 
 }  // namespace bcc

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ bool MCCacheWriter::writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
              && preparePragmaList()
              && prepareExportVarNameList()
              && prepareExportFuncNameList()
+             && prepareExportForEachNameList()
              && prepareStringPool()
              && prepareObjectSlotList()
              && calcSectionOffset()
@@ -262,6 +263,30 @@ bool MCCacheWriter::prepareExportFuncNameList() {
 }
 
 
+bool MCCacheWriter::prepareExportForEachNameList() {
+  size_t forEachCount = mpOwner->getExportForEachCount();
+  size_t listSize = sizeof(OBCC_String_Ptr) + sizeof(size_t) * forEachCount;
+
+  OBCC_String_Ptr *list = (OBCC_String_Ptr*)malloc(listSize);
+
+  if (!list) {
+    ALOGE("Unable to allocate for export forEach name list\n");
+    return false;
+  }
+
+  mpExportForEachNameListSection = list;
+  mpHeaderSection->export_foreach_name_list_size = listSize;
+
+  list->count = static_cast<size_t>(forEachCount);
+
+  mpOwner->getExportForEachNameList(forEachNameList);
+  for (size_t i = 0; i < forEachCount; ++i) {
+    list->strp_indexs[i] = addString(forEachNameList[i].c_str(), forEachNameList[i].length());
+  }
+  return true;
+}
+
+
 bool MCCacheWriter::prepareObjectSlotList() {
   size_t objectSlotCount = mpOwner->getObjectSlotCount();
 
@@ -308,6 +333,7 @@ bool MCCacheWriter::calcSectionOffset() {
   OFFSET_INCREASE(object_slot_list);
   OFFSET_INCREASE(export_var_name_list);
   OFFSET_INCREASE(export_func_name_list);
+  OFFSET_INCREASE(export_foreach_name_list);
 
 #undef OFFSET_INCREASE
 
@@ -345,6 +371,7 @@ bool MCCacheWriter::writeAll() {
 
   WRITE_SECTION_SIMPLE(export_var_name_list, mpExportVarNameListSection);
   WRITE_SECTION_SIMPLE(export_func_name_list, mpExportFuncNameListSection);
+  WRITE_SECTION_SIMPLE(export_foreach_name_list, mpExportForEachNameListSection);
 
 #undef WRITE_SECTION_SIMPLE
 #undef WRITE_SECTION

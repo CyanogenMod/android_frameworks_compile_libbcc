@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -239,6 +239,30 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
 
     for (size_t i = 0; i < count; ++i) {
       ALOGD("ExportFuncList[%lu] = %p\n", (unsigned long)i, funcList[i]);
+    }
+#endif
+  }
+}
+
+
+extern "C" void bccGetExportForEachList(BCCScriptRef script,
+                                        size_t forEachListSize,
+                                        void **forEachList) {
+  BCC_FUNC_LOGGER();
+
+  if (forEachList) {
+    unwrap(script)->getExportForEachList(forEachListSize, forEachList);
+
+#if DEBUG_BCC_REFLECT
+    size_t count = unwrap(script)->getExportForEachCount();
+    ALOGD("ExportForEachCount = %lu\n", (unsigned long)count);
+
+    if (count > forEachListSize) {
+      count = forEachListSize;
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+      ALOGD("ExportForEachList[%lu] = %p\n", (unsigned long)i, forEachList[i]);
     }
 #endif
   }

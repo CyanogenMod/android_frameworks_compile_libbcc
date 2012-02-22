@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, The Android Open Source Project
+ * Copyright 2011-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ class MetadataExtractor {
   size_t mExportVarCount;
   size_t mExportFuncCount;
   size_t mExportForEachSignatureCount;
+  const char **mExportForEachNameList;
   const uint32_t *mExportForEachSignatureList;
 
   size_t mPragmaCount;
@@ -44,7 +45,8 @@ class MetadataExtractor {
   const uint32_t *mObjectSlotList;
 
   // Helper functions for extraction
-  bool populateForEachMetadata(const llvm::NamedMDNode *ExportForEachMetadata);
+  bool populateForEachMetadata(const llvm::NamedMDNode *Names,
+                               const llvm::NamedMDNode *Signatures);
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
   void populatePragmaMetadata(const llvm::NamedMDNode *PragmaMetadata);
 
@@ -92,6 +94,13 @@ class MetadataExtractor {
    */
   const uint32_t *getExportForEachSignatureList() const {
     return mExportForEachSignatureList;
+  }
+
+  /**
+   * \return array of ForEach function names.
+   */
+  const char **getExportForEachNameList() const {
+    return mExportForEachNameList;
   }
 
   /**

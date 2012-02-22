@@ -80,6 +80,8 @@ namespace bcc {
     static const llvm::StringRef PragmaMetadataName;
     static const llvm::StringRef ExportVarMetadataName;
     static const llvm::StringRef ExportFuncMetadataName;
+    static const llvm::StringRef ExportForEachNameMetadataName;
+    static const llvm::StringRef ExportForEachMetadataName;
     static const llvm::StringRef ObjectSlotMetadataName;
 
     friend class CodeEmitter;
@@ -176,11 +178,13 @@ namespace bcc {
 #if USE_MCJIT
     static void *resolveSymbolAdapter(void *context, char const *name);
 #endif
-    int runInternalPasses();
+    int runInternalPasses(std::vector<std::string>& Names,
+                          std::vector<uint32_t>& Signatures);
 
     int runLTO(llvm::TargetData *TD,
                llvm::NamedMDNode const *ExportVarMetadata,
-               llvm::NamedMDNode const *ExportFuncMetadata);
+               llvm::NamedMDNode const *ExportFuncMetadata,
+               std::vector<std::string>& ForEachExpandList);
 
     bool hasError() const {
       return !mError.empty();

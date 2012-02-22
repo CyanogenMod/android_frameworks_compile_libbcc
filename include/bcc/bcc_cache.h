@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,10 @@ struct OBCC_Header {
   /* dirty hack for libRS */
   /* TODO: This should be removed in the future */
   uint32_t libRS_threadable;
+
+  /* export foreach list section */
+  off_t export_foreach_list_offset;
+  size_t export_foreach_list_size;
 };
 
 struct OBCC_String {
@@ -115,6 +119,11 @@ struct OBCC_ExportVarList {
 };
 
 struct OBCC_ExportFuncList {
+  size_t count;
+  void *cached_addr_list[];
+};
+
+struct OBCC_ExportForEachList {
   size_t count;
   void *cached_addr_list[];
 };

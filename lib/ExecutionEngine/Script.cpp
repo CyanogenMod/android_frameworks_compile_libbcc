@@ -1,5 +1,5 @@
 /*
- * copyright 2010, the android open source project
+ * copyright 2010-2012, the android open source project
  *
  * licensed under the apache license, version 2.0 (the "license");
  * you may not use this file except in compliance with the license.
@@ -530,6 +530,25 @@ size_t Script::getExportFuncCount() const {
 }
 
 
+size_t Script::getExportForEachCount() const {
+  switch (mStatus) {
+    case ScriptStatus::Compiled: {
+      return mCompiled->getExportForEachCount();
+    }
+
+#if USE_CACHE
+    case ScriptStatus::Cached: {
+      return mCached->getExportForEachCount();
+    }
+#endif
+
+    default: {
+      return 0;
+    }
+  }
+}
+
+
 size_t Script::getPragmaCount() const {
   switch (mStatus) {
     case ScriptStatus::Compiled: {
@@ -652,6 +671,37 @@ void Script::getExportFuncNameList(std::vector<std::string> &funcList) {
   }
 }
 
+void Script::getExportForEachList(size_t funcListSize, void **funcList) {
+  switch (mStatus) {
+#define DELEGATE(STATUS) \
+    case ScriptStatus::STATUS:                                 \
+      m##STATUS->getExportForEachList(funcListSize, funcList); \
+      break;
+
+#if USE_CACHE
+    DELEGATE(Cached);
+#endif
+
+    DELEGATE(Compiled);
+#undef DELEGATE
+
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
+  }
+}
+
+void Script::getExportForEachNameList(std::vector<std::string> &forEachList) {
+  switch (mStatus) {
+    case ScriptStatus::Compiled: {
+      return mCompiled->getExportForEachNameList(forEachList);
+    }
+
+    default: {
+      mErrorCode = BCC_INVALID_OPERATION;
+    }
+  }
+}
 
 void Script::getPragmaList(size_t pragmaListSize,
                            char const **keyList,

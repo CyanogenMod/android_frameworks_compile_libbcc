@@ -18,6 +18,7 @@
 
 namespace bcc {
 
-llvm::ModulePass *createForEachExpandPass();
+llvm::ModulePass *createForEachExpandPass(std::vector<std::string>& Names,
+                                          std::vector<uint32_t>& Signatures);
 
 }  // namespace bcc

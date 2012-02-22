@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,6 +200,8 @@ namespace bcc {
 
     size_t getExportFuncCount() const;
 
+    size_t getExportForEachCount() const;
+
     size_t getPragmaCount() const;
 
     size_t getFuncCount() const;
@@ -210,9 +212,13 @@ namespace bcc {
 
     void getExportFuncList(size_t size, void **list);
 
+    void getExportForEachList(size_t size, void **list);
+
     void getExportVarNameList(std::vector<std::string> &list);
 
     void getExportFuncNameList(std::vector<std::string> &list);
+
+    void getExportForEachNameList(std::vector<std::string> &list);
 
     void getPragmaList(size_t size,
                        char const **keyList,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ namespace bcc {
 
     OBCC_String_Ptr *mpVarNameList;
     OBCC_String_Ptr *mpFuncNameList;
+    OBCC_String_Ptr *mpForEachNameList;
 
     llvm::OwningPtr<ScriptCached> mpResult;
 
@@ -61,7 +62,7 @@ namespace bcc {
     MCCacheReader()
       : mObjFile(NULL), mInfoFile(NULL), mInfoFileSize(0), mpHeader(NULL),
         mpCachedDependTable(NULL), mpPragmaList(NULL),
-        mpVarNameList(NULL), mpFuncNameList(NULL),
+        mpVarNameList(NULL), mpFuncNameList(NULL), mpForEachNameList(NULL),
         mIsContextSlotNotAvail(false) {
     }
 
@@ -97,6 +98,7 @@ namespace bcc {
 
     bool readVarNameList();
     bool readFuncNameList();
+    bool readForEachNameList();
 
     bool checkFileSize();
     bool checkHeader();

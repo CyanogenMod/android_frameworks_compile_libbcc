@@ -126,6 +126,16 @@ const llvm::StringRef Compiler::ExportVarMetadataName = "#rs_export_var";
 // synced with slang_rs_metadata.h)
 const llvm::StringRef Compiler::ExportFuncMetadataName = "#rs_export_func";
 
+// Name of metadata node where exported ForEach name information resides
+// (should be synced with slang_rs_metadata.h)
+const llvm::StringRef Compiler::ExportForEachNameMetadataName =
+    "#rs_export_foreach_name";
+
+// Name of metadata node where exported ForEach signature information resides
+// (should be synced with slang_rs_metadata.h)
+const llvm::StringRef Compiler::ExportForEachMetadataName =
+    "#rs_export_foreach";
+
 // Name of metadata node where RS object slot info resides (should be
 // synced with slang_rs_metadata.h)
 const llvm::StringRef Compiler::ObjectSlotMetadataName = "#rs_object_slots";
@@ -150,7 +160,7 @@ void Compiler::GlobalInitialization() {
   {
     std::string Err;
     llvm::Target const *Target = llvm::TargetRegistry::lookupTarget(Triple, Err);
-    if (Target == NULL) {
+    if (Target != NULL) {
       ArchType = llvm::Triple::getArchTypeForLLVMName(Target->getName());
     } else {
       ArchType = llvm::Triple::UnknownArch;
@@ -306,7 +316,13 @@ int Compiler::compile(const CompilerOption &option) {
   llvm::NamedMDNode const *PragmaMetadata;
   llvm::NamedMDNode const *ExportVarMetadata;
   llvm::NamedMDNode const *ExportFuncMetadata;
+  llvm::NamedMDNode const *ExportForEachNameMetadata;
+  llvm::NamedMDNode const *ExportForEachMetadata;
   llvm::NamedMDNode const *ObjectSlotMetadata;
+
+  std::vector<std::string> ForEachNameList;
+  std::vector<std::string> ForEachExpandList;
+  std::vector<uint32_t> forEachSigList;
 
   if (mModule == NULL)  // No module was loaded
     return 0;
@@ -345,14 +361,56 @@ int Compiler::compile(const CompilerOption &option) {
   // Load named metadata
   ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
   ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
+  ExportForEachNameMetadata =
+      mModule->getNamedMetadata(ExportForEachNameMetadataName);
+  ExportForEachMetadata =
+      mModule->getNamedMetadata(ExportForEachMetadataName);
   PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
   ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
 
-  runInternalPasses();
+  if (ExportForEachNameMetadata) {
+    for (int i = 0, e = ExportForEachNameMetadata->getNumOperands();
+         i != e;
+         i++) {
+      llvm::MDNode *ExportForEach = ExportForEachNameMetadata->getOperand(i);
+      if (ExportForEach != NULL && ExportForEach->getNumOperands() > 0) {
+        llvm::Value *ExportForEachNameMDS = ExportForEach->getOperand(0);
+        if (ExportForEachNameMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef ExportForEachName =
+            static_cast<llvm::MDString*>(ExportForEachNameMDS)->getString();
+          ForEachNameList.push_back(ExportForEachName.str());
+          std::string ExpandName = ExportForEachName.str() + ".expand";
+          ForEachExpandList.push_back(ExpandName);
+        }
+      }
+    }
+  }
+
+  if (ExportForEachMetadata) {
+    for (int i = 0, e = ExportForEachMetadata->getNumOperands(); i != e; i++) {
+      llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(i);
+      if (SigNode != NULL && SigNode->getNumOperands() == 1) {
+        llvm::Value *SigVal = SigNode->getOperand(0);
+        if (SigVal->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef SigString =
+              static_cast<llvm::MDString*>(SigVal)->getString();
+          uint32_t Signature = 0;
+          if (SigString.getAsInteger(10, Signature)) {
+            ALOGE("Non-integer signature value '%s'", SigString.str().c_str());
+            goto on_bcc_compile_error;
+          }
+          forEachSigList.push_back(Signature);
+        }
+      }
+    }
+  }
+
+  runInternalPasses(ForEachNameList, forEachSigList);
 
   // Perform link-time optimization if we have multiple modules
   if (mHasLinked) {
-    runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata);
+    runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata,
+           ForEachExpandList);
   }
 
   // Perform code generation
@@ -430,6 +488,29 @@ int Compiler::compile(const CompilerOption &option) {
           ALOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
                funcList.back());
 #endif
+        }
+      }
+    }
+  }
+
+  if (ExportForEachNameMetadata) {
+    ScriptCompiled::ExportForEachList &forEachList = mpResult->mExportForEach;
+    std::vector<std::string> &ForEachNameList = mpResult->mExportForEachName;
+
+    for (int i = 0, e = ExportForEachNameMetadata->getNumOperands();
+         i != e;
+         i++) {
+      llvm::MDNode *ExportForEach = ExportForEachNameMetadata->getOperand(i);
+      if (ExportForEach != NULL && ExportForEach->getNumOperands() > 0) {
+        llvm::Value *ExportForEachNameMDS = ExportForEach->getOperand(0);
+        if (ExportForEachNameMDS->getValueID() == llvm::Value::MDStringVal) {
+          llvm::StringRef ExportForEachName =
+            static_cast<llvm::MDString*>(ExportForEachNameMDS)->getString();
+          std::string Name = ExportForEachName.str() + ".expand";
+
+          forEachList.push_back(
+              rsloaderGetSymbolAddress(mRSExecutable, Name.c_str()));
+          ForEachNameList.push_back(Name);
         }
       }
     }
@@ -685,11 +766,12 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
 }
 #endif // USE_MCJIT
 
-int Compiler::runInternalPasses() {
+int Compiler::runInternalPasses(std::vector<std::string>& Names,
+                                std::vector<uint32_t>& Signatures) {
   llvm::PassManager BCCPasses;
 
   // Expand ForEach on CPU path to reduce launch overhead.
-  BCCPasses.add(createForEachExpandPass());
+  BCCPasses.add(createForEachExpandPass(Names, Signatures));
 
   BCCPasses.run(*mModule);
 
@@ -698,7 +780,8 @@ int Compiler::runInternalPasses() {
 
 int Compiler::runLTO(llvm::TargetData *TD,
                      llvm::NamedMDNode const *ExportVarMetadata,
-                     llvm::NamedMDNode const *ExportFuncMetadata) {
+                     llvm::NamedMDNode const *ExportFuncMetadata,
+                     std::vector<std::string>& ForEachExpandList) {
   llvm::PassManager LTOPasses;
 
   // Add TargetData to LTO passes
@@ -737,12 +820,15 @@ int Compiler::runLTO(llvm::TargetData *TD,
     }
   }
 
+  for (int i = 0, e = ForEachExpandList.size(); i != e; i++) {
+    ExportSymbols.push_back(ForEachExpandList[i].c_str());
+  }
+
   // TODO(logan): Remove this after we have finished the
   // bccMarkExternalSymbol API.
 
   // root(), init(), and .rs.dtor() are born to be exported
   ExportSymbols.push_back("root");
-  ExportSymbols.push_back("root.expand");
   ExportSymbols.push_back("init");
   ExportSymbols.push_back(".rs.dtor");
 
