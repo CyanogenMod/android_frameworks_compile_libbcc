@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 The Android Open Source Project
+# Copyright (C) 2011-2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,14 @@ LOCAL_MODULE := libclcore.bc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
-LOCAL_SRC_FILES := \
+# C source files for the library
+clcore_c_files := \
     rs_cl.c \
     rs_core.c
 
+# Hand-written bitcode for the library
+clcore_ll_files := \
+    clamp.ll
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
@@ -34,21 +38,30 @@ clcore_LLVM_LD := $(HOST_OUT_EXECUTABLES)/llvm-ld$(HOST_EXECUTABLE_SUFFIX)
 clcore_LLVM_AS := $(HOST_OUT_EXECUTABLES)/llvm-as$(HOST_EXECUTABLE_SUFFIX)
 clcore_LLVM_DIS := $(HOST_OUT_EXECUTABLES)/llvm-dis$(HOST_EXECUTABLE_SUFFIX)
 
-clcore_bc_files := $(patsubst %.c,%.bc, \
-    $(addprefix $(intermediates)/, $(LOCAL_SRC_FILES)))
+clcore_c_bc_files := $(patsubst %.c,%.bc, \
+    $(addprefix $(intermediates)/, $(clcore_c_files)))
 
-$(clcore_bc_files): PRIVATE_INCLUDES := \
+clcore_ll_bc_files := $(patsubst %.ll,%.bc, \
+    $(addprefix $(intermediates)/, $(clcore_ll_files)))
+
+$(clcore_c_bc_files): PRIVATE_INCLUDES := \
     frameworks/base/libs/rs/scriptc \
     external/clang/lib/Headers
 
-$(clcore_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
+$(clcore_c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 	@mkdir -p $(dir $@)
 	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -fno-builtin -emit-llvm -ccc-host-triple armv7-none-linux-gnueabi $< -o $@
 
--include $(clcore_bc_files:%.bc=%.d)
+$(clcore_ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(clcore_LLVM_AS)
+	@mkdir -p $(dir $@)
+	$(hide) $(clcore_LLVM_AS) $< -o $@
 
-$(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(clcore_bc_files)
-$(LOCAL_BUILT_MODULE): $(clcore_bc_files) $(clcore_LLVM_LINK) $(clcore_LLVM_LD)
+-include $(clcore_c_bc_files:%.bc=%.d)
+-include $(clcore_ll_bc_files:%.bc=%.d)
+
+$(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(clcore_c_bc_files) $(clcore_ll_bc_files)
+$(LOCAL_BUILT_MODULE): $(clcore_c_bc_files) $(clcore_ll_bc_files)
+$(LOCAL_BUILT_MODULE): $(clcore_LLVM_LINK) $(clcore_LLVM_LD)
 $(LOCAL_BUILT_MODULE): $(clcore_LLVM_AS) $(clcore_LLVM_DIS)
 	@mkdir -p $(dir $@)
 	$(hide) $(clcore_LLVM_LINK) $(PRIVATE_BC_FILES) -o $@
