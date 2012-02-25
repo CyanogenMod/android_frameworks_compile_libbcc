@@ -31,6 +31,8 @@ include $(BUILD_SYSTEM)/base_rules.mk
 clcore_CLANG := $(HOST_OUT_EXECUTABLES)/clang$(HOST_EXECUTABLE_SUFFIX)
 clcore_LLVM_LINK := $(HOST_OUT_EXECUTABLES)/llvm-link$(HOST_EXECUTABLE_SUFFIX)
 clcore_LLVM_LD := $(HOST_OUT_EXECUTABLES)/llvm-ld$(HOST_EXECUTABLE_SUFFIX)
+clcore_LLVM_AS := $(HOST_OUT_EXECUTABLES)/llvm-as$(HOST_EXECUTABLE_SUFFIX)
+clcore_LLVM_DIS := $(HOST_OUT_EXECUTABLES)/llvm-dis$(HOST_EXECUTABLE_SUFFIX)
 
 clcore_bc_files := $(patsubst %.c,%.bc, \
     $(addprefix $(intermediates)/, $(LOCAL_SRC_FILES)))
@@ -46,6 +48,7 @@ $(clcore_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 -include $(clcore_bc_files:%.bc=%.d)
 
 $(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(clcore_bc_files)
-$(LOCAL_BUILT_MODULE) : $(clcore_bc_files) $(clcore_LLVM_LINK) $(clcore_LLVM_LD)
+$(LOCAL_BUILT_MODULE): $(clcore_bc_files) $(clcore_LLVM_LINK) $(clcore_LLVM_LD)
+$(LOCAL_BUILT_MODULE): $(clcore_LLVM_AS) $(clcore_LLVM_DIS)
 	@mkdir -p $(dir $@)
 	$(hide) $(clcore_LLVM_LINK) $(PRIVATE_BC_FILES) -o $@
