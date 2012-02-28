@@ -28,12 +28,12 @@ extern typeout##4 __attribute__((overloadable))             \
                         CVT_FUNC_2(type, float)
 
 CVT_FUNC(char)
-CVT_FUNC(uchar)
+//CVT_FUNC(uchar)
 CVT_FUNC(short)
 CVT_FUNC(ushort)
 CVT_FUNC(int)
 CVT_FUNC(uint)
-CVT_FUNC(float)
+//CVT_FUNC(float)
 
 // Float ops, 6.11.2
 
