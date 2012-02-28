@@ -28,7 +28,9 @@ clcore_c_files := \
 
 # Hand-written bitcode for the library
 clcore_ll_files := \
-    clamp.ll
+    clamp.ll \
+    convert.ll \
+    matrix.ll
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
