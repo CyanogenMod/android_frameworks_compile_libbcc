@@ -50,7 +50,7 @@ $(clcore_c_bc_files): PRIVATE_INCLUDES := \
 
 $(clcore_c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 	@mkdir -p $(dir $@)
-	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -fno-builtin -emit-llvm -ccc-host-triple armv7-none-linux-gnueabi $< -o $@
+	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -fno-builtin -emit-llvm -ccc-host-triple armv7-none-linux-gnueabi -fsigned-char $< -o $@
 
 $(clcore_ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(clcore_LLVM_AS)
 	@mkdir -p $(dir $@)
