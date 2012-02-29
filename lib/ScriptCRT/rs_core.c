@@ -269,6 +269,7 @@ extern void __attribute__((overloadable)) rsDebug(const char *s, float4 v) {
     rsDebug(s, v.x, v.y, v.z, v.w);
 }
 
+/*
 extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float r, float g, float b)
 {
     uchar4 c;
@@ -304,6 +305,7 @@ extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float4 color)
     uchar4 c = {color.x, color.y, color.z, color.w};
     return c;
 }
+*/
 
 extern float4 rsUnpackColor8888(uchar4 c)
 {

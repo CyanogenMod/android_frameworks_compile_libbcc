@@ -30,7 +30,8 @@ clcore_c_files := \
 clcore_ll_files := \
     clamp.ll \
     convert.ll \
-    matrix.ll
+    matrix.ll \
+    pixel_packing.ll
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
