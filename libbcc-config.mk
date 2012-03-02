@@ -68,6 +68,8 @@ endif
 libbcc_CFLAGS := -Wall -Wno-unused-parameter -Werror
 ifneq ($(TARGET_BUILD_VARIANT),eng)
 libbcc_CFLAGS += -D__DISABLE_ASSERTS
+else
+libbcc_CFLAGS += -DANDROID_ENGINEERING_BUILD
 endif
 
 # Include File Search Path
