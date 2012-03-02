@@ -31,6 +31,7 @@
 
 namespace llvm {
   class Module;
+  class GDBJITRegistrar;
 }
 
 namespace bcc {
@@ -262,7 +263,6 @@ namespace bcc {
                           ScriptObject::ObjectType objectType, bool checkOnly);
 #endif
     int internalCompile(const CompilerOption&);
-
   };
 
 } // namespace bcc

@@ -44,6 +44,8 @@ class MetadataExtractor {
   size_t mObjectSlotCount;
   const uint32_t *mObjectSlotList;
 
+  uint32_t mOptimizationLevel;
+
   // Helper functions for extraction
   bool populateForEachMetadata(const llvm::NamedMDNode *Names,
                                const llvm::NamedMDNode *Signatures);
@@ -137,6 +139,10 @@ class MetadataExtractor {
    */
   const uint32_t *getObjectSlotList() const {
     return mObjectSlotList;
+  }
+
+  uint32_t getOptimizationLevel() const {
+    return mOptimizationLevel;
   }
 };
 

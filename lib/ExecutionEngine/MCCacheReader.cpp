@@ -449,21 +449,25 @@ void *MCCacheReader::resolveSymbolAdapter(void *context, char const *name) {
 }
 
 bool MCCacheReader::readObjFile() {
-  llvm::SmallVector<char, 1024> mEmittedELFExecutable;
+  if (mpResult->mCachedELFExecutable.size() != 0) {
+    ALOGE("Attempted to read cached object into a non-empty script");
+    return false;
+  }
   char readBuffer[1024];
   int readSize;
   while ((readSize = mObjFile->read(readBuffer, 1024)) > 0) {
-    mEmittedELFExecutable.append(readBuffer, readBuffer + readSize);
+    mpResult->mCachedELFExecutable.append(readBuffer, readBuffer + readSize);
   }
   if (readSize != 0) {
     ALOGE("Read file Error");
     return false;
   }
-  ALOGD("Read object file size %d", (int)mEmittedELFExecutable.size());
+  ALOGD("Read object file size %d", (int)mpResult->mCachedELFExecutable.size());
   mpResult->mRSExecutable =
-  rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
-                     mEmittedELFExecutable.size(),
+  rsloaderCreateExec((unsigned char *)&*(mpResult->mCachedELFExecutable.begin()),
+                     mpResult->mCachedELFExecutable.size(),
                      &resolveSymbolAdapter, this);
+
   return true;
 }
 

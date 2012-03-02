@@ -31,7 +31,7 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../include
 
-LOCAL_MODULE_TAGS := tests
+LOCAL_MODULE_TAGS := tests eng
 
 LOCAL_LDLIBS = -ldl
 

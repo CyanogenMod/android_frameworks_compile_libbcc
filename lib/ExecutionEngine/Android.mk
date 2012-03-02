@@ -25,6 +25,8 @@ include $(LOCAL_PATH)/../../libbcc-config.mk
 libbcc_executionengine_SRC_FILES := \
   Compiler.cpp \
   FileHandle.cpp \
+  GDBJIT.cpp \
+  GDBJITRegistrar.cpp \
   Runtime.c \
   RuntimeStub.c \
   Script.cpp \

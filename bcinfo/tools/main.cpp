@@ -106,6 +106,8 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
     printf("objectSlotList[%u]: %u\n", i, slotList[i]);
   }
 
+  printf("optimizationLevel: %u\n", ME->getOptimizationLevel());
+
   return;
 }
 

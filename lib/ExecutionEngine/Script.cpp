@@ -33,6 +33,7 @@
 
 #include "DebugHelper.h"
 #include "FileHandle.h"
+#include "GDBJITRegistrar.h"
 #include "ScriptCompiled.h"
 #include "ScriptCached.h"
 #include "Sha1Helper.h"
@@ -46,7 +47,6 @@
 #include <new>
 #include <string.h>
 #include <cutils/properties.h>
-
 
 namespace {
 
@@ -221,21 +221,29 @@ int Script::prepareExecutable(char const *cacheDir,
     return 1;
   }
 
+  int status = -1;
 #if USE_CACHE
   if (internalLoadCache(cacheDir, cacheName,
                         ScriptObject::Executable, /* checkOnly */ false) == 0) {
-    return 0;
+    status = 0;
   }
 #endif
 
-  CompilerOption option;
-  int status = internalCompile(option);
+  if (status != 0) {
+    CompilerOption option;
+    status = internalCompile(option);
+  }
+
   if (status != 0) {
     ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
   }
+
+  // FIXME: Registration can be conditional on the presence of debug metadata
+  if (status == 0) {
+    registerObjectWithGDB(getELF(), getELFSize()); // thread-safe registration
+  }
   return status;
 }
-
 
 #if USE_CACHE
 int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
@@ -832,7 +840,11 @@ size_t Script::getELFSize() const {
     case ScriptStatus::Compiled: {
       return mCompiled->getELFSize();
     }
-
+#if USE_CACHE
+    case ScriptStatus::Cached: {
+      return mCached->getELFSize();
+    }
+#endif
     default: {
       return 0;
     }
@@ -844,7 +856,11 @@ const char *Script::getELF() const {
     case ScriptStatus::Compiled: {
       return mCompiled->getELF();
     }
-
+#if USE_CACHE
+    case ScriptStatus::Cached: {
+      return mCached->getELF();
+    }
+#endif
     default: {
       return NULL;
     }

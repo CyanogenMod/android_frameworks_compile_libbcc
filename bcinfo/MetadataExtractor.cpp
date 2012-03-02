@@ -21,6 +21,7 @@
 
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/Constants.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -54,13 +55,17 @@ static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
 
+// Name of metadata node where RS optimization level resides (should be
+// synced with slang_rs_metadata.h)
+static const llvm::StringRef OptimizationLevelMetadataName = "#optimization_level";
+
 
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mBitcode(bitcode), mBitcodeSize(bitcodeSize), mExportVarCount(0),
       mExportFuncCount(0), mExportForEachSignatureCount(0),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL) {
+      mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3) {
 }
 
 
@@ -272,6 +277,9 @@ bool MetadataExtractor::extract() {
       module->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
       module->getNamedMetadata(ObjectSlotMetadataName);
+  const llvm::NamedMDNode *OptimizationLevelMetadata =
+      module->getNamedMetadata(OptimizationLevelMetadataName);
+
 
   if (ExportVarMetadata) {
     mExportVarCount = ExportVarMetadata->getNumOperands();
@@ -293,6 +301,13 @@ bool MetadataExtractor::extract() {
     ALOGE("Could not populate object slot metadata");
     return false;
   }
+
+  if (OptimizationLevelMetadata) {
+    llvm::ConstantInt* OL = llvm::dyn_cast<llvm::ConstantInt>(
+      OptimizationLevelMetadata->getOperand(0)->getOperand(0));
+    mOptimizationLevel = OL->getZExtValue();
+  }
+
 
   return true;
 }
