@@ -229,11 +229,17 @@ static void printPragma(BCCScriptRef script) {
 }
 
 static int runMain(BCCScriptRef script, int argc, char** argv) {
-  MainPtr mainPointer = (MainPtr)bccGetFuncAddr(script, "root");
+  MainPtr mainPointer = (MainPtr)bccGetFuncAddr(script, "main");
 
   if (!mainPointer) {
-    fprintf(stderr, "Could not find root.\n");
-    return 0;
+    mainPointer = (MainPtr)bccGetFuncAddr(script, "root");
+  }
+  if (!mainPointer) {
+    mainPointer = (MainPtr)bccGetFuncAddr(script, "_Z4rootv");
+  }
+  if (!mainPointer) {
+    fprintf(stderr, "Could not find root or main or mangled root.\n");
+    return 1;
   }
 
   fprintf(stderr, "Executing compiled code:\n");

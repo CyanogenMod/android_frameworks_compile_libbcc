@@ -72,6 +72,7 @@ namespace bcc {
 
 #if USE_MCJIT
     RSExecRef mRSExecutable;
+    llvm::SmallVector<char, 1024> mCachedELFExecutable;
 #endif
 
     OBCC_StringPool *mpStringPoolRaw;
@@ -136,6 +137,15 @@ namespace bcc {
     }
 #endif
 
+#if USE_MCJIT
+    const char *getELF() const {
+      return &*mCachedELFExecutable.begin();
+    }
+
+    size_t getELFSize() const {
+      return mCachedELFExecutable.size();
+    }
+#endif
     // Dirty hack for libRS.
     // TODO(all): This should be removed in the future.
     bool isLibRSThreadable() const {
