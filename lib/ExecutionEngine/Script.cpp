@@ -197,6 +197,11 @@ int Script::prepareRelocatable(char const *cacheDir,
   int status = internalCompile(option);
   if (status != 0) {
     ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+    return status;
+  }
+  status = writeCache();
+  if (status != 0) {
+    ALOGE("Failed to write the cache for %s\n", cacheName);
   }
   return status;
 }
@@ -232,16 +237,22 @@ int Script::prepareExecutable(char const *cacheDir,
   if (status != 0) {
     CompilerOption option;
     status = internalCompile(option);
-  }
 
-  if (status != 0) {
-    ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+    if (status != 0) {
+      ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
+      return status;
+    }
+
+    status = writeCache();
+    if (status != 0) {
+      ALOGE("Failed to write the cache for %s\n", cacheName);
+      return status;
+    }
   }
 
   // FIXME: Registration can be conditional on the presence of debug metadata
-  if (status == 0) {
-    registerObjectWithGDB(getELF(), getELFSize()); // thread-safe registration
-  }
+  registerObjectWithGDB(getELF(), getELFSize()); // thread-safe registration
+
   return status;
 }
 
@@ -385,6 +396,15 @@ int Script::internalCompile(const CompilerOption &option) {
     ALOGE("Unable to compile.\n");
     return 1;
   }
+
+  return 0;
+}
+
+int Script::writeCache() {
+  // Not compiled script or encouter error during the compilation.
+  if ((mStatus != ScriptStatus::Compiled) ||
+      (getCompilerErrorMessage() == NULL))
+    return 1;
 
 #if USE_CACHE
   // Note: If we re-compile the script because the cached context slot not

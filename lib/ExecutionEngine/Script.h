@@ -165,6 +165,7 @@ namespace bcc {
     int prepareExecutable(char const *cacheDir,
                           char const *cacheName,
                           unsigned long flags);
+    int writeCache();
 
     /*
      * Link the given bitcodes in mSourceList to shared object (.so).
