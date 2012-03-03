@@ -115,10 +115,8 @@ int bccPrepareRelocatable(BCCScriptRef script,
                           unsigned long flags);
 
 int bccPrepareSharedObject(BCCScriptRef script,
-                           char const *cacheDir,
-                           char const *cacheName,
-                           char const *dsoPath,
                            char const *objPath,
+                           char const *dsoPath,
                            unsigned long flags);
 
 int bccPrepareExecutable(BCCScriptRef script,

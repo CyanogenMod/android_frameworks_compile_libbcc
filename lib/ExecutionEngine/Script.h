@@ -177,14 +177,12 @@ namespace bcc {
      * compiled before and pass it in objPath to generate shared object. If the
      * objPath is NULL, we'll invoke prepareRelocatable() to get .o first (if
      * you haven't done that yet) and then link the output relocatable object
-     * file. The latter case will have libbcc compile with USE_CACHE enabled.
+     * file to .so in dsoPath.
      *
      * TODO: Currently, we only support to link the bitcodes in mSourceList[0].
      *
      */
-    int prepareSharedObject(char const *cacheDir,
-                            char const *cacheName,
-                            char const *objPath,
+    int prepareSharedObject(char const *objPath,
                             char const *dsoPath,
                             unsigned long flags);
 

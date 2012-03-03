@@ -215,9 +215,10 @@ static BCCScriptRef loadScript() {
     }
   }
 
-  // Generation of relocatable doesn't need special output file processing (
-  // i.e., prepare cacheDir and cacheName like bccPrepareExecutable)
-  if (OutType != OT_Relocatable) {
+  // Generation of relocatable and shared object doesn't need special output
+  // file processing (i.e., prepare cacheDir and cacheName like
+  // bccPrepareExecutable())
+  if (OutType == OT_Executable) {
     char *lastSlash = strrchr(output, '/');
     if (lastSlash != NULL) {
       outDir = output;
@@ -255,24 +256,7 @@ static BCCScriptRef loadScript() {
       break;
     }
     case OT_SharedObject: {
-      // Construct output library path
-      const size_t outDirLen = strlen(outDir);
-      const size_t outFilenameLen = strlen(outFilename);
-      const size_t outLibLen = outDirLen + 1 /* for '/' */ +
-                               outFilenameLen + 3 /* .so */;
-      char *outLib = new char [outLibLen + 1];
-
-      if (snprintf(outLib, outLibLen + 1, "%s/%s.so",
-                   outDir, outFilename) != static_cast<ssize_t>(outLibLen)) {
-        bccResult = -1;
-        errMsg = "failed to construct the path for output library.";
-        break;
-      }
-
-      bccResult = bccPrepareSharedObject(script, outDir, outFilename, NULL,
-                                         outLib, /* flags */0);
-      delete [] outLib;
-
+      bccResult = bccPrepareSharedObject(script, NULL, output, /* flags */0);
       errMsg = "failed to generate shared library.";
       break;
     }
