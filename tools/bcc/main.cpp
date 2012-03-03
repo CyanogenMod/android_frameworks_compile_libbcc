@@ -267,7 +267,7 @@ static BCCScriptRef loadScript() {
   }
 }
 
-static int runMain(BCCScriptRef script) {
+static int runRoot(BCCScriptRef script) {
   RootPtr rootPointer =
       reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "main"));
 
@@ -300,12 +300,10 @@ int main(int argc, char** argv) {
   BCCScriptRef script;
 
   if((script = loadScript()) == NULL) {
-    fprintf(stderr, "failed to load source\n");
     return 2;
   }
 
-  if(RunRoot && runMain(script)) {
-    fprintf(stderr, "failed to execute\n");
+  if(RunRoot && runRoot(script)) {
     return 6;
   }
 
