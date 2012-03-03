@@ -57,13 +57,13 @@ enum OutputType {
   OT_SharedObject
 };
 
-enum OutputType outType = OT_Executable;
-enum bccRelocModelEnum outRelocModel = bccRelocDefault;
-const char* inFile = NULL;
-const char* outFile = NULL;
-bool runRoot = false;
+enum OutputType OutType = OT_Executable;
+enum bccRelocModelEnum OutRelocModel = bccRelocDefault;
+const char* InFile = NULL;
+const char* OutFile = NULL;
+bool RunRoot = false;
 
-struct option_info {
+struct OptionInfo {
   const char *option_name;
 
   // min_option_argc is the minimum number of arguments this option should
@@ -88,28 +88,28 @@ static int optSetOutputShared(int, char **);
 static int optRunRoot(int, char **);
 static int optHelp(int, char **);
 
-static const struct option_info options[] = {
+static const struct OptionInfo Options[] = {
 #if defined(__HOST__)
-  { "C", 1, "triple", "setup the triple string.",             optSetTripe     },
+  { "C", 1, "triple", "setup the triple string.",                 optSetTripe },
 #endif
 
   { "c", 0, NULL,     "compile and assembler, but do not "
-                      "link",                                 optOutputReloc  },
+                      "link",                                  optOutputReloc },
 
   { "fPIC", 0, NULL,  "Generate position-independent code "
                       "if possible",                          optSetOutputPIC },
 
   { "o", 1, "output", "write the result native to output "
-                      "file",                                 optSetOutput    },
+                      "file",                                    optSetOutput },
 
   { "shared", 0, NULL, "create a shared library.",         optSetOutputShared },
 
   { "R", 0, NULL,     "run root() method after successfully "
-                      "load and compile.",                    optRunRoot      },
+                      "load and compile.",                         optRunRoot },
 
-  { "h", 0, NULL,     "print this help.",                     optHelp         },
+  { "h", 0, NULL,     "print this help.",                             optHelp },
 };
-#define NUM_OPTIONS (sizeof(options) / sizeof(struct option_info))
+#define NUM_OPTIONS (sizeof(Options) / sizeof(struct OptionInfo))
 
 static int parseOption(int argc, char** argv) {
   if (argc <= 1) {
@@ -123,11 +123,11 @@ static int parseOption(int argc, char** argv) {
     const unsigned left_argc = argc - i - 1;
 
     if (argv[i][0] == '-') {
-      // Find the corresponding option_info object
+      // Find the corresponding OptionInfo object
       unsigned opt_idx = 0;
       while (opt_idx < NUM_OPTIONS) {
-        if (::strcmp(&argv[i][1], options[opt_idx].option_name) == 0) {
-          const struct option_info *cur_option = &options[opt_idx];
+        if (::strcmp(&argv[i][1], Options[opt_idx].option_name) == 0) {
+          const struct OptionInfo *cur_option = &Options[opt_idx];
           if (left_argc < cur_option->min_option_argc) {
             fprintf(stderr, "%s: '%s' requires at least %u arguments", argv[0],
                     cur_option->option_name, cur_option->min_option_argc);
@@ -152,7 +152,7 @@ static int parseOption(int argc, char** argv) {
         return 1;
       }
     } else {
-      if (inFile == NULL) {
+      if (InFile == NULL) {
         optSetInput(left_argc, &argv[i]);
       } else {
         fprintf(stderr, "%s: single input file is allowed currently.", argv[0]);
@@ -166,14 +166,14 @@ static int parseOption(int argc, char** argv) {
 }
 
 static BCCScriptRef loadScript() {
-  if (!inFile) {
+  if (!InFile) {
     fprintf(stderr, "input file required\n");
     return NULL;
   }
 
   BCCScriptRef script = bccCreateScript();
 
-  if (bccReadFile(script, inFile, /* flags */BCC_SKIP_DEP_SHA1) != 0) {
+  if (bccReadFile(script, InFile, /* flags */BCC_SKIP_DEP_SHA1) != 0) {
     fprintf(stderr, "bcc: FAILS to read bitcode");
     bccDisposeScript(script);
     return NULL;
@@ -182,20 +182,20 @@ static BCCScriptRef loadScript() {
   char *output = NULL;
   const char *outDir, *outFilename;
 
-  if (outFile != NULL) {
+  if (OutFile != NULL) {
     // Copy the outFile since we're going to modify it
-    size_t outFileLen = strlen(outFile);
+    size_t outFileLen = strlen(OutFile);
     output = new char [outFileLen + 1];
-    strncpy(output, outFile, outFileLen);
+    strncpy(output, OutFile, outFileLen);
   } else {
-    if (outType == OT_Executable) {
+    if (OutType == OT_Executable) {
       output = new char [(sizeof(DEFAULT_OUTPUT_FILENAME) - 1) + 1];
       strncpy(output, DEFAULT_OUTPUT_FILENAME,
                   sizeof(DEFAULT_OUTPUT_FILENAME) - 1);
     } else {
-      size_t inFileLen = strlen(inFile);
+      size_t inFileLen = strlen(InFile);
       output = new char [inFileLen + 1];
-      strncpy(output, inFile, inFileLen);
+      strncpy(output, InFile, inFileLen);
     }
   }
 
@@ -222,7 +222,7 @@ static BCCScriptRef loadScript() {
 
   int bccResult;
   const char *errMsg;
-  switch (outType) {
+  switch (OutType) {
     case OT_Executable: {
       bccRegisterSymbolCallback(script, lookupSymbol, NULL);
       bccResult = bccPrepareExecutable(script, outDir, outFilename, 0);
@@ -231,7 +231,7 @@ static BCCScriptRef loadScript() {
     }
     case OT_Relocatable: {
       bccResult = bccPrepareRelocatable(script, outDir, outFilename,
-                                        outRelocModel, /* flags */0);
+                                        OutRelocModel, /* flags */0);
       errMsg = "failed to generate relocatable.";
       break;
     }
@@ -304,7 +304,7 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  if(runRoot && runMain(script)) {
+  if(RunRoot && runMain(script)) {
     fprintf(stderr, "failed to execute\n");
     return 6;
   }
@@ -337,7 +337,7 @@ static int optSetInput(int, char **arg) {
     return -1;
   }
 
-  inFile = arg[0];
+  InFile = arg[0];
   return 0;
 }
 
@@ -348,34 +348,34 @@ static int optSetOutput(int, char **arg) {
     return -1;
   }
 
-  outFile = arg[1];
+  OutFile = arg[1];
   return 1;
 }
 
 static int optOutputReloc(int, char **) {
-  outType = OT_Relocatable;
+  OutType = OT_Relocatable;
   return 0;
 }
 
 static int optSetOutputShared(int, char **) {
-  outType = OT_SharedObject;
+  OutType = OT_SharedObject;
   return 0;
 }
 
 static int optSetOutputPIC(int, char **) {
-  outRelocModel = bccRelocPIC;
+  OutRelocModel = bccRelocPIC;
   return 0;
 }
 
 static int optRunRoot(int, char **) {
-  runRoot = true;
+  RunRoot = true;
   return 0;
 }
 
 static int optHelp(int, char **) {
   printf("Usage: bcc [OPTION]... [input file]\n\n");
   for (unsigned i = 0; i < NUM_OPTIONS; i++) {
-    const struct option_info *opt = &options[i];
+    const struct OptionInfo *opt = &Options[i];
 
     printf("\t-%s", opt->option_name);
     if (opt->argument_desc)
