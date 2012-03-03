@@ -61,6 +61,7 @@ enum OutputType OutType = OT_Executable;
 enum bccRelocModelEnum OutRelocModel = bccRelocDefault;
 const char* InFile = NULL;
 const char* OutFile = NULL;
+const char *IntermediateOutFile = NULL;
 bool RunRoot = false;
 
 struct OptionInfo {
@@ -82,6 +83,7 @@ struct OptionInfo {
 static int optSetTripe(int, char **);
 static int optSetInput(int, char **);
 static int optSetOutput(int, char **);
+static int optSetIntermediateOutput(int, char **);
 static int optOutputReloc(int, char **);
 static int optSetOutputPIC(int, char **);
 static int optSetOutputShared(int, char **);
@@ -101,6 +103,13 @@ static const struct OptionInfo Options[] = {
 
   { "o", 1, "output", "write the result native to output "
                       "file",                                    optSetOutput },
+
+  // FIXME: this option will be remove in the future when MCLinker is capable
+  //        to generate shared library directly from given bitcode. It only
+  //        takes effects when -shared was supplied.
+  { "or", 1, NULL,    "the output file name for intermediate "
+                      "relocatable",                 optSetIntermediateOutput },
+
 
   { "shared", 0, NULL, "create a shared library.",         optSetOutputShared },
 
@@ -215,7 +224,7 @@ static BCCScriptRef loadScript() {
     }
   }
 
-  int bccResult;
+  int bccResult = 0;
   const char *errMsg;
   switch (OutType) {
     case OT_Executable: {
@@ -229,8 +238,17 @@ static BCCScriptRef loadScript() {
       break;
     }
     case OT_SharedObject: {
-      bccResult = bccPrepareSharedObject(script, NULL, output, /* flags */0);
-      errMsg = "failed to generate shared library.";
+      if (IntermediateOutFile != NULL) {
+        bccResult =
+            bccPrepareRelocatable(script, IntermediateOutFile, bccRelocPIC, 0);
+        errMsg = "failed to generate intermediate relocatable.";
+      }
+
+      if (bccResult == 0) {
+        bccResult =
+            bccPrepareSharedObject(script, IntermediateOutFile, output, 0);
+        errMsg = "failed to generate shared library.";
+      }
       break;
     }
   }
@@ -321,11 +339,22 @@ static int optSetInput(int, char **arg) {
 static int optSetOutput(int, char **arg) {
   char *lastSlash = strrchr(arg[1], '/');
   if ((lastSlash != NULL) && *(lastSlash + 1) == '\0') {
-    fprintf(stderr, "bcc: output file cannot ends with '/'.");
+    fprintf(stderr, "bcc: output file should not be a dirctory.");
     return -1;
   }
 
   OutFile = arg[1];
+  return 1;
+}
+
+static int optSetIntermediateOutput(int, char **arg) {
+  char *lastSlash = strrchr(arg[1], '/');
+  if ((lastSlash != NULL) && *(lastSlash + 1) == '\0') {
+    fprintf(stderr, "bcc: output intermediate file should not be a dirctory.");
+    return -1;
+  }
+
+  IntermediateOutFile = arg[1];
   return 1;
 }
 
