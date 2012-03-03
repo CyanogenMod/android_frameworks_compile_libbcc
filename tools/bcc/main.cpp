@@ -239,13 +239,16 @@ static BCCScriptRef loadScript() {
       // Construct output library path
       const size_t outDirLen = strlen(outDir);
       const size_t outFilenameLen = strlen(outFilename);
-      char *outLib = new char [outDirLen + 1 /* for '/' */ +
-                               outFilenameLen + 3 /* .so */ + 1];
+      const size_t outLibLen = outDirLen + 1 /* for '/' */ +
+                               outFilenameLen + 3 /* .so */;
+      char *outLib = new char [outLibLen + 1];
 
-      memcpy(outLib, outDir, outDirLen);
-      outLib[outDirLen] = '/';
-      memcpy(outLib + outDirLen + 1, outFilename, outFilenameLen);
-      strncpy(outLib + outDirLen + 1 + outFilenameLen, ".so", 3);
+      if (snprintf(outLib, outLibLen + 1, "%s/%s.so",
+                   outDir, outFilename) != static_cast<ssize_t>(outLibLen)) {
+        bccResult = -1;
+        errMsg = "failed to construct the path for output library.";
+        break;
+      }
 
       bccResult = bccPrepareSharedObject(script, outDir, outFilename, NULL,
                                          outLib, /* flags */0);
