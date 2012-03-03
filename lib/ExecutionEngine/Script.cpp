@@ -186,6 +186,7 @@ int Script::prepareRelocatable(char const *objPath,
   CompilerOption option;
   option.RelocModelOpt = RelocModel;
   option.LoadAfterCompile = false;
+
   int status = internalCompile(option);
   if (status != 0) {
     ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
@@ -205,6 +206,8 @@ int Script::prepareRelocatable(char const *objPath,
       ALOGE("Unable to write ELF to file %s.\n", objPath);
       return false;
   }
+
+  mObjectType = ScriptObject::Relocatable;
 
   return 0;
 }
@@ -229,10 +232,7 @@ int Script::prepareExecutable(char const *cacheDir,
 
   int status = -1;
 #if USE_CACHE
-  if (internalLoadCache(cacheDir, cacheName,
-                        ScriptObject::Executable, /* checkOnly */ false) == 0) {
-    status = 0;
-  }
+  status = internalLoadCache(cacheDir, cacheName, /* checkOnly */ false);
 #endif
 
   if (status != 0) {
@@ -254,15 +254,14 @@ int Script::prepareExecutable(char const *cacheDir,
   // FIXME: Registration can be conditional on the presence of debug metadata
   registerObjectWithGDB(getELF(), getELFSize()); // thread-safe registration
 
+  mObjectType = ScriptObject::Executable;
+
   return status;
 }
 
 #if USE_CACHE
 int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
-                              ScriptObject::ObjectType objectType,
                               bool checkOnly) {
-  mObjectType = objectType;
-
   if ((cacheDir == NULL) || (cacheName == NULL)) {
     return 1;
   }

@@ -64,6 +64,9 @@ namespace bcc {
     int mErrorCode;
 
     ScriptStatus::StatusType mStatus;
+    // The type of the object behind this script after compilation. For
+    // example, after returning from a successful call to prepareRelocatable(),
+    // the value of mObjectType will be ScriptObject::Relocatable.
     ScriptObject::ObjectType mObjectType;
 
     union {
@@ -81,26 +84,7 @@ namespace bcc {
 #if USE_OLD_JIT
       return std::string(mCacheDir + mCacheName + ".jit-image");
 #elif USE_MCJIT
-      std::string objPath(mCacheDir + mCacheName);
-
-      // Append suffix depends on the object type
-      switch (mObjectType) {
-        case ScriptObject::Relocatable:
-        case ScriptObject::Executable: {
-          objPath.append(".o");
-          break;
-        }
-
-        case ScriptObject::SharedObject: {
-          objPath.append(".so");
-          break;
-        }
-
-        default: {
-          assert(false && "Unknown object type!");
-        }
-      }
-      return objPath;
+      return std::string(mCacheDir + mCacheName + ".o");
 #endif
     }
 
@@ -256,9 +240,9 @@ namespace bcc {
     //
     // It returns 0 if there's a cache hit.
     //
-    // Side effect: it will set mCacheDir, mCacheName and mObjectType.
+    // Side effect: it will set mCacheDir, mCacheName.
     int internalLoadCache(char const *cacheDir, char const *cacheName,
-                          ScriptObject::ObjectType objectType, bool checkOnly);
+                          bool checkOnly);
 #endif
     int internalCompile(const CompilerOption&);
   };
