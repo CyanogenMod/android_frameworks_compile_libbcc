@@ -194,30 +194,50 @@ static BCCScriptRef loadScript() {
                   sizeof(DEFAULT_OUTPUT_FILENAME) - 1);
     } else {
       size_t inFileLen = strlen(InFile);
-      output = new char [inFileLen + 1];
+      output = new char [inFileLen + 3 /* ensure there's room for .so */ + 1];
       strncpy(output, InFile, inFileLen);
+
+      char *fileExtension = strrchr(output, '.');
+      if (fileExtension == NULL) {
+        // append suffix
+        fileExtension = output + inFileLen;
+        *fileExtension = '.';
+      }
+
+      fileExtension++;  // skip '.'
+      if (OutType == OT_Relocatable) {
+        *fileExtension++ = 'o';
+      } else /* must be OT_SharedObject */{
+        *fileExtension++ = 's';
+        *fileExtension++ = 'o';
+      }
+      *fileExtension++ = '\0';
     }
   }
 
-  char *lastSlash = strrchr(output, '/');
-  if (lastSlash != NULL) {
-    outDir = output;
-    *lastSlash = '\0';
-    // *lastSlash should not be the last character. We checked it in
-    // optset_output().
-    outFilename = lastSlash + 1;
-  } else {
-    // no slash found
-    outDir = ".";
-    outFilename = output;
-  }
+  // Generation of relocatable doesn't need special output file processing (
+  // i.e., prepare cacheDir and cacheName like bccPrepareExecutable)
+  if (OutType != OT_Relocatable) {
+    char *lastSlash = strrchr(output, '/');
+    if (lastSlash != NULL) {
+      outDir = output;
+      *lastSlash = '\0';
+      // *lastSlash should not be the last character. We checked it in
+      // optset_output().
+      outFilename = lastSlash + 1;
+    } else {
+      // no slash found
+      outDir = ".";
+      outFilename = output;
+    }
 
-  // Truncate the extension
-  const char *fileExtension = strrchr(outFilename, '.');
-  if (fileExtension != NULL) {
-    // The cast is always successful since outFilename is in the heap (i.e., the
-    // output.)
-    *(const_cast<char *>(fileExtension)) = '\0';
+    // Truncate the extension
+    const char *fileExtension = strrchr(outFilename, '.');
+    if (fileExtension != NULL) {
+      // The cast is always successful since outFilename is in the heap (i.e., the
+      // output.)
+      *(const_cast<char *>(fileExtension)) = '\0';
+    }
   }
 
   int bccResult;
@@ -230,8 +250,7 @@ static BCCScriptRef loadScript() {
       break;
     }
     case OT_Relocatable: {
-      bccResult = bccPrepareRelocatable(script, outDir, outFilename,
-                                        OutRelocModel, /* flags */0);
+      bccResult = bccPrepareRelocatable(script, output, OutRelocModel, 0);
       errMsg = "failed to generate relocatable.";
       break;
     }

@@ -180,17 +180,9 @@ int Script::addSourceFile(size_t idx,
   return 0;
 }
 
-int Script::prepareRelocatable(char const *cacheDir,
-                               char const *cacheName,
+int Script::prepareRelocatable(char const *objPath,
                                llvm::Reloc::Model RelocModel,
                                unsigned long flags) {
-#if USE_CACHE
-  if (internalLoadCache(cacheDir, cacheName,
-                        ScriptObject::Relocatable, /* checkOnly */ true) == 0) {
-    return 0;
-  }
-#endif
-
   CompilerOption option;
   option.RelocModelOpt = RelocModel;
   option.LoadAfterCompile = false;
@@ -199,11 +191,22 @@ int Script::prepareRelocatable(char const *cacheDir,
     ALOGE("LLVM error message: %s\n", getCompilerErrorMessage());
     return status;
   }
-  status = writeCache();
-  if (status != 0) {
-    ALOGE("Failed to write the cache for %s\n", cacheName);
+
+  FileHandle objFile;
+  if (objFile.open(objPath, OpenMode::Write) < 0) {
+    ALOGE("Failed to open %s for write.\n", objPath);
+    return 1;
   }
-  return status;
+
+  if (static_cast<size_t>(objFile.write(getELF(),
+                                        getELFSize())) != getELFSize()) {
+      objFile.close();
+      ::unlink(objPath);
+      ALOGE("Unable to write ELF to file %s.\n", objPath);
+      return false;
+  }
+
+  return 0;
 }
 
 

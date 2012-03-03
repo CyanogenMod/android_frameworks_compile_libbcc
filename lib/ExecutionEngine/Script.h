@@ -188,8 +188,7 @@ namespace bcc {
                             char const *dsoPath,
                             unsigned long flags);
 
-    int prepareRelocatable(char const *cacheDir,
-                           char const *cacheName,
+    int prepareRelocatable(char const *objPath,
                            llvm::Reloc::Model RelocModel,
                            unsigned long flags);
 

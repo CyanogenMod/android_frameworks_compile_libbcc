@@ -126,8 +126,7 @@ extern "C" void bccMarkExternalSymbol(BCCScriptRef script, char const *name) {
 
 
 extern "C" int bccPrepareRelocatable(BCCScriptRef script,
-                                     char const *cacheDir,
-                                     char const *cacheName,
+                                     char const *objPath,
                                      bccRelocModelEnum RelocModel,
                                      unsigned long flags) {
   BCC_FUNC_LOGGER();
@@ -156,7 +155,7 @@ extern "C" int bccPrepareRelocatable(BCCScriptRef script,
     }
   }
 
-  return unwrap(script)->prepareRelocatable(cacheDir, cacheName, RM, flags);
+  return unwrap(script)->prepareRelocatable(objPath, RM, flags);
 }
 
 

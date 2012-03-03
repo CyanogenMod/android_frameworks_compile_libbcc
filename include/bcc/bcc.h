@@ -110,8 +110,7 @@ int bccLinkFile(BCCScriptRef script,
 void bccMarkExternalSymbol(BCCScriptRef script, char const *name);
 
 int bccPrepareRelocatable(BCCScriptRef script,
-                          char const *cacheDir,
-                          char const *cacheName,
+                          char const *objPath,
                           bccRelocModelEnum RelocModel,
                           unsigned long flags);
 
