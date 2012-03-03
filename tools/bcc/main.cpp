@@ -215,39 +215,12 @@ static BCCScriptRef loadScript() {
     }
   }
 
-  // Generation of relocatable and shared object doesn't need special output
-  // file processing (i.e., prepare cacheDir and cacheName like
-  // bccPrepareExecutable())
-  if (OutType == OT_Executable) {
-    char *lastSlash = strrchr(output, '/');
-    if (lastSlash != NULL) {
-      outDir = output;
-      *lastSlash = '\0';
-      // *lastSlash should not be the last character. We checked it in
-      // optset_output().
-      outFilename = lastSlash + 1;
-    } else {
-      // no slash found
-      outDir = ".";
-      outFilename = output;
-    }
-
-    // Truncate the extension
-    const char *fileExtension = strrchr(outFilename, '.');
-    if (fileExtension != NULL) {
-      // The cast is always successful since outFilename is in the heap (i.e., the
-      // output.)
-      *(const_cast<char *>(fileExtension)) = '\0';
-    }
-  }
-
   int bccResult;
   const char *errMsg;
   switch (OutType) {
     case OT_Executable: {
-      bccRegisterSymbolCallback(script, lookupSymbol, NULL);
-      bccResult = bccPrepareExecutable(script, outDir, outFilename, 0);
-      errMsg = "failed to generate executable.";
+      bccResult = 1;
+      errMsg = "generation of executable is unsupported currently.";
       break;
     }
     case OT_Relocatable: {

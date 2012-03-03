@@ -201,34 +201,34 @@ class TestACC(unittest.TestCase):
         self.compileCheck(["data/otcc-ansi.bc"], "", "", ['x86'])
 
     def testRunReturnVal(self):
-        self.compileCheck(["-R", "data/returnval-ansi.bc"],
+        self.compileCheck(["-c -R", "data/returnval-ansi.bc"],
         "Executing compiled code:\nresult: 42\n")
 
     def testStringLiteralConcatenation(self):
-        self.compileCheck(["-R", "data/testStringConcat.bc"],
+        self.compileCheck(["-c -R", "data/testStringConcat.bc"],
         "Executing compiled code:\nresult: 13\n", "Hello, world\n")
 
     def testRunOTCCANSI(self):
         global gRunOTCCOutput
         if gRunOTCCOutput:
-            self.compileCheck(["-R", "data/otcc-ansi.bc", "data/returnval.c"],
+            self.compileCheck(["-c -R", "data/otcc-ansi.bc", "data/returnval.c"],
                 "Executing compiled code:\notcc-ansi.c: About to execute compiled code:\natcc-ansi.c: result: 42\nresult: 42\n", "",
                  ['x86'])
 
     def testRunOTCCANSI2(self):
         global gRunOTCCOutput
         if gRunOTCCOutput:
-            self.compileCheck(["-R", "data/otcc-ansi.bc", "data/otcc.c", "data/returnval.c"],
+            self.compileCheck(["-c -R", "data/otcc-ansi.bc", "data/otcc.c", "data/returnval.c"],
                 "Executing compiled code:\notcc-ansi.c: About to execute compiled code:\notcc.c: about to execute compiled code.\natcc-ansi.c: result: 42\nresult: 42\n", "",['x86'])
 
     def testRunConstants(self):
-        self.compileCheck(["-R", "data/constants.bc"],
+        self.compileCheck(["-c -R", "data/constants.bc"],
             "Executing compiled code:\nresult: 0\n",
             "0 = 0\n010 = 8\n0x10 = 16\n'\\a' = 7\n'\\b' = 8\n'\\f' = 12\n'\\n' = 10\n'\\r' = 13\n'\\t' = 9\n'\\v' = 11\n'\\\\' = 92\n'\\'' = 39\n" +
             "'\\\"' = 34\n'\\?' = 63\n'\\0' = 0\n'\\1' = 1\n'\\12' = 10\n'\\123' = 83\n'\\x0' = 0\n'\\x1' = 1\n'\\x12' = 18\n'\\x123' = 35\n'\\x1f' = 31\n'\\x1F' = 31\n")
 
     def testRunFloat(self):
-        self.compileCheck(["-R", "data/float.bc"],
+        self.compileCheck(["-c -R", "data/float.bc"],
             "Executing compiled code:\nresult: 0\n",
             """Constants: 0 0 0 0.01 0.01 0.1 10 10 0.1
 int: 1 float: 2.2 double: 3.3
@@ -244,7 +244,7 @@ cast lval: 1.1 2 3.3 4
 """)
 
     def testRunFlops(self):
-        self.compileCheck(["-R", "data/flops.bc"],
+        self.compileCheck(["-c -R", "data/flops.bc"],
             """Executing compiled code:
 result: 0""",
 """-1.1 = -1.1
@@ -308,7 +308,7 @@ testpassd: 1 2 3 4 5 6 7 8 9 10 11 12
 testpassidf: 1 2 3
 """)
     def testCasts(self):
-        self.compileCheck(["-R", "data/casts.bc"],
+        self.compileCheck(["-c -R", "data/casts.bc"],
             """Executing compiled code:
 result: 0""", """Reading from a pointer: 3 3
 Writing to a pointer: 4
@@ -324,27 +324,27 @@ Testing read/write (double*): 8.8 9.9
 """)
 
     def testChar(self):
-        self.compileCheck(["-R", "data/char.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/char.bc"], """Executing compiled code:
 result: 0""", """a = 99, b = 41
 ga = 100, gb = 44""")
 
     def testPointerArithmetic(self):
-        self.compileCheck(["-R", "data/pointers.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/pointers.bc"], """Executing compiled code:
 result: 0""", """Pointer difference: 1 4
 Pointer addition: 2
 Pointer comparison to zero: 0 0 1
 Pointer comparison: 1 0 0 0 1
 """)
     def testRollo3(self):
-        self.compileCheck(["-R", "data/rollo3.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/rollo3.bc"], """Executing compiled code:
 result: 10""", """""")
 
     def testFloatDouble(self):
-        self.compileCheck(["-R", "data/floatdouble.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/floatdouble.bc"], """Executing compiled code:
 result: 0""", """0.002 0.1 10""")
 
     def testIncDec(self):
-        self.compileCheck(["-R", "data/inc.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/inc.bc"], """Executing compiled code:
 0
 1
 2
@@ -357,7 +357,7 @@ result: 0
 ""","""""")
 
     def testIops(self):
-        self.compileCheck(["-R", "data/iops.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/iops.bc"], """Executing compiled code:
 result: 0""", """Literals: 1 -1
 ++
 0
@@ -385,13 +385,13 @@ result: 0""", """Literals: 1 -1
 """)
 
     def testFilm(self):
-        self.compileCheck(["-R", "data/film.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/film.bc"], """Executing compiled code:
 result: 0""", """testing...
 Total bad: 0
 """)
 
     def testpointers2(self):
-        self.compileCheck(["-R", "data/pointers2.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/pointers2.bc"], """Executing compiled code:
 result: 0""", """a = 0, *pa = 0
 a = 2, *pa = 2
 a = 0, *pa = 0 **ppa = 0
@@ -401,7 +401,7 @@ a = 2, *pa = 2 **ppa = 2
 """)
 
     def testassignmentop(self):
-        self.compileCheck(["-R", "data/assignmentop.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/assignmentop.bc"], """Executing compiled code:
 result: 0""", """2 *= 5  10
 20 /= 5  4
 17 %= 5  2
@@ -422,7 +422,7 @@ a = 10
 """)
 
     def testcomma(self):
-        self.compileCheck(["-R", "data/comma.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/comma.bc"], """Executing compiled code:
 result: 0""", """statement: 10
 if: a = 0
 while: b = 11
@@ -432,24 +432,24 @@ arg: 12
 """)
 
     def testBrackets(self):
-        self.compileCheck(["-R", "data/brackets.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/brackets.bc"], """Executing compiled code:
 Errors: 0
 2D Errors: 0
 result: 0
 ""","""""")
 
     def testShort(self):
-        self.compileCheck(["-R", "data/short.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/short.bc"], """Executing compiled code:
 result: -2
 ""","""""")
 
     def testAssignment(self):
-        self.compileCheck(["-R", "data/assignment.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/assignment.bc"], """Executing compiled code:
 result: 7
 ""","""""")
 
     def testArray(self):
-        self.compileCheck(["-R", "data/array.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/array.bc"], """Executing compiled code:
 localInt: 3
 localDouble: 3 3
 globalChar: 3
@@ -471,22 +471,22 @@ result: 0
 ""","""""")
 
     def testDefines(self):
-        self.compileCheck(["-R", "data/defines.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/defines.bc"], """Executing compiled code:
 result: 3
 ""","""""")
 
     def testFuncArgs(self):
-        self.compileCheck(["-R", "data/funcargs.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/funcargs.bc"], """Executing compiled code:
 result: 4
 ""","""""")
 
     def testB2071670(self):
-        self.compileCheck(["-R", "data/b2071670.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/b2071670.bc"], """Executing compiled code:
 result: 1092616192
 ""","""""")
 
     def testStructs(self):
-        self.compileCheck(["-R", "data/structs.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/structs.bc"], """Executing compiled code:
 testCopying: 37 == 37
 testUnion: 1 == 0x3f800000
 testArgs: (6, 8, 10, 12)
@@ -494,7 +494,7 @@ result: 6
 ""","""""")
 
     def testAddressOf(self):
-        self.compileCheck(["-R", "data/addressOf.bc"], """Executing compiled code:
+        self.compileCheck(["-c -R", "data/addressOf.bc"], """Executing compiled code:
 testStruct: 10 10 10
 testArray: 1 1 1
 result: 0
