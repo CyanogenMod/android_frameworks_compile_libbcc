@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,8 +59,8 @@ enum OutputType {
 
 enum OutputType OutType = OT_Executable;
 enum bccRelocModelEnum OutRelocModel = bccRelocDefault;
-const char* InFile = NULL;
-const char* OutFile = NULL;
+const char *InFile = NULL;
+const char *OutFile = NULL;
 const char *IntermediateOutFile = NULL;
 bool RunRoot = false;
 
@@ -80,7 +80,7 @@ struct OptionInfo {
 };
 
 // forward declaration of option processing functions
-static int optSetTripe(int, char **);
+static int optSetTriple(int, char **);
 static int optSetInput(int, char **);
 static int optSetOutput(int, char **);
 static int optSetIntermediateOutput(int, char **);
@@ -92,31 +92,34 @@ static int optHelp(int, char **);
 
 static const struct OptionInfo Options[] = {
 #if defined(__HOST__)
-  { "C", 1, "triple", "setup the triple string.",                 optSetTripe },
+  { "C", 1, "triple", "set the triple string.",
+    optSetTriple },
 #endif
 
-  { "c", 0, NULL,     "compile and assembler, but do not "
-                      "link",                                  optOutputReloc },
+  { "c", 0, NULL, "compile and assemble, but do not link.",
+    optOutputReloc },
 
-  { "fPIC", 0, NULL,  "Generate position-independent code "
-                      "if possible",                          optSetOutputPIC },
+  { "fPIC", 0, NULL,  "Generate position-independent code, if possible.",
+    optSetOutputPIC },
 
-  { "o", 1, "output", "write the result native to output "
-                      "file",                                    optSetOutput },
+  { "o", 1, "output", "write the native result to an output file.",
+    optSetOutput },
 
-  // FIXME: this option will be remove in the future when MCLinker is capable
-  //        to generate shared library directly from given bitcode. It only
-  //        takes effects when -shared was supplied.
-  { "or", 1, NULL,    "the output file name for intermediate "
-                      "relocatable",                 optSetIntermediateOutput },
+  // FIXME: this option will be removed in the future when MCLinker is capable
+  //        of generating shared library directly from given bitcode. It only
+  //        takes effect when -shared is supplied.
+  { "or", 1, NULL, "set the output filename for the intermediate relocatable.",
+    optSetIntermediateOutput },
 
 
-  { "shared", 0, NULL, "create a shared library.",         optSetOutputShared },
+  { "shared", 0, NULL, "create a shared library.",
+    optSetOutputShared },
 
-  { "R", 0, NULL,     "run root() method after successfully "
-                      "load and compile.",                         optRunRoot },
+  { "R", 0, NULL, "run root() method after a successful load and compile.",
+    optRunRoot },
 
-  { "h", 0, NULL,     "print this help.",                             optHelp },
+  { "h", 0, NULL, "print this help.",
+    optHelp },
 };
 #define NUM_OPTIONS (sizeof(Options) / sizeof(struct OptionInfo))
 
@@ -126,7 +129,7 @@ static int parseOption(int argc, char** argv) {
     return 0; // unreachable
   }
 
-  // argv[i] is the current processing arguments from command line
+  // argv[i] is the current processing argument from command line
   int i = 1;
   while (i < argc) {
     const unsigned left_argc = argc - i - 1;
@@ -164,7 +167,8 @@ static int parseOption(int argc, char** argv) {
       if (InFile == NULL) {
         optSetInput(left_argc, &argv[i]);
       } else {
-        fprintf(stderr, "%s: single input file is allowed currently.", argv[0]);
+        fprintf(stderr, "%s: only a single input file is allowed currently.",
+                argv[0]);
         return 1;
       }
     }
@@ -176,14 +180,14 @@ static int parseOption(int argc, char** argv) {
 
 static BCCScriptRef loadScript() {
   if (!InFile) {
-    fprintf(stderr, "input file required\n");
+    fprintf(stderr, "input file required.\n");
     return NULL;
   }
 
   BCCScriptRef script = bccCreateScript();
 
   if (bccReadFile(script, InFile, /* flags */BCC_SKIP_DEP_SHA1) != 0) {
-    fprintf(stderr, "bcc: FAILS to read bitcode");
+    fprintf(stderr, "bcc: FAILS to read bitcode.");
     bccDisposeScript(script);
     return NULL;
   }
@@ -313,7 +317,7 @@ int main(int argc, char** argv) {
  * Functions to process the command line option.
  */
 #if defined(__HOST__)
-static int optSetTripe(int, char **arg) {
+static int optSetTriple(int, char **arg) {
   TARGET_TRIPLE_STRING = arg[0];
   return 1;
 }
@@ -339,7 +343,7 @@ static int optSetInput(int, char **arg) {
 static int optSetOutput(int, char **arg) {
   char *lastSlash = strrchr(arg[1], '/');
   if ((lastSlash != NULL) && *(lastSlash + 1) == '\0') {
-    fprintf(stderr, "bcc: output file should not be a dirctory.");
+    fprintf(stderr, "bcc: output file should not be a directory.");
     return -1;
   }
 
@@ -350,7 +354,7 @@ static int optSetOutput(int, char **arg) {
 static int optSetIntermediateOutput(int, char **arg) {
   char *lastSlash = strrchr(arg[1], '/');
   if ((lastSlash != NULL) && *(lastSlash + 1) == '\0') {
-    fprintf(stderr, "bcc: output intermediate file should not be a dirctory.");
+    fprintf(stderr, "bcc: output intermediate file should not be a directory.");
     return -1;
   }
 

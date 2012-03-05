@@ -401,7 +401,7 @@ int Script::internalCompile(const CompilerOption &option) {
 }
 
 int Script::writeCache() {
-  // Not compiled script or encouter error during the compilation.
+  // Not compiled script or encountered error during the compilation.
   if ((mStatus != ScriptStatus::Compiled) ||
       (getCompilerErrorMessage() == NULL))
     return 1;
