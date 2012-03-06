@@ -131,11 +131,13 @@ void Compiler::GlobalInitialization() {
 
 #if defined(DEFAULT_ARM_CODEGEN)
 
-#if defined(ARCH_ARM_HAVE_VFP)
+#if defined(ARCH_ARM_HAVE_VFP) && __ARM_ARCH__ >= 7
   Features.push_back("+vfp3");
 #if !defined(ARCH_ARM_HAVE_VFP_D32)
   Features.push_back("+d16");
 #endif
+#elif defined(ARCH_ARM_HAVE_VFP)
+  Features.push_back("+vfp2");
 #endif
 
   // NOTE: Currently, we have to turn off the support for NEON explicitly.

@@ -80,8 +80,10 @@
   #endif
 #endif
 
-#if defined(DEFAULT_ARM_CODEGEN)
+#if defined(DEFAULT_ARM_CODEGEN) && __ARM_ARCH__ >= 7
   #define TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
+#elif defined(DEFAULT_ARM_CODEGEN)
+  #define TARGET_TRIPLE_STRING "armv6-none-linux-gnueabi"
 #elif defined(DEFAULT_X86_CODEGEN)
   #define TARGET_TRIPLE_STRING "i686-unknown-linux"
 #elif defined(DEFAULT_X86_64_CODEGEN)
