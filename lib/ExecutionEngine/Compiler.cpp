@@ -206,7 +206,8 @@ void Compiler::GlobalInitialization() {
     Features.push_back("-neonfp");
 #  endif
 
-#  if defined(DISABLE_ARCH_ARM_HAVE_NEON)
+// FIXME(all): Turn NEON back on after debugging the rebase.
+#  if 1 || defined(DISABLE_ARCH_ARM_HAVE_NEON)
     Features.push_back("-neon");
     Features.push_back("-neonfp");
 #  endif
