@@ -318,7 +318,7 @@ int main(int argc, char** argv) {
  */
 #if defined(__HOST__)
 static int optSetTriple(int, char **arg) {
-  TARGET_TRIPLE_STRING = arg[0];
+  TARGET_TRIPLE_STRING = arg[1];
   return 1;
 }
 #endif
