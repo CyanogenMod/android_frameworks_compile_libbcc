@@ -160,6 +160,31 @@ void Compiler::GlobalInitialization() {
     return;
   }
 
+#if defined(PROVIDE_ARM_CODEGEN)
+  LLVMInitializeARMAsmPrinter();
+  LLVMInitializeARMTargetMC();
+  LLVMInitializeARMTargetInfo();
+  LLVMInitializeARMTarget();
+#endif
+
+#if defined(PROVIDE_MIPS_CODEGEN)
+  LLVMInitializeMipsAsmPrinter();
+  LLVMInitializeMipsTargetMC();
+  LLVMInitializeMipsTargetInfo();
+  LLVMInitializeMipsTarget();
+#endif
+
+#if defined(PROVIDE_X86_CODEGEN)
+  LLVMInitializeX86AsmPrinter();
+  LLVMInitializeX86TargetMC();
+  LLVMInitializeX86TargetInfo();
+  LLVMInitializeX86Target();
+#endif
+
+#if USE_DISASSEMBLER
+  InitializeDisassembler();
+#endif
+
   // if (!llvm::llvm_is_multithreaded())
   //   llvm::llvm_start_multithreaded();
 
@@ -211,31 +236,6 @@ void Compiler::GlobalInitialization() {
     Features.push_back("-neonfp");
 #  endif
   }
-
-#if defined(PROVIDE_ARM_CODEGEN)
-  LLVMInitializeARMAsmPrinter();
-  LLVMInitializeARMTargetMC();
-  LLVMInitializeARMTargetInfo();
-  LLVMInitializeARMTarget();
-#endif
-
-#if defined(PROVIDE_MIPS_CODEGEN)
-  LLVMInitializeMipsAsmPrinter();
-  LLVMInitializeMipsTargetMC();
-  LLVMInitializeMipsTargetInfo();
-  LLVMInitializeMipsTarget();
-#endif
-
-#if defined(PROVIDE_X86_CODEGEN)
-  LLVMInitializeX86AsmPrinter();
-  LLVMInitializeX86TargetMC();
-  LLVMInitializeX86TargetInfo();
-  LLVMInitializeX86Target();
-#endif
-
-#if USE_DISASSEMBLER
-  InitializeDisassembler();
-#endif
 
   // Register the scheduler
   llvm::RegisterScheduler::setDefault(llvm::createDefaultScheduler);
