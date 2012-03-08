@@ -12,6 +12,7 @@
  * ===----------------------------------------------------------------------===
  */
 
+#if !defined(__GNUC__) || (__GNUC__ < 4) || (__GNUC__ == 4 && __GNUC_MINOR__ < 6)
 #include "int_lib.h"
 
 /* Returns: a << b */
@@ -39,3 +40,4 @@ __ashldi3(di_int a, si_int b)
     }
     return result.all;
 }
+#endif
