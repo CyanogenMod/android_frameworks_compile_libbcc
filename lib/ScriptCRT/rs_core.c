@@ -205,7 +205,11 @@ typedef struct Type {
             uint32_t dimX;
             uint32_t dimY;
             uint32_t dimZ;
-            bool dimLOD;
+            uint32_t *lodDimX;
+            uint32_t *lodDimY;
+            uint32_t *lodDimZ;
+            uint32_t *lodOffset;
+            uint32_t lodCount;
             bool faces;
         } state;
     } mHal;
