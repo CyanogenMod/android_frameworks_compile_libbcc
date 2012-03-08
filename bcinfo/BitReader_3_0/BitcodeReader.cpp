@@ -32,6 +32,10 @@
 using namespace llvm;
 using namespace llvm_3_0;
 
+#define FUNC_CODE_INST_UNWIND_2_7     14
+#define eh_exception_2_7             145
+#define eh_selector_2_7              149
+
 #define TYPE_BLOCK_ID_OLD_3_0         10
 #define TYPE_SYMTAB_BLOCK_ID_OLD_3_0  13
 #define TYPE_CODE_STRUCT_OLD_3_0      10
@@ -47,11 +51,11 @@ namespace {
       if (CallInst *CI = dyn_cast<CallInst>(I)) {
         switch (CI->getCalledFunction()->getIntrinsicID()) {
         default: break;
-        case Intrinsic::eh_exception:
+        case eh_exception_2_7:
           assert(!Exn && "Found more than one eh.exception call!");
           Exn = CI;
           break;
-        case Intrinsic::eh_selector:
+        case eh_selector_2_7:
           assert(!Sel && "Found more than one eh.selector call!");
           Sel = CI;
           break;
@@ -775,23 +779,24 @@ bool BitcodeReader::ParseAttributeBlock() {
         if (Alignment && !isPowerOf2_32(Alignment))
           return Error("Alignment is not a power of two.");
 
-        Attributes ReconstitutedAttr = Record[i+1] & 0xffff;
+        Attributes ReconstitutedAttr(Record[i+1] & 0xffff);
         if (Alignment)
           ReconstitutedAttr |= Attribute::constructAlignmentFromInt(Alignment);
-        ReconstitutedAttr |= (Record[i+1] & (0xffffull << 32)) >> 11;
-        Record[i+1] = ReconstitutedAttr;
+        ReconstitutedAttr |=
+            Attributes((Record[i+1] & (0xffffull << 32)) >> 11);
 
+        Record[i+1] = ReconstitutedAttr.Raw();
         if (Record[i] == 0)
-          RetAttribute = Record[i+1];
+          RetAttribute = ReconstitutedAttr;
         else if (Record[i] == ~0U)
-          FnAttribute = Record[i+1];
+          FnAttribute = ReconstitutedAttr;
       }
 
-      unsigned OldRetAttrs = (Attribute::NoUnwind|Attribute::NoReturn|
-                              Attribute::ReadOnly|Attribute::ReadNone);
+      Attributes OldRetAttrs = (Attribute::NoUnwind|Attribute::NoReturn|
+                               Attribute::ReadOnly|Attribute::ReadNone);
 
       if (FnAttribute == Attribute::None && RetAttribute != Attribute::None &&
-          (RetAttribute & OldRetAttrs) != 0) {
+          (RetAttribute & OldRetAttrs)) {
         if (FnAttribute == Attribute::None) { // add a slot so they get added.
           Record.push_back(~0U);
           Record.push_back(0);
@@ -808,8 +813,9 @@ bool BitcodeReader::ParseAttributeBlock() {
         } else if (Record[i] == ~0U) {
           if (FnAttribute != Attribute::None)
             Attrs.push_back(AttributeWithIndex::get(~0U, FnAttribute));
-        } else if (Record[i+1] != Attribute::None)
-          Attrs.push_back(AttributeWithIndex::get(Record[i], Record[i+1]));
+        } else if (Attributes(Record[i+1]) != Attribute::None)
+          Attrs.push_back(AttributeWithIndex::get(Record[i],
+                                                  Attributes(Record[i+1])));
       }
 
       MAttributes.push_back(AttrListPtr::get(Attrs.begin(), Attrs.end()));
@@ -2162,8 +2168,8 @@ bool BitcodeReader::ParseModule() {
 bool BitcodeReader::ParseBitcodeInto(Module *M) {
   TheModule = 0;
 
-  unsigned char *BufPtr = (unsigned char *)Buffer->getBufferStart();
-  unsigned char *BufEnd = BufPtr+Buffer->getBufferSize();
+  const unsigned char *BufPtr = (unsigned char *)Buffer->getBufferStart();
+  const unsigned char *BufEnd = BufPtr+Buffer->getBufferSize();
 
   if (Buffer->getBufferSize() & 3) {
     if (!isRawBitcode(BufPtr, BufEnd) && !isBitcodeWrapper(BufPtr, BufEnd))
@@ -2175,7 +2181,7 @@ bool BitcodeReader::ParseBitcodeInto(Module *M) {
   // If we have a wrapper header, parse it and ignore the non-bc file contents.
   // The magic number is 0x0B17C0DE stored in little endian.
   if (isBitcodeWrapper(BufPtr, BufEnd))
-    if (SkipBitcodeWrapperHeader(BufPtr, BufEnd))
+    if (SkipBitcodeWrapperHeader(BufPtr, BufEnd, true))
       return Error("Invalid bitcode wrapper header");
 
   StreamFile.init(BufPtr, BufEnd);
@@ -2293,13 +2299,13 @@ bool BitcodeReader::ParseTriple(std::string &Triple) {
   if (Buffer->getBufferSize() & 3)
     return Error("Bitcode stream should be a multiple of 4 bytes in length");
 
-  unsigned char *BufPtr = (unsigned char *)Buffer->getBufferStart();
-  unsigned char *BufEnd = BufPtr+Buffer->getBufferSize();
+  const unsigned char *BufPtr = (unsigned char *)Buffer->getBufferStart();
+  const unsigned char *BufEnd = BufPtr+Buffer->getBufferSize();
 
   // If we have a wrapper header, parse it and ignore the non-bc file contents.
   // The magic number is 0x0B17C0DE stored in little endian.
   if (isBitcodeWrapper(BufPtr, BufEnd))
-    if (SkipBitcodeWrapperHeader(BufPtr, BufEnd))
+    if (SkipBitcodeWrapperHeader(BufPtr, BufEnd, true))
       return Error("Invalid bitcode wrapper header");
 
   StreamFile.init(BufPtr, BufEnd);
@@ -2855,10 +2861,24 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
       InstructionList.push_back(I);
       break;
     }
-    case bitc::FUNC_CODE_INST_UNWIND: // UNWIND
-      I = new UnwindInst(Context);
+    case FUNC_CODE_INST_UNWIND_2_7: { // UNWIND_OLD
+      // 'unwind' instruction has been removed in LLVM 3.1
+      // Replace 'unwind' with 'landingpad' and 'resume'.
+      Type *ExnTy = StructType::get(Type::getInt8PtrTy(Context),
+                                    Type::getInt32Ty(Context), NULL);
+      Constant *PersFn =
+        F->getParent()->
+        getOrInsertFunction("__gcc_personality_v0",
+                          FunctionType::get(Type::getInt32Ty(Context), true));
+
+      LandingPadInst *LP = LandingPadInst::Create(ExnTy, PersFn, 1);
+      LP->setCleanup(true);
+
+      CurBB->getInstList().push_back(LP);
+      I = ResumeInst::Create(LP);
       InstructionList.push_back(I);
       break;
+    }
     case bitc::FUNC_CODE_INST_UNREACHABLE: // UNREACHABLE
       I = new UnreachableInst(Context);
       InstructionList.push_back(I);

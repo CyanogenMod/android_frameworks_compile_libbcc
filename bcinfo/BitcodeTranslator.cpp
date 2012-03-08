@@ -28,6 +28,7 @@
 #include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <cstdlib>
 
@@ -129,13 +130,14 @@ bool BitcodeTranslator::translate() {
     return false;
   }
 
-  std::vector<unsigned char> Buffer;
-  llvm::BitstreamWriter Stream(Buffer);
-  Buffer.reserve(mBitcodeSize);
-  llvm::WriteBitcodeToStream(module, Stream);
+  std::string Buffer;
+
+  llvm::raw_string_ostream OS(Buffer);
+  llvm::WriteBitcodeToFile(module, OS);
+  OS.flush();
 
   char *c = new char[Buffer.size()];
-  memcpy(c, &Buffer.front(), Buffer.size());
+  memcpy(c, Buffer.c_str(), Buffer.size());
 
   mTranslatedBitcode = c;
   mTranslatedBitcodeSize = Buffer.size();
