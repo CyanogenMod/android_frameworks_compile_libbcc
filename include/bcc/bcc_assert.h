@@ -17,6 +17,8 @@
 #ifndef _FRAMEWORKS_COMPILE_LIBBCC_INCLUDE_BCC_BCC_ASSERT_H_  // NOLINT
 #define _FRAMEWORKS_COMPILE_LIBBCC_INCLUDE_BCC_BCC_ASSERT_H_
 
+#include "DebugHelper.h"
+
 #ifdef __cplusplus
 #include <cstdlib>
 #include <cstdio>
@@ -29,15 +31,15 @@
 #define bccAssert(v) do {} while (0)
 #else
 #define __ABORT_ON_FAILURES 1
-#define bccAssert(v)                                          \
-  do {                                                        \
-    if (!(v)) {                                               \
-      fprintf(stderr, "bccAssert failed at %s:%d - '%s'\n",   \
-          __FILE__, __LINE__, #v);                            \
-      if (__ABORT_ON_FAILURES) {                              \
-        abort();                                              \
-      }                                                       \
-    }                                                         \
+#define bccAssert(v)                                \
+  do {                                              \
+    if (!(v)) {                                     \
+      ALOGE("bccAssert failed at %s:%d - '%s'\n",   \
+          __FILE__, __LINE__, #v);                  \
+      if (__ABORT_ON_FAILURES) {                    \
+        abort();                                    \
+      }                                             \
+    }                                               \
   } while (0)
 #endif  // __DISABLE_ASSERTS
 
