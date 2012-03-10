@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 namespace llvm {
+  class Module;
   class NamedMDNode;
 }
 
@@ -28,12 +29,15 @@ namespace bcinfo {
 
 class MetadataExtractor {
  private:
+  const llvm::Module *mModule;
   const char *mBitcode;
   size_t mBitcodeSize;
 
   size_t mExportVarCount;
   size_t mExportFuncCount;
   size_t mExportForEachSignatureCount;
+  const char **mExportVarNameList;
+  const char **mExportFuncNameList;
   const char **mExportForEachNameList;
   const uint32_t *mExportForEachSignatureList;
 
@@ -47,6 +51,8 @@ class MetadataExtractor {
   uint32_t mOptimizationLevel;
 
   // Helper functions for extraction
+  bool populateVarNameMetadata(const llvm::NamedMDNode *VarNameMetadata);
+  bool populateFuncNameMetadata(const llvm::NamedMDNode *FuncNameMetadata);
   bool populateForEachMetadata(const llvm::NamedMDNode *Names,
                                const llvm::NamedMDNode *Signatures);
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
@@ -60,6 +66,13 @@ class MetadataExtractor {
    * \param bitcodeSize - length of \p bitcode string (in bytes).
    */
   MetadataExtractor(const char *bitcode, size_t bitcodeSize);
+
+  /**
+   * Reads metadata from \p module.
+   *
+   * \param module - input module.
+   */
+  MetadataExtractor(const llvm::Module *module);
 
   ~MetadataExtractor();
 
@@ -78,10 +91,24 @@ class MetadataExtractor {
   }
 
   /**
+   * \return array of exported variable names.
+   */
+  const char **getExportVarNameList() const {
+    return mExportVarNameList;
+  }
+
+  /**
    * \return number of exported global functions (slots) in this script/module.
    */
   size_t getExportFuncCount() const {
     return mExportFuncCount;
+  }
+
+  /**
+   * \return array of exported function names.
+   */
+  const char **getExportFuncNameList() const {
+    return mExportFuncNameList;
   }
 
   /**
@@ -92,14 +119,14 @@ class MetadataExtractor {
   }
 
   /**
-   * \return array of ForEach function signatures.
+   * \return array of exported ForEach function signatures.
    */
   const uint32_t *getExportForEachSignatureList() const {
     return mExportForEachSignatureList;
   }
 
   /**
-   * \return array of ForEach function names.
+   * \return array of exported ForEach function names.
    */
   const char **getExportForEachNameList() const {
     return mExportForEachNameList;

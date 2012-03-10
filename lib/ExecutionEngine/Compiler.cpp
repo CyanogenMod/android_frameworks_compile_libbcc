@@ -17,6 +17,7 @@
 #include "Compiler.h"
 
 #include "Config.h"
+#include <bcinfo/MetadataExtractor.h>
 
 #if USE_OLD_JIT
 #include "OldJIT/ContextManager.h"
@@ -66,7 +67,6 @@
 #include "llvm/GlobalValue.h"
 #include "llvm/Linker.h"
 #include "llvm/LLVMContext.h"
-#include "llvm/Metadata.h"
 #include "llvm/Module.h"
 #include "llvm/PassManager.h"
 #include "llvm/Type.h"
@@ -118,37 +118,6 @@ llvm::Triple::ArchType Compiler::ArchType;
 std::string Compiler::CPU;
 
 std::vector<std::string> Compiler::Features;
-
-// Name of metadata node where pragma info resides (should be synced with
-// slang.cpp)
-const llvm::StringRef Compiler::PragmaMetadataName = "#pragma";
-
-// Name of metadata node where exported variable names reside (should be
-// synced with slang_rs_metadata.h)
-const llvm::StringRef Compiler::ExportVarMetadataName = "#rs_export_var";
-
-// Name of metadata node where exported function names reside (should be
-// synced with slang_rs_metadata.h)
-const llvm::StringRef Compiler::ExportFuncMetadataName = "#rs_export_func";
-
-// Name of metadata node where exported ForEach name information resides
-// (should be synced with slang_rs_metadata.h)
-const llvm::StringRef Compiler::ExportForEachNameMetadataName =
-    "#rs_export_foreach_name";
-
-// Name of metadata node where exported ForEach signature information resides
-// (should be synced with slang_rs_metadata.h)
-const llvm::StringRef Compiler::ExportForEachMetadataName =
-    "#rs_export_foreach";
-
-// Name of metadata node where RS object slot info resides (should be
-// synced with slang_rs_metadata.h)
-const llvm::StringRef Compiler::ObjectSlotMetadataName = "#rs_object_slots";
-
-// Name of metadata node where RS optimization level resides (should be
-// synced with slang_rs_metadata.h)
-const llvm::StringRef OptimizationLevelMetadataName = "#optimization_level";
-
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -314,27 +283,24 @@ int Compiler::compile(const CompilerOption &option) {
   if (mModule == NULL)  // No module was loaded
     return 0;
 
-  llvm::NamedMDNode const *PragmaMetadata;
-  llvm::NamedMDNode const *ExportVarMetadata;
-  llvm::NamedMDNode const *ExportFuncMetadata;
-  llvm::NamedMDNode const *ExportForEachNameMetadata;
-  llvm::NamedMDNode const *ExportForEachMetadata;
-  llvm::NamedMDNode const *ObjectSlotMetadata;
+  bcinfo::MetadataExtractor ME(mModule);
+  ME.extract();
 
+  size_t VarCount = ME.getExportVarCount();
+  size_t FuncCount = ME.getExportFuncCount();
+  size_t ForEachSigCount = ME.getExportForEachSignatureCount();
+  size_t ObjectSlotCount = ME.getObjectSlotCount();
+  size_t PragmaCount = ME.getPragmaCount();
+
+  std::vector<std::string> &VarNameList = mpResult->mExportVarsName;
+  std::vector<std::string> &FuncNameList = mpResult->mExportFuncsName;
+  std::vector<std::string> &ForEachExpandList = mpResult->mExportForEachName;
   std::vector<std::string> ForEachNameList;
-  std::vector<std::string> ForEachExpandList;
-  std::vector<uint32_t> forEachSigList;
+  std::vector<uint32_t> ForEachSigList;
+  std::vector<const char*> ExportSymbols;
 
-  llvm::NamedMDNode const *OptimizationLevelMetadata =
-    mModule->getNamedMetadata(OptimizationLevelMetadataName);
-
-  // Default to maximum optimization in the absence of named metadata node
-  int OptimizationLevel = 3;
-  if (OptimizationLevelMetadata) {
-    llvm::ConstantInt* OL = llvm::dyn_cast<llvm::ConstantInt>(
-      OptimizationLevelMetadata->getOperand(0)->getOperand(0));
-    OptimizationLevel = OL->getZExtValue();
-  }
+  // Defaults to maximum optimization level from MetadataExtractor.
+  int OptimizationLevel = ME.getOptimizationLevel();
 
   if (OptimizationLevel == 0) {
     CodeGenOptLevel = llvm::CodeGenOpt::None;
@@ -388,59 +354,62 @@ int Compiler::compile(const CompilerOption &option) {
   // Get target data from Module
   TD = new llvm::TargetData(mModule);
 
-  // Load named metadata
-  ExportVarMetadata = mModule->getNamedMetadata(ExportVarMetadataName);
-  ExportFuncMetadata = mModule->getNamedMetadata(ExportFuncMetadataName);
-  ExportForEachNameMetadata =
-      mModule->getNamedMetadata(ExportForEachNameMetadataName);
-  ExportForEachMetadata =
-      mModule->getNamedMetadata(ExportForEachMetadataName);
-  PragmaMetadata = mModule->getNamedMetadata(PragmaMetadataName);
-  ObjectSlotMetadata = mModule->getNamedMetadata(ObjectSlotMetadataName);
-
-  if (ExportForEachNameMetadata) {
-    for (int i = 0, e = ExportForEachNameMetadata->getNumOperands();
-         i != e;
-         i++) {
-      llvm::MDNode *ExportForEach = ExportForEachNameMetadata->getOperand(i);
-      if (ExportForEach != NULL && ExportForEach->getNumOperands() > 0) {
-        llvm::Value *ExportForEachNameMDS = ExportForEach->getOperand(0);
-        if (ExportForEachNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportForEachName =
-            static_cast<llvm::MDString*>(ExportForEachNameMDS)->getString();
-          ForEachNameList.push_back(ExportForEachName.str());
-          std::string ExpandName = ExportForEachName.str() + ".expand";
-          ForEachExpandList.push_back(ExpandName);
-        }
-      }
+  // Read pragma information from MetadataExtractor
+  if (PragmaCount) {
+    ScriptCompiled::PragmaList &PragmaPairs = mpResult->mPragmas;
+    const char **PragmaKeys = ME.getPragmaKeyList();
+    const char **PragmaValues = ME.getPragmaValueList();
+    for (size_t i = 0; i < PragmaCount; i++) {
+      PragmaPairs.push_back(std::make_pair(PragmaKeys[i], PragmaValues[i]));
     }
   }
 
-  if (ExportForEachMetadata) {
-    for (int i = 0, e = ExportForEachMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(i);
-      if (SigNode != NULL && SigNode->getNumOperands() == 1) {
-        llvm::Value *SigVal = SigNode->getOperand(0);
-        if (SigVal->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef SigString =
-              static_cast<llvm::MDString*>(SigVal)->getString();
-          uint32_t Signature = 0;
-          if (SigString.getAsInteger(10, Signature)) {
-            ALOGE("Non-integer signature value '%s'", SigString.str().c_str());
-            goto on_bcc_compile_error;
-          }
-          forEachSigList.push_back(Signature);
-        }
-      }
+  if (VarCount) {
+    const char **VarNames = ME.getExportVarNameList();
+    for (size_t i = 0; i < VarCount; i++) {
+      VarNameList.push_back(VarNames[i]);
+      ExportSymbols.push_back(VarNames[i]);
     }
   }
 
-  runInternalPasses(ForEachNameList, forEachSigList);
+  if (FuncCount) {
+    const char **FuncNames = ME.getExportFuncNameList();
+    for (size_t i = 0; i < FuncCount; i++) {
+      FuncNameList.push_back(FuncNames[i]);
+      ExportSymbols.push_back(FuncNames[i]);
+    }
+  }
+
+  if (ForEachSigCount) {
+    const char **ForEachNames = ME.getExportForEachNameList();
+    const uint32_t *ForEachSigs = ME.getExportForEachSignatureList();
+    for (size_t i = 0; i < ForEachSigCount; i++) {
+      std::string Name(ForEachNames[i]);
+      ForEachNameList.push_back(Name);
+      ForEachExpandList.push_back(Name + ".expand");
+      ForEachSigList.push_back(ForEachSigs[i]);
+    }
+
+    // Need to wait until ForEachExpandList is fully populated to fill in
+    // exported symbols.
+    for (size_t i = 0; i < ForEachSigCount; i++) {
+      ExportSymbols.push_back(ForEachExpandList[i].c_str());
+    }
+  }
+
+  if (ObjectSlotCount) {
+    ScriptCompiled::ObjectSlotList &objectSlotList = mpResult->mObjectSlots;
+    const uint32_t *ObjectSlots = ME.getObjectSlotList();
+    for (size_t i = 0; i < ObjectSlotCount; i++) {
+      objectSlotList.push_back(ObjectSlots[i]);
+    }
+  }
+
+  runInternalPasses(ForEachNameList, ForEachSigList);
 
   // Perform link-time optimization if we have multiple modules
   if (mHasLinked) {
-    runLTO(new llvm::TargetData(*TD), ExportVarMetadata, ExportFuncMetadata,
-           ForEachExpandList, CodeGenOptLevel);
+    runLTO(new llvm::TargetData(*TD), ExportSymbols, CodeGenOptLevel);
   }
 
   // Perform code generation
@@ -461,9 +430,9 @@ int Compiler::compile(const CompilerOption &option) {
 
   // Load the ELF Object
   mRSExecutable =
-    rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
-                       mEmittedELFExecutable.size(),
-                       &resolveSymbolAdapter, this);
+      rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
+                         mEmittedELFExecutable.size(),
+                         &resolveSymbolAdapter, this);
 
   if (!mRSExecutable) {
     setError("Fail to load emitted ELF relocatable file");
@@ -471,81 +440,31 @@ int Compiler::compile(const CompilerOption &option) {
   }
 
   rsloaderUpdateSectionHeaders(mRSExecutable,
-    (unsigned char*) mEmittedELFExecutable.begin());
+      (unsigned char*) mEmittedELFExecutable.begin());
 
-  if (ExportVarMetadata) {
-    ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
-    std::vector<std::string> &varNameList = mpResult->mExportVarsName;
-
-    for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
-      if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
-        llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
-        if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportVarName =
-            static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
-
-          varList.push_back(
-            rsloaderGetSymbolAddress(mRSExecutable,
-                                     ExportVarName.str().c_str()));
-          varNameList.push_back(ExportVarName.str());
-#if DEBUG_MCJIT_REFLECT
-          ALOGD("runMCCodeGen(): Exported Var: %s @ %p\n", ExportVarName.str().c_str(),
-               varList.back());
-#endif
-          continue;
-        }
-      }
-
-      varList.push_back(NULL);
+  // Once the ELF object has been loaded, populate the various slots for RS
+  // with the appropriate relocated addresses.
+  if (VarCount) {
+    ScriptCompiled::ExportVarList &VarList = mpResult->mExportVars;
+    for (size_t i = 0; i < VarCount; i++) {
+      VarList.push_back(rsloaderGetSymbolAddress(mRSExecutable,
+                                                 VarNameList[i].c_str()));
     }
   }
 
-  if (ExportFuncMetadata) {
-    ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
-    std::vector<std::string> &funcNameList = mpResult->mExportFuncsName;
-
-    for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
-      if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
-        llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
-        if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportFuncName =
-            static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
-
-          funcList.push_back(
-            rsloaderGetSymbolAddress(mRSExecutable,
-                                     ExportFuncName.str().c_str()));
-          funcNameList.push_back(ExportFuncName.str());
-#if DEBUG_MCJIT_RELECT
-          ALOGD("runMCCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
-               funcList.back());
-#endif
-        }
-      }
+  if (FuncCount) {
+    ScriptCompiled::ExportFuncList &FuncList = mpResult->mExportFuncs;
+    for (size_t i = 0; i < FuncCount; i++) {
+      FuncList.push_back(rsloaderGetSymbolAddress(mRSExecutable,
+                                                  FuncNameList[i].c_str()));
     }
   }
 
-  if (ExportForEachNameMetadata) {
-    ScriptCompiled::ExportForEachList &forEachList = mpResult->mExportForEach;
-    std::vector<std::string> &ForEachNameList = mpResult->mExportForEachName;
-
-    for (int i = 0, e = ExportForEachNameMetadata->getNumOperands();
-         i != e;
-         i++) {
-      llvm::MDNode *ExportForEach = ExportForEachNameMetadata->getOperand(i);
-      if (ExportForEach != NULL && ExportForEach->getNumOperands() > 0) {
-        llvm::Value *ExportForEachNameMDS = ExportForEach->getOperand(0);
-        if (ExportForEachNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportForEachName =
-            static_cast<llvm::MDString*>(ExportForEachNameMDS)->getString();
-          std::string Name = ExportForEachName.str() + ".expand";
-
-          forEachList.push_back(
-              rsloaderGetSymbolAddress(mRSExecutable, Name.c_str()));
-          ForEachNameList.push_back(Name);
-        }
-      }
+  if (ForEachSigCount) {
+    ScriptCompiled::ExportForEachList &ForEachList = mpResult->mExportForEach;
+    for (size_t i = 0; i < ForEachSigCount; i++) {
+      ForEachList.push_back(rsloaderGetSymbolAddress(mRSExecutable,
+          ForEachExpandList[i].c_str()));
     }
   }
 
@@ -568,64 +487,6 @@ int Compiler::compile(const CompilerOption &option) {
   }
 #endif
 #endif
-
-  // Read pragma information from the metadata node of the module.
-  if (PragmaMetadata) {
-    ScriptCompiled::PragmaList &pragmaList = mpResult->mPragmas;
-
-    for (int i = 0, e = PragmaMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
-      if (Pragma != NULL &&
-          Pragma->getNumOperands() == 2 /* should have exactly 2 operands */) {
-        llvm::Value *PragmaNameMDS = Pragma->getOperand(0);
-        llvm::Value *PragmaValueMDS = Pragma->getOperand(1);
-
-        if ((PragmaNameMDS->getValueID() == llvm::Value::MDStringVal) &&
-            (PragmaValueMDS->getValueID() == llvm::Value::MDStringVal)) {
-          llvm::StringRef PragmaName =
-            static_cast<llvm::MDString*>(PragmaNameMDS)->getString();
-          llvm::StringRef PragmaValue =
-            static_cast<llvm::MDString*>(PragmaValueMDS)->getString();
-
-          pragmaList.push_back(
-            std::make_pair(std::string(PragmaName.data(),
-                                       PragmaName.size()),
-                           std::string(PragmaValue.data(),
-                                       PragmaValue.size())));
-#if DEBUG_BCC_REFLECT
-          ALOGD("compile(): Pragma: %s -> %s\n",
-               pragmaList.back().first.c_str(),
-               pragmaList.back().second.c_str());
-#endif
-        }
-      }
-    }
-  }
-
-  if (ObjectSlotMetadata) {
-    ScriptCompiled::ObjectSlotList &objectSlotList = mpResult->mObjectSlots;
-
-    for (int i = 0, e = ObjectSlotMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ObjectSlot = ObjectSlotMetadata->getOperand(i);
-      if (ObjectSlot != NULL &&
-          ObjectSlot->getNumOperands() == 1) {
-        llvm::Value *SlotMDS = ObjectSlot->getOperand(0);
-        if (SlotMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef Slot =
-              static_cast<llvm::MDString*>(SlotMDS)->getString();
-          uint32_t USlot = 0;
-          if (Slot.getAsInteger(10, USlot)) {
-            setError("Non-integer object slot value '" + Slot.str() + "'");
-            goto on_bcc_compile_error;
-          }
-          objectSlotList.push_back(USlot);
-#if DEBUG_BCC_REFLECT
-          ALOGD("compile(): RefCount Slot: %s @ %u\n", Slot.str().c_str(), USlot);
-#endif
-        }
-      }
-    }
-  }
 
 on_bcc_compile_error:
   // ALOGE("on_bcc_compiler_error");
@@ -812,46 +673,11 @@ int Compiler::runInternalPasses(std::vector<std::string>& Names,
 }
 
 int Compiler::runLTO(llvm::TargetData *TD,
-                     llvm::NamedMDNode const *ExportVarMetadata,
-                     llvm::NamedMDNode const *ExportFuncMetadata,
-                     std::vector<std::string>& ForEachExpandList,
+                     std::vector<const char*>& ExportSymbols,
                      llvm::CodeGenOpt::Level OptimizationLevel) {
-  // Collect All Exported Symbols
-  std::vector<const char*> ExportSymbols;
-
-  // Note: This is a workaround for getting export variable and function name.
+  // Note: ExportSymbols is a workaround for getting all exported variable,
+  // function, and kernel names.
   // We should refine it soon.
-  if (ExportVarMetadata) {
-    for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
-      if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
-        llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
-        if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportVarName =
-            static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
-          ExportSymbols.push_back(ExportVarName.data());
-        }
-      }
-    }
-  }
-
-  if (ExportFuncMetadata) {
-    for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
-      if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
-        llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
-        if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportFuncName =
-            static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
-          ExportSymbols.push_back(ExportFuncName.data());
-        }
-      }
-    }
-  }
-
-  for (int i = 0, e = ForEachExpandList.size(); i != e; i++) {
-    ExportSymbols.push_back(ForEachExpandList[i].c_str());
-  }
 
   // TODO(logan): Remove this after we have finished the
   // bccMarkExternalSymbol API.

@@ -77,16 +77,8 @@ namespace bcc {
 
     static void LLVMErrorHandler(void *UserData, const std::string &Message);
 
-    static const llvm::StringRef PragmaMetadataName;
-    static const llvm::StringRef ExportVarMetadataName;
-    static const llvm::StringRef ExportFuncMetadataName;
-    static const llvm::StringRef ExportForEachNameMetadataName;
-    static const llvm::StringRef ExportForEachMetadataName;
-    static const llvm::StringRef ObjectSlotMetadataName;
-
     friend class CodeEmitter;
     friend class CodeMemoryManager;
-
 
   private:
     ScriptCompiled *mpResult;
@@ -182,9 +174,7 @@ namespace bcc {
                           std::vector<uint32_t>& Signatures);
 
     int runLTO(llvm::TargetData *TD,
-               llvm::NamedMDNode const *ExportVarMetadata,
-               llvm::NamedMDNode const *ExportFuncMetadata,
-               std::vector<std::string>& ForEachExpandList,
+               std::vector<const char*>& ExportSymbols,
                llvm::CodeGenOpt::Level OptimizationLevel);
 
     bool hasError() const {

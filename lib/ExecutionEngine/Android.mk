@@ -72,6 +72,7 @@ LOCAL_CFLAGS += -DTARGET_BUILD
 
 LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+LOCAL_SHARED_LIBRARIES := libbcinfo
 
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
@@ -95,6 +96,7 @@ LOCAL_CFLAGS += -D__HOST__
 LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+LOCAL_SHARED_LIBRARIES := libbcinfo
 
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk

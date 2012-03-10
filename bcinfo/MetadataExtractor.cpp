@@ -61,8 +61,19 @@ static const llvm::StringRef OptimizationLevelMetadataName = "#optimization_leve
 
 
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
-    : mBitcode(bitcode), mBitcodeSize(bitcodeSize), mExportVarCount(0),
+    : mModule(NULL), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
+      mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
+      mExportVarNameList(NULL), mExportFuncNameList(NULL),
+      mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
+      mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
+      mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3) {
+}
+
+
+MetadataExtractor::MetadataExtractor(const llvm::Module *module)
+    : mModule(module), mBitcode(NULL), mBitcodeSize(0), mExportVarCount(0),
       mExportFuncCount(0), mExportForEachSignatureCount(0),
+      mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
       mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3) {
@@ -70,6 +81,24 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
 
 
 MetadataExtractor::~MetadataExtractor() {
+  if (mExportVarNameList) {
+    for (size_t i = 0; i < mExportVarCount; i++) {
+        delete [] mExportVarNameList[i];
+        mExportVarNameList[i] = NULL;
+    }
+  }
+  delete [] mExportVarNameList;
+  mExportVarNameList = NULL;
+
+  if (mExportFuncNameList) {
+    for (size_t i = 0; i < mExportFuncCount; i++) {
+        delete [] mExportFuncNameList[i];
+        mExportFuncNameList[i] = NULL;
+    }
+  }
+  delete [] mExportFuncNameList;
+  mExportFuncNameList = NULL;
+
   if (mExportForEachNameList) {
     for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
         delete [] mExportForEachNameList[i];
@@ -168,20 +197,75 @@ void MetadataExtractor::populatePragmaMetadata(
     return;
   }
 
-  mPragmaKeyList = new const char*[mPragmaCount];
-  mPragmaValueList = new const char*[mPragmaCount];
+  const char **TmpKeyList = new const char*[mPragmaCount];
+  const char **TmpValueList = new const char*[mPragmaCount];
 
   for (size_t i = 0; i < mPragmaCount; i++) {
     llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
     if (Pragma != NULL && Pragma->getNumOperands() == 2) {
       llvm::Value *PragmaKeyMDS = Pragma->getOperand(0);
-      mPragmaKeyList[i] = createStringFromValue(PragmaKeyMDS);
+      TmpKeyList[i] = createStringFromValue(PragmaKeyMDS);
       llvm::Value *PragmaValueMDS = Pragma->getOperand(1);
-      mPragmaValueList[i] = createStringFromValue(PragmaValueMDS);
+      TmpValueList[i] = createStringFromValue(PragmaValueMDS);
     }
   }
 
+  mPragmaKeyList = TmpKeyList;
+  mPragmaValueList = TmpValueList;
+
   return;
+}
+
+
+bool MetadataExtractor::populateVarNameMetadata(
+    const llvm::NamedMDNode *VarNameMetadata) {
+  if (!VarNameMetadata) {
+    return true;
+  }
+
+  mExportVarCount = VarNameMetadata->getNumOperands();
+  if (!mExportVarCount) {
+    return true;
+  }
+
+  const char **TmpNameList = new const char *[mExportVarCount];
+
+  for (size_t i = 0; i < mExportVarCount; i++) {
+    llvm::MDNode *Name = VarNameMetadata->getOperand(i);
+    if (Name != NULL && Name->getNumOperands() > 1) {
+      TmpNameList[i] = createStringFromValue(Name->getOperand(0));
+    }
+  }
+
+  mExportVarNameList = TmpNameList;
+
+  return true;
+}
+
+
+bool MetadataExtractor::populateFuncNameMetadata(
+    const llvm::NamedMDNode *FuncNameMetadata) {
+  if (!FuncNameMetadata) {
+    return true;
+  }
+
+  mExportFuncCount = FuncNameMetadata->getNumOperands();
+  if (!mExportFuncCount) {
+    return true;
+  }
+
+  const char **TmpNameList = new const char*[mExportFuncCount];
+
+  for (size_t i = 0; i < mExportFuncCount; i++) {
+    llvm::MDNode *Name = FuncNameMetadata->getOperand(i);
+    if (Name != NULL && Name->getNumOperands() == 1) {
+      TmpNameList[i] = createStringFromValue(Name->getOperand(0));
+    }
+  }
+
+  mExportFuncNameList = TmpNameList;
+
+  return true;
 }
 
 
@@ -199,6 +283,7 @@ bool MetadataExtractor::populateForEachMetadata(
 
     uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
     TmpSigList[0] = 0x1f;
+
     mExportForEachNameList = (const char**)TmpNameList;
     mExportForEachSignatureList = TmpSigList;
     return true;
@@ -210,6 +295,7 @@ bool MetadataExtractor::populateForEachMetadata(
   }
 
   uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
+  const char **TmpNameList = new const char*[mExportForEachSignatureCount];
 
   for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
     llvm::MDNode *SigNode = Signatures->getOperand(i);
@@ -228,65 +314,68 @@ bool MetadataExtractor::populateForEachMetadata(
     }
   }
 
-  mExportForEachSignatureList = TmpSigList;
-
-
-  mExportForEachNameList = new const char*[mExportForEachSignatureCount];
-
   for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
     llvm::MDNode *Name = Names->getOperand(i);
     if (Name != NULL && Name->getNumOperands() == 1) {
-      mExportForEachNameList[i] = createStringFromValue(Name->getOperand(0));
+      TmpNameList[i] = createStringFromValue(Name->getOperand(0));
     }
   }
+
+  mExportForEachNameList = TmpNameList;
+  mExportForEachSignatureList = TmpSigList;
 
   return true;
 }
 
 
-
 bool MetadataExtractor::extract() {
-  if (!mBitcode || !mBitcodeSize) {
-    ALOGE("Invalid/empty bitcode");
+  if (!(mBitcode && mBitcodeSize) && !mModule) {
+    ALOGE("Invalid/empty bitcode/module");
     return false;
   }
 
-  llvm::OwningPtr<llvm::LLVMContext> mContext(new llvm::LLVMContext());
-  llvm::OwningPtr<llvm::MemoryBuffer> MEM(
-    llvm::MemoryBuffer::getMemBuffer(
-      llvm::StringRef(mBitcode, mBitcodeSize)));
-  std::string error;
+  llvm::OwningPtr<llvm::LLVMContext> mContext;
 
-  // Module ownership is handled by the context, so we don't need to free it.
-  llvm::Module *module = llvm::ParseBitcodeFile(MEM.get(), *mContext, &error);
-  if (!module) {
-    ALOGE("Could not parse bitcode file");
-    ALOGE("%s", error.c_str());
-    return false;
+  if (!mModule) {
+    mContext.reset(new llvm::LLVMContext());
+    llvm::OwningPtr<llvm::MemoryBuffer> MEM(
+      llvm::MemoryBuffer::getMemBuffer(
+        llvm::StringRef(mBitcode, mBitcodeSize)));
+    std::string error;
+
+    // Module ownership is handled by the context, so we don't need to free it.
+    mModule = llvm::ParseBitcodeFile(MEM.get(), *mContext, &error);
+    if (!mModule) {
+      ALOGE("Could not parse bitcode file");
+      ALOGE("%s", error.c_str());
+      return false;
+    }
   }
 
   const llvm::NamedMDNode *ExportVarMetadata =
-      module->getNamedMetadata(ExportVarMetadataName);
+      mModule->getNamedMetadata(ExportVarMetadataName);
   const llvm::NamedMDNode *ExportFuncMetadata =
-      module->getNamedMetadata(ExportFuncMetadataName);
+      mModule->getNamedMetadata(ExportFuncMetadataName);
   const llvm::NamedMDNode *ExportForEachNameMetadata =
-      module->getNamedMetadata(ExportForEachNameMetadataName);
+      mModule->getNamedMetadata(ExportForEachNameMetadataName);
   const llvm::NamedMDNode *ExportForEachMetadata =
-      module->getNamedMetadata(ExportForEachMetadataName);
+      mModule->getNamedMetadata(ExportForEachMetadataName);
   const llvm::NamedMDNode *PragmaMetadata =
-      module->getNamedMetadata(PragmaMetadataName);
+      mModule->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
-      module->getNamedMetadata(ObjectSlotMetadataName);
+      mModule->getNamedMetadata(ObjectSlotMetadataName);
   const llvm::NamedMDNode *OptimizationLevelMetadata =
-      module->getNamedMetadata(OptimizationLevelMetadataName);
+      mModule->getNamedMetadata(OptimizationLevelMetadataName);
 
 
-  if (ExportVarMetadata) {
-    mExportVarCount = ExportVarMetadata->getNumOperands();
+  if (!populateVarNameMetadata(ExportVarMetadata)) {
+    ALOGE("Could not populate export variable metadata");
+    return false;
   }
 
-  if (ExportFuncMetadata) {
-    mExportFuncCount = ExportFuncMetadata->getNumOperands();
+  if (!populateFuncNameMetadata(ExportFuncMetadata)) {
+    ALOGE("Could not populate export function metadata");
+    return false;
   }
 
   if (!populateForEachMetadata(ExportForEachNameMetadata,

@@ -82,7 +82,18 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
   }
 
   printf("exportVarCount: %u\n", ME->getExportVarCount());
+  const char **varNameList = ME->getExportVarNameList();
+  for (size_t i = 0; i < ME->getExportVarCount(); i++) {
+    printf("var[%u]: %s\n", i, varNameList[i]);
+  }
+  printf("\n");
+
   printf("exportFuncCount: %u\n", ME->getExportFuncCount());
+  const char **funcNameList = ME->getExportFuncNameList();
+  for (size_t i = 0; i < ME->getExportFuncCount(); i++) {
+    printf("func[%u]: %s\n", i, funcNameList[i]);
+  }
+  printf("\n");
 
   printf("exportForEachSignatureCount: %u\n",
          ME->getExportForEachSignatureCount());
@@ -92,6 +103,7 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
     printf("exportForEachSignatureList[%u]: %s - %u\n", i, nameList[i],
            sigList[i]);
   }
+  printf("\n");
 
   printf("pragmaCount: %u\n", ME->getPragmaCount());
   const char **keyList = ME->getPragmaKeyList();
@@ -99,12 +111,14 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
   for (size_t i = 0; i < ME->getPragmaCount(); i++) {
     printf("pragma[%u]: %s - %s\n", i, keyList[i], valueList[i]);
   }
+  printf("\n");
 
   printf("objectSlotCount: %u\n", ME->getObjectSlotCount());
   const uint32_t *slotList = ME->getObjectSlotList();
   for (size_t i = 0; i < ME->getObjectSlotCount(); i++) {
     printf("objectSlotList[%u]: %u\n", i, slotList[i]);
   }
+  printf("\n");
 
   printf("optimizationLevel: %u\n", ME->getOptimizationLevel());
 
