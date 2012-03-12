@@ -142,7 +142,6 @@ namespace bcc {
       return mpOwner->getUserDefinedExternalSymbols();
     }
 
-#if USE_MCJIT
     const char *getELF() const {
       return &*mCompiler.getELF().begin();
     }
@@ -150,7 +149,6 @@ namespace bcc {
     size_t getELFSize() const {
       return mCompiler.getELF().size();
     }
-#endif
 
     void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
       mCompiler.registerSymbolCallback(pFn, pContext);

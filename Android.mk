@@ -76,9 +76,7 @@ ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),arm x86))
 LOCAL_WHOLE_STATIC_LIBRARIES += libbccCompilerRT
 endif
 
-ifeq ($(libbcc_USE_MCJIT),1)
-  LOCAL_STATIC_LIBRARIES += librsloader
-endif
+LOCAL_STATIC_LIBRARIES += librsloader
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
   ifeq ($(TARGET_ARCH),arm)
@@ -188,9 +186,7 @@ LOCAL_SRC_FILES := lib/ExecutionEngine/bcc.cpp
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
-ifeq ($(libbcc_USE_MCJIT),1)
-  LOCAL_STATIC_LIBRARIES += librsloader
-endif
+LOCAL_STATIC_LIBRARIES += librsloader
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
   LOCAL_STATIC_LIBRARIES += \

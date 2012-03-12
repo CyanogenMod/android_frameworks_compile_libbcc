@@ -24,9 +24,7 @@
 #include <bcc/bcc_mccache.h>
 #include "bcc_internal.h"
 
-#if USE_MCJIT
 #include "librsloader.h"
-#endif
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -67,10 +65,8 @@ namespace bcc {
 
     FuncTable mFunctions;
 
-#if USE_MCJIT
     RSExecRef mRSExecutable;
     llvm::SmallVector<char, 1024> mCachedELFExecutable;
-#endif
 
     OBCC_StringPool *mpStringPoolRaw;
     std::vector<char const *> mStringPool;
@@ -132,7 +128,6 @@ namespace bcc {
     void getObjectSlotList(size_t objectSlotListSize,
                            uint32_t *objectSlotList);
 
-#if USE_MCJIT
     const char *getELF() const {
       return &*mCachedELFExecutable.begin();
     }
@@ -140,7 +135,7 @@ namespace bcc {
     size_t getELFSize() const {
       return mCachedELFExecutable.size();
     }
-#endif
+
     // Dirty hack for libRS.
     // TODO(all): This should be removed in the future.
     bool isLibRSThreadable() const {

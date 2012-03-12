@@ -30,9 +30,7 @@
 #include "Sha1Helper.h"
 #include "CompilerOption.h"
 
-#if USE_MCJIT
 #include "librsloader.h"
-#endif
 
 #include "Transforms/BCCTransforms.h"
 
@@ -227,9 +225,7 @@ void Compiler::LLVMErrorHandler(void *UserData, const std::string &Message) {
 
 Compiler::Compiler(ScriptCompiled *result)
   : mpResult(result),
-#if USE_MCJIT
     mRSExecutable(NULL),
-#endif
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
     mModule(NULL),
@@ -393,7 +389,6 @@ int Compiler::compile(const CompilerOption &option) {
   }
 
   // Perform code generation
-#if USE_MCJIT
   if (runMCCodeGen(new llvm::TargetData(*TD), TM) != 0) {
     goto on_bcc_compile_error;
   }
@@ -441,7 +436,7 @@ int Compiler::compile(const CompilerOption &option) {
     }
   }
 
-#if DEBUG_MCJIT_DISASSEMBLER
+#if DEBUG_MC_DISASSEMBLER
   {
     // Get MC codegen emitted function name list
     size_t func_list_size = rsloaderGetFuncCount(mRSExecutable);
@@ -453,12 +448,11 @@ int Compiler::compile(const CompilerOption &option) {
       void *func = rsloaderGetSymbolAddress(mRSExecutable, func_list[i]);
       if (func) {
         size_t size = rsloaderGetSymbolSize(mRSExecutable, func_list[i]);
-        Disassemble(DEBUG_MCJIT_DISASSEMBLER_FILE,
+        Disassemble(DEBUG_MC_DISASSEMBLER_FILE,
                     Target, TM, func_list[i], (unsigned char const *)func, size);
       }
     }
   }
-#endif
 #endif
 
 on_bcc_compile_error:
@@ -480,7 +474,6 @@ on_bcc_compile_error:
 }
 
 
-#if USE_MCJIT
 int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
   // Decorate mEmittedELFExecutable with formatted ostream
   llvm::raw_svector_ostream OutSVOS(mEmittedELFExecutable);
@@ -505,7 +498,6 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
   OutSVOS.flush();
   return 0;
 }
-#endif // USE_MCJIT
 
 int Compiler::runInternalPasses(std::vector<std::string>& Names,
                                 std::vector<uint32_t>& Signatures) {
@@ -651,14 +643,11 @@ int Compiler::runLTO(llvm::TargetData *TD,
 }
 
 
-#if USE_MCJIT
 void *Compiler::getSymbolAddress(char const *name) {
   return rsloaderGetSymbolAddress(mRSExecutable, name);
 }
-#endif
 
 
-#if USE_MCJIT
 void *Compiler::resolveSymbolAdapter(void *context, char const *name) {
   Compiler *self = reinterpret_cast<Compiler *>(context);
 
@@ -675,13 +664,10 @@ void *Compiler::resolveSymbolAdapter(void *context, char const *name) {
   ALOGE("Unable to resolve symbol: %s\n", name);
   return NULL;
 }
-#endif
 
 
 Compiler::~Compiler() {
-#if USE_MCJIT
   rsloaderDisposeExec(mRSExecutable);
-#endif
 
   // llvm::llvm_shutdown();
 }

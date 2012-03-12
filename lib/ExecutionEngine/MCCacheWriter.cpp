@@ -31,7 +31,6 @@
 
 using namespace std;
 
-#if USE_MCJIT
 namespace bcc {
 
 MCCacheWriter::~MCCacheWriter() {
@@ -387,4 +386,3 @@ bool MCCacheWriter::writeAll() {
 }
 
 } // namespace bcc
-#endif

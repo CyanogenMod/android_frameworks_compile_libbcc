@@ -109,11 +109,7 @@ void ScriptCompiled::getPragmaList(size_t pragmaListSize,
 
 
 void *ScriptCompiled::lookup(const char *name) {
-#if USE_MCJIT
   return mCompiler.getSymbolAddress(name);
-#endif
-
-  return NULL;
 }
 
 

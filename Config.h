@@ -4,31 +4,19 @@
 #include "ConfigFromMk.h"
 
 //---------------------------------------------------------------------------
-// Configuration for JIT & MC Assembler
-//---------------------------------------------------------------------------
-#if !USE_MCJIT
-#error "You should choose at least one code generation method."
-#endif
-
-//---------------------------------------------------------------------------
 // Configuration for Disassembler
 //---------------------------------------------------------------------------
 
-#if !USE_MCJIT
-#undef DEBUG_MCJIT_DISASSEMBLER
-#define DEBUG_MCJIT_DISASSEMBLER 0
-#endif
-
-#if DEBUG_MCJIT_DISASSEMBLER
+#if DEBUG_MC_DISASSEMBLER
 #define USE_DISASSEMBLER 1
 #else
 #define USE_DISASSEMBLER 0
 #endif
 
 #if defined(__HOST__)
-#define DEBUG_MCJIT_DISASSEMBLER_FILE "/tmp/mcjit-dis.s"
+#define DEBUG_MC_DISASSEMBLER_FILE "/tmp/mc-dis.s"
 #else
-#define DEBUG_MCJIT_DISASSEMBLER_FILE "/data/local/tmp/mcjit-dis.s"
+#define DEBUG_MC_DISASSEMBLER_FILE "/data/local/tmp/mc-dis.s"
 #endif // defined(__HOST__)
 
 //---------------------------------------------------------------------------

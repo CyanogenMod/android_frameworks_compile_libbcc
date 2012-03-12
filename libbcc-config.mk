@@ -28,27 +28,21 @@ RSLOADER_ROOT_PATH  := frameworks/compile/linkloader
 # Configurations
 #=====================================================================
 
-libbcc_USE_MCJIT                    := 1
-
 libbcc_USE_CACHE                    := 1
 
-libbcc_DEBUG_MCJIT_DISASSEMBLER     := 0
+libbcc_DEBUG_MC_DISASSEMBLER        := 0
 
 libbcc_USE_LOGGER                   := 1
 libbcc_USE_FUNC_LOGGER              := 0
 libbcc_DEBUG_BCC_REFLECT            := 0
-libbcc_DEBUG_MCJIT_REFLECT          := 0
+libbcc_DEBUG_MC_REFLECT             := 0
 
 
 #=====================================================================
 # Automatic Configurations
 #=====================================================================
 
-ifeq ($(libbcc_USE_MCJIT),0)
-libbcc_DEBUG_MCJIT_DISASSEMBLER := 0
-endif
-
-ifeq ($(libbcc_DEBUG_MCJIT_DISASSEMBLER),0)
+ifeq ($(libbcc_DEBUG_MC_DISASSEMBLER),0)
 libbcc_USE_DISASSEMBLER := 0
 else
 libbcc_USE_DISASSEMBLER := 1

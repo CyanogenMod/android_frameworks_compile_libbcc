@@ -39,8 +39,6 @@
 
 using namespace std;
 
-
-#if USE_MCJIT
 namespace bcc {
 
 MCCacheReader::~MCCacheReader() {
@@ -352,7 +350,7 @@ bool MCCacheReader::readVarNameList() {
   for (size_t i = 0; i < export_var_name_list_raw->count; ++i) {
     mpResult->mpExportVars->cached_addr_list[i] =
       rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_var_name_list_raw->strp_indexs[i]]);
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_MC_REFLECT
     ALOGD("Get symbol address: %s -> %p",
       strPool[export_var_name_list_raw->strp_indexs[i]], mpResult->mpExportVars->cached_addr_list[i]);
 #endif
@@ -376,7 +374,7 @@ bool MCCacheReader::readFuncNameList() {
   for (size_t i = 0; i < export_func_name_list_raw->count; ++i) {
     mpResult->mpExportFuncs->cached_addr_list[i] =
       rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_func_name_list_raw->strp_indexs[i]]);
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_MC_REFLECT
     ALOGD("Get function address: %s -> %p",
       strPool[export_func_name_list_raw->strp_indexs[i]], mpResult->mpExportFuncs->cached_addr_list[i]);
 #endif
@@ -400,7 +398,7 @@ bool MCCacheReader::readForEachNameList() {
   for (size_t i = 0; i < export_foreach_name_list_raw->count; ++i) {
     mpResult->mpExportForEach->cached_addr_list[i] =
       rsloaderGetSymbolAddress(mpResult->mRSExecutable, strPool[export_foreach_name_list_raw->strp_indexs[i]]);
-#if DEBUG_MCJIT_REFLECT
+#if DEBUG_MC_REFLECT
     ALOGE("Get foreach function address: %s -> %p",
       strPool[export_foreach_name_list_raw->strp_indexs[i]], mpResult->mpExportForEach->cached_addr_list[i]);
 #endif
@@ -484,4 +482,3 @@ bool MCCacheReader::relocate() {
 }
 
 } // namespace bcc
-#endif

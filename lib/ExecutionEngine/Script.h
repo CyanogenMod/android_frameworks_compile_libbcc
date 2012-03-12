@@ -81,15 +81,11 @@ namespace bcc {
     std::string mCacheName;
 
     inline std::string getCachedObjectPath() const {
-#if USE_MCJIT
       return std::string(mCacheDir + mCacheName + ".o");
-#endif
     }
 
     inline std::string getCacheInfoPath() const {
-#if USE_MCJIT
       return getCachedObjectPath().append(".info");
-#endif
     }
 #endif
 

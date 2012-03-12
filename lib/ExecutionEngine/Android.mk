@@ -34,13 +34,9 @@ libbcc_executionengine_SRC_FILES := \
   SourceInfo.cpp
 
 ifeq ($(libbcc_USE_CACHE),1)
-ifeq ($(libbcc_USE_MCJIT),1)
 libbcc_executionengine_SRC_FILES += \
   MCCacheWriter.cpp \
-  MCCacheReader.cpp
-endif
-
-libbcc_executionengine_SRC_FILES += \
+  MCCacheReader.cpp \
   ScriptCached.cpp \
   Sha1Helper.cpp
 endif

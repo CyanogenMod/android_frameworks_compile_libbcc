@@ -21,9 +21,7 @@
 
 #include <Config.h>
 
-#if USE_MCJIT
 #include "librsloader.h"
-#endif
 
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/StringRef.h"
@@ -84,13 +82,11 @@ namespace bcc {
 
     std::string mError;
 
-#if USE_MCJIT
-    // Compilation buffer for MCJIT
+    // Compilation buffer for MC
     llvm::SmallVector<char, 1024> mEmittedELFExecutable;
 
     // Loaded and relocated executable
     RSExecRef mRSExecutable;
-#endif
 
     BCCSymbolLookupFn mpSymbolLookupFn;
     void *mpSymbolLookupContext;
@@ -117,13 +113,11 @@ namespace bcc {
       mpSymbolLookupContext = pContext;
     }
 
-#if USE_MCJIT
     void *getSymbolAddress(char const *name);
 
     const llvm::SmallVector<char, 1024> &getELF() const {
       return mEmittedELFExecutable;
     }
-#endif
 
     int readModule(llvm::Module *module) {
       mModule = module;
@@ -152,9 +146,8 @@ namespace bcc {
 
     int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM);
 
-#if USE_MCJIT
     static void *resolveSymbolAdapter(void *context, char const *name);
-#endif
+
     int runInternalPasses(std::vector<std::string>& Names,
                           std::vector<uint32_t>& Signatures);
 

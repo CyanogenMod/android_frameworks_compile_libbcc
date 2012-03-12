@@ -285,7 +285,6 @@ int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
     return 1;
   }
 
-#if USE_MCJIT
   MCCacheReader reader;
 
   // Register symbol lookup function
@@ -293,7 +292,6 @@ int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
     reader.registerSymbolCallback(mpExtSymbolLookupFn,
                                       mpExtSymbolLookupFnContext);
   }
-#endif
 
   // Dependencies
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
@@ -412,9 +410,7 @@ int Script::writeCache() {
     // to modify its contents.  (The same script may be running concurrently in
     // the same process or a different process!)
     ::unlink(objPath.c_str());
-#if USE_MCJIT
     ::unlink(infoPath.c_str());
-#endif
 
     FileHandle objFile;
     FileHandle infoFile;
@@ -422,9 +418,7 @@ int Script::writeCache() {
     if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0 &&
         infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0) {
 
-#if USE_MCJIT
       MCCacheWriter writer;
-#endif
 
 #ifdef TARGET_BUILD
       // Dependencies
@@ -813,7 +807,6 @@ bool Script::isCacheable() const {
 #endif
 }
 
-#if USE_MCJIT
 size_t Script::getELFSize() const {
   switch (mStatus) {
     case ScriptStatus::Compiled: {
@@ -845,6 +838,5 @@ const char *Script::getELF() const {
     }
   }
 }
-#endif
 
 } // namespace bcc
