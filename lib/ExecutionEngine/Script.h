@@ -81,17 +81,13 @@ namespace bcc {
     std::string mCacheName;
 
     inline std::string getCachedObjectPath() const {
-#if USE_OLD_JIT
-      return std::string(mCacheDir + mCacheName + ".jit-image");
-#elif USE_MCJIT
+#if USE_MCJIT
       return std::string(mCacheDir + mCacheName + ".o");
 #endif
     }
 
     inline std::string getCacheInfoPath() const {
-#if USE_OLD_JIT
-      return getCachedObjectPath().append(".oBCC");
-#elif USE_MCJIT
+#if USE_MCJIT
       return getCachedObjectPath().append(".info");
 #endif
     }
@@ -216,10 +212,6 @@ namespace bcc {
     const char *getELF() const;
 
     int registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
-
-#if USE_OLD_JIT
-    char *getContext();
-#endif
 
     bool isCacheable() const;
 

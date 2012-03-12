@@ -33,18 +33,7 @@ libbcc_executionengine_SRC_FILES := \
   ScriptCompiled.cpp \
   SourceInfo.cpp
 
-ifeq ($(libbcc_USE_OLD_JIT),1)
-libbcc_executionengine_SRC_FILES += \
-  OldJIT/ContextManager.cpp
-endif
-
 ifeq ($(libbcc_USE_CACHE),1)
-ifeq ($(libbcc_USE_OLD_JIT),1)
-libbcc_executionengine_SRC_FILES += \
-  OldJIT/CacheReader.cpp \
-  OldJIT/CacheWriter.cpp
-endif
-
 ifeq ($(libbcc_USE_MCJIT),1)
 libbcc_executionengine_SRC_FILES += \
   MCCacheWriter.cpp \

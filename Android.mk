@@ -22,10 +22,6 @@ include $(LOCAL_PATH)/libbcc-config.mk
 # Whole Static Library to Be Linked In
 #=====================================================================
 
-ifeq ($(libbcc_USE_OLD_JIT),1)
-libbcc_WHOLE_STATIC_LIBRARIES += libbccCodeGen
-endif
-
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
 libbcc_WHOLE_STATIC_LIBRARIES += libbccDisassembler
 endif

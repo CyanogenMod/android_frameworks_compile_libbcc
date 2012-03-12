@@ -17,28 +17,11 @@
 #include "ScriptCompiled.h"
 
 #include "bcc_internal.h"
-#if USE_OLD_JIT
-#include "OldJIT/ContextManager.h"
-#endif
 #include "DebugHelper.h"
 
 namespace bcc {
 
 ScriptCompiled::~ScriptCompiled() {
-#if USE_OLD_JIT
-  // Deallocate the BCC context
-  if (mContext) {
-    ContextManager::get().deallocateContext(mContext);
-  }
-
-  // Delete the emitted function information
-  for (FuncInfoMap::iterator I = mEmittedFunctions.begin(),
-       E = mEmittedFunctions.end(); I != E; I++) {
-    if (I->second != NULL) {
-      delete I->second;
-    }
-  }
-#endif
 }
 
 void ScriptCompiled::getExportVarList(size_t varListSize, void **varList) {
@@ -126,11 +109,6 @@ void ScriptCompiled::getPragmaList(size_t pragmaListSize,
 
 
 void *ScriptCompiled::lookup(const char *name) {
-#if USE_OLD_JIT
-  FuncInfoMap::const_iterator I = mEmittedFunctions.find(name);
-  return (I == mEmittedFunctions.end()) ? NULL : I->second->addr;
-#endif
-
 #if USE_MCJIT
   return mCompiler.getSymbolAddress(name);
 #endif

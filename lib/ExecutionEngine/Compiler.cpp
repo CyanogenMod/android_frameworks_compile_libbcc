@@ -19,10 +19,6 @@
 #include "Config.h"
 #include <bcinfo/MetadataExtractor.h>
 
-#if USE_OLD_JIT
-#include "OldJIT/ContextManager.h"
-#endif
-
 #if USE_DISASSEMBLER
 #include "Disassembler/Disassembler.h"
 #endif
@@ -229,22 +225,6 @@ void Compiler::LLVMErrorHandler(void *UserData, const std::string &Message) {
 }
 
 
-#if USE_OLD_JIT
-CodeMemoryManager *Compiler::createCodeMemoryManager() {
-  mCodeMemMgr.reset(new CodeMemoryManager());
-  return mCodeMemMgr.get();
-}
-#endif
-
-
-#if USE_OLD_JIT
-CodeEmitter *Compiler::createCodeEmitter() {
-  mCodeEmitter.reset(new CodeEmitter(mpResult, mCodeMemMgr.get()));
-  return mCodeEmitter.get();
-}
-#endif
-
-
 Compiler::Compiler(ScriptCompiled *result)
   : mpResult(result),
 #if USE_MCJIT
@@ -413,13 +393,6 @@ int Compiler::compile(const CompilerOption &option) {
   }
 
   // Perform code generation
-#if USE_OLD_JIT
-  if (runCodeGen(new llvm::TargetData(*TD), TM,
-                 ExportVarMetadata, ExportFuncMetadata) != 0) {
-    goto on_bcc_compile_error;
-  }
-#endif
-
 #if USE_MCJIT
   if (runMCCodeGen(new llvm::TargetData(*TD), TM) != 0) {
     goto on_bcc_compile_error;
@@ -505,132 +478,6 @@ on_bcc_compile_error:
   // ALOGE(getErrorMessage());
   return 1;
 }
-
-
-#if USE_OLD_JIT
-int Compiler::runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
-                         llvm::NamedMDNode const *ExportVarMetadata,
-                         llvm::NamedMDNode const *ExportFuncMetadata) {
-  // Create memory manager for creation of code emitter later.
-  if (!mCodeMemMgr.get() && !createCodeMemoryManager()) {
-    setError("Failed to startup memory management for further compilation");
-    return 1;
-  }
-
-  mpResult->mContext = (char *) (mCodeMemMgr.get()->getCodeMemBase());
-
-  // Create code emitter
-  if (!mCodeEmitter.get()) {
-    if (!createCodeEmitter()) {
-      setError("Failed to create machine code emitter for compilation");
-      return 1;
-    }
-  } else {
-    // Reuse the code emitter
-    mCodeEmitter->reset();
-  }
-
-  mCodeEmitter->setTargetMachine(*TM);
-  mCodeEmitter->registerSymbolCallback(mpSymbolLookupFn,
-                                       mpSymbolLookupContext);
-
-  // Create code-gen pass to run the code emitter
-  llvm::OwningPtr<llvm::FunctionPassManager> CodeGenPasses(
-    new llvm::FunctionPassManager(mModule));
-
-  // Add TargetData to code generation pass manager
-  CodeGenPasses->add(TD);
-
-  // Add code emit passes
-  if (TM->addPassesToEmitMachineCode(*CodeGenPasses,
-                                     *mCodeEmitter,
-                                     CodeGenOptLevel)) {
-    setError("The machine code emission is not supported on '" + Triple + "'");
-    return 1;
-  }
-
-  // Run the code emitter on every non-declaration function in the module
-  CodeGenPasses->doInitialization();
-  for (llvm::Module::iterator
-       I = mModule->begin(), E = mModule->end(); I != E; I++) {
-    if (!I->isDeclaration()) {
-      CodeGenPasses->run(*I);
-    }
-  }
-
-  CodeGenPasses->doFinalization();
-
-  // Copy the global address mapping from code emitter and remapping
-  if (ExportVarMetadata) {
-    ScriptCompiled::ExportVarList &varList = mpResult->mExportVars;
-
-    for (int i = 0, e = ExportVarMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportVar = ExportVarMetadata->getOperand(i);
-      if (ExportVar != NULL && ExportVar->getNumOperands() > 1) {
-        llvm::Value *ExportVarNameMDS = ExportVar->getOperand(0);
-        if (ExportVarNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportVarName =
-            static_cast<llvm::MDString*>(ExportVarNameMDS)->getString();
-
-          CodeEmitter::global_addresses_const_iterator I, E;
-          for (I = mCodeEmitter->global_address_begin(),
-               E = mCodeEmitter->global_address_end();
-               I != E; I++) {
-            if (I->first->getValueID() != llvm::Value::GlobalVariableVal)
-              continue;
-            if (ExportVarName == I->first->getName()) {
-              varList.push_back(I->second);
-#if DEBUG_BCC_REFLECT
-              ALOGD("runCodeGen(): Exported VAR: %s @ %p\n", ExportVarName.str().c_str(), I->second);
-#endif
-              break;
-            }
-          }
-          if (I != mCodeEmitter->global_address_end())
-            continue;  // found
-
-#if DEBUG_BCC_REFLECT
-          ALOGD("runCodeGen(): Exported VAR: %s @ %p\n",
-               ExportVarName.str().c_str(), (void *)0);
-#endif
-        }
-      }
-      // if reaching here, we know the global variable record in metadata is
-      // not found. So we make an empty slot
-      varList.push_back(NULL);
-    }
-
-    bccAssert((varList.size() == ExportVarMetadata->getNumOperands()) &&
-              "Number of slots doesn't match the number of export variables!");
-  }
-
-  if (ExportFuncMetadata) {
-    ScriptCompiled::ExportFuncList &funcList = mpResult->mExportFuncs;
-
-    for (int i = 0, e = ExportFuncMetadata->getNumOperands(); i != e; i++) {
-      llvm::MDNode *ExportFunc = ExportFuncMetadata->getOperand(i);
-      if (ExportFunc != NULL && ExportFunc->getNumOperands() > 0) {
-        llvm::Value *ExportFuncNameMDS = ExportFunc->getOperand(0);
-        if (ExportFuncNameMDS->getValueID() == llvm::Value::MDStringVal) {
-          llvm::StringRef ExportFuncName =
-            static_cast<llvm::MDString*>(ExportFuncNameMDS)->getString();
-          funcList.push_back(mpResult->lookup(ExportFuncName.str().c_str()));
-#if DEBUG_BCC_REFLECT
-          ALOGD("runCodeGen(): Exported Func: %s @ %p\n", ExportFuncName.str().c_str(),
-               funcList.back());
-#endif
-        }
-      }
-    }
-  }
-
-  // Tell code emitter now can release the memory using during the JIT since
-  // we have done the code emission
-  mCodeEmitter->releaseUnnecessary();
-
-  return 0;
-}
-#endif // USE_OLD_JIT
 
 
 #if USE_MCJIT

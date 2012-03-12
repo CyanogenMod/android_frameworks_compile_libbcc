@@ -18,18 +18,9 @@
 
 #include "Config.h"
 
-#if USE_OLD_JIT
-#include "OldJIT/CacheReader.h"
-#include "OldJIT/CacheWriter.h"
-#endif
-
 #include "MCCacheReader.h"
 #include "MCCacheWriter.h"
 #include "CompilerOption.h"
-
-#if USE_OLD_JIT
-#include "OldJIT/ContextManager.h"
-#endif
 
 #include "DebugHelper.h"
 #include "FileHandle.h"
@@ -294,9 +285,7 @@ int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
     return 1;
   }
 
-#if USE_OLD_JIT
-  CacheReader reader;
-#elif USE_MCJIT
+#if USE_MCJIT
   MCCacheReader reader;
 
   // Register symbol lookup function
@@ -413,12 +402,7 @@ int Script::writeCache() {
   // Note: If the address of the context is not in the context slot, then
   // we don't have to cache it.
 
-  if (
-#if USE_OLD_JIT
-      !mIsContextSlotNotAvail &&
-      ContextManager::get().isManagingContext(getContext()) &&
-#endif
-      isCacheable()) {
+  if (isCacheable()) {
 
     std::string objPath = getCachedObjectPath();
     std::string infoPath = getCacheInfoPath();
@@ -428,7 +412,7 @@ int Script::writeCache() {
     // to modify its contents.  (The same script may be running concurrently in
     // the same process or a different process!)
     ::unlink(objPath.c_str());
-#if !USE_OLD_JIT && USE_MCJIT
+#if USE_MCJIT
     ::unlink(infoPath.c_str());
 #endif
 
@@ -438,9 +422,7 @@ int Script::writeCache() {
     if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0 &&
         infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0) {
 
-#if USE_OLD_JIT
-      CacheWriter writer;
-#elif USE_MCJIT
+#if USE_MCJIT
       MCCacheWriter writer;
 #endif
 
@@ -796,29 +778,6 @@ void Script::getObjectSlotList(size_t objectSlotListSize,
     }
   }
 }
-
-
-#if USE_OLD_JIT
-char *Script::getContext() {
-  switch (mStatus) {
-
-#if USE_CACHE
-    case ScriptStatus::Cached: {
-      return mCached->getContext();
-    }
-#endif
-
-    case ScriptStatus::Compiled: {
-      return mCompiled->getContext();
-    }
-
-    default: {
-      mErrorCode = BCC_INVALID_OPERATION;
-      return NULL;
-    }
-  }
-}
-#endif
 
 
 int Script::registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {

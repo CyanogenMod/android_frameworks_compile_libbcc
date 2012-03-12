@@ -19,8 +19,7 @@
 
 #include <bcc/bcc.h>
 
-#include "CodeGen/CodeEmitter.h"
-#include "CodeGen/CodeMemoryManager.h"
+#include <Config.h>
 
 #if USE_MCJIT
 #include "librsloader.h"
@@ -85,14 +84,6 @@ namespace bcc {
 
     std::string mError;
 
-#if USE_OLD_JIT
-    // The memory manager for code emitter
-    llvm::OwningPtr<CodeMemoryManager> mCodeMemMgr;
-
-    // The CodeEmitter
-    llvm::OwningPtr<CodeEmitter> mCodeEmitter;
-#endif
-
 #if USE_MCJIT
     // Compilation buffer for MCJIT
     llvm::SmallVector<char, 1024> mEmittedELFExecutable;
@@ -125,12 +116,6 @@ namespace bcc {
       mpSymbolLookupFn = pFn;
       mpSymbolLookupContext = pContext;
     }
-
-#if USE_OLD_JIT
-    CodeMemoryManager *createCodeMemoryManager();
-
-    CodeEmitter *createCodeEmitter();
-#endif
 
 #if USE_MCJIT
     void *getSymbolAddress(char const *name);

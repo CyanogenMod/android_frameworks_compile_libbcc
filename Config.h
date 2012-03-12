@@ -6,7 +6,7 @@
 //---------------------------------------------------------------------------
 // Configuration for JIT & MC Assembler
 //---------------------------------------------------------------------------
-#if !USE_OLD_JIT && !USE_MCJIT
+#if !USE_MCJIT
 #error "You should choose at least one code generation method."
 #endif
 
@@ -14,50 +14,22 @@
 // Configuration for Disassembler
 //---------------------------------------------------------------------------
 
-#if !USE_OLD_JIT
-#undef DEBUG_OLD_JIT_DISASSEMBLER
-#define DEBUG_OLD_JIT_DISASSEMBLER 0
-#endif
-
 #if !USE_MCJIT
 #undef DEBUG_MCJIT_DISASSEMBLER
 #define DEBUG_MCJIT_DISASSEMBLER 0
 #endif
 
-#if DEBUG_OLD_JIT_DISASSEMBLER || DEBUG_MCJIT_DISASSEMBLER
+#if DEBUG_MCJIT_DISASSEMBLER
 #define USE_DISASSEMBLER 1
 #else
 #define USE_DISASSEMBLER 0
 #endif
 
 #if defined(__HOST__)
-#define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/tmp/oldjit-dis.s"
 #define DEBUG_MCJIT_DISASSEMBLER_FILE "/tmp/mcjit-dis.s"
 #else
-#define DEBUG_OLD_JIT_DISASSEMBLER_FILE "/data/local/tmp/oldjit-dis.s"
 #define DEBUG_MCJIT_DISASSEMBLER_FILE "/data/local/tmp/mcjit-dis.s"
 #endif // defined(__HOST__)
-
-//---------------------------------------------------------------------------
-// Configuration for ContextManager
-//---------------------------------------------------------------------------
-
-#if USE_OLD_JIT
-
-// Note: Most of the code should NOT use these constants.  Use the public
-// static member of ContextManager instead, which is type-safe.  For example,
-// if you need BCC_CONTEXT_FIXED_ADDR_, then you should write:
-// ContextManager::ContextFixedAddr
-
-#define BCC_CONTEXT_FIXED_ADDR_ reinterpret_cast<char *>(0x7e000000)
-
-#define BCC_CONTEXT_SLOT_COUNT_ 8
-
-#define BCC_CONTEXT_CODE_SIZE_ (128 * 1024)
-
-#define BCC_CONTEXT_DATA_SIZE_ (128 * 1024)
-
-#endif // USE_OLD_JIT
 
 //---------------------------------------------------------------------------
 // Configuration for CodeGen and CompilerRT

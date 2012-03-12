@@ -67,10 +67,6 @@ namespace bcc {
 
     FuncTable mFunctions;
 
-#if USE_OLD_JIT
-    char *mContext;
-#endif
-
 #if USE_MCJIT
     RSExecRef mRSExecutable;
     llvm::SmallVector<char, 1024> mCachedELFExecutable;
@@ -88,9 +84,6 @@ namespace bcc {
         mpExportFuncs(NULL),
         mpExportForEach(NULL),
         mpObjectSlotList(NULL),
-#if USE_OLD_JIT
-        mContext(NULL),
-#endif
         mpStringPoolRaw(NULL),
         mLibRSThreadable(false) {
     }
@@ -138,12 +131,6 @@ namespace bcc {
 
     void getObjectSlotList(size_t objectSlotListSize,
                            uint32_t *objectSlotList);
-
-#if USE_OLD_JIT
-    char *getContext() {
-      return mContext;
-    }
-#endif
 
 #if USE_MCJIT
     const char *getELF() const {
