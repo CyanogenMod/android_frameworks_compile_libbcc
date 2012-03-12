@@ -28,8 +28,6 @@ RSLOADER_ROOT_PATH  := frameworks/compile/linkloader
 # Configurations
 #=====================================================================
 
-libbcc_USE_CACHE                    := 1
-
 libbcc_DEBUG_MC_DISASSEMBLER        := 0
 
 libbcc_USE_LOGGER                   := 1

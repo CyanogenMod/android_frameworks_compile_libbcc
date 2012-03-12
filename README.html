@@ -419,24 +419,24 @@ variable list, exported function list, pragma list, function information
 table, and bcc context.  Every section should be aligned to a word size.
 Here is the brief description of each sections:</p>
 <ul class="simple">
-<li><strong>Header</strong> (OBCC_Header) - The header of a cache file. It contains the
+<li><strong>Header</strong> (MCO_Header) - The header of a cache file. It contains the
 magic word, version, machine integer type information (the endianness,
 the size of off_t, size_t, and ptr_t), and the size
 and offset of other sections.  The header section is guaranteed
 to be at the beginning of the cache file.</li>
-<li><strong>String Pool</strong> (OBCC_StringPool) - A collection of serialized variable
+<li><strong>String Pool</strong> (MCO_StringPool) - A collection of serialized variable
 length strings.  The strp_index in the other part of the cache file
 represents the index of such string in this string pool.</li>
-<li><strong>Dependencies Table</strong> (OBCC_DependencyTable) - The dependencies table.
+<li><strong>Dependencies Table</strong> (MCO_DependencyTable) - The dependencies table.
 This table stores the resource name (or file path), the resource
 type (rather in APK or on the file system), and the SHA1 checksum.</li>
-<li><strong>Relocation Table</strong> (OBCC_RelocationTable) - <em>not enabled</em></li>
-<li><strong>Exported Variable List</strong> (OBCC_ExportVarList) -
+<li><strong>Relocation Table</strong> (MCO_RelocationTable) - <em>not enabled</em></li>
+<li><strong>Exported Variable List</strong> (MCO_ExportVarList) -
 The list of the addresses of exported variables.</li>
-<li><strong>Exported Function List</strong> (OBCC_ExportFuncList) -
+<li><strong>Exported Function List</strong> (MCO_ExportFuncList) -
 The list of the addresses of exported functions.</li>
-<li><strong>Pragma List</strong> (OBCC_PragmaList) - The list of pragma key-value pair.</li>
-<li><strong>Function Information Table</strong> (OBCC_FuncTable) - This is a table of
+<li><strong>Pragma List</strong> (MCO_PragmaList) - The list of pragma key-value pair.</li>
+<li><strong>Function Information Table</strong> (MCO_FuncTable) - This is a table of
 function information, such as function name, function entry address,
 and function binary size.  Besides, the table should be ordered by
 function name.</li>

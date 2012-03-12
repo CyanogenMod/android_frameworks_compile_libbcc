@@ -27,19 +27,15 @@ libbcc_executionengine_SRC_FILES := \
   FileHandle.cpp \
   GDBJIT.cpp \
   GDBJITRegistrar.cpp \
+  MCCacheWriter.cpp \
+  MCCacheReader.cpp \
   Runtime.c \
   RuntimeStub.c \
   Script.cpp \
-  ScriptCompiled.cpp \
-  SourceInfo.cpp
-
-ifeq ($(libbcc_USE_CACHE),1)
-libbcc_executionengine_SRC_FILES += \
-  MCCacheWriter.cpp \
-  MCCacheReader.cpp \
   ScriptCached.cpp \
-  Sha1Helper.cpp
-endif
+  ScriptCompiled.cpp \
+  Sha1Helper.cpp \
+  SourceInfo.cpp
 
 
 #=====================================================================

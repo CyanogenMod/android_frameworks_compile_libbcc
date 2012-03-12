@@ -20,8 +20,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include "bcc_cache.h"
-
 /* BCC Cache File Magic Word */
 #define MCO_MAGIC "\0bcc"
 
@@ -79,6 +77,78 @@ struct MCO_Header {
   /* export foreach list section */
   off_t export_foreach_name_list_offset;
   size_t export_foreach_name_list_size;
+};
+
+struct MCO_String {
+  size_t length; /* String length, without ending '\0' */
+  off_t offset; /* Note: Offset related to string_pool_offset. */
+};
+
+struct MCO_StringPool {
+  size_t count;
+  struct MCO_String list[];
+};
+
+enum MCO_ResourceType {
+  BCC_APK_RESOURCE = 0,
+  BCC_FILE_RESOURCE = 1,
+};
+
+struct MCO_Dependency {
+  size_t res_name_strp_index;
+  uint32_t res_type; /* BCC_APK_RESOURCE or BCC_FILE_RESOURCE */
+  unsigned char sha1[20];
+};
+
+struct MCO_DependencyTable {
+  size_t count;
+  struct MCO_Dependency table[];
+};
+
+struct MCO_ExportVarList {
+  size_t count;
+  void *cached_addr_list[];
+};
+
+struct MCO_ExportFuncList {
+  size_t count;
+  void *cached_addr_list[];
+};
+
+struct MCO_ExportForEachList {
+  size_t count;
+  void *cached_addr_list[];
+};
+
+struct MCO_Pragma {
+  size_t key_strp_index;
+  size_t value_strp_index;
+};
+
+struct MCO_PragmaList {
+  size_t count;
+  struct MCO_Pragma list[];
+};
+
+struct MCO_ObjectSlotList {
+  size_t count;
+  uint32_t object_slot_list[];
+};
+
+struct MCO_FuncInfo {
+  size_t name_strp_index;
+  void *cached_addr;
+  size_t size;
+};
+
+struct MCO_FuncTable {
+  size_t count;
+  struct MCO_FuncInfo table[];
+};
+
+struct MCO_String_Ptr {
+  size_t count;
+  size_t strp_indexs[];
 };
 
 

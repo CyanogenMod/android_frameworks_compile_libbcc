@@ -44,9 +44,7 @@ namespace bcc {
     enum StatusType {
       Unknown,
       Compiled,
-#if USE_CACHE
-      Cached,
-#endif
+      Cached
     };
   }
 
@@ -71,12 +69,9 @@ namespace bcc {
 
     union {
       ScriptCompiled *mCompiled;
-#if USE_CACHE
       ScriptCached *mCached;
-#endif
     };
 
-#if USE_CACHE
     std::string mCacheDir;
     std::string mCacheName;
 
@@ -87,7 +82,6 @@ namespace bcc {
     inline std::string getCacheInfoPath() const {
       return getCachedObjectPath().append(".info");
     }
-#endif
 
     bool mIsContextSlotNotAvail;
 
@@ -224,14 +218,13 @@ namespace bcc {
     }
 
   private:
-#if USE_CACHE
     //
     // It returns 0 if there's a cache hit.
     //
     // Side effect: it will set mCacheDir, mCacheName.
     int internalLoadCache(char const *cacheDir, char const *cacheName,
                           bool checkOnly);
-#endif
+
     int internalCompile(const CompilerOption&);
   };
 

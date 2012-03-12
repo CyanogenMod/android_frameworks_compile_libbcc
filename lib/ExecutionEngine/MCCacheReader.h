@@ -40,13 +40,13 @@ namespace bcc {
     off_t mInfoFileSize;
 
     MCO_Header *mpHeader;
-    OBCC_DependencyTable *mpCachedDependTable;
-    OBCC_PragmaList *mpPragmaList;
-    OBCC_FuncTable *mpFuncTable;
+    MCO_DependencyTable *mpCachedDependTable;
+    MCO_PragmaList *mpPragmaList;
+    MCO_FuncTable *mpFuncTable;
 
-    OBCC_String_Ptr *mpVarNameList;
-    OBCC_String_Ptr *mpFuncNameList;
-    OBCC_String_Ptr *mpForEachNameList;
+    MCO_String_Ptr *mpVarNameList;
+    MCO_String_Ptr *mpFuncNameList;
+    MCO_String_Ptr *mpForEachNameList;
 
     llvm::OwningPtr<ScriptCached> mpResult;
 
@@ -68,7 +68,7 @@ namespace bcc {
 
     ~MCCacheReader();
 
-    void addDependency(OBCC_ResourceType resType,
+    void addDependency(MCO_ResourceType resType,
                        std::string const &resName,
                        unsigned char const *sha1) {
       mDependencies.insert(std::make_pair(resName,

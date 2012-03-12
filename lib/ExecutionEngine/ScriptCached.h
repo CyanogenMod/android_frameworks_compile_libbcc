@@ -20,7 +20,6 @@
 #include "Config.h"
 
 #include <bcc/bcc.h>
-#include <bcc/bcc_cache.h>
 #include <bcc/bcc_mccache.h>
 #include "bcc_internal.h"
 
@@ -57,18 +56,18 @@ namespace bcc {
   private:
     Script *mpOwner;
 
-    OBCC_ExportVarList *mpExportVars;
-    OBCC_ExportFuncList *mpExportFuncs;
-    OBCC_ExportForEachList *mpExportForEach;
+    MCO_ExportVarList *mpExportVars;
+    MCO_ExportFuncList *mpExportFuncs;
+    MCO_ExportForEachList *mpExportForEach;
     PragmaList mPragmas;
-    OBCC_ObjectSlotList *mpObjectSlotList;
+    MCO_ObjectSlotList *mpObjectSlotList;
 
     FuncTable mFunctions;
 
     RSExecRef mRSExecutable;
     llvm::SmallVector<char, 1024> mCachedELFExecutable;
 
-    OBCC_StringPool *mpStringPoolRaw;
+    MCO_StringPool *mpStringPoolRaw;
     std::vector<char const *> mStringPool;
 
     bool mLibRSThreadable;

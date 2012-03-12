@@ -16,17 +16,14 @@
 
 #include "SourceInfo.h"
 
-#if USE_CACHE
 #include "MCCacheWriter.h"
 #include "MCCacheReader.h"
-#endif
 
 #include "DebugHelper.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
 
 #include <bcc/bcc.h>
-#include <bcc/bcc_cache.h>
 
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Module.h>
@@ -58,7 +55,6 @@ SourceInfo *SourceInfo::createFromBuffer(char const *resName,
   result->buffer.bitcodeSize = bitcodeSize;
   result->flags = flags;
 
-#if USE_CACHE
   if (!resName && !(flags & BCC_SKIP_DEP_SHA1)) {
     result->flags |= BCC_SKIP_DEP_SHA1;
 
@@ -72,7 +68,6 @@ SourceInfo *SourceInfo::createFromBuffer(char const *resName,
   } else {
     calcSHA1(result->sha1, bitcode, bitcodeSize);
   }
-#endif
 
   return result;
 }
@@ -90,13 +85,11 @@ SourceInfo *SourceInfo::createFromFile(char const *path,
   result->file.path = path;
   result->flags = flags;
 
-#if USE_CACHE
   memset(result->sha1, '\0', 20);
 
   if (!(result->flags & BCC_SKIP_DEP_SHA1)) {
     calcFileSHA1(result->sha1, path);
   }
-#endif
 
   return result;
 }
@@ -114,7 +107,6 @@ SourceInfo *SourceInfo::createFromModule(llvm::Module *module,
   result->module = module;
   result->flags = flags;
 
-#if USE_CACHE
   if (! (flags & BCC_SKIP_DEP_SHA1)) {
     result->flags |= BCC_SKIP_DEP_SHA1;
 
@@ -124,7 +116,6 @@ SourceInfo *SourceInfo::createFromModule(llvm::Module *module,
   }
 
   memset(result->sha1, '\0', 20);
-#endif
 
   return result;
 }
@@ -190,7 +181,6 @@ SourceInfo::~SourceInfo() {
   }
 }
 
-#if USE_CACHE
 template <typename T> void SourceInfo::introDependency(T &checker) {
   if (flags & BCC_SKIP_DEP_SHA1) {
     return;
@@ -212,7 +202,6 @@ template <typename T> void SourceInfo::introDependency(T &checker) {
 
 template void SourceInfo::introDependency<MCCacheWriter>(MCCacheWriter &);
 template void SourceInfo::introDependency<MCCacheReader>(MCCacheReader &);
-#endif // USE_CACHE
 
 
 } // namespace bcc

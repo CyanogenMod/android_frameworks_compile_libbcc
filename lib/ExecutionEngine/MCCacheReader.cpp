@@ -146,15 +146,15 @@ bool MCCacheReader::readHeader() {
 
 
 bool MCCacheReader::checkHeader() {
-  if (memcmp(mpHeader->magic, OBCC_MAGIC, 4) != 0) {
+  if (memcmp(mpHeader->magic, MCO_MAGIC, 4) != 0) {
     ALOGE("Bad magic word\n");
     return false;
   }
 
-  if (memcmp(mpHeader->version, OBCC_VERSION, 4) != 0) {
+  if (memcmp(mpHeader->version, MCO_VERSION, 4) != 0) {
     mpHeader->version[4 - 1] = '\0'; // ensure c-style string terminated
     ALOGI("Cache file format version mismatch: now %s cached %s\n",
-         OBCC_VERSION, mpHeader->version);
+         MCO_VERSION, mpHeader->version);
     return false;
   }
   return true;
@@ -240,7 +240,7 @@ bool MCCacheReader::checkSectionOffsetAndSize() {
 
 
 bool MCCacheReader::readStringPool() {
-  CACHE_READER_READ_SECTION(OBCC_StringPool,
+  CACHE_READER_READ_SECTION(MCO_StringPool,
                             mpResult->mpStringPoolRaw, str_pool);
 
   char *str_base = reinterpret_cast<char *>(str_pool_raw);
@@ -256,7 +256,7 @@ bool MCCacheReader::readStringPool() {
 
 
 bool MCCacheReader::checkStringPool() {
-  OBCC_StringPool *poolR = mpResult->mpStringPoolRaw;
+  MCO_StringPool *poolR = mpResult->mpStringPoolRaw;
   vector<char const *> &pool = mpResult->mStringPool;
 
   // Ensure that every c-style string is ended with '\0'
@@ -272,7 +272,7 @@ bool MCCacheReader::checkStringPool() {
 
 
 bool MCCacheReader::readDependencyTable() {
-  CACHE_READER_READ_SECTION(OBCC_DependencyTable, mpCachedDependTable,
+  CACHE_READER_READ_SECTION(MCO_DependencyTable, mpCachedDependTable,
                             depend_tab);
   return true;
 }
@@ -295,7 +295,7 @@ bool MCCacheReader::checkDependency() {
     uint32_t depType = dep->second.first;
     unsigned char const *depSHA1 = dep->second.second;
 
-    OBCC_Dependency *depCached =&mpCachedDependTable->table[i];
+    MCO_Dependency *depCached =&mpCachedDependTable->table[i];
     char const *depCachedName = strPool[depCached->res_name_strp_index];
     uint32_t depCachedType = depCached->res_type;
     unsigned char const *depCachedSHA1 = depCached->sha1;
@@ -335,10 +335,10 @@ bool MCCacheReader::checkDependency() {
 }
 
 bool MCCacheReader::readVarNameList() {
-  CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpVarNameList, export_var_name_list);
+  CACHE_READER_READ_SECTION(MCO_String_Ptr, mpVarNameList, export_var_name_list);
   vector<char const *> const &strPool = mpResult->mStringPool;
 
-  mpResult->mpExportVars = (OBCC_ExportVarList*)
+  mpResult->mpExportVars = (MCO_ExportVarList*)
                             malloc(sizeof(size_t) +
                                    sizeof(void*) * export_var_name_list_raw->count);
   if (!mpResult->mpExportVars) {
@@ -359,10 +359,10 @@ bool MCCacheReader::readVarNameList() {
 }
 
 bool MCCacheReader::readFuncNameList() {
-  CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpFuncNameList, export_func_name_list);
+  CACHE_READER_READ_SECTION(MCO_String_Ptr, mpFuncNameList, export_func_name_list);
   vector<char const *> const &strPool = mpResult->mStringPool;
 
-  mpResult->mpExportFuncs = (OBCC_ExportFuncList*)
+  mpResult->mpExportFuncs = (MCO_ExportFuncList*)
                             malloc(sizeof(size_t) +
                                    sizeof(void*) * export_func_name_list_raw->count);
   if (!mpResult->mpExportFuncs) {
@@ -383,10 +383,10 @@ bool MCCacheReader::readFuncNameList() {
 }
 
 bool MCCacheReader::readForEachNameList() {
-  CACHE_READER_READ_SECTION(OBCC_String_Ptr, mpForEachNameList, export_foreach_name_list);
+  CACHE_READER_READ_SECTION(MCO_String_Ptr, mpForEachNameList, export_foreach_name_list);
   vector<char const *> const &strPool = mpResult->mStringPool;
 
-  mpResult->mpExportForEach = (OBCC_ExportForEachList*)
+  mpResult->mpExportForEach = (MCO_ExportForEachList*)
                               malloc(sizeof(size_t) +
                                      sizeof(void*) * export_foreach_name_list_raw->count);
   if (!mpResult->mpExportForEach) {
@@ -407,13 +407,13 @@ bool MCCacheReader::readForEachNameList() {
 }
 
 bool MCCacheReader::readPragmaList() {
-  CACHE_READER_READ_SECTION(OBCC_PragmaList, mpPragmaList, pragma_list);
+  CACHE_READER_READ_SECTION(MCO_PragmaList, mpPragmaList, pragma_list);
 
   vector<char const *> const &strPool = mpResult->mStringPool;
   ScriptCached::PragmaList &pragmas = mpResult->mPragmas;
 
   for (size_t i = 0; i < pragma_list_raw->count; ++i) {
-    OBCC_Pragma *pragma = &pragma_list_raw->list[i];
+    MCO_Pragma *pragma = &pragma_list_raw->list[i];
     pragmas.push_back(make_pair(strPool[pragma->key_strp_index],
                                 strPool[pragma->value_strp_index]));
   }
@@ -423,7 +423,7 @@ bool MCCacheReader::readPragmaList() {
 
 
 bool MCCacheReader::readObjectSlotList() {
-  CACHE_READER_READ_SECTION(OBCC_ObjectSlotList,
+  CACHE_READER_READ_SECTION(MCO_ObjectSlotList,
                             mpResult->mpObjectSlotList, object_slot_list);
   return true;
 }

@@ -61,9 +61,7 @@ namespace bcc {
 
     unsigned long flags;
 
-#if USE_CACHE
     unsigned char sha1[20];
-#endif
 
   private:
     SourceInfo() : module(NULL), shared_context(false) { }
@@ -91,9 +89,7 @@ namespace bcc {
     // Share with the given context if it's provided.
     int prepareModule(llvm::LLVMContext *context = NULL);
 
-#if USE_CACHE
     template <typename T> void introDependency(T &checker);
-#endif
 
     ~SourceInfo();
   };

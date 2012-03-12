@@ -138,31 +138,31 @@ variable list, exported function list, pragma list, function information
 table, and bcc context.  Every section should be aligned to a word size.
 Here is the brief description of each sections:
 
-* **Header** (OBCC_Header) - The header of a cache file. It contains the
+* **Header** (MCO_Header) - The header of a cache file. It contains the
   magic word, version, machine integer type information (the endianness,
   the size of off_t, size_t, and ptr_t), and the size
   and offset of other sections.  The header section is guaranteed
   to be at the beginning of the cache file.
 
-* **String Pool** (OBCC_StringPool) - A collection of serialized variable
+* **String Pool** (MCO_StringPool) - A collection of serialized variable
   length strings.  The strp_index in the other part of the cache file
   represents the index of such string in this string pool.
 
-* **Dependencies Table** (OBCC_DependencyTable) - The dependencies table.
+* **Dependencies Table** (MCO_DependencyTable) - The dependencies table.
   This table stores the resource name (or file path), the resource
   type (rather in APK or on the file system), and the SHA1 checksum.
 
-* **Relocation Table** (OBCC_RelocationTable) - *not enabled*
+* **Relocation Table** (MCO_RelocationTable) - *not enabled*
 
-* **Exported Variable List** (OBCC_ExportVarList) -
+* **Exported Variable List** (MCO_ExportVarList) -
   The list of the addresses of exported variables.
 
-* **Exported Function List** (OBCC_ExportFuncList) -
+* **Exported Function List** (MCO_ExportFuncList) -
   The list of the addresses of exported functions.
 
-* **Pragma List** (OBCC_PragmaList) - The list of pragma key-value pair.
+* **Pragma List** (MCO_PragmaList) - The list of pragma key-value pair.
 
-* **Function Information Table** (OBCC_FuncTable) - This is a table of
+* **Function Information Table** (MCO_FuncTable) - This is a table of
   function information, such as function name, function entry address,
   and function binary size.  Besides, the table should be ordered by
   function name.

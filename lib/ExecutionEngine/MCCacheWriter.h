@@ -41,14 +41,14 @@ namespace bcc {
              std::pair<uint32_t, unsigned char const *> > mDependencies;
 
     MCO_Header *mpHeaderSection;
-    OBCC_StringPool *mpStringPoolSection;
-    OBCC_DependencyTable *mpDependencyTableSection;
-    OBCC_PragmaList *mpPragmaListSection;
-    OBCC_ObjectSlotList *mpObjectSlotSection;
+    MCO_StringPool *mpStringPoolSection;
+    MCO_DependencyTable *mpDependencyTableSection;
+    MCO_PragmaList *mpPragmaListSection;
+    MCO_ObjectSlotList *mpObjectSlotSection;
 
-    OBCC_String_Ptr *mpExportVarNameListSection;
-    OBCC_String_Ptr *mpExportFuncNameListSection;
-    OBCC_String_Ptr *mpExportForEachNameListSection;
+    MCO_String_Ptr *mpExportVarNameListSection;
+    MCO_String_Ptr *mpExportFuncNameListSection;
+    MCO_String_Ptr *mpExportForEachNameListSection;
 
     std::vector<std::string> varNameList;
     std::vector<std::string> funcNameList;
@@ -66,7 +66,7 @@ namespace bcc {
     bool writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
                         Script *S, uint32_t libRS_threadable);
 
-    void addDependency(OBCC_ResourceType resType,
+    void addDependency(MCO_ResourceType resType,
                        std::string const &resName,
                        unsigned char const *sha1) {
       mDependencies.insert(std::make_pair(resName,

@@ -87,8 +87,8 @@ bool MCCacheWriter::prepareHeader(uint32_t libRS_threadable) {
   memset(header, '\0', sizeof(MCO_Header));
 
   // Magic word and version
-  memcpy(header->magic, OBCC_MAGIC, 4);
-  memcpy(header->version, OBCC_VERSION, 4);
+  memcpy(header->magic, MCO_MAGIC, 4);
+  memcpy(header->version, MCO_VERSION, 4);
 
   // Machine Integer Type
   uint32_t number = 0x00000001;
@@ -106,10 +106,10 @@ bool MCCacheWriter::prepareHeader(uint32_t libRS_threadable) {
 
 
 bool MCCacheWriter::prepareDependencyTable() {
-  size_t tableSize = sizeof(OBCC_DependencyTable) +
-                     sizeof(OBCC_Dependency) * mDependencies.size();
+  size_t tableSize = sizeof(MCO_DependencyTable) +
+                     sizeof(MCO_Dependency) * mDependencies.size();
 
-  OBCC_DependencyTable *tab = (OBCC_DependencyTable *)malloc(tableSize);
+  MCO_DependencyTable *tab = (MCO_DependencyTable *)malloc(tableSize);
 
   if (!tab) {
     ALOGE("Unable to allocate for dependency table section.\n");
@@ -124,7 +124,7 @@ bool MCCacheWriter::prepareDependencyTable() {
   size_t i = 0;
   for (map<string, pair<uint32_t, unsigned char const *> >::iterator
        I = mDependencies.begin(), E = mDependencies.end(); I != E; ++I, ++i) {
-    OBCC_Dependency *dep = &tab->table[i];
+    MCO_Dependency *dep = &tab->table[i];
 
     dep->res_name_strp_index = addString(I->first.c_str(), I->first.size());
     dep->res_type = I->second.first;
@@ -137,10 +137,10 @@ bool MCCacheWriter::prepareDependencyTable() {
 bool MCCacheWriter::preparePragmaList() {
   size_t pragmaCount = mpOwner->getPragmaCount();
 
-  size_t listSize = sizeof(OBCC_PragmaList) +
-                    sizeof(OBCC_Pragma) * pragmaCount;
+  size_t listSize = sizeof(MCO_PragmaList) +
+                    sizeof(MCO_Pragma) * pragmaCount;
 
-  OBCC_PragmaList *list = (OBCC_PragmaList *)malloc(listSize);
+  MCO_PragmaList *list = (MCO_PragmaList *)malloc(listSize);
 
   if (!list) {
     ALOGE("Unable to allocate for pragma list\n");
@@ -163,7 +163,7 @@ bool MCCacheWriter::preparePragmaList() {
     size_t keyLen = strlen(key);
     size_t valueLen = strlen(value);
 
-    OBCC_Pragma *pragma = &list->list[i];
+    MCO_Pragma *pragma = &list->list[i];
     pragma->key_strp_index = addString(key, keyLen);
     pragma->value_strp_index = addString(value, valueLen);
   }
@@ -173,8 +173,8 @@ bool MCCacheWriter::preparePragmaList() {
 
 bool MCCacheWriter::prepareStringPool() {
   // Calculate string pool size
-  size_t size = sizeof(OBCC_StringPool) +
-                sizeof(OBCC_String) * mStringPool.size();
+  size_t size = sizeof(MCO_StringPool) +
+                sizeof(MCO_String) * mStringPool.size();
 
   off_t strOffset = size;
 
@@ -183,7 +183,7 @@ bool MCCacheWriter::prepareStringPool() {
   }
 
   // Create string pool
-  OBCC_StringPool *pool = (OBCC_StringPool *)malloc(size);
+  MCO_StringPool *pool = (MCO_StringPool *)malloc(size);
 
   if (!pool) {
     ALOGE("Unable to allocate string pool.\n");
@@ -198,7 +198,7 @@ bool MCCacheWriter::prepareStringPool() {
   char *strPtr = reinterpret_cast<char *>(pool) + strOffset;
 
   for (size_t i = 0; i < mStringPool.size(); ++i) {
-    OBCC_String *str = &pool->list[i];
+    MCO_String *str = &pool->list[i];
 
     str->length = mStringPool[i].second;
     str->offset = strOffset;
@@ -216,9 +216,9 @@ bool MCCacheWriter::prepareStringPool() {
 
 bool MCCacheWriter::prepareExportVarNameList() {
   size_t varCount = mpOwner->getExportVarCount();
-  size_t listSize = sizeof(OBCC_String_Ptr) + sizeof(size_t) * varCount;
+  size_t listSize = sizeof(MCO_String_Ptr) + sizeof(size_t) * varCount;
 
-  OBCC_String_Ptr *list = (OBCC_String_Ptr*)malloc(listSize);
+  MCO_String_Ptr *list = (MCO_String_Ptr*)malloc(listSize);
 
   if (!list) {
     ALOGE("Unable to allocate for export variable name list\n");
@@ -240,9 +240,9 @@ bool MCCacheWriter::prepareExportVarNameList() {
 
 bool MCCacheWriter::prepareExportFuncNameList() {
   size_t funcCount = mpOwner->getExportFuncCount();
-  size_t listSize = sizeof(OBCC_String_Ptr) + sizeof(size_t) * funcCount;
+  size_t listSize = sizeof(MCO_String_Ptr) + sizeof(size_t) * funcCount;
 
-  OBCC_String_Ptr *list = (OBCC_String_Ptr*)malloc(listSize);
+  MCO_String_Ptr *list = (MCO_String_Ptr*)malloc(listSize);
 
   if (!list) {
     ALOGE("Unable to allocate for export function name list\n");
@@ -264,9 +264,9 @@ bool MCCacheWriter::prepareExportFuncNameList() {
 
 bool MCCacheWriter::prepareExportForEachNameList() {
   size_t forEachCount = mpOwner->getExportForEachCount();
-  size_t listSize = sizeof(OBCC_String_Ptr) + sizeof(size_t) * forEachCount;
+  size_t listSize = sizeof(MCO_String_Ptr) + sizeof(size_t) * forEachCount;
 
-  OBCC_String_Ptr *list = (OBCC_String_Ptr*)malloc(listSize);
+  MCO_String_Ptr *list = (MCO_String_Ptr*)malloc(listSize);
 
   if (!list) {
     ALOGE("Unable to allocate for export forEach name list\n");
@@ -289,10 +289,10 @@ bool MCCacheWriter::prepareExportForEachNameList() {
 bool MCCacheWriter::prepareObjectSlotList() {
   size_t objectSlotCount = mpOwner->getObjectSlotCount();
 
-  size_t listSize = sizeof(OBCC_ObjectSlotList) +
+  size_t listSize = sizeof(MCO_ObjectSlotList) +
                     sizeof(uint32_t) * objectSlotCount;
 
-  OBCC_ObjectSlotList *list = (OBCC_ObjectSlotList *)malloc(listSize);
+  MCO_ObjectSlotList *list = (MCO_ObjectSlotList *)malloc(listSize);
 
   if (!list) {
     ALOGE("Unable to allocate for object slot list\n");

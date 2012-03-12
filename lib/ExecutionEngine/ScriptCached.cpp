@@ -18,8 +18,6 @@
 
 #include "ScriptCached.h"
 
-#include <bcc/bcc_cache.h>
-
 #include "DebugHelper.h"
 
 #include <stdlib.h>
