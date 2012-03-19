@@ -6,7 +6,7 @@
 * Allocation sampling
 */
 static const void * __attribute__((overloadable))
-        getElementAt1D(rs_allocation a, uint32_t x, uint32_t lod) {
+        getElementAt(rs_allocation a, uint32_t x, uint32_t lod) {
     Allocation_t *alloc = (Allocation_t *)a.p;
     const Type_t *type = (const Type_t*)alloc->mHal.state.type;
     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
@@ -31,18 +31,18 @@ static const void * __attribute__((overloadable))
 }
 
 static const void * __attribute__((overloadable))
-        getElementAt(rs_allocation a, int2 uv, uint32_t lod) {
+        getElementAt(rs_allocation a, uint2 uv, uint32_t lod) {
     return getElementAt(a, uv.x, uv.y, lod);
 }
 
-static int32_t wrapI(rs_sampler_value wrap, int32_t coord, int32_t size) {
+static uint32_t wrapI(rs_sampler_value wrap, int32_t coord, int32_t size) {
     if (wrap == RS_SAMPLER_WRAP) {
         coord = coord % size;
         if (coord < 0) {
             coord += size;
         }
     }
-    return max(0, min(coord, size - 1));
+    return (uint32_t)max(0, min(coord, size - 1));
 }
 
 // 565 Conversion bits taken from SkBitmap
@@ -89,9 +89,9 @@ static float3 getFrom565(uint16_t color) {
 #define SAMPLE_1D_FUNC(vecsize, intype, outtype, convert)                                       \
         static outtype __attribute__((overloadable))                                            \
                 getSample##vecsize(rs_allocation a, float2 weights,                             \
-                                   int iPixel, int next, uint32_t lod) {                        \
-            intype *p0c = (intype*)getElementAt1D(a, iPixel, lod);                              \
-            intype *p1c = (intype*)getElementAt1D(a, next, lod);                                \
+                                   uint32_t iPixel, uint32_t next, uint32_t lod) {              \
+            intype *p0c = (intype*)getElementAt(a, iPixel, lod);                                \
+            intype *p1c = (intype*)getElementAt(a, next, lod);                                  \
             outtype p0 = convert(*p0c);                                                         \
             outtype p1 = convert(*p1c);                                                         \
             return p0 * weights.x + p1 * weights.y;                                             \
@@ -99,7 +99,7 @@ static float3 getFrom565(uint16_t color) {
 #define SAMPLE_2D_FUNC(vecsize, intype, outtype, convert)                                       \
         static outtype __attribute__((overloadable))                                            \
                     getSample##vecsize(rs_allocation a, float4 weights,                         \
-                                       int2 iPixel, int2 next, uint32_t lod) {                  \
+                                       uint2 iPixel, uint2 next, uint32_t lod) {                \
             intype *p0c = (intype*)getElementAt(a, iPixel.x, iPixel.y, lod);                    \
             intype *p1c = (intype*)getElementAt(a, next.x, iPixel.y, lod);                      \
             intype *p2c = (intype*)getElementAt(a, iPixel.x, next.y, lod);                      \
@@ -150,15 +150,18 @@ SAMPLE_2D_FUNC(565, uint16_t, float3, getFrom565)
     }                                                                                           \
                                                                                                 \
     if (sampleMin == RS_SAMPLER_LINEAR_MIP_NEAREST) {                                           \
-        lod = clamp(lod, 0.0f, (float)(type->mHal.state.lodCount - 1));                         \
+        uint32_t maxLOD = type->mHal.state.lodCount - 1;                                        \
+        lod = min(lod, (float)maxLOD);                                                          \
         uint32_t nearestLOD = (uint32_t)round(lod);                                             \
         return sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, nearestLOD);                 \
     }                                                                                           \
                                                                                                 \
     if (sampleMin == RS_SAMPLER_LINEAR_MIP_LINEAR) {                                            \
-        lod = clamp(lod, 0.0f, (float)(type->mHal.state.lodCount - 1));                         \
         uint32_t lod0 = (uint32_t)floor(lod);                                                   \
         uint32_t lod1 = (uint32_t)ceil(lod);                                                    \
+        uint32_t maxLOD = type->mHal.state.lodCount - 1;                                        \
+        lod0 = min(lod0, maxLOD);                                                               \
+        lod1 = min(lod1, maxLOD);                                                               \
         float4 sample0 = sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, lod0);             \
         float4 sample1 = sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, lod1);             \
         float frac = lod - (float)lod0;                                                         \
@@ -224,26 +227,26 @@ SAMPLE_2D_FUNC(565, uint16_t, float3, getFrom565)
 
 static float4 __attribute__((overloadable))
         getBilinearSample(rs_allocation a, float2 weights,
-                          int32_t iPixel, int32_t next,
+                          uint32_t iPixel, uint32_t next,
                           uint32_t vecSize, rs_data_type dt, uint32_t lod) {
     BILINEAR_SAMPLE_BODY()
 }
 
 static float4 __attribute__((overloadable))
         getBilinearSample(rs_allocation a, float4 weights,
-                          int2 iPixel, int2 next,
+                          uint2 iPixel, uint2 next,
                           uint32_t vecSize, rs_data_type dt, uint32_t lod) {
     BILINEAR_SAMPLE_BODY()
 }
 
 static float4  __attribute__((overloadable))
-        getNearestSample(rs_allocation a, int32_t iPixel, uint32_t vecSize,
+        getNearestSample(rs_allocation a, uint32_t iPixel, uint32_t vecSize,
                          rs_data_type dt, uint32_t lod) {
     NEAREST_SAMPLE_BODY()
 }
 
 static float4  __attribute__((overloadable))
-        getNearestSample(rs_allocation a, int2 iPixel, uint32_t vecSize,
+        getNearestSample(rs_allocation a, uint2 iPixel, uint32_t vecSize,
                          rs_data_type dt, uint32_t lod) {
     NEAREST_SAMPLE_BODY()
 }
@@ -272,10 +275,10 @@ static float4 __attribute__((overloadable))
     weights.x = oneMinusFrac;
     weights.y = frac;
 
-    int32_t next = wrapI(wrapS, iPixel + 1, sourceW);
-    iPixel = wrapI(wrapS, iPixel, sourceW);
+    uint32_t next = wrapI(wrapS, iPixel + 1, sourceW);
+    uint32_t location = wrapI(wrapS, iPixel, sourceW);
 
-    return getBilinearSample(a, weights, iPixel, next, vecSize, dt, lod);
+    return getBilinearSample(a, weights, location, next, vecSize, dt, lod);
 }
 
 static float4 __attribute__((overloadable))
@@ -286,9 +289,9 @@ static float4 __attribute__((overloadable))
     rs_sampler_value wrapS = rsgSamplerGetWrapS(s);
     int32_t sourceW = type->mHal.state.lodDimX[lod];
     int32_t iPixel = (int32_t)(uv * (float)(sourceW));
-    iPixel = wrapI(wrapS, iPixel, sourceW);
+    uint32_t location = wrapI(wrapS, iPixel, sourceW);
 
-    return getNearestSample(a, iPixel, vecSize, dt, lod);
+    return getNearestSample(a, location, vecSize, dt, lod);
 }
 
 static float4 __attribute__((overloadable))
@@ -330,13 +333,14 @@ static float4 __attribute__((overloadable))
     weights.z = oneMinusFrac.x * frac.y;
     weights.w = frac.x * frac.y;
 
-    int2 next;
+    uint2 next;
     next.x = wrapI(wrapS, iPixel.x + 1, sourceW);
     next.y = wrapI(wrapT, iPixel.y + 1, sourceH);
-    iPixel.x = wrapI(wrapS, iPixel.x, sourceW);
-    iPixel.y = wrapI(wrapT, iPixel.y, sourceH);
+    uint2 location;
+    location.x = wrapI(wrapS, iPixel.x, sourceW);
+    location.y = wrapI(wrapT, iPixel.y, sourceH);
 
-    return getBilinearSample(a, weights, iPixel, next, vecSize, dt, lod);
+    return getBilinearSample(a, weights, location, next, vecSize, dt, lod);
 }
 
 static float4 __attribute__((overloadable))
@@ -355,9 +359,10 @@ static float4 __attribute__((overloadable))
     dimF.y = (float)(sourceH);
     int2 iPixel = convert_int2(uv * dimF);
 
-    iPixel.x = wrapI(wrapS, iPixel.x, sourceW);
-    iPixel.y = wrapI(wrapT, iPixel.y, sourceH);
-    return getNearestSample(a, iPixel, vecSize, dt, lod);
+    uint2 location;
+    location.x = wrapI(wrapS, iPixel.x, sourceW);
+    location.y = wrapI(wrapT, iPixel.y, sourceH);
+    return getNearestSample(a, location, vecSize, dt, lod);
 }
 
 extern const float4 __attribute__((overloadable))
@@ -378,17 +383,4 @@ extern const float4 __attribute__((overloadable))
 extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float2 uv, float lod) {
     SAMPLE_FUNC_BODY()
-}
-
-// TODO: implement cubemap lookups
-extern const float4 __attribute__((overloadable))
-        rsSample(rs_allocation a, rs_sampler s, float3 location) {
-    return rsSample(a, s, location, 0.0f);
-}
-
-// TODO: implement cubemap lookups
-extern const float4 __attribute__((overloadable))
-        rsSample(rs_allocation a, rs_sampler s, float3 location, float lod) {
-    float4 result;
-    return result;
 }
