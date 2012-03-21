@@ -17,7 +17,6 @@
 #ifndef LLVM_WRAP_BCHEADER_FIELD_H__
 #define LLVM_WRAP_BCHEADER_FIELD_H__
 
-#include <limits>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -51,8 +50,9 @@ class BCHeaderField {
     size_t pad_len = (4 - (fields_len & 3)) & 3;
     // Ensure buffer is large enough and that length can be represented
     // in 16 bits
+    const size_t max_uint16_t = 65535;
     if (buf_len < fields_len + pad_len ||
-        len_ > std::numeric_limits<FixedSubfield>::max()) return false;
+        len_ > max_uint16_t) return false;
 
     WriteFixedSubfield(static_cast<FixedSubfield>(ID_), buf);
     WriteFixedSubfield(static_cast<FixedSubfield>(len_),
