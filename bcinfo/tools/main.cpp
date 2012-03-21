@@ -120,8 +120,6 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
   }
   printf("\n");
 
-  printf("optimizationLevel: %u\n", ME->getOptimizationLevel());
-
   return;
 }
 
@@ -184,11 +182,6 @@ int main(int argc, char** argv) {
   unsigned int version = 0;
 
   bcinfo::BitcodeWrapper bcWrapper((const char *)bitcode, bitcodeSize);
-  if (!bcWrapper.unwrap()) {
-    fprintf(stderr, "failed to unwrap bitcode wrapper\n");
-    return 2;
-  }
-
   if (bcWrapper.getBCFileType() == bcinfo::BC_WRAPPER) {
     version = bcWrapper.getTargetAPI();
     printf("Found bitcodeWrapper\n");
@@ -196,7 +189,9 @@ int main(int argc, char** argv) {
     version = 12;
   }
 
-  printf("bitcodeVersion: %u\n", version);
+  printf("targetAPI: %u\n", version);
+  printf("compilerVersion: %u\n", bcWrapper.getCompilerVersion());
+  printf("optimizationLevel: %u\n\n", bcWrapper.getOptimizationLevel());
 
   bcinfo::BitcodeTranslator *BT =
       new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version);
