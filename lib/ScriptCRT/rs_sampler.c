@@ -1,12 +1,12 @@
 #include "rs_core.rsh"
 #include "rs_graphics.rsh"
-#include "rs_core.h"
+#include "rs_structs.h"
 
 /**
 * Sampler
 */
 extern rs_sampler_value __attribute__((overloadable))
-        rsgSamplerGetMinification(rs_sampler s) {
+        rsSamplerGetMinification(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
     if (prog == NULL) {
         return RS_SAMPLER_INVALID;
@@ -15,7 +15,7 @@ extern rs_sampler_value __attribute__((overloadable))
 }
 
 extern rs_sampler_value __attribute__((overloadable))
-        rsgSamplerGetMagnification(rs_sampler s) {
+        rsSamplerGetMagnification(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
     if (prog == NULL) {
         return RS_SAMPLER_INVALID;
@@ -24,7 +24,7 @@ extern rs_sampler_value __attribute__((overloadable))
 }
 
 extern rs_sampler_value __attribute__((overloadable))
-        rsgSamplerGetWrapS(rs_sampler s) {
+        rsSamplerGetWrapS(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
     if (prog == NULL) {
         return RS_SAMPLER_INVALID;
@@ -33,7 +33,7 @@ extern rs_sampler_value __attribute__((overloadable))
 }
 
 extern rs_sampler_value __attribute__((overloadable))
-        rsgSamplerGetWrapT(rs_sampler s) {
+        rsSamplerGetWrapT(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
     if (prog == NULL) {
         return RS_SAMPLER_INVALID;
@@ -42,7 +42,7 @@ extern rs_sampler_value __attribute__((overloadable))
 }
 
 extern float __attribute__((overloadable))
-        rsgSamplerGetAnisotropy(rs_sampler s) {
+        rsSamplerGetAnisotropy(rs_sampler s) {
     Sampler_t *prog = (Sampler_t *)s.p;
     if (prog == NULL) {
         return 0.0f;

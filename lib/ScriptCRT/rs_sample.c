@@ -1,6 +1,6 @@
 #include "rs_core.rsh"
 #include "rs_graphics.rsh"
-#include "rs_core.h"
+#include "rs_structs.h"
 
 /**
 * Allocation sampling
@@ -139,8 +139,8 @@ SAMPLE_2D_FUNC(565, uint16_t, float3, getFrom565)
     Allocation_t *alloc = (Allocation_t *)a.p;                                                  \
     const Type_t *type = (const Type_t*)alloc->mHal.state.type;                                 \
                                                                                                 \
-    rs_sampler_value sampleMin = rsgSamplerGetMinification(s);                                  \
-    rs_sampler_value sampleMag = rsgSamplerGetMagnification(s);                                 \
+    rs_sampler_value sampleMin = rsSamplerGetMinification(s);                                  \
+    rs_sampler_value sampleMag = rsSamplerGetMagnification(s);                                 \
                                                                                                 \
     if (lod <= 0.0f) {                                                                          \
         if (sampleMag == RS_SAMPLER_NEAREST) {                                                  \
@@ -256,7 +256,7 @@ static float4 __attribute__((overloadable))
                                uint32_t vecSize, rs_data_type dt,
                                rs_sampler s,
                                float uv, uint32_t lod) {
-    rs_sampler_value wrapS = rsgSamplerGetWrapS(s);
+    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
     int32_t sourceW = type->mHal.state.lodDimX[lod];
     float pixelUV = uv * (float)(sourceW);
     int32_t iPixel = (int32_t)(pixelUV);
@@ -286,7 +286,7 @@ static float4 __attribute__((overloadable))
                                 uint32_t vecSize, rs_data_type dt,
                                 rs_sampler s,
                                 float uv, uint32_t lod) {
-    rs_sampler_value wrapS = rsgSamplerGetWrapS(s);
+    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
     int32_t sourceW = type->mHal.state.lodDimX[lod];
     int32_t iPixel = (int32_t)(uv * (float)(sourceW));
     uint32_t location = wrapI(wrapS, iPixel, sourceW);
@@ -299,8 +299,8 @@ static float4 __attribute__((overloadable))
                                uint32_t vecSize, rs_data_type dt,
                                rs_sampler s,
                                float2 uv, uint32_t lod) {
-    rs_sampler_value wrapS = rsgSamplerGetWrapS(s);
-    rs_sampler_value wrapT = rsgSamplerGetWrapT(s);
+    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
+    rs_sampler_value wrapT = rsSamplerGetWrapT(s);
 
     int32_t sourceW = type->mHal.state.lodDimX[lod];
     int32_t sourceH = type->mHal.state.lodDimY[lod];
@@ -348,8 +348,8 @@ static float4 __attribute__((overloadable))
                                 uint32_t vecSize, rs_data_type dt,
                                 rs_sampler s,
                                 float2 uv, uint32_t lod) {
-    rs_sampler_value wrapS = rsgSamplerGetWrapS(s);
-    rs_sampler_value wrapT = rsgSamplerGetWrapT(s);
+    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
+    rs_sampler_value wrapT = rsSamplerGetWrapT(s);
 
     int32_t sourceW = type->mHal.state.lodDimX[lod];
     int32_t sourceH = type->mHal.state.lodDimY[lod];

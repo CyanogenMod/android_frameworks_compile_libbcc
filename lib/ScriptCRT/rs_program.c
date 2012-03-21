@@ -1,12 +1,12 @@
 #include "rs_core.rsh"
 #include "rs_graphics.rsh"
-#include "rs_core.h"
+#include "rs_structs.h"
 
 /**
 * Program Store
 */
 extern rs_depth_func __attribute__((overloadable))
-        rsgProgramStoreGetDepthFunc(rs_program_store ps) {
+        rsProgramStoreGetDepthFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return RS_DEPTH_FUNC_INVALID;
@@ -15,7 +15,7 @@ extern rs_depth_func __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetDepthMask(rs_program_store ps) {
+        rsProgramStoreGetDepthMask(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -24,7 +24,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskR(rs_program_store ps) {
+        rsProgramStoreGetColorMaskR(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -33,7 +33,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskG(rs_program_store ps) {
+        rsProgramStoreGetColorMaskG(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -42,7 +42,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskB(rs_program_store ps) {
+        rsProgramStoreGetColorMaskB(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -51,7 +51,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskA(rs_program_store ps) {
+        rsProgramStoreGetColorMaskA(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -60,7 +60,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern rs_blend_src_func __attribute__((overloadable))
-        rsgProgramStoreGetBlendSrcFunc(rs_program_store ps) {
+        rsProgramStoreGetBlendSrcFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return RS_BLEND_SRC_INVALID;
@@ -69,7 +69,7 @@ extern rs_blend_src_func __attribute__((overloadable))
 }
 
 extern rs_blend_dst_func __attribute__((overloadable))
-        rsgProgramStoreGetBlendDstFunc(rs_program_store ps) {
+        rsProgramStoreGetBlendDstFunc(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return RS_BLEND_DST_INVALID;
@@ -78,7 +78,7 @@ extern rs_blend_dst_func __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetDitherEnabled(rs_program_store ps) {
+        rsProgramStoreGetDitherEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -90,7 +90,7 @@ extern bool __attribute__((overloadable))
 * Program Raster
 */
 extern bool __attribute__((overloadable))
-        rsgProgramRasterGetPointSpriteEnabled(rs_program_raster pr) {
+        rsProgramRasterGetPointSpriteEnabled(rs_program_raster pr) {
     ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
     if (prog == NULL) {
         return false;
@@ -99,7 +99,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern rs_cull_mode __attribute__((overloadable))
-        rsgProgramRasterGetCullMode(rs_program_raster pr) {
+        rsProgramRasterGetCullMode(rs_program_raster pr) {
     ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
     if (prog == NULL) {
         return RS_CULL_INVALID;
