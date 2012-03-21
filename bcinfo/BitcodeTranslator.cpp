@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, The Android Open Source Project
+ * Copyright 2011-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 #include "bcinfo/BitcodeTranslator.h"
+
+#include "bcinfo/BitcodeWrapper.h"
 
 #include "BitReader_2_7/BitReader_2_7.h"
 
@@ -77,6 +79,12 @@ bool BitcodeTranslator::translate() {
     return false;
   }
 
+  BitcodeWrapper BCWrapper(mBitcode, mBitcodeSize);
+  if (BCWrapper.getTargetAPI() != mVersion) {
+    ALOGE("Bitcode wrapper (%u) and translator (%u) disagree about target API",
+          BCWrapper.getTargetAPI(), mVersion);
+  }
+
   if ((mVersion != kCurrentAPIVersion) &&
       ((mVersion < kMinimumAPIVersion) ||
        (mVersion > kMaximumAPIVersion))) {
@@ -115,11 +123,21 @@ bool BitcodeTranslator::translate() {
   Buffer.reserve(mBitcodeSize);
   llvm::WriteBitcodeToStream(module, Stream);
 
-  char *c = new char[Buffer.size()];
-  memcpy(c, &Buffer.front(), Buffer.size());
+  AndroidBitcodeWrapper wrapper;
+  size_t actualWrapperLen = writeAndroidBitcodeWrapper(
+      &wrapper, Buffer.size(), BCWrapper.getTargetAPI(),
+      BCWrapper.getCompilerVersion(), BCWrapper.getOptimizationLevel());
+  if (!actualWrapperLen) {
+    ALOGE("Couldn't produce bitcode wrapper!");
+    return false;
+  }
+
+  mTranslatedBitcodeSize = actualWrapperLen + Buffer.size();
+  char *c = new char[mTranslatedBitcodeSize];
+  memcpy(c, &wrapper, actualWrapperLen);
+  memcpy(c + actualWrapperLen, &Buffer.front(), Buffer.size());
 
   mTranslatedBitcode = c;
-  mTranslatedBitcodeSize = Buffer.size();
 
   return true;
 }
