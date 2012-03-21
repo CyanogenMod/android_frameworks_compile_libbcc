@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 The Android Open Source Project
+# Copyright (C) 2011-2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,11 +38,12 @@ libbcinfo_SRC_FILES := \
 
 libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
 libbcinfo_STATIC_LIBRARIES := \
+  libLLVMWrap \
   libLLVMBitReader \
   libLLVMBitWriter \
   libLLVMCore \
   libLLVMSupport \
-  libLLVMBitReader_2_7 \
+  libLLVMBitReader_2_7
 
 LLVM_ROOT_PATH := external/llvm
 

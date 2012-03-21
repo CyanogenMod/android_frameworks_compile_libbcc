@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, The Android Open Source Project
+ * Copyright 2011-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 
 #include <bcinfo/BitcodeTranslator.h>
+#include <bcinfo/BitcodeWrapper.h>
 #include <bcinfo/MetadataExtractor.h>
 
 #include <ctype.h>
@@ -103,8 +104,6 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
     printf("objectSlotList[%u]: %u\n", i, slotList[i]);
   }
 
-  printf("optimizationLevel: %u\n", ME->getOptimizationLevel());
-
   return;
 }
 
@@ -164,11 +163,19 @@ int main(int argc, char** argv) {
   const char *translatedBitcode = NULL;
   size_t bitcodeSize = readBitcode(&bitcode);
 
-  unsigned int version = 14;
+  unsigned int version = 0;
 
-  if (translate) {
+  bcinfo::BitcodeWrapper bcWrapper((const char *)bitcode, bitcodeSize);
+  if (bcWrapper.getBCFileType() == bcinfo::BC_WRAPPER) {
+    version = bcWrapper.getTargetAPI();
+    printf("Found bitcodeWrapper\n");
+  } else if (translate) {
     version = 12;
   }
+
+  printf("targetAPI: %u\n", version);
+  printf("compilerVersion: %u\n", bcWrapper.getCompilerVersion());
+  printf("optimizationLevel: %u\n\n", bcWrapper.getOptimizationLevel());
 
   bcinfo::BitcodeTranslator *BT =
       new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, The Android Open Source Project
+ * Copyright 2011-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,27 @@
 #ifndef __ANDROID_BCINFO_BITCODEWRAPPER_H__
 #define __ANDROID_BCINFO_BITCODEWRAPPER_H__
 
+#include "bcinfo/Wrap/BCHeaderField.h"
+
 #include <cstddef>
 #include <stdint.h>
 
 namespace bcinfo {
 
-struct BCWrapperHeader {
+struct AndroidBitcodeWrapper {
   uint32_t Magic;
   uint32_t Version;
   uint32_t BitcodeOffset;
   uint32_t BitcodeSize;
   uint32_t HeaderVersion;
   uint32_t TargetAPI;
+  uint32_t PNaClVersion;
+  uint16_t CompilerVersionTag;
+  uint16_t CompilerVersionLen;
+  uint32_t CompilerVersion;
+  uint16_t OptimizationLevelTag;
+  uint16_t OptimizationLevelLen;
+  uint32_t OptimizationLevel;
 };
 
 enum BCFileType {
@@ -44,7 +53,10 @@ class BitcodeWrapper {
   const char *mBitcodeEnd;
   size_t mBitcodeSize;
 
-  struct BCWrapperHeader mBCHeader;
+  uint32_t mHeaderVersion;
+  uint32_t mTargetAPI;
+  uint32_t mCompilerVersion;
+  uint32_t mOptimizationLevel;
 
  public:
   /**
@@ -58,7 +70,7 @@ class BitcodeWrapper {
   ~BitcodeWrapper();
 
   /**
-   * Attempt to unwrap the target bitcode.
+   * Attempt to unwrap the target bitcode. This function is \deprecated.
    *
    * \return true on success and false if an error occurred.
    */
@@ -72,19 +84,70 @@ class BitcodeWrapper {
   }
 
   /**
-   * \return header version of bitcode wrapper. This can only be 0 currently.
+   * \return header version of bitcode wrapper.
    */
   uint32_t getHeaderVersion() const {
-    return mBCHeader.HeaderVersion;
+    return mHeaderVersion;
   }
 
   /**
-   * \return target API version of this script.
+   * \return target API version for this bitcode.
    */
   uint32_t getTargetAPI() const {
-    return mBCHeader.TargetAPI;
+    return mTargetAPI;
   }
+
+  /**
+   * \return compiler version that generated this bitcode.
+   */
+  uint32_t getCompilerVersion() const {
+    return mCompilerVersion;
+  }
+
+  /**
+   * \return compiler optimization level for this bitcode.
+   */
+  uint32_t getOptimizationLevel() const {
+    return mOptimizationLevel;
+  }
+
 };
+
+/**
+ * Helper function to emit just the bitcode wrapper returning the number of
+ * bytes that were written.
+ *
+ * \param wrapper - where to write header information into.
+ * \param bitcodeSize - size of bitcode in bytes.
+ * \param targetAPI - target API version for this bitcode.
+ * \param compilerVersion - compiler version that generated this bitcode.
+ * \param optimizationLevel - compiler optimization level for this bitcode.
+ *
+ * \return number of wrapper bytes written into the \p buffer.
+ */
+static inline size_t writeAndroidBitcodeWrapper(AndroidBitcodeWrapper *wrapper,
+    size_t bitcodeSize, uint32_t targetAPI, uint32_t compilerVersion,
+    uint32_t optimizationLevel) {
+  if (!wrapper) {
+    return 0;
+  }
+
+  wrapper->Magic = 0x0B17C0DE;
+  wrapper->Version = 0;
+  wrapper->BitcodeOffset = sizeof(*wrapper);
+  wrapper->BitcodeSize = bitcodeSize;
+  wrapper->HeaderVersion = 0;
+  wrapper->TargetAPI = targetAPI;
+  wrapper->PNaClVersion = 0;
+  wrapper->CompilerVersionTag = BCHeaderField::kAndroidCompilerVersion;
+  wrapper->CompilerVersionLen = 4;
+  wrapper->CompilerVersion = compilerVersion;
+  wrapper->OptimizationLevelTag = BCHeaderField::kAndroidOptimizationLevel;
+  wrapper->OptimizationLevelLen = 4;
+  wrapper->OptimizationLevel = optimizationLevel;
+
+  return sizeof(*wrapper);
+}
 
 }  // namespace bcinfo
 
