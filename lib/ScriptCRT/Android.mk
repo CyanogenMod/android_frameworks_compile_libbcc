@@ -23,9 +23,14 @@ LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 # C source files for the library
 clcore_c_files := \
+    rs_allocation.c \
     rs_cl.c \
     rs_core.c \
-    rs_sample.c
+    rs_element.c \
+    rs_mesh.c \
+    rs_program.c \
+    rs_sample.c \
+    rs_sampler.c
 
 # Hand-written bitcode for the library
 clcore_ll_files := \
