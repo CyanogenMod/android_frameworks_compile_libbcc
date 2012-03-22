@@ -466,6 +466,13 @@ bool MCCacheReader::readObjFile() {
                      mpResult->mCachedELFExecutable.size(),
                      &resolveSymbolAdapter, this);
 
+  // Point ELF section headers to location of executable code, otherwise
+  // execution through GDB stops unexpectedly as GDB translates breakpoints
+  // in JITted code incorrectly (and complains about being unable to insert
+  // breakpoint at an invalid address)
+  rsloaderUpdateSectionHeaders(mpResult->mRSExecutable,
+    (unsigned char*) mpResult->mCachedELFExecutable.begin());
+
   return true;
 }
 
