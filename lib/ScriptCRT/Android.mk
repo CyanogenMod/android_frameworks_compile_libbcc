@@ -21,6 +21,15 @@ LOCAL_MODULE := libclcore.bc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
+ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
+  RS_VERSION := $(PLATFORM_SDK_VERSION)
+else
+  # Increment by 1 whenever this is not a final release build, since we want to
+  # be able to see the RS version number change during development.
+  # See build/core/version_defaults.mk for more information about this.
+  RS_VERSION := "(1 + $(PLATFORM_SDK_VERSION))"
+endif
+
 # C source files for the library
 clcore_c_files := \
     rs_allocation.c \
@@ -59,7 +68,7 @@ $(clcore_c_bc_files): PRIVATE_INCLUDES := \
 
 $(clcore_c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
 	@mkdir -p $(dir $@)
-	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -std=c99 -c -O3 -fno-builtin -emit-llvm -ccc-host-triple armv7-none-linux-gnueabi -fsigned-char $< -o $@
+	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -DRS_VERSION=$(RS_VERSION) -std=c99 -c -O3 -fno-builtin -emit-llvm -ccc-host-triple armv7-none-linux-gnueabi -fsigned-char $< -o $@
 
 $(clcore_ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(clcore_LLVM_AS)
 	@mkdir -p $(dir $@)
