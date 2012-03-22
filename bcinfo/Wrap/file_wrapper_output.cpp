@@ -36,6 +36,10 @@ bool FileWrapperOutput::Write(uint8_t byte) {
 }
 
 bool FileWrapperOutput::Write(const uint8_t* buffer, size_t buffer_size) {
+  if (!buffer) {
+    return false;
+  }
+
   if (buffer_size > 0) {
     return buffer_size == fwrite(buffer, 1, buffer_size, _file);
   } else {
