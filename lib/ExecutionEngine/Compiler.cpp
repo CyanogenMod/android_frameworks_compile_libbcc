@@ -121,11 +121,6 @@ const llvm::StringRef Compiler::ExportFuncMetadataName = "#rs_export_func";
 // synced with slang_rs_metadata.h)
 const llvm::StringRef Compiler::ObjectSlotMetadataName = "#rs_object_slots";
 
-// Name of metadata node where RS optimization level resides (should be
-// synced with slang_rs_metadata.h)
-const llvm::StringRef OptimizationLevelMetadataName = "#optimization_level";
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 // Compiler
@@ -292,16 +287,7 @@ int Compiler::compile(bool compileOnly) {
   llvm::NamedMDNode const *ExportFuncMetadata;
   llvm::NamedMDNode const *ObjectSlotMetadata;
 
-  llvm::NamedMDNode const *OptimizationLevelMetadata =
-    mModule->getNamedMetadata(OptimizationLevelMetadataName);
-
-  // Default to maximum optimization in the absence of named metadata node
-  int OptimizationLevel = 3;
-  if (OptimizationLevelMetadata) {
-    llvm::ConstantInt* OL = llvm::dyn_cast<llvm::ConstantInt>(
-      OptimizationLevelMetadata->getOperand(0)->getOperand(0));
-    OptimizationLevel = OL->getZExtValue();
-  }
+  uint32_t OptimizationLevel = mpResult->getOptimizationLevel();
 
   if (OptimizationLevel == 0) {
     CodeGenOptLevel = llvm::CodeGenOpt::None;

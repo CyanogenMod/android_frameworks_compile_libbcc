@@ -97,6 +97,13 @@ namespace bcc {
 
     void *lookup(const char *name);
 
+    uint32_t getCompilerVersion() const {
+      return mpOwner->getCompilerVersion();
+    }
+
+    uint32_t getOptimizationLevel() const {
+      return mpOwner->getOptimizationLevel();
+    }
 
     size_t getExportVarCount() const {
       return mExportVars.size();
