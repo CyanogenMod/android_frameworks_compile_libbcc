@@ -6,7 +6,7 @@
 * Mesh
 */
 extern uint32_t __attribute__((overloadable))
-        rsMeshGetVertexAllocationCount(rs_mesh m) {
+        rsgMeshGetVertexAllocationCount(rs_mesh m) {
     Mesh_t *mesh = (Mesh_t *)m.p;
     if (mesh == NULL) {
         return 0;
@@ -15,7 +15,7 @@ extern uint32_t __attribute__((overloadable))
 }
 
 extern uint32_t __attribute__((overloadable))
-        rsMeshGetPrimitiveCount(rs_mesh m) {
+        rsgMeshGetPrimitiveCount(rs_mesh m) {
     Mesh_t *mesh = (Mesh_t *)m.p;
     if (mesh == NULL) {
         return 0;
@@ -24,7 +24,7 @@ extern uint32_t __attribute__((overloadable))
 }
 
 extern rs_allocation __attribute__((overloadable))
-        rsMeshGetVertexAllocation(rs_mesh m, uint32_t index) {
+        rsgMeshGetVertexAllocation(rs_mesh m, uint32_t index) {
     Mesh_t *mesh = (Mesh_t *)m.p;
     if (mesh == NULL || index >= mesh->mHal.state.vertexBuffersCount) {
         rs_allocation nullAlloc = {0};
@@ -35,7 +35,7 @@ extern rs_allocation __attribute__((overloadable))
 }
 
 extern rs_allocation __attribute__((overloadable))
-        rsMeshGetIndexAllocation(rs_mesh m, uint32_t index) {
+        rsgMeshGetIndexAllocation(rs_mesh m, uint32_t index) {
     Mesh_t *mesh = (Mesh_t *)m.p;
     if (mesh == NULL || index >= mesh->mHal.state.primitivesCount) {
         rs_allocation nullAlloc = {0};
@@ -46,7 +46,7 @@ extern rs_allocation __attribute__((overloadable))
 }
 
 extern rs_primitive __attribute__((overloadable))
-        rsMeshGetPrimitive(rs_mesh m, uint32_t index) {
+        rsgMeshGetPrimitive(rs_mesh m, uint32_t index) {
     Mesh_t *mesh = (Mesh_t *)m.p;
     if (mesh == NULL || index >= mesh->mHal.state.primitivesCount) {
         return RS_PRIMITIVE_INVALID;
