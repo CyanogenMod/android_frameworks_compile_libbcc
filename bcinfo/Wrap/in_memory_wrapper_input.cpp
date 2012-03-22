@@ -28,6 +28,11 @@ InMemoryWrapperInput::~InMemoryWrapperInput() {
 
 size_t InMemoryWrapperInput::Read(uint8_t* buffer, size_t wanted) {
   size_t found = 0;
+
+  if (!buffer) {
+    return 0;
+  }
+
   while (found < wanted) {
     if (_pos >= _size) {
       return found;
