@@ -42,6 +42,7 @@ typedef struct Allocation {
             void * usrPtr;
             int32_t surfaceTextureID;
             void * wndSurface;
+            void * surfaceTexture;
         } state;
 
         struct DrvState {
