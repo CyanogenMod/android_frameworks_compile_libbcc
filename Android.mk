@@ -129,7 +129,6 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMSelectionDAG \
   libLLVMCodeGen \
   libLLVMLinker \
-  libLLVMJIT \
   libLLVMScalarOpts \
   libLLVMInstCombine \
   libLLVMipo \
@@ -157,7 +156,7 @@ LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 # Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by
 # pixelflinger2.
 
-LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMJIT:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
+LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
 include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
@@ -220,7 +219,6 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMSelectionDAG \
   libLLVMCodeGen \
   libLLVMLinker \
-  libLLVMJIT \
   libLLVMScalarOpts \
   libLLVMInstCombine \
   libLLVMipo \
