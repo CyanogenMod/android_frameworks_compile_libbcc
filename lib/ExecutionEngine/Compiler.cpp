@@ -302,6 +302,14 @@ int Compiler::compile(const CompilerOption &option) {
   if (hasError())
     goto on_bcc_compile_error;
 
+#if defined(ARCH_ARM_HAVE_NEON)
+  // Full-precision means we have to disable NEON
+  if (ME.getRSFloatPrecision() == bcinfo::RS_FP_Full) {
+    Features.push_back("-neon");
+    Features.push_back("-neonfp");
+  }
+#endif
+
   if (!CPU.empty() || !Features.empty()) {
     llvm::SubtargetFeatures F;
 
