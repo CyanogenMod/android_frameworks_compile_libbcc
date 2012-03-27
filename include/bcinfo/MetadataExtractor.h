@@ -27,6 +27,12 @@ namespace llvm {
 
 namespace bcinfo {
 
+enum RSFloatPrecision {
+  RS_FP_Full = 0,
+  RS_FP_Relaxed = 1,
+  RS_FP_Imprecise = 2
+};
+
 class MetadataExtractor {
  private:
   const llvm::Module *mModule;
@@ -49,6 +55,8 @@ class MetadataExtractor {
   const uint32_t *mObjectSlotList;
 
   uint32_t mOptimizationLevel;
+
+  enum RSFloatPrecision mRSFloatPrecision;
 
   // Helper functions for extraction
   bool populateVarNameMetadata(const llvm::NamedMDNode *VarNameMetadata);
@@ -170,6 +178,13 @@ class MetadataExtractor {
 
   uint32_t getOptimizationLevel() const {
     return mOptimizationLevel;
+  }
+
+  /**
+   * \return minimal floating point precision that the script requires.
+   */
+  enum RSFloatPrecision getRSFloatPrecision() const {
+    return mRSFloatPrecision;
   }
 };
 

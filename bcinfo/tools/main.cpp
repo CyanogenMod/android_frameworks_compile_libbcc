@@ -81,6 +81,22 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
     return;
   }
 
+  printf("RSFloatPrecision: ");
+  switch (ME->getRSFloatPrecision()) {
+  case bcinfo::RS_FP_Full:
+    printf("Full\n\n");
+    break;
+  case bcinfo::RS_FP_Relaxed:
+    printf("Relaxed\n\n");
+    break;
+  case bcinfo::RS_FP_Imprecise:
+    printf("Imprecise\n\n");
+    break;
+  default:
+    printf("UNKNOWN\n\n");
+    break;
+  }
+
   printf("exportVarCount: %u\n", ME->getExportVarCount());
   const char **varNameList = ME->getExportVarNameList();
   for (size_t i = 0; i < ME->getExportVarCount(); i++) {

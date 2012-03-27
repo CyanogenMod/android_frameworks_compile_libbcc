@@ -66,7 +66,8 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3) {
+      mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3),
+      mRSFloatPrecision(RS_FP_Full) {
 }
 
 
@@ -212,6 +213,34 @@ void MetadataExtractor::populatePragmaMetadata(
 
   mPragmaKeyList = TmpKeyList;
   mPragmaValueList = TmpValueList;
+
+  // Check to see if we have any FP precision-related pragmas.
+  std::string Relaxed("rs_fp_relaxed");
+  std::string Imprecise("rs_fp_imprecise");
+  bool RelaxedPragmaSeen = false;
+  bool ImprecisePragmaSeen = false;
+
+  for (size_t i = 0; i < mPragmaCount; i++) {
+    if (!Relaxed.compare(mPragmaKeyList[i])) {
+      if (RelaxedPragmaSeen || ImprecisePragmaSeen) {
+        ALOGE("Multiple float precision pragmas specified!");
+      }
+      RelaxedPragmaSeen = true;
+    } else if (!Imprecise.compare(mPragmaKeyList[i])) {
+      if (RelaxedPragmaSeen || ImprecisePragmaSeen) {
+        ALOGE("Multiple float precision pragmas specified!");
+      }
+      ImprecisePragmaSeen = true;
+    }
+  }
+
+  // Imprecise is selected over Relaxed precision.
+  // In the absence of both, we stick to the default Full precision.
+  if (ImprecisePragmaSeen) {
+    mRSFloatPrecision = RS_FP_Imprecise;
+  } else if (RelaxedPragmaSeen) {
+    mRSFloatPrecision = RS_FP_Relaxed;
+  }
 
   return;
 }
