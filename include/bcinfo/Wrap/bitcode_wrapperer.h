@@ -101,7 +101,13 @@ class BitcodeWrapperer {
   void FillBuffer();
 
   // Returns the number of bytes in infile.
-  off_t GetInFileSize() { return infile_->Size(); }
+  off_t GetInFileSize() {
+    if (infile_ != NULL) {
+      return infile_->Size();
+    } else {
+      return 0;
+    }
+  }
 
   // Returns the offset of bitcode (i.e. the size of the wrapper header)
   // if the output file were to be written now.

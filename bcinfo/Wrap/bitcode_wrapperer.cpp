@@ -95,7 +95,7 @@ void BitcodeWrapperer::ClearBuffer() {
 }
 
 bool BitcodeWrapperer::Seek(uint32_t pos) {
-  if (infile_->Seek(pos)) {
+  if (infile_ != NULL && infile_->Seek(pos)) {
     ClearBuffer();
     return true;
   }
@@ -129,6 +129,11 @@ void BitcodeWrapperer::FillBuffer() {
     // Assume the buffer contents have been used,
     // and we want to completely refill it.
     buffer_size_ = 0;
+  }
+
+  // If we don't have an input, we can't refill the buffer at all.
+  if (infile_ == NULL) {
+    return;
   }
 
   // Now fill in remaining space.
