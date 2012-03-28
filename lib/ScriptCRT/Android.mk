@@ -63,7 +63,7 @@ clcore_ll_bc_files := $(patsubst %.ll,%.bc, \
     $(addprefix $(intermediates)/, $(clcore_ll_files)))
 
 $(clcore_c_bc_files): PRIVATE_INCLUDES := \
-    frameworks/base/libs/rs/scriptc \
+    frameworks/rs/scriptc \
     external/clang/lib/Headers
 
 $(clcore_c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
