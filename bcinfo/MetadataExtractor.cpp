@@ -16,6 +16,8 @@
 
 #include "bcinfo/MetadataExtractor.h"
 
+#include "bcinfo/BitcodeWrapper.h"
+
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
 
@@ -55,10 +57,6 @@ static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
 
-// Name of metadata node where RS optimization level resides (should be
-// synced with slang_rs_metadata.h)
-static const llvm::StringRef OptimizationLevelMetadataName = "#optimization_level";
-
 
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mModule(NULL), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
@@ -66,8 +64,11 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3),
+      mObjectSlotCount(0), mObjectSlotList(NULL),
       mRSFloatPrecision(RS_FP_Full) {
+  BitcodeWrapper wrapper(bitcode, bitcodeSize);
+  mCompilerVersion = wrapper.getCompilerVersion();
+  mOptimizationLevel = wrapper.getOptimizationLevel();
 }
 
 
@@ -77,7 +78,9 @@ MetadataExtractor::MetadataExtractor(const llvm::Module *module)
       mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL), mOptimizationLevel(3) {
+      mObjectSlotCount(0), mObjectSlotList(NULL) {
+  mCompilerVersion = 0;
+  mOptimizationLevel = 3;
 }
 
 
@@ -393,8 +396,6 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
       mModule->getNamedMetadata(ObjectSlotMetadataName);
-  const llvm::NamedMDNode *OptimizationLevelMetadata =
-      mModule->getNamedMetadata(OptimizationLevelMetadataName);
 
 
   if (!populateVarNameMetadata(ExportVarMetadata)) {
@@ -419,13 +420,6 @@ bool MetadataExtractor::extract() {
     ALOGE("Could not populate object slot metadata");
     return false;
   }
-
-  if (OptimizationLevelMetadata) {
-    llvm::ConstantInt* OL = llvm::dyn_cast<llvm::ConstantInt>(
-      OptimizationLevelMetadata->getOperand(0)->getOperand(0));
-    mOptimizationLevel = OL->getZExtValue();
-  }
-
 
   return true;
 }

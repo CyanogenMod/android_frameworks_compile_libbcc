@@ -274,7 +274,7 @@ int Compiler::compile(const CompilerOption &option) {
   std::vector<const char*> ExportSymbols;
 
   // Defaults to maximum optimization level from MetadataExtractor.
-  int OptimizationLevel = ME.getOptimizationLevel();
+  uint32_t OptimizationLevel = ME.getOptimizationLevel();
 
   if (OptimizationLevel == 0) {
     CodeGenOptLevel = llvm::CodeGenOpt::None;

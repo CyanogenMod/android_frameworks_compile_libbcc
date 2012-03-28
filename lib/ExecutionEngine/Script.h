@@ -98,10 +98,15 @@ namespace bcc {
     BCCSymbolLookupFn mpExtSymbolLookupFn;
     void *mpExtSymbolLookupFnContext;
 
+    uint32_t mCompilerVersion;
+    uint32_t mOptimizationLevel;
+
   public:
     Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               mObjectType(ScriptObject::Unknown), mIsContextSlotNotAvail(false),
-               mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
+               mObjectType(ScriptObject::Unknown),
+               mIsContextSlotNotAvail(false),
+               mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL),
+               mCompilerVersion(0), mOptimizationLevel(3) {
       Compiler::GlobalInitialization();
 
       mSourceList[0] = NULL;
@@ -164,6 +169,13 @@ namespace bcc {
 
     void *lookup(const char *name);
 
+    uint32_t getCompilerVersion() const {
+      return mCompilerVersion;
+    }
+
+    uint32_t getOptimizationLevel() const {
+      return mOptimizationLevel;
+    }
 
     size_t getExportVarCount() const;
 

@@ -54,6 +54,7 @@ class MetadataExtractor {
   size_t mObjectSlotCount;
   const uint32_t *mObjectSlotList;
 
+  uint32_t mCompilerVersion;
   uint32_t mOptimizationLevel;
 
   enum RSFloatPrecision mRSFloatPrecision;
@@ -176,6 +177,16 @@ class MetadataExtractor {
     return mObjectSlotList;
   }
 
+  /**
+   * \return compiler version that generated this bitcode.
+   */
+  uint32_t getCompilerVersion() const {
+    return mCompilerVersion;
+  }
+
+  /**
+   * \return compiler optimization level for this bitcode.
+   */
   uint32_t getOptimizationLevel() const {
     return mOptimizationLevel;
   }
