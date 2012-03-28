@@ -17,6 +17,7 @@
 #include "Script.h"
 
 #include "Config.h"
+#include "bcinfo/BitcodeWrapper.h"
 
 #if USE_OLD_JIT
 #include "OldJIT/CacheReader.h"
@@ -104,6 +105,10 @@ int Script::addSourceBC(size_t idx,
     LOGE("Invalid argument: bitcode = NULL\n");
     return 1;
   }
+
+  bcinfo::BitcodeWrapper wrapper(bitcode, bitcodeSize);
+  mCompilerVersion = wrapper.getCompilerVersion();
+  mOptimizationLevel = wrapper.getOptimizationLevel();
 
   mSourceList[idx] = SourceInfo::createFromBuffer(resName,
                                                   bitcode, bitcodeSize,
