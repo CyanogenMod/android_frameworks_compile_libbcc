@@ -469,7 +469,12 @@ FN_FUNC_FN_FN_FN(mad)
 extern float __attribute__((overloadable)) modf(float, float *);
 FN_FUNC_FN_PFN(modf);
 
-//extern float __attribute__((overloadable)) nan(uint);
+extern float __attribute__((overloadable)) nan(uint v) {
+    float f[1];
+    uint32_t *ip = (uint32_t *)f;
+    *ip = v | 0x7fc00000;
+    return f[0];
+}
 
 extern float __attribute__((overloadable)) nextafter(float, float);
 FN_FUNC_FN_FN(nextafter)
