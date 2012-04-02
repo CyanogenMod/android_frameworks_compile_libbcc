@@ -47,10 +47,6 @@ static int run(RootPtr rootFunc) {
   return rootFunc();
 }
 
-static void* lookupSymbol(void* pContext, const char* name) {
-  return (void*) dlsym(RTLD_DEFAULT, name);
-}
-
 enum OutputType {
   OT_Executable,
   OT_Relocatable,
@@ -193,7 +189,6 @@ static BCCScriptRef loadScript() {
   }
 
   char *output = NULL;
-  const char *outDir, *outFilename;
 
   if (OutFile != NULL) {
     // Copy the outFile since we're going to modify it
@@ -273,12 +268,10 @@ static int runRoot(BCCScriptRef script) {
       reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "main"));
 
   if (!rootPointer) {
-    RootPtr rootPointer =
-        reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "root"));
+    rootPointer = reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "root"));
   }
   if (!rootPointer) {
-    RootPtr rootPointer =
-        reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "_Z4rootv"));
+    rootPointer = reinterpret_cast<RootPtr>(bccGetFuncAddr(script, "_Z4rootv"));
   }
   if (!rootPointer) {
     fprintf(stderr, "Could not find root or main or mangled root.\n");

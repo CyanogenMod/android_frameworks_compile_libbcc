@@ -35,7 +35,7 @@ LOCAL_MODULE_TAGS := tests eng
 
 LOCAL_LDLIBS = -ldl
 
-LOCAL_CFLAGS += -D__HOST__
+LOCAL_CFLAGS += -D__HOST__ -Wall -Werror
 
 include $(BUILD_HOST_EXECUTABLE)
 
