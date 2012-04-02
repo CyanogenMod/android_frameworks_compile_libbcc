@@ -224,7 +224,7 @@ static BCCScriptRef loadScript() {
   }
 
   int bccResult = 0;
-  const char *errMsg;
+  const char *errMsg = NULL;
   switch (OutType) {
     case OT_Executable: {
       bccResult = 1;
