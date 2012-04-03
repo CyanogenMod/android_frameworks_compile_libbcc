@@ -476,7 +476,7 @@ class StartAndroidApp (AndroidStatus):
   def start_gdbserver(self):
     # TODO: adjust for architecture...
     gdbserver_local_path = os.path.join(os.getenv('ANDROID_BUILD_TOP'),
-      'prebuilt', 'android-x86', 'gdbserver', 'gdbserver')
+      'prebuilt', 'android-arm', 'gdbserver', 'gdbserver')
 
     if not self.adb.exists(self.gdbserver_path):
       # Install gdbserver
