@@ -47,6 +47,7 @@ typedef struct Allocation {
 
         struct DrvState {
             void * mallocPtr;
+            uint32_t stride;
         } drvState;
     } mHal;
 } Allocation_t;

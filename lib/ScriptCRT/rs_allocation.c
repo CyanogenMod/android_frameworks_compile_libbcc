@@ -46,8 +46,8 @@ extern const void * __attribute__((overloadable))
     Allocation_t *alloc = (Allocation_t *)a.p;
     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
     const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t dimX = alloc->mHal.state.dimensionX;
-    return &p[eSize * (x + y * dimX)];
+    const uint32_t stride = alloc->mHal.drvState.stride;
+    return &p[(eSize * x) + (y * stride)];
 }
 
 extern const void * __attribute__((overloadable))
@@ -55,9 +55,9 @@ extern const void * __attribute__((overloadable))
     Allocation_t *alloc = (Allocation_t *)a.p;
     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
     const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t dimX = alloc->mHal.state.dimensionX;
+    const uint32_t stride = alloc->mHal.drvState.stride;
     const uint32_t dimY = alloc->mHal.state.dimensionY;
-    return &p[eSize * (x + y * dimX + z * dimX * dimY)];
+    return &p[(eSize * x) + (y * stride) + (z * stride * dimY)];
 }
 
 extern rs_element __attribute__((overloadable))
