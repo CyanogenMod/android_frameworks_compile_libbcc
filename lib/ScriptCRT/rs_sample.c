@@ -25,9 +25,14 @@ static const void * __attribute__((overloadable))
 
     const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
     const uint32_t offset = type->mHal.state.lodOffset[lod];
-    const uint32_t lodDimX = type->mHal.state.lodDimX[lod];
+    uint32_t stride;
+    if(lod == 0) {
+        stride = alloc->mHal.drvState.stride;
+    } else {
+        stride = type->mHal.state.lodDimX[lod] * eSize;
+    }
 
-    return &p[offset + eSize * (x + y * lodDimX)];
+    return &p[offset + (eSize * x) + (y * stride)];
 }
 
 static const void * __attribute__((overloadable))
