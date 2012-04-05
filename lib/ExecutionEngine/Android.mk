@@ -26,11 +26,13 @@ libbcc_executionengine_SRC_FILES := \
   BCCContext.cpp \
   BCCContextImpl.cpp \
   Compiler.cpp \
-  FileHandle.cpp \
+  FileBase.cpp \
   GDBJIT.cpp \
   GDBJITRegistrar.cpp \
+  InputFile.cpp \
   MCCacheWriter.cpp \
   MCCacheReader.cpp \
+  OutputFile.cpp \
   RSScript.cpp \
   Runtime.c \
   RuntimeStub.c \
