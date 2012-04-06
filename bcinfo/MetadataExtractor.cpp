@@ -78,7 +78,8 @@ MetadataExtractor::MetadataExtractor(const llvm::Module *module)
       mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL) {
+      mObjectSlotCount(0), mObjectSlotList(NULL),
+      mRSFloatPrecision(RS_FP_Full) {
   mCompilerVersion = 0;
   mOptimizationLevel = 3;
 }
