@@ -312,6 +312,44 @@ extern float4 __attribute__((overloadable)) \
     return r;                                   \
 }
 
+static const int iposinf = 0x7f800000;
+static const int ineginf = 0xff800000;
+
+static const float posinf() {
+    float f = *((float*)&iposinf);
+    return f;
+}
+
+static const float neginf() {
+    float f = *((float*)&ineginf);
+    return f;
+}
+
+static bool isinf(float f) {
+    int i = *((int*)(void*)&f);
+    return (i == iposinf) || (i == ineginf);
+}
+
+static bool isnan(float f) {
+    int i = *((int*)(void*)&f);
+    return (((i & 0x7f800000) == 0x7f800000) && (i & 0x007fffff));
+}
+
+static bool isposzero(float f) {
+    int i = *((int*)(void*)&f);
+    return (i == 0x00000000);
+}
+
+static bool isnegzero(float f) {
+    int i = *((int*)(void*)&f);
+    return (i == 0x80000000);
+}
+
+static bool iszero(float f) {
+    return isposzero(f) || isnegzero(f);
+}
+
+
 extern float __attribute__((overloadable)) acos(float);
 FN_FUNC_FN(acos)
 
@@ -517,20 +555,37 @@ extern float __attribute__((overloadable)) rint(float);
 FN_FUNC_FN(rint)
 
 extern float __attribute__((overloadable)) rootn(float v, int r) {
+    if (r == 0) {
+        return nan(0);
+    }
+
+    if (iszero(v)) {
+        if (r < 0) {
+            if (r & 1) {
+                return copysign(posinf(), v);
+            } else {
+                return posinf();
+            }
+        } else {
+            if (r & 1) {
+                return copysign(0.f, v);
+            } else {
+                return 0.f;
+            }
+        }
+    }
+
+    if (!isinf(v) && !isnan(v) && (v < 0.f)) {
+        if (r & 1) {
+            return (-1.f * pow(-1.f * v, 1.f / r));
+        } else {
+            return nan(0);
+        }
+    }
+
     return pow(v, 1.f / r);
 }
-extern float2 __attribute__((overloadable)) rootn(float2 v, int2 r) {
-    float2 t = {1.f / r.x, 1.f / r.y};
-    return pow(v, t);
-}
-extern float3 __attribute__((overloadable)) rootn(float3 v, int3 r) {
-    float3 t = {1.f / r.x, 1.f / r.y, 1.f / r.z};
-    return pow(v, t);
-}
-extern float4 __attribute__((overloadable)) rootn(float4 v, int4 r) {
-    float4 t = {1.f / r.x, 1.f / r.y, 1.f / r.z, 1.f / r.w};
-    return pow(v, t);
-}
+FN_FUNC_FN_IN(rootn);
 
 extern float __attribute__((overloadable)) round(float);
 FN_FUNC_FN(round)
