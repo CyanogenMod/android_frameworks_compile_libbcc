@@ -32,6 +32,7 @@ endif
 
 # C source files for the library
 clcore_c_files := \
+    clamp.c \
     rs_allocation.c \
     rs_cl.c \
     rs_core.c \
@@ -43,7 +44,6 @@ clcore_c_files := \
 
 # Hand-written bitcode for the library
 clcore_ll_files := \
-    clamp.ll \
     convert.ll \
     matrix.ll \
     pixel_packing.ll

@@ -190,9 +190,9 @@ rsMatrixMultiply(rs_matrix2x2 *m, float2 in) {
 // int ops
 /////////////////////////////////////////////////////
 
-/*extern uint __attribute__((overloadable, always_inline)) rsClamp(uint amount, uint low, uint high) {
+extern uint __attribute__((overloadable, always_inline)) rsClamp(uint amount, uint low, uint high) {
     return amount < low ? low : (amount > high ? high : amount);
-}*/
+}
 extern int __attribute__((overloadable, always_inline)) rsClamp(int amount, int low, int high) {
     return amount < low ? low : (amount > high ? high : amount);
 }

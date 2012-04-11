@@ -682,51 +682,6 @@ FN_FUNC_FN_F(max)
 
 // 6.11.4
 
-extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}
-extern float2 __attribute__((overloadable)) clamp(float2 amount, float2 low, float2 high) {
-    float2 r;
-    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);
-    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);
-    return r;
-}
-extern float3 __attribute__((overloadable)) clamp(float3 amount, float3 low, float3 high) {
-    float3 r;
-    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);
-    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);
-    r.z = amount.z < low.z ? low.z : (amount.z > high.z ? high.z : amount.z);
-    return r;
-}
-extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high) {
-    float4 r;
-    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);
-    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);
-    r.z = amount.z < low.z ? low.z : (amount.z > high.z ? high.z : amount.z);
-    r.w = amount.w < low.w ? low.w : (amount.w > high.w ? high.w : amount.w);
-    return r;
-}
-extern float2 __attribute__((overloadable)) clamp(float2 amount, float low, float high) {
-    float2 r;
-    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);
-    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);
-    return r;
-}
-extern float3 __attribute__((overloadable)) clamp(float3 amount, float low, float high) {
-    float3 r;
-    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);
-    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);
-    r.z = amount.z < low ? low : (amount.z > high ? high : amount.z);
-    return r;
-}
-extern float4 __attribute__((overloadable)) clamp(float4 amount, float low, float high) {
-    float4 r;
-    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);
-    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);
-    r.z = amount.z < low ? low : (amount.z > high ? high : amount.z);
-    r.w = amount.w < low ? low : (amount.w > high ? high : amount.w);
-    return r;
-}
 
 extern float __attribute__((overloadable)) degrees(float radians) {
     return radians * (180.f / M_PI);
