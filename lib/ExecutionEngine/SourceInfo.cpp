@@ -27,7 +27,6 @@
 
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Module.h>
-#include <llvm/LLVMContext.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -121,7 +120,7 @@ SourceInfo *SourceInfo::createFromModule(llvm::Module *module,
 }
 
 
-int SourceInfo::prepareModule(llvm::LLVMContext *context) {
+int SourceInfo::prepareModule(llvm::LLVMContext &context) {
   if (module)
     return 0;
 
@@ -157,28 +156,16 @@ int SourceInfo::prepareModule(llvm::LLVMContext *context) {
     break;
   }
 
-  if (context)
-    shared_context = true;
-  else
-    context = new llvm::LLVMContext();
-
-  module = llvm::ParseBitcodeFile(mem.get(), *context, &errmsg);
+  module = llvm::ParseBitcodeFile(mem.get(), context, &errmsg);
   if (module == NULL) {
     ALOGE("Unable to ParseBitcodeFile: %s\n", errmsg.c_str());
-    if (!shared_context)
-      delete context;
   }
 
   return (module == NULL);
 }
 
 SourceInfo::~SourceInfo() {
-  if (module != NULL) {
-    llvm::LLVMContext *context = &module->getContext();
-    delete module;
-    if (!shared_context)
-      delete context;
-  }
+  delete module;
 }
 
 template <typename T> void SourceInfo::introDependency(T &checker) {
