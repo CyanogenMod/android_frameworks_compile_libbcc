@@ -14,30 +14,39 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_CONTEXT_H
+#define BCC_CONTEXT_H
 
-#include <cstring>
+namespace llvm {
+  class LLVMContext;
+}
 
 namespace bcc {
 
-class SymbolResolverInterface;
+class BCCContextImpl;
+class Source;
 
-class ObjectLoaderImpl {
+/*
+ * class BCCContext manages the global data across the libbcc infrastructure.
+ */
+class BCCContext {
 public:
-  ObjectLoaderImpl() { }
+  BCCContextImpl *const mImpl;
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
+  BCCContext();
+  ~BCCContext();
 
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
+  llvm::LLVMContext &getLLVMContext();
+  const llvm::LLVMContext &getLLVMContext() const;
 
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
+  void addSource(Source &pSource);
+  void removeSource(Source &pSource);
 
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
+  // Global BCCContext
+  static BCCContext *GetOrCreateGlobalContext();
+  static void DestroyGlobalContext();
 };
 
 } // namespace bcc
 
-#endif // OBJECT_LOADER_IMPL_H
+#endif  // BCC_CONTEXT_H

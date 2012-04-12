@@ -14,30 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
+#define BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
 
-#include <cstring>
+#include "bcc/ExecutionEngine/SymbolResolverInterface.h"
+#include "bcc/Support/DebugHelper.h"
+
+#include <utils/Vector.h>
 
 namespace bcc {
 
-class SymbolResolverInterface;
+class SymbolResolverProxy : public SymbolResolverInterface {
+private:
+  android::Vector<SymbolResolverInterface *> mChain;
 
-class ObjectLoaderImpl {
 public:
-  ObjectLoaderImpl() { }
+  SymbolResolverProxy() { }
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
+  void chainResolver(SymbolResolverInterface &pResolver);
 
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
+  virtual void *getAddress(const char *pName);
 };
 
-} // namespace bcc
+} // end namespace bcc
 
-#endif // OBJECT_LOADER_IMPL_H
+#endif // BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H

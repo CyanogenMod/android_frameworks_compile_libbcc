@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011-2012 The Android Open Source Project
+# Copyright (C) 2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,35 +18,31 @@
 LOCAL_PATH := $(call my-dir)
 
 #=====================================================================
-# Common: libbccExecutionEngine
+# Common: libbccRenderScript
 #=====================================================================
 
-libbcc_executionengine_SRC_FILES := \
-  BCCRuntimeStub.c \
-  BCCRuntimeSymbolResolver.cpp \
-  ELFObjectLoaderImpl.cpp \
-  GDBJIT.cpp \
-  GDBJITRegistrar.cpp \
-  ObjectLoader.cpp \
-  SymbolResolverProxy.cpp \
-  SymbolResolvers.cpp
+libbcc_renderscript_SRC_FILES := \
+  RSCompiler.cpp \
+  RSCompilerDriver.cpp \
+  RSExecutable.cpp \
+  RSForEachExpand.cpp \
+  RSInfo.cpp \
+  RSInfoExtractor.cpp \
+  RSInfoReader.cpp \
+  RSInfoWriter.cpp \
+  RSScript.cpp
 
 #=====================================================================
-# Device Static Library: libbccExecutionEngine
+# Device Static Library: libbccRenderScript
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccRenderScript
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := \
-  $(LIBBCC_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+LOCAL_SRC_FILES := $(libbcc_renderscript_SRC_FILES)
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
@@ -55,23 +51,22 @@ include $(BUILD_STATIC_LIBRARY)
 
 
 #=====================================================================
-# Host Static Library: libbccExecutionEngine
+# Host Static Library: libbccRenderScript
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccRenderScript
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+LOCAL_IS_HOST_MODULE := true
 
-LOCAL_C_INCLUDES := \
-  $(LIBBCC_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+LOCAL_SRC_FILES := $(libbcc_renderscript_SRC_FILES)
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_STATIC_LIBRARY)
+
+# Build RenderScript runtime (libclcore.bc)
+include $(LOCAL_PATH)/runtime/Android.mk

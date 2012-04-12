@@ -14,30 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
-
-#include <cstring>
+#ifndef BCC_SUPPORT_INITIALIZATION_H
+#define BCC_SUPPORT_INITIALIZATION_H
 
 namespace bcc {
 
-class SymbolResolverInterface;
+namespace init {
 
-class ObjectLoaderImpl {
-public:
-  ObjectLoaderImpl() { }
+void Initialize();
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
+} // end namespace init
 
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
+} // end namespace bcc
 
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
-};
-
-} // namespace bcc
-
-#endif // OBJECT_LOADER_IMPL_H
+#endif // BCC_SUPPORT_INITIALIZATION_H

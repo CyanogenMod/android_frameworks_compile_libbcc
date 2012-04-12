@@ -14,30 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_EXECUTION_ENGINE_BCC_RUNTIME_SYMBOL_RESOLVERS_H
+#define BCC_EXECUTION_ENGINE_BCC_RUNTIME_SYMBOL_RESOLVERS_H
 
-#include <cstring>
+#include "bcc/ExecutionEngine/SymbolResolvers.h"
 
 namespace bcc {
 
-class SymbolResolverInterface;
-
-class ObjectLoaderImpl {
+class BCCRuntimeSymbolResolver :
+  public ArraySymbolResolver<BCCRuntimeSymbolResolver> {
+  typedef ArraySymbolResolver<BCCRuntimeSymbolResolver> super;
 public:
-  ObjectLoaderImpl() { }
+  // SymbolArray and NumSymbols are required to be define in the
+  // subclass of ArraySymbolResolver.
+  static const SymbolMap SymbolArray[];
+  static const size_t NumSymbols;
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
-
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
+  BCCRuntimeSymbolResolver() : super(/* pSorted */true) { }
 };
 
-} // namespace bcc
+} // end namespace bcc
 
-#endif // OBJECT_LOADER_IMPL_H
+#endif // BCC_EXECUTION_ENGINE_BCC_RUNTIME_SYMBOL_RESOLVERS_H

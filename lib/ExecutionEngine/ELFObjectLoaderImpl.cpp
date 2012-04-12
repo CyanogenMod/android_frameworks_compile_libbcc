@@ -24,8 +24,8 @@
 #include "ELFSymbol.h"
 #include "utils/serialize.h"
 
-#include "DebugHelper.h"
-#include "SymbolResolverInterface.h"
+#include "bcc/ExecutionEngine/SymbolResolverInterface.h"
+#include "bcc/Support/DebugHelper.h"
 
 using namespace bcc;
 

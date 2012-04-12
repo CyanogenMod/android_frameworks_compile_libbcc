@@ -14,30 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_RS_COMPILER_H
+#define BCC_RS_COMPILER_H
 
-#include <cstring>
+#include "bcc/Compiler.h"
 
 namespace bcc {
 
-class SymbolResolverInterface;
-
-class ObjectLoaderImpl {
-public:
-  ObjectLoaderImpl() { }
-
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
-
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
+class RSCompiler : public Compiler {
+private:
+  virtual bool beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM);
+  virtual bool beforeExecuteLTOPasses(Script &pScript, llvm::PassManager &pPM);
 };
 
-} // namespace bcc
+} // end namespace bcc
 
-#endif // OBJECT_LOADER_IMPL_H
+#endif // BCC_RS_COMPILER_H

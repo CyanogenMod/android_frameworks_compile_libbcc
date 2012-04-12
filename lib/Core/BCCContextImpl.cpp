@@ -14,30 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#include "BCCContextImpl.h"
 
-#include <cstring>
+#include <vector>
 
-namespace bcc {
+#include <llvm/ADT/STLExtras.h>
 
-class SymbolResolverInterface;
+#include "bcc/Source.h"
 
-class ObjectLoaderImpl {
-public:
-  ObjectLoaderImpl() { }
+using namespace bcc;
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
-
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
-};
-
-} // namespace bcc
-
-#endif // OBJECT_LOADER_IMPL_H
+BCCContextImpl::~BCCContextImpl() {
+  // Another temporary container is needed to store the Source objects that we
+  // are going to destroy. Since the destruction of Source object will call
+  // removeSource() and change the content of OwnSources.
+  std::vector<Source *> Sources(mOwnSources.begin(), mOwnSources.end());
+  llvm::DeleteContainerPointers(Sources);
+}

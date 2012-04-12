@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "BCCRuntimeSymbolResolver.h"
+#include "bcc/ExecutionEngine/BCCRuntimeSymbolResolver.h"
 
 // int_lib.h included by BCCRuntimeStub.h has the following line:
 //
