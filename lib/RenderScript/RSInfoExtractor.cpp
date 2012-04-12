@@ -24,7 +24,7 @@
 #include <llvm/Module.h>
 
 #include "bcc/Source.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 using namespace bcc;
 

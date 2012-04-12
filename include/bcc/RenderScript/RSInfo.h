@@ -22,7 +22,7 @@
 #include <utility>
 
 #include "bcc/RenderScript/RSScript.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 #include <utils/String8.h>
 #include <utils/Vector.h>

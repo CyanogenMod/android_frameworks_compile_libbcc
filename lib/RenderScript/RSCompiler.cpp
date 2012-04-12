@@ -25,7 +25,7 @@
 #include "bcc/RenderScript/RSScript.h"
 #include "bcc/RenderScript/RSTransforms.h"
 #include "bcc/Source.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 using namespace bcc;
 

@@ -20,7 +20,7 @@
 
 #include "bcc/RenderScript/RSInfo.h"
 
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"
 
 using namespace bcc;

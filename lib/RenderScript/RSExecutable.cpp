@@ -16,8 +16,8 @@
 
 #include "bcc/RenderScript/RSExecutable.h"
 
-#include "bcc/Support/DebugHelper.h"
 #include "bcc/Support/FileBase.h"
+#include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
 

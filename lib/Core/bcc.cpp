@@ -29,7 +29,7 @@
 #include "bcc/RenderScript/RSExecutable.h"
 #include "bcc/RenderScript/RSScript.h"
 #include "bcc/Source.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 #include "bcc/Support/Initialization.h"
 #include "bcc/Support/Sha1Helper.h"
 
@@ -52,7 +52,6 @@ static void bccPrintBuildStamp() {
 }
 
 extern "C" BCCScriptRef bccCreateScript() {
-  BCC_FUNC_LOGGER();
   bccPrintBuildStamp();
   init::Initialize();
   RSScriptContext *rsctx = new (std::nothrow) RSScriptContext();
@@ -65,7 +64,6 @@ extern "C" BCCScriptRef bccCreateScript() {
 
 
 extern "C" void bccDisposeScript(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
   RSScriptContext *rsctx = unwrap(script);
   if (rsctx != NULL) {
     delete rsctx->script;
@@ -78,7 +76,6 @@ extern "C" void bccDisposeScript(BCCScriptRef script) {
 extern "C" int bccRegisterSymbolCallback(BCCScriptRef script,
                                          BCCSymbolLookupFn pFn,
                                          void *pContext) {
-  BCC_FUNC_LOGGER();
   unwrap(script)->driver.setRSRuntimeLookupFunction(pFn);
   unwrap(script)->driver.setRSRuntimeLookupContext(pContext);
   return BCC_NO_ERROR;
@@ -86,7 +83,6 @@ extern "C" int bccRegisterSymbolCallback(BCCScriptRef script,
 
 
 extern "C" int bccGetError(BCCScriptRef script) {
-  BCC_FUNC_LOGGER();
   return BCC_DEPRECATED_API;
 }
 
@@ -225,7 +221,6 @@ extern "C" int bccReadBC(BCCScriptRef script,
                          char const *bitcode,
                          size_t bitcodeSize,
                          unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return (helper_add_source(unwrap(script), resName,
                             bitcode, bitcodeSize,
                             flags, /* pIsLink */false) == false);
@@ -236,7 +231,6 @@ extern "C" int bccReadModule(BCCScriptRef script,
                              char const *resName /* deprecated */,
                              LLVMModuleRef module,
                              unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return (helper_add_source(unwrap(script), unwrap(module),
                             /* pIsLink */false) == false);
 }
@@ -245,7 +239,6 @@ extern "C" int bccReadModule(BCCScriptRef script,
 extern "C" int bccReadFile(BCCScriptRef script,
                            char const *path,
                            unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return (helper_add_source(unwrap(script), path,
                             flags, /* pIsLink */false) == false);
 }
@@ -256,7 +249,6 @@ extern "C" int bccLinkBC(BCCScriptRef script,
                          char const *bitcode,
                          size_t bitcodeSize,
                          unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return (helper_add_source(unwrap(script), resName,
                             bitcode, bitcodeSize,
                             flags, /* pIsLink */true) == false);
@@ -266,14 +258,12 @@ extern "C" int bccLinkBC(BCCScriptRef script,
 extern "C" int bccLinkFile(BCCScriptRef script,
                            char const *path,
                            unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return (helper_add_source(unwrap(script), path,
                             flags, /* pIsLink */true) == false);
 }
 
 
 extern "C" void bccMarkExternalSymbol(BCCScriptRef script, char const *name) {
-  BCC_FUNC_LOGGER();
   return /* BCC_DEPRECATED_API */;
 }
 
@@ -282,7 +272,6 @@ extern "C" int bccPrepareRelocatable(BCCScriptRef script,
                                      char const *objPath,
                                      bccRelocModelEnum RelocModel,
                                      unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return BCC_DEPRECATED_API;
 }
 
@@ -291,7 +280,6 @@ extern "C" int bccPrepareSharedObject(BCCScriptRef script,
                                       char const *objPath,
                                       char const *dsoPath,
                                       unsigned long flags) {
-  BCC_FUNC_LOGGER();
   return BCC_DEPRECATED_API;
 }
 
@@ -300,8 +288,6 @@ extern "C" int bccPrepareExecutable(BCCScriptRef script,
                                     char const *cacheDir,
                                     char const *cacheName,
                                     unsigned long flags) {
-  BCC_FUNC_LOGGER();
-
   android::StopWatch compileTimer("bcc: PrepareExecutable time");
 
   RSScriptContext *rsctx = unwrap(script);
@@ -331,7 +317,6 @@ extern "C" int bccPrepareExecutable(BCCScriptRef script,
 
 
 extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
-  BCC_FUNC_LOGGER();
 
   RSScriptContext *rsctx = unwrap(script);
 
@@ -351,8 +336,6 @@ extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
 extern "C" void bccGetExportVarList(BCCScriptRef script,
                                     size_t varListSize,
                                     void **varList) {
-  BCC_FUNC_LOGGER();
-
   const RSScriptContext *rsctx = unwrap(script);
   if (varList && rsctx->result) {
     const android::Vector<void *> &export_var_addrs =
@@ -383,8 +366,6 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
 extern "C" void bccGetExportFuncList(BCCScriptRef script,
                                      size_t funcListSize,
                                      void **funcList) {
-  BCC_FUNC_LOGGER();
-
   const RSScriptContext *rsctx = unwrap(script);
   if (funcList && rsctx->result) {
     const android::Vector<void *> &export_func_addrs =
@@ -415,8 +396,6 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
 extern "C" void bccGetExportForEachList(BCCScriptRef script,
                                         size_t forEachListSize,
                                         void **forEachList) {
-  BCC_FUNC_LOGGER();
-
   const RSScriptContext *rsctx = unwrap(script);
   if (forEachList && rsctx->result) {
     const android::Vector<void *> &export_foreach_func_addrs =

@@ -22,7 +22,7 @@
 #include <llvm/Support/TargetSelect.h>
 
 #include "bcc/Config/Config.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 namespace {
 

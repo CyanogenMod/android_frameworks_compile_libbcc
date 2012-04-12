@@ -19,7 +19,7 @@
 #include <new>
 
 #include "bcc/Source.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 #include "BCCContextImpl.h"
 

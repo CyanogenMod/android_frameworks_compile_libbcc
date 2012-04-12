@@ -24,7 +24,7 @@
 
 #include <utils/FileMap.h>
 
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 #include "bcc/Support/InputFile.h"
 
 using namespace bcc;
