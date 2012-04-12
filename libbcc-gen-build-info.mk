@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011-2012 The Android Open Source Project
+# Copyright (C) 2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,14 +43,16 @@ LOCAL_LIBBCC_LIB_DEPS := \
   $(LIBBCC_ROOT_PATH)/lib/Core/bcc.cpp
 
 
-# Build Rules for Automatically Generated Build Stamp
-GEN := $(local-intermediates-dir)/libbcc-stamp.c
+# Build Rules for Automatically Generated Build Information
+GEN := $(local-intermediates-dir)/BuildInfo.cpp
+
+gen_build_info := $(LOCAL_PATH)/tools/build/gen-build-info.py
 
 $(GEN): PRIVATE_PATH := $(LOCAL_PATH)
 $(GEN): PRIVATE_DEPS := $(LOCAL_LIBBCC_LIB_DEPS)
-$(GEN): PRIVATE_CUSTOM_TOOL = $(PRIVATE_PATH)/tools/build/gen-build-stamp.py \
-                              $(PRIVATE_PATH) $(PRIVATE_DEPS) > $@
-$(GEN): $(LOCAL_PATH)/tools/build/gen-build-stamp.py $(LOCAL_LIBBCC_LIB_DEPS) \
+$(GEN): PRIVATE_CUSTOM_TOOL = $(gen_build_info) $(PRIVATE_PATH) \
+                              $(PRIVATE_DEPS) > $@
+$(GEN): $(gen_build_info) $(LOCAL_LIBBCC_LIB_DEPS) \
         $(wildcard $(LOCAL_PATH)/.git/COMMIT_EDITMSG)
 	$(transform-generated-source)
 
