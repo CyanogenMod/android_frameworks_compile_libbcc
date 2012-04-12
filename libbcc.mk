@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 The Android Open Source Project
+# Copyright (C) 2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,54 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#
 
-LOCAL_PATH := $(call my-dir)
-
-ifeq ($(libbcc_USE_DISASSEMBLER),1)
-
-#=====================================================================
-# Common: libbccDisassembler
-#=====================================================================
-
-libbcc_disassembler_SRC_FILES := \
-  Disassembler.cpp
-
+ifeq ($(LIBBCC_ROOT_PATH),)
+$(error Must set variable LIBBCC_ROOT_PATH before including this! $(LOCAL_PATH))
+endif
 
 #=====================================================================
-# Device Static Library: libbccDisassembler
+# Root Path for Other Projects
 #=====================================================================
 
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := libbccDisassembler
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-
-LOCAL_SRC_FILES := $(libbcc_disassembler_SRC_FILES)
-
-include $(LIBBCC_DEVICE_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
-include $(LLVM_DEVICE_BUILD_MK)
-include $(BUILD_STATIC_LIBRARY)
-
+LLVM_ROOT_PATH          := external/llvm
+RSLOADER_ROOT_PATH      := frameworks/compile/linkloader
 
 #=====================================================================
-# Host Static Library: libbccDisassembler
+# Related Makefile Paths of libbcc
 #=====================================================================
 
-include $(CLEAR_VARS)
+LIBBCC_HOST_BUILD_MK    := $(LIBBCC_ROOT_PATH)/libbcc-host-build.mk
+LIBBCC_DEVICE_BUILD_MK  := $(LIBBCC_ROOT_PATH)/libbcc-device-build.mk
+LIBBCC_GEN_CONFIG_MK    := $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 
-LOCAL_MODULE := libbccDisassembler
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_IS_HOST_MODULE := true
+#=====================================================================
+# Configuration of libbcc
+#=====================================================================
+include $(LIBBCC_ROOT_PATH)/libbcc-config.mk
 
-LOCAL_SRC_FILES := $(libbcc_disassembler_SRC_FILES)
-
-include $(LIBBCC_HOST_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
-include $(LLVM_HOST_BUILD_MK)
-include $(BUILD_HOST_STATIC_LIBRARY)
-
-endif # $(libbcc_USE_DISASSEMBLER)
+#=====================================================================
+# Related Makefile Paths of LLVM
+#=====================================================================
+include $(LLVM_ROOT_PATH)/llvm.mk
