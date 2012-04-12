@@ -57,7 +57,6 @@ LOCAL_CFLAGS += -D__HOST__
 LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
 LOCAL_SRC_FILES := \
-  DebugHelper.c \
   sha1.c
 
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk

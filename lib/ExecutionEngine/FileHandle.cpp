@@ -37,9 +37,7 @@ int FileHandle::open(char const *filename, OpenMode::ModeType mode) {
 
   static int const lock_flags[2] = { LOCK_SH, LOCK_EX };
 
-#if USE_LOGGER
   static char const *const open_mode_str[2] = { "read", "write" };
-#endif
 
   static size_t const RETRY_MAX = 4;
 
