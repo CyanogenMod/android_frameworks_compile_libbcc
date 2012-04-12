@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011-2012 The Android Open Source Project
+# Copyright (C) 2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,35 +18,34 @@
 LOCAL_PATH := $(call my-dir)
 
 #=====================================================================
-# Common: libbccExecutionEngine
+# Common: libbccSupport
 #=====================================================================
 
-libbcc_executionengine_SRC_FILES := \
-  BCCRuntimeStub.c \
-  BCCRuntimeSymbolResolver.cpp \
-  ELFObjectLoaderImpl.cpp \
-  GDBJIT.cpp \
-  GDBJITRegistrar.cpp \
-  ObjectLoader.cpp \
-  SymbolResolverProxy.cpp \
-  SymbolResolvers.cpp
+libbcc_support_SRC_FILES := \
+  sha1.c \
+  CompilerConfig.cpp \
+  FileBase.cpp \
+  Initialization.cpp \
+  InputFile.cpp \
+  OutputFile.cpp \
+  Sha1Helper.cpp \
+  TargetCompilerConfigs.cpp
+
+ifeq ($(libbcc_USE_DISASSEMBLER),1)
+libbcc_support_SRC_FILES += Disassembler.cpp
+endif
 
 #=====================================================================
-# Device Static Library: libbccExecutionEngine
+# Device Static Library: libbccSupport
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccSupport
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := \
-  $(LIBBCC_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+LOCAL_SRC_FILES := $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
@@ -55,21 +54,16 @@ include $(BUILD_STATIC_LIBRARY)
 
 
 #=====================================================================
-# Host Static Library: libbccExecutionEngine
+# Host Static Library: libbccSupport
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccSupport
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := \
-  $(LIBBCC_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+LOCAL_SRC_FILES := $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)

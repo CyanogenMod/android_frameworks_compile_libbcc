@@ -56,7 +56,5 @@ else
 endif
 
 LOCAL_C_INCLUDES := \
-  $(LIBBCC_ROOT_PATH) \
-  $(LIBBCC_ROOT_PATH)/helper \
   $(LIBBCC_ROOT_PATH)/include \
   $(LOCAL_C_INCLUDES)

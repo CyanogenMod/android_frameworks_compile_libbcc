@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "SymbolResolvers.h"
+#include "bcc/ExecutionEngine/SymbolResolvers.h"
 
 #include <dlfcn.h>
 

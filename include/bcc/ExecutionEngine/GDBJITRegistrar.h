@@ -16,7 +16,7 @@
 
 // This file contains portions derived from LLVM, with the original copyright
 // header below:
-//===-- GDBJIT.cpp - Common Implementation shared by GDB-JIT users --------===//
+//===-- GDBJITRegistrar.h - Common Implementation shared by GDB-JIT users --===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -25,16 +25,20 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file is used to support GDB's JIT interface
+// This file contains declarations of the interface an ExecutionEngine would use
+// to register an in-memory object file with GDB.
 //
 //===----------------------------------------------------------------------===//
 
-#include <llvm/Support/Compiler.h>
+#ifndef BCC_EXECUTION_ENGINE_GDB_JIT_REGISTRAR_H
+#define BCC_EXECUTION_ENGINE_GDB_JIT_REGISTRAR_H
 
-// This interface must be kept in sync with gdb/gdb/jit.h .
-extern "C" {
+#include <cstddef>
 
-  // GDB 7.0+ puts a (silent) breakpoint in this function.
-  LLVM_ATTRIBUTE_NOINLINE void __jit_debug_register_code() { }
+// Buffer for an in-memory object file in executable memory
+typedef char ObjectBuffer;
 
-}
+void registerObjectWithGDB(const ObjectBuffer* Object, std::size_t Size);
+void deregisterObjectWithGDB(const ObjectBuffer* Object);
+
+#endif // BCC_EXECUTION_ENGINE_GDB_JIT_REGISTRAR_H

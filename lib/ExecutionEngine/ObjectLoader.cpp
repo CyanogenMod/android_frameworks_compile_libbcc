@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-#include "ObjectLoader.h"
+#include "bcc/ExecutionEngine/ObjectLoader.h"
 
 #include <utils/FileMap.h>
 
-#include "DebugHelper.h"
+#include "bcc/ExecutionEngine/GDBJITRegistrar.h"
+#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/FileBase.h"
+
 #include "ELFObjectLoaderImpl.h"
-#include "FileBase.h"
-#include "GDBJITRegistrar.h"
 
 using namespace bcc;
 

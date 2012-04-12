@@ -14,30 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_SUPPORT_INPUT_FILE_H
+#define BCC_SUPPORT_INPUT_FILE_H
 
-#include <cstring>
+#include "bcc/Support/File.h"
+#include "bcc/Support/FileBase.h"
 
 namespace bcc {
 
-class SymbolResolverInterface;
-
-class ObjectLoaderImpl {
+class InputFile : public File<FileBase::kReadMode> {
+  typedef File<FileBase::kReadMode> super;
 public:
-  ObjectLoaderImpl() { }
+  InputFile(const std::string &pFilename, unsigned pFlags = 0);
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
-
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
+  ssize_t read(void *pBuf, size_t count);
 };
 
-} // namespace bcc
+} // end namespace bcc
 
-#endif // OBJECT_LOADER_IMPL_H
+#endif  // BCC_SUPPORT_INPUT_FILE_H

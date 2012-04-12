@@ -14,30 +14,32 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_CORE_CONTEXT_IMPL_H
+#define BCC_CORE_CONTEXT_IMPL_H
 
-#include <cstring>
+#include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/LLVMContext.h>
 
 namespace bcc {
 
-class SymbolResolverInterface;
+class BCCContext;
+class Source;
 
-class ObjectLoaderImpl {
+/*
+ * class BCCContextImpl contains the implementation of BCCCotext.
+ */
+class BCCContextImpl {
 public:
-  ObjectLoaderImpl() { }
+  llvm::LLVMContext mLLVMContext;
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
+  // The set of sources that initialized in this context. They will be destroyed
+  // automatically when this context is gone.
+  llvm::SmallPtrSet<Source *, 2> mOwnSources;
 
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
+  BCCContextImpl(BCCContext &pContext) { }
+  ~BCCContextImpl();
 };
 
 } // namespace bcc
 
-#endif // OBJECT_LOADER_IMPL_H
+#endif  // BCC_CORE_CONTEXT_IMPL_H

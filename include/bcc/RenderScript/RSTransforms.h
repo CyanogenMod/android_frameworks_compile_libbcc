@@ -14,30 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef OBJECT_LOADER_IMPL_H
-#define OBJECT_LOADER_IMPL_H
+#ifndef BCC_RS_TRANSFORMS_H
+#define BCC_RS_TRANSFORMS_H
 
-#include <cstring>
+#include "bcc/RenderScript/RSInfo.h"
+
+namespace llvm {
+  class ModulePass;
+}
 
 namespace bcc {
 
-class SymbolResolverInterface;
+llvm::ModulePass *
+createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs);
 
-class ObjectLoaderImpl {
-public:
-  ObjectLoaderImpl() { }
+} // end namespace bcc
 
-  virtual bool load(const void *pMem, size_t pMemSize) = 0;
-
-  virtual bool relocate(SymbolResolverInterface &pResolver) = 0;
-
-  virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
-
-  virtual void *getSymbolAddress(const char *pName) const = 0;
-
-  virtual ~ObjectLoaderImpl() { }
-};
-
-} // namespace bcc
-
-#endif // OBJECT_LOADER_IMPL_H
+#endif // BCC_RS_TRANSFORMS_H
