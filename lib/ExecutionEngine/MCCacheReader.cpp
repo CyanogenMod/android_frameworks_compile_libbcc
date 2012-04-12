@@ -289,17 +289,16 @@ bool MCCacheReader::checkDependency() {
   }
 
   vector<char const *> &strPool = mpResult->mStringPool;
-  map<string, pair<uint32_t, unsigned char const *> >::iterator dep;
+  map<string, unsigned char const *>::iterator dep;
 
   dep = mDependencies.begin();
   for (size_t i = 0; i < mpCachedDependTable->count; ++i, ++dep) {
     string const &depName = dep->first;
-    uint32_t depType = dep->second.first;
-    unsigned char const *depSHA1 = dep->second.second;
+    unsigned char const *depSHA1 = dep->second;
 
     MCO_Dependency *depCached =&mpCachedDependTable->table[i];
     char const *depCachedName = strPool[depCached->res_name_strp_index];
-    uint32_t depCachedType = depCached->res_type;
+    //uint32_t depCachedType = depCached->res_type;
     unsigned char const *depCachedSHA1 = depCached->sha1;
 
     if (depName != depCachedName) {
@@ -324,11 +323,6 @@ bool MCCacheReader::checkDependency() {
 
 #undef PRINT_SHA1
 
-      return false;
-    }
-
-    if (depType != depCachedType) {
-      ALOGE("Cache dependency %s resource type mismatch.\n", depCachedName);
       return false;
     }
   }
