@@ -23,6 +23,7 @@
 #include "MCCacheWriter.h"
 #include "CompilerOption.h"
 
+#include "BCCContextImpl.h"
 #include "DebugHelper.h"
 #include "FileHandle.h"
 #include "GDBJITRegistrar.h"
@@ -347,14 +348,14 @@ int Script::internalCompile(const CompilerOption &option) {
   }
 
   // Parse Source bitcode file (if necessary)
-  if (mSourceList[0]->prepareModule() != 0) {
+  if (mSourceList[0]->prepareModule(mContext.mImpl->mLLVMContext) != 0) {
     ALOGE("Unable to setup source module\n");
     return 1;
   }
 
   // Parse Library bitcode file (if necessary)
   if (mSourceList[1]) {
-    if (mSourceList[1]->prepareModule(mSourceList[0]->getContext()) != 0) {
+    if (mSourceList[1]->prepareModule(mContext.mImpl->mLLVMContext) != 0) {
       ALOGE("Unable to setup library module\n");
       return 1;
     }

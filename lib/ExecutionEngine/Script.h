@@ -20,6 +20,7 @@
 #include <bcc/bcc.h>
 #include "bcc_internal.h"
 
+#include "BCCContext.h"
 #include "Compiler.h"
 
 #include <llvm/Support/CodeGen.h>
@@ -59,6 +60,8 @@ namespace bcc {
 
   class Script {
   private:
+    BCCContext mContext;
+
     int mErrorCode;
 
     ScriptStatus::StatusType mStatus;
