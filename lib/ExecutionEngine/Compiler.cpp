@@ -23,11 +23,13 @@
 #include "Disassembler/Disassembler.h"
 #endif
 
+#include "BCCRuntimeSymbolResolver.h"
 #include "DebugHelper.h"
-#include "Runtime.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"
 #include "CompilerOption.h"
+#include "SymbolResolverProxy.h"
+#include "SymbolResolvers.h"
 
 #include "librsloader.h"
 
@@ -403,10 +405,20 @@ int Compiler::compile(const CompilerOption &option) {
     return 0;
 
   // Load the ELF Object
-  mRSExecutable =
-      rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
-                         mEmittedELFExecutable.size(),
-                         &resolveSymbolAdapter, this);
+  {
+    BCCRuntimeSymbolResolver BCCRuntimesResolver;
+    LookupFunctionSymbolResolver<void*> RSSymbolResolver(mpSymbolLookupFn,
+                                                         mpSymbolLookupContext);
+
+    SymbolResolverProxy Resolver;
+    Resolver.chainResolver(BCCRuntimesResolver);
+    Resolver.chainResolver(RSSymbolResolver);
+
+    mRSExecutable =
+        rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
+                           mEmittedELFExecutable.size(),
+                           SymbolResolverProxy::LookupFunction, &Resolver);
+  }
 
   if (!mRSExecutable) {
     setError("Fail to load emitted ELF relocatable file");
@@ -652,25 +664,6 @@ int Compiler::runLTO(llvm::TargetData *TD,
 void *Compiler::getSymbolAddress(char const *name) {
   return rsloaderGetSymbolAddress(mRSExecutable, name);
 }
-
-
-void *Compiler::resolveSymbolAdapter(void *context, char const *name) {
-  Compiler *self = reinterpret_cast<Compiler *>(context);
-
-  if (void *Addr = FindRuntimeFunction(name)) {
-    return Addr;
-  }
-
-  if (self->mpSymbolLookupFn) {
-    if (void *Addr = self->mpSymbolLookupFn(self->mpSymbolLookupContext, name)) {
-      return Addr;
-    }
-  }
-
-  ALOGE("Unable to resolve symbol: %s\n", name);
-  return NULL;
-}
-
 
 Compiler::~Compiler() {
   rsloaderDisposeExec(mRSExecutable);

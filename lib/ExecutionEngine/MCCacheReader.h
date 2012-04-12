@@ -109,9 +109,6 @@ namespace bcc {
     bool checkContext();
 
     bool relocate();
-
-    static void *resolveSymbolAdapter(void *context, char const *name);
-
   };
 
 } // namespace bcc
