@@ -25,7 +25,7 @@
 #include "utils/serialize.h"
 
 #include "bcc/ExecutionEngine/SymbolResolverInterface.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 using namespace bcc;
 

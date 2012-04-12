@@ -14,28 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
-#define BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
+#ifndef BCC_SUPPORT_LOG_H
+#define BCC_SUPPORT_LOG_H
 
-#include "bcc/ExecutionEngine/SymbolResolverInterface.h"
-#include "bcc/Support/Log.h"
+#ifndef LOG_TAG
+#   define LOG_TAG "bcc"
+#   include <cutils/log.h>
+#endif
 
-#include <utils/Vector.h>
-
-namespace bcc {
-
-class SymbolResolverProxy : public SymbolResolverInterface {
-private:
-  android::Vector<SymbolResolverInterface *> mChain;
-
-public:
-  SymbolResolverProxy() { }
-
-  void chainResolver(SymbolResolverInterface &pResolver);
-
-  virtual void *getAddress(const char *pName);
-};
-
-} // end namespace bcc
-
-#endif // BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
+#endif // BCC_SUPPORT_LOG_H

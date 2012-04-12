@@ -22,7 +22,7 @@
 
 #include "bcc/ExecutionEngine/ObjectLoader.h"
 #include "bcc/RenderScript/RSInfo.h"
-#include "bcc/Support/DebugHelper.h"
+#include "bcc/Support/Log.h"
 
 #include <utils/Vector.h>
 
