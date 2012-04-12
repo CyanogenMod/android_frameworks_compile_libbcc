@@ -15,8 +15,8 @@
 #
 
 LOCAL_PATH := $(call my-dir)
-include $(LOCAL_PATH)/libbcc-config.mk
-
+LIBBCC_ROOT_PATH := $(LOCAL_PATH)
+include $(LIBBCC_ROOT_PATH)/libbcc.mk
 
 #=====================================================================
 # Whole Static Library to Be Linked In
@@ -63,11 +63,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-
-LOCAL_CFLAGS := $(libbcc_CFLAGS)
-LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
-
-LOCAL_SRC_FILES := lib/ExecutionEngine/bcc.cpp
 
 LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
 
@@ -162,10 +157,9 @@ endif
 LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
-include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-stamp.mk
 
-include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
-include $(LLVM_ROOT_PATH)/llvm-device-build.mk
+include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
 
 
@@ -179,12 +173,6 @@ LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_IS_HOST_MODULE := true
-
-LOCAL_CFLAGS := $(libbcc_CFLAGS)
-LOCAL_CFLAGS += -D__HOST__
-LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
-
-LOCAL_SRC_FILES := lib/ExecutionEngine/bcc.cpp
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
@@ -243,10 +231,9 @@ LOCAL_SHARED_LIBRARIES := libbcinfo
 LOCAL_LDLIBS := -ldl -lpthread
 
 # Generate build stamp (Build time + Build git revision + Build Semi SHA1)
-include $(LOCAL_PATH)/libbcc-gen-build-stamp.mk
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-stamp.mk
 
-include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
-include $(LLVM_ROOT_PATH)/llvm-host-build.mk
+include $(LIBBCC_HOST_BUILD_MK)
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 

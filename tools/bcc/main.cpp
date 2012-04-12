@@ -65,7 +65,9 @@ struct OptionInfo {
 };
 
 // forward declaration of option processing functions
+#if defined(__HOST__)
 static int optSetTriple(int, char **);
+#endif
 static int optSetInput(int, char **);
 static int optSetOutput(int, char **);
 static int optSetIntermediateOutput(int, char **);

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 The Android Open Source Project
+# Copyright (C) 2011-2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,15 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-#=====================================================================
-# Root Path for Other Projects
-#=====================================================================
-
-LLVM_ROOT_PATH      := external/llvm
-LIBBCC_ROOT_PATH    := frameworks/compile/libbcc
-RSLOADER_ROOT_PATH  := frameworks/compile/linkloader
 
 
 #=====================================================================
@@ -44,21 +35,3 @@ libbcc_USE_DISASSEMBLER := 0
 else
 libbcc_USE_DISASSEMBLER := 1
 endif
-
-
-#=====================================================================
-# Common Variables
-#=====================================================================
-
-libbcc_CFLAGS := -Wall -Wno-unused-parameter -Werror
-ifeq ($(TARGET_BUILD_VARIANT),eng)
-libbcc_CFLAGS += -DANDROID_ENGINEERING_BUILD
-endif
-
-# Include File Search Path
-libbcc_C_INCLUDES := \
-  $(RSLOADER_ROOT_PATH)/android \
-  $(LIBBCC_ROOT_PATH)/lib \
-  $(LIBBCC_ROOT_PATH)/helper \
-  $(LIBBCC_ROOT_PATH)/include \
-  $(LIBBCC_ROOT_PATH)
