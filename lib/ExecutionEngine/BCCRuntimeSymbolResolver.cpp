@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, The Android Open Source Project
+ * Copyright 2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,23 @@
  * limitations under the License.
  */
 
-#include "RuntimeStub.h"
+#include "BCCRuntimeSymbolResolver.h"
 
-#include <bcc/bcc_assert.h>
+// int_lib.h included by BCCRuntimeStub.h has the following line:
+//
+//            typedef      int si_int;
+//
+// However, there's already a macro also named "si_int" defined in siginfo.h
+// bionic/libc/kernel/common/asm-generic/. This is #undef is a hack to avoid
+// compiler mistakenly recognize the identifier "si_int" as a macro and abort
+// the compilation.
+//
+// This line of hack should put in the header file since it invalidate a
+// "system" scope macro definition.
+#undef si_int
+#include "BCCRuntimeStub.h"
 
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-
-typedef struct {
-  const char *mName;
-  void *mPtr;
-} RuntimeFunction;
+using namespace bcc;
 
 #if defined(__arm__) || defined(__mips__)
   #define DEF_GENERIC_RUNTIME(func)   \
@@ -34,10 +39,10 @@ typedef struct {
     extern void *func ## vfp;
   #define DEF_LLVM_RUNTIME(func)
   #define DEF_BCC_RUNTIME(func)
-#include "Runtime.def"
+#include "BCCRuntime.def"
 #endif
 
-static const RuntimeFunction gRuntimes[] = {
+const BCCRuntimeSymbolResolver::SymbolMap BCCRuntimeSymbolResolver::SymbolArray[] = {
 #if defined(__arm__) || defined(__mips__)
   #define DEF_GENERIC_RUNTIME(func)   \
     { #func, (void*) &func },
@@ -53,35 +58,9 @@ static const RuntimeFunction gRuntimes[] = {
   { #func, (void*) &func },
 #define DEF_BCC_RUNTIME(func) \
   { #func, &func ## _bcc },
-#include "Runtime.def"
+#include "BCCRuntime.def"
 };
 
-static int CompareRuntimeFunction(const void *a, const void *b) {
-  return strcmp(((const RuntimeFunction*) a)->mName,
-               ((const RuntimeFunction*) b)->mName);
-}
-
-void *FindRuntimeFunction(const char *Name) {
-  // binary search
-  const RuntimeFunction Key = { Name, NULL };
-  const RuntimeFunction *R =
-      bsearch(&Key,
-              gRuntimes,
-              sizeof(gRuntimes) / sizeof(RuntimeFunction),
-              sizeof(RuntimeFunction),
-              CompareRuntimeFunction);
-
-  return ((R) ? R->mPtr : NULL);
-}
-
-void VerifyRuntimesTable() {
-  unsigned N = sizeof(gRuntimes) / sizeof(RuntimeFunction), i;
-  for(i = 0; i < N; i++) {
-    const char *Name = gRuntimes[i].mName;
-    int *Ptr = FindRuntimeFunction(Name);
-
-    if (Ptr != (int*) gRuntimes[i].mPtr)
-      bccAssert(false && "Table is corrupted (runtime name should be sorted "
-                         "in Runtime.def).");
-  }
-}
+const size_t BCCRuntimeSymbolResolver::NumSymbols =
+  sizeof(BCCRuntimeSymbolResolver::SymbolArray) /
+    sizeof(BCCRuntimeSymbolResolver::SymbolArray[0]);
