@@ -24,7 +24,7 @@
 #define MCO_MAGIC "\0bcc"
 
 /* BCC Cache File Version, encoded in 4 bytes of ASCII */
-#define MCO_VERSION "001\0"
+#define MCO_VERSION "002\0"
 
 /* BCC Cache Header Structure */
 struct MCO_Header {
@@ -89,14 +89,8 @@ struct MCO_StringPool {
   struct MCO_String list[];
 };
 
-enum MCO_ResourceType {
-  BCC_APK_RESOURCE = 0,
-  BCC_FILE_RESOURCE = 1,
-};
-
 struct MCO_Dependency {
   size_t res_name_strp_index;
-  uint32_t res_type; /* BCC_APK_RESOURCE or BCC_FILE_RESOURCE */
   unsigned char sha1[20];
 };
 

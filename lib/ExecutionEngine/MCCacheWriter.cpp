@@ -122,13 +122,12 @@ bool MCCacheWriter::prepareDependencyTable() {
   tab->count = mDependencies.size();
 
   size_t i = 0;
-  for (map<string, pair<uint32_t, unsigned char const *> >::iterator
+  for (map<string, unsigned char const *>::iterator
        I = mDependencies.begin(), E = mDependencies.end(); I != E; ++I, ++i) {
     MCO_Dependency *dep = &tab->table[i];
 
     dep->res_name_strp_index = addString(I->first.c_str(), I->first.size());
-    dep->res_type = I->second.first;
-    memcpy(dep->sha1, I->second.second, 20);
+    memcpy(dep->sha1, I->second, 20);
   }
 
   return true;

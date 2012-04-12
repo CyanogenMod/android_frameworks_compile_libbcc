@@ -38,6 +38,7 @@ namespace llvm {
 }
 
 namespace bcc {
+  class RSInfo;
   class ScriptCompiled;
   class ScriptCached;
   class Source;
@@ -64,17 +65,12 @@ namespace bcc {
   public:
     class SourceDependency {
     private:
-      MCO_ResourceType mSourceType;
       std::string mSourceName;
       uint8_t mSHA1[20];
 
     public:
-      SourceDependency(MCO_ResourceType pSourceType,
-                       const std::string &pSourceName,
+      SourceDependency(const std::string &pSourceName,
                        const uint8_t *pSHA1);
-
-      inline MCO_ResourceType getSourceType() const
-      { return mSourceType; }
 
       inline const std::string &getSourceName() const
       { return mSourceName; }
@@ -113,6 +109,8 @@ namespace bcc {
 
     llvm::SmallVector<SourceDependency *, 4> mSourceDependencies;
 
+    const RSInfo *mInfo;
+
     // External Function List
     std::vector<char const *> mUserDefinedExternalSymbols;
 
@@ -134,12 +132,18 @@ namespace bcc {
     // Add dependency information for this script given the source named
     // pSourceName. pSHA1 is the SHA-1 checksum of the given source. Return
     // false on error.
-    bool addSourceDependency(MCO_ResourceType pSourceType,
-                             const std::string &pSourceName,
+    bool addSourceDependency(const std::string &pSourceName,
                              const uint8_t *pSHA1);
 
     const SourceDependencyListTy &getSourceDependencies() const
     { return mSourceDependencies; }
+
+    // Set the associated RSInfo of the script.
+    void setInfo(const RSInfo *pInfo)
+    { mInfo = pInfo; }
+
+    const RSInfo *getInfo() const
+    { return mInfo; }
 
     void markExternalSymbol(char const *name) {
       mUserDefinedExternalSymbols.push_back(name);

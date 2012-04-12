@@ -114,7 +114,7 @@ static bool helper_add_source(RSScript *pScript,
   if (need_dependency_check) {
     uint8_t sha1[20];
     calcSHA1(sha1, pBitcode, pBitcodeSize);
-    if (!pScript->addSourceDependency(BCC_APK_RESOURCE, pName, sha1)) {
+    if (!pScript->addSourceDependency(pName, sha1)) {
       return false;
     }
   }
@@ -164,7 +164,7 @@ static bool helper_add_source(RSScript *pScript,
   if (need_dependency_check) {
     uint8_t sha1[20];
     calcFileSHA1(sha1, pPath);
-    if (!pScript->addSourceDependency(BCC_APK_RESOURCE, pPath, sha1)) {
+    if (!pScript->addSourceDependency(pPath, sha1)) {
       return false;
     }
   }

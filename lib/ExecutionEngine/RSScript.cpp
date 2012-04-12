@@ -56,10 +56,9 @@ bool getBooleanProp(const char *str) {
 
 namespace bcc {
 
-RSScript::SourceDependency::SourceDependency(MCO_ResourceType pSourceType,
-                                             const std::string &pSourceName,
+RSScript::SourceDependency::SourceDependency(const std::string &pSourceName,
                                              const uint8_t *pSHA1)
-  : mSourceType(pSourceType), mSourceName(pSourceName) {
+  : mSourceName(pSourceName) {
   ::memcpy(mSHA1, pSHA1, sizeof(mSHA1));
   return;
 }
@@ -106,11 +105,10 @@ bool RSScript::doReset() {
   return true;
 }
 
-bool RSScript::addSourceDependency(MCO_ResourceType pSourceType,
-                                   const std::string &pSourceName,
+bool RSScript::addSourceDependency(const std::string &pSourceName,
                                    const uint8_t *pSHA1) {
   SourceDependency *source_dep =
-      new (std::nothrow) SourceDependency(pSourceType, pSourceName, pSHA1);
+      new (std::nothrow) SourceDependency(pSourceName, pSHA1);
   if (source_dep == NULL) {
     ALOGE("Out of memory when record dependency information of `%s'!",
           pSourceName.c_str());
@@ -263,13 +261,12 @@ int RSScript::internalLoadCache(char const *cacheDir, char const *cacheName,
   }
 
   // Dependencies
-  reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
-  reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
+  reader.addDependency(pathLibBCC_SHA1, sha1LibBCC_SHA1);
+  reader.addDependency(pathLibRS, sha1LibRS);
 
   for (unsigned i = 0; i < mSourceDependencies.size(); i++) {
     const SourceDependency *source_dep = mSourceDependencies[i];
-    reader.addDependency(source_dep->getSourceType(),
-                         source_dep->getSourceName(),
+    reader.addDependency(source_dep->getSourceName(),
                          source_dep->getSHA1Checksum());
   }
 
@@ -383,14 +380,13 @@ int RSScript::writeCache() {
 
 #ifdef TARGET_BUILD
     // Dependencies
-    writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
-    writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
+    writer.addDependency(pathLibBCC_SHA1, sha1LibBCC_SHA1);
+    writer.addDependency(pathLibRS, sha1LibRS);
 #endif
 
     for (unsigned i = 0; i < mSourceDependencies.size(); i++) {
       const SourceDependency *source_dep = mSourceDependencies[i];
-      writer.addDependency(source_dep->getSourceType(),
-                           source_dep->getSourceName(),
+      writer.addDependency(source_dep->getSourceName(),
                            source_dep->getSHA1Checksum());
     }
 
