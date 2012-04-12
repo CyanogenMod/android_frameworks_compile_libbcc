@@ -25,6 +25,7 @@
 
 #include <bcinfo/BitcodeWrapper.h>
 
+#include "bcc/Config/BuildInfo.h"
 #include "bcc/RenderScript/RSExecutable.h"
 #include "bcc/RenderScript/RSScript.h"
 #include "bcc/Source.h"
@@ -440,4 +441,16 @@ extern "C" void bccGetExportForEachList(BCCScriptRef script,
     }
 #endif
   }
+}
+
+extern "C" char const *bccGetBuildTime() {
+  return BuildInfo::GetBuildTime();
+}
+
+extern "C" char const *bccGetBuildRev() {
+  return BuildInfo::GetBuildRev();
+}
+
+extern "C" char const *bccGetBuildSHA1() {
+  return BuildInfo::GetBuildSourceBlob();
 }
