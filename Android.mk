@@ -141,7 +141,7 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMCore \
   libLLVMSupport
 
-LOCAL_SHARED_LIBRARIES := libbcinfo libdl libcutils libutils libstlport
+LOCAL_SHARED_LIBRARIES := libbcinfo libdl libutils libcutils libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
@@ -232,8 +232,8 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMSupport
 
 LOCAL_STATIC_LIBRARIES += \
-  libcutils \
-  libutils
+  libutils \
+  libcutils
 
 LOCAL_SHARED_LIBRARIES := libbcinfo
 
