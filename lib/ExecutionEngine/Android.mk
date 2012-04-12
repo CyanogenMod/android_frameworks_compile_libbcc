@@ -27,10 +27,12 @@ libbcc_executionengine_SRC_FILES := \
   BCCContextImpl.cpp \
   BCCRuntimeSymbolResolver.cpp \
   Compiler.cpp \
+  CompilerConfig.cpp \
   ELFObjectLoaderImpl.cpp \
   FileBase.cpp \
   GDBJIT.cpp \
   GDBJITRegistrar.cpp \
+  Initialization.cpp \
   InputFile.cpp \
   MCCacheWriter.cpp \
   MCCacheReader.cpp \
@@ -49,7 +51,8 @@ libbcc_executionengine_SRC_FILES := \
   Sha1Helper.cpp \
   Source.cpp \
   SymbolResolverProxy.cpp \
-  SymbolResolvers.cpp
+  SymbolResolvers.cpp \
+  TargetCompilerConfigs.cpp
 
 
 #=====================================================================
