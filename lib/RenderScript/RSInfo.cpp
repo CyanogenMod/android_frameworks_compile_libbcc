@@ -17,35 +17,36 @@
 //#define LOG_NDEBUG 0
 #include "bcc/RenderScript/RSInfo.h"
 
+#include <dlfcn.h>
+
 #include <cstring>
 #include <new>
 
 #include "bcc/Support/FileBase.h"
 #include "bcc/Support/Log.h"
-#include "bcc/Support/Sha1Helper.h"
 
 using namespace bcc;
 
 const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
 const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
-uint8_t RSInfo::LibBCCSHA1[20];
-uint8_t RSInfo::LibRSSHA1[20];
+const uint8_t *RSInfo::LibBCCSHA1 = NULL;
+const uint8_t *RSInfo::LibRSSHA1 = NULL;
 
 void RSInfo::LoadBuiltInSHA1Information() {
-  static bool loaded = false;
-
-  if (loaded) {
+  if (LibBCCSHA1 != NULL) {
+    // Loaded before.
     return;
   }
 
-  // Read SHA-1 checksum of libbcc from hard-coded patch
-  // /system/lib/libbcc.so.sha1.
-  readSHA1(LibBCCSHA1, 20, "/system/lib/libbcc.so.sha1");
+  void *h = ::dlopen("/system/lib/libbcc.sha1.so", RTLD_LAZY | RTLD_NOW);
+  if (h == NULL) {
+    ALOGE("Failed to load SHA-1 information from shared library '"
+          "/system/lib/libbcc.sha1.so'! (%s)", ::dlerror());
+    return;
+  }
 
-  // Calculate the SHA-1 checksum of libRS.so.
-  calcFileSHA1(LibRSSHA1, LibRSPath);
-
-  loaded = true;
+  LibBCCSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libbcc_so_SHA1"));
+  LibRSSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libRS_so_SHA1"));
 
   return;
 }
@@ -86,7 +87,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         pInfo.mDependencyTable[1];
 
     // Check libbcc.so.
-    if (::memcmp(cache_libbcc_dep.second, LibBCCSHA1, 20) != 0) {
+    if (::memcmp(cache_libbcc_dep.second, LibBCCSHA1, SHA1_DIGEST_LENGTH) != 0) {
         ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
               LibBCCPath);
         PRINT_DEPENDENCY("current - ", LibBCCPath, LibBCCSHA1);
@@ -96,7 +97,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
     }
 
     // Check libRS.so.
-    if (::memcmp(cache_libRS_dep.second, LibRSSHA1, 20) != 0) {
+    if (::memcmp(cache_libRS_dep.second, LibRSSHA1, SHA1_DIGEST_LENGTH) != 0) {
         ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
               LibRSPath);
         PRINT_DEPENDENCY("current - ", LibRSPath, LibRSSHA1);
@@ -113,7 +114,8 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
       if ((::strncmp(in_dep.getSourceName().c_str(),
                      cache_dep.first,
                      in_dep.getSourceName().length()) != 0) ||
-          (::memcmp(in_dep.getSHA1Checksum(), cache_dep.second, 20) != 0)) {
+          (::memcmp(in_dep.getSHA1Checksum(), cache_dep.second,
+                    SHA1_DIGEST_LENGTH) != 0)) {
         ALOGD("Cache %s is dirty due to the source it dependends on has been "
               "changed:", pInputFilename);
         PRINT_DEPENDENCY("given - ", in_dep.getSourceName().c_str(),
