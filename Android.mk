@@ -39,22 +39,29 @@ libbcc_WHOLE_STATIC_LIBRARIES += \
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbcc.so.sha1
+LOCAL_MODULE := libbcc.sha1
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
-include $(BUILD_SYSTEM)/base_rules.mk
 libbcc_SHA1_SRCS := \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so
 
 libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
+intermediates := $(call local-intermediates-dir)
 
-$(LOCAL_BUILT_MODULE): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
-$(LOCAL_BUILT_MODULE): $(libbcc_SHA1_SRCS) $(libbcc_GEN_SHA1_STAMP)
-	$(hide) mkdir -p $(dir $@) && \
-	        $(libbcc_GEN_SHA1_STAMP) $@ $(PRIVATE_SHA1_SRCS)
+libbcc_SHA1_ASM := $(intermediates)/libbcc.sha1.S
+LOCAL_GENERATED_SOURCES += $(libbcc_SHA1_ASM)
+$(libbcc_SHA1_ASM): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
+$(libbcc_SHA1_ASM): $(libbcc_SHA1_SRCS) $(libbcc_GEN_SHA1_STAMP)
+	@echo libbcc.sha1: $@
+	$(hide) mkdir -p $(dir $@)
+	$(hide) $(libbcc_GEN_SHA1_STAMP) $(PRIVATE_SHA1_SRCS) > $@
 
+LOCAL_CFLAGS += -D_REENTRANT -DPIC -fPIC
+LOCAL_CFLAGS += -O3 -nodefaultlibs -nostdlib
+
+include $(BUILD_SHARED_LIBRARY)
 
 #=====================================================================
 # Device Shared Library libbcc
@@ -141,7 +148,7 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libdl libutils libcutils libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
-LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
+LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1.so
 
 # Link-Time Optimization on libbcc.so
 #

@@ -22,13 +22,12 @@ LOCAL_PATH := $(call my-dir)
 #=====================================================================
 
 libbcc_support_SRC_FILES := \
-  sha1.c \
   CompilerConfig.cpp \
   FileBase.cpp \
   Initialization.cpp \
   InputFile.cpp \
   OutputFile.cpp \
-  Sha1Helper.cpp \
+  Sha1Util.cpp \
   TargetCompilerConfigs.cpp
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
@@ -45,6 +44,7 @@ LOCAL_MODULE := libbccSupport
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
+# Bionic already includes SHA-1 routines.
 LOCAL_SRC_FILES := $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_DEVICE_BUILD_MK)
@@ -63,7 +63,9 @@ LOCAL_MODULE := libbccSupport
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_SRC_FILES := $(libbcc_support_SRC_FILES)
+LOCAL_SRC_FILES := \
+  sha1.c \
+  $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)

@@ -23,6 +23,7 @@
 #include <llvm/Support/CodeGen.h>
 
 #include "bcc/Script.h"
+#include "bcc/Support/Sha1Util.h"
 
 namespace bcc {
 
@@ -34,7 +35,7 @@ public:
   class SourceDependency {
   private:
     std::string mSourceName;
-    uint8_t mSHA1[20];
+    uint8_t mSHA1[SHA1_DIGEST_LENGTH];
 
   public:
     SourceDependency(const std::string &pSourceName,
