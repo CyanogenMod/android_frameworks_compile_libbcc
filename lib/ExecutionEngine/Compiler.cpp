@@ -16,657 +16,367 @@
 
 #include "Compiler.h"
 
-#include "Config.h"
-#include <bcinfo/MetadataExtractor.h>
+#include <llvm/Analysis/Passes.h>
+#include <llvm/CodeGen/RegAllocRegistry.h>
+#include <llvm/Module.h>
+#include <llvm/PassManager.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetData.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/Scalar.h>
 
-#if USE_DISASSEMBLER
-#include "Disassembler/Disassembler.h"
-#endif
-
-#include "BCCRuntimeSymbolResolver.h"
+#include "CompilerConfig.h"
 #include "DebugHelper.h"
-#include "ScriptCompiled.h"
-#include "Sha1Helper.h"
-#include "CompilerOption.h"
-#include "SymbolResolverProxy.h"
-#include "SymbolResolvers.h"
+#include "OutputFile.h"
+#include "Script.h"
+#include "Source.h"
 
-#include "librsloader.h"
+using namespace bcc;
 
-#include "RSTransforms.h"
+const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
+  static const char *ErrorString[] = {
+    /* kSuccess */
+    "Successfully compiled.",
+    /* kInvalidConfigNoTarget */
+    "Invalid compiler config supplied (getTarget() returns NULL.) "
+    "(missing call to CompilerConfig::initialize()?)",
+    /* kErrCreateTargetMachine */
+    "Failed to create llvm::TargetMachine.",
+    /* kErrSwitchTargetMachine */
+    "Failed to switch llvm::TargetMachine.",
+    /* kErrNoTargetMachine */
+    "Failed to compile the script since there's no available TargetMachine."
+    " (missing call to Compiler::config()?)",
+    /* kErrTargetDataNoMemory */
+    "Out of memory when create TargetData during compilation.",
+    /* kErrMaterialization */
+    "Failed to materialize the module.",
+    /* kErrInvalidOutputFileState */
+    "Supplied output file was invalid (in the error state.)",
+    /* kErrPrepareOutput */
+    "Failed to prepare file for output.",
+    /* kPrepareCodeGenPass */
+    "Failed to construct pass list for code-generation.",
 
-#include "llvm/ADT/StringRef.h"
+    /* kErrHookBeforeAddLTOPasses */
+    "Error occurred during beforeAddLTOPasses() in subclass.",
+    /* kErrHookAfterAddLTOPasses */
+    "Error occurred during afterAddLTOPasses() in subclass.",
+    /* kErrHookBeforeExecuteLTOPasses */
+    "Error occurred during beforeExecuteLTOPasses() in subclass.",
+    /* kErrHookAfterExecuteLTOPasses */
+    "Error occurred during afterExecuteLTOPasses() in subclass.",
 
-#include "llvm/Analysis/Passes.h"
+    /* kErrHookBeforeAddCodeGenPasses */
+    "Error occurred during beforeAddCodeGenPasses() in subclass.",
+    /* kErrHookAfterAddCodeGenPasses */
+    "Error occurred during afterAddCodeGenPasses() in subclass.",
+    /* kErrHookBeforeExecuteCodeGenPasses */
+    "Error occurred during beforeExecuteCodeGenPasses() in subclass.",
+    /* kErrHookAfterExecuteCodeGenPasses */
+    "Error occurred during afterExecuteCodeGenPasses() in subclass.",
 
-#include "llvm/CodeGen/Passes.h"
-#include "llvm/CodeGen/RegAllocRegistry.h"
-#include "llvm/CodeGen/SchedulerRegistry.h"
+    /* kMaxErrorCode */
+    "(Unknown error code)"
+  };
 
-#include "llvm/MC/MCContext.h"
-#include "llvm/MC/SubtargetFeature.h"
-
-#include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Scalar.h"
-
-#include "llvm/Target/TargetData.h"
-#include "llvm/Target/TargetMachine.h"
-
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include "llvm/Constants.h"
-#include "llvm/GlobalValue.h"
-#include "llvm/Linker.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/Module.h"
-#include "llvm/PassManager.h"
-#include "llvm/Type.h"
-#include "llvm/Value.h"
-
-#include <errno.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <string.h>
-
-#include <algorithm>
-#include <iterator>
-#include <string>
-#include <vector>
-
-extern char* gDebugDumpDirectory;
-
-namespace bcc {
-
-//////////////////////////////////////////////////////////////////////////////
-// BCC Compiler Static Variables
-//////////////////////////////////////////////////////////////////////////////
-
-bool Compiler::GlobalInitialized = false;
-
-
-#if !defined(__HOST__)
-  #define TARGET_TRIPLE_STRING  DEFAULT_TARGET_TRIPLE_STRING
-#else
-// In host TARGET_TRIPLE_STRING is a variable to allow cross-compilation.
-  #if defined(__cplusplus)
-    extern "C" {
-  #endif
-      char *TARGET_TRIPLE_STRING = (char*)DEFAULT_TARGET_TRIPLE_STRING;
-  #if defined(__cplusplus)
-    };
-  #endif
-#endif
-
-// Code generation optimization level for the compiler
-llvm::CodeGenOpt::Level Compiler::CodeGenOptLevel;
-
-std::string Compiler::Triple;
-llvm::Triple::ArchType Compiler::ArchType;
-
-std::string Compiler::CPU;
-
-std::vector<std::string> Compiler::Features;
-
-
-//////////////////////////////////////////////////////////////////////////////
-// Compiler
-//////////////////////////////////////////////////////////////////////////////
-
-void Compiler::GlobalInitialization() {
-  if (GlobalInitialized) {
-    return;
+  if (pErrCode > kMaxErrorCode) {
+    pErrCode = kMaxErrorCode;
   }
 
-#if defined(PROVIDE_ARM_CODEGEN)
-  LLVMInitializeARMAsmPrinter();
-  LLVMInitializeARMTargetMC();
-  LLVMInitializeARMTargetInfo();
-  LLVMInitializeARMTarget();
-#endif
-
-#if defined(PROVIDE_MIPS_CODEGEN)
-  LLVMInitializeMipsAsmPrinter();
-  LLVMInitializeMipsTargetMC();
-  LLVMInitializeMipsTargetInfo();
-  LLVMInitializeMipsTarget();
-#endif
-
-#if defined(PROVIDE_X86_CODEGEN)
-  LLVMInitializeX86AsmPrinter();
-  LLVMInitializeX86TargetMC();
-  LLVMInitializeX86TargetInfo();
-  LLVMInitializeX86Target();
-#endif
-
-#if USE_DISASSEMBLER
-  InitializeDisassembler();
-#endif
-
-  // if (!llvm::llvm_is_multithreaded())
-  //   llvm::llvm_start_multithreaded();
-
-  // Set Triple, CPU and Features here
-  Triple = TARGET_TRIPLE_STRING;
-
-  // Determine ArchType
-#if defined(__HOST__)
-  {
-    std::string Err;
-    llvm::Target const *Target = llvm::TargetRegistry::lookupTarget(Triple, Err);
-    if (Target != NULL) {
-      ArchType = llvm::Triple::getArchTypeForLLVMName(Target->getName());
-    } else {
-      ArchType = llvm::Triple::UnknownArch;
-      ALOGE("%s", Err.c_str());
-    }
-  }
-#elif defined(DEFAULT_ARM_CODEGEN)
-  ArchType = llvm::Triple::arm;
-#elif defined(DEFAULT_MIPS_CODEGEN)
-  ArchType = llvm::Triple::mipsel;
-#elif defined(DEFAULT_X86_CODEGEN)
-  ArchType = llvm::Triple::x86;
-#elif defined(DEFAULT_X86_64_CODEGEN)
-  ArchType = llvm::Triple::x86_64;
-#else
-  ArchType = llvm::Triple::UnknownArch;
-#endif
-
-  if ((ArchType == llvm::Triple::arm) || (ArchType == llvm::Triple::thumb)) {
-#  if defined(ARCH_ARM_HAVE_VFP)
-    Features.push_back("+vfp3");
-#  if !defined(ARCH_ARM_HAVE_VFP_D32)
-    Features.push_back("+d16");
-#  endif
-#  endif
-
-#  if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
-    Features.push_back("+neon");
-    Features.push_back("+neonfp");
-#  else
-    Features.push_back("-neon");
-    Features.push_back("-neonfp");
-#  endif
-  }
-
-  // Register the scheduler
-  llvm::RegisterScheduler::setDefault(llvm::createDefaultScheduler);
-
-  // Read in SHA1 checksum of libbcc and libRS.
-  readSHA1(sha1LibBCC_SHA1, sizeof(sha1LibBCC_SHA1), pathLibBCC_SHA1);
-
-  calcFileSHA1(sha1LibRS, pathLibRS);
-
-  GlobalInitialized = true;
+  return ErrorString[ static_cast<size_t>(pErrCode) ];
 }
 
-
-void Compiler::LLVMErrorHandler(void *UserData, const std::string &Message) {
-  std::string *Error = static_cast<std::string*>(UserData);
-  Error->assign(Message);
-  ALOGE("%s", Message.c_str());
-  exit(1);
-}
-
-
-Compiler::Compiler(ScriptCompiled *result)
-  : mpResult(result),
-    mRSExecutable(NULL),
-    mpSymbolLookupFn(NULL),
-    mpSymbolLookupContext(NULL),
-    mModule(NULL) {
-  llvm::remove_fatal_error_handler();
-  llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
+//===----------------------------------------------------------------------===//
+// Instance Methods
+//===----------------------------------------------------------------------===//
+Compiler::Compiler() : mTarget(NULL), mEnableLTO(true) {
   return;
 }
 
-int Compiler::readModule(llvm::Module &pModule) {
-  mModule = &pModule;
-  if (pModule.getMaterializer() != NULL) {
-    // A module with non-null materializer means that it is a lazy-load module.
-    // Materialize it now via invoking MaterializeAllPermanently(). This
-    // function returns false when the materialization is successful.
-    if (pModule.MaterializeAllPermanently(&mError)) {
-      setError("Failed to materialize the module `" +
-               pModule.getModuleIdentifier() + "'! (" + mError + ")");
-      mModule = NULL;
-    }
+Compiler::Compiler(const CompilerConfig &pConfig) : mTarget(NULL),
+                                                    mEnableLTO(true) {
+  const std::string &triple = pConfig.getTriple();
+
+  enum ErrorCode err = config(pConfig);
+  if (err != kSuccess) {
+    ALOGE("%s (%s, features: %s)", GetErrorString(err),
+          triple.c_str(), pConfig.getFeatureString().c_str());
+    return;
   }
-  return hasError();
+
+  return;
 }
 
-int Compiler::compile(const CompilerOption &option) {
-  llvm::Target const *Target = NULL;
-  llvm::TargetData *TD = NULL;
-  llvm::TargetMachine *TM = NULL;
-
-  std::vector<std::string> ExtraFeatures;
-
-  std::string FeaturesStr;
-
-  if (mModule == NULL)  // No module was loaded
-    return 0;
-
-  bcinfo::MetadataExtractor ME(mModule);
-  ME.extract();
-
-  size_t VarCount = ME.getExportVarCount();
-  size_t FuncCount = ME.getExportFuncCount();
-  size_t ForEachSigCount = ME.getExportForEachSignatureCount();
-  size_t ObjectSlotCount = ME.getObjectSlotCount();
-  size_t PragmaCount = ME.getPragmaCount();
-
-  std::vector<std::string> &VarNameList = mpResult->mExportVarsName;
-  std::vector<std::string> &FuncNameList = mpResult->mExportFuncsName;
-  std::vector<std::string> &ForEachExpandList = mpResult->mExportForEachName;
-  RSInfo::ExportForeachFuncListTy ForEachFuncList;
-  std::vector<const char*> ExportSymbols;
-
-  // Defaults to maximum optimization level from MetadataExtractor.
-  uint32_t OptimizationLevel = ME.getOptimizationLevel();
-
-  if (OptimizationLevel == 0) {
-    CodeGenOptLevel = llvm::CodeGenOpt::None;
-  } else if (OptimizationLevel == 1) {
-    CodeGenOptLevel = llvm::CodeGenOpt::Less;
-  } else if (OptimizationLevel == 2) {
-    CodeGenOptLevel = llvm::CodeGenOpt::Default;
-  } else if (OptimizationLevel == 3) {
-    CodeGenOptLevel = llvm::CodeGenOpt::Aggressive;
+enum Compiler::ErrorCode Compiler::config(const CompilerConfig &pConfig) {
+  if (pConfig.getTarget() == NULL) {
+    return kInvalidConfigNoTarget;
   }
 
-  // not the best place for this, but we need to set the register allocation
-  // policy after we read the optimization_level metadata from the bitcode
+  llvm::TargetMachine *new_target =
+      (pConfig.getTarget())->createTargetMachine(pConfig.getTriple(),
+                                                 pConfig.getCPU(),
+                                                 pConfig.getFeatureString(),
+                                                 pConfig.getTargetOptions(),
+                                                 pConfig.getRelocationModel(),
+                                                 pConfig.getCodeModel(),
+                                                 pConfig.getOptimizationLevel());
 
-  // Register allocation policy:
+  if (new_target == NULL) {
+    return ((mTarget != NULL) ? kErrSwitchTargetMachine :
+                                kErrCreateTargetMachine);
+  }
+
+  // Replace the old TargetMachine.
+  delete mTarget;
+  mTarget = new_target;
+
+  // Adjust register allocation policy according to the optimization level.
   //  createFastRegisterAllocator: fast but bad quality
   //  createLinearScanRegisterAllocator: not so fast but good quality
-  llvm::RegisterRegAlloc::setDefault
-    ((CodeGenOptLevel == llvm::CodeGenOpt::None) ?
-     llvm::createFastRegisterAllocator :
-     llvm::createGreedyRegisterAllocator);
-
-  // Find LLVM Target
-  Target = llvm::TargetRegistry::lookupTarget(Triple, mError);
-  if (hasError())
-    goto on_bcc_compile_error;
-
-#if defined(ARCH_ARM_HAVE_NEON)
-  // Full-precision means we have to disable NEON
-  if (ME.getRSFloatPrecision() == bcinfo::RS_FP_Full) {
-    ExtraFeatures.push_back("-neon");
-    ExtraFeatures.push_back("-neonfp");
-  }
-#endif
-
-  if (!CPU.empty() || !Features.empty() || !ExtraFeatures.empty()) {
-    llvm::SubtargetFeatures F;
-
-    for (std::vector<std::string>::const_iterator
-         I = Features.begin(), E = Features.end(); I != E; I++) {
-      F.AddFeature(*I);
-    }
-
-    for (std::vector<std::string>::const_iterator
-         I = ExtraFeatures.begin(), E = ExtraFeatures.end(); I != E; I++) {
-      F.AddFeature(*I);
-    }
-
-    FeaturesStr = F.getString();
+  if ((pConfig.getOptimizationLevel() == llvm::CodeGenOpt::None)) {
+    llvm::RegisterRegAlloc::setDefault(llvm::createFastRegisterAllocator);
+  } else {
+    llvm::RegisterRegAlloc::setDefault(llvm::createGreedyRegisterAllocator);
   }
 
-  // Create LLVM Target Machine
-  TM = Target->createTargetMachine(Triple, CPU, FeaturesStr,
-                                   option.TargetOpt,
-                                   option.RelocModelOpt,
-                                   option.CodeModelOpt);
+  // Relax all machine instructions.
+  mTarget->setMCRelaxAll(true);
 
-  if (TM == NULL) {
-    setError("Failed to create target machine implementation for the"
-             " specified triple '" + Triple + "'");
-    goto on_bcc_compile_error;
-  }
-
-  // Get target data from Module
-  TD = new llvm::TargetData(mModule);
-
-  // Read pragma information from MetadataExtractor
-  if (PragmaCount) {
-    ScriptCompiled::PragmaList &PragmaPairs = mpResult->mPragmas;
-    const char **PragmaKeys = ME.getPragmaKeyList();
-    const char **PragmaValues = ME.getPragmaValueList();
-    for (size_t i = 0; i < PragmaCount; i++) {
-      PragmaPairs.push_back(std::make_pair(PragmaKeys[i], PragmaValues[i]));
-    }
-  }
-
-  if (VarCount) {
-    const char **VarNames = ME.getExportVarNameList();
-    for (size_t i = 0; i < VarCount; i++) {
-      VarNameList.push_back(VarNames[i]);
-      ExportSymbols.push_back(VarNames[i]);
-    }
-  }
-
-  if (FuncCount) {
-    const char **FuncNames = ME.getExportFuncNameList();
-    for (size_t i = 0; i < FuncCount; i++) {
-      FuncNameList.push_back(FuncNames[i]);
-      ExportSymbols.push_back(FuncNames[i]);
-    }
-  }
-
-  if (ForEachSigCount) {
-    const char **ForEachNames = ME.getExportForEachNameList();
-    const uint32_t *ForEachSigs = ME.getExportForEachSignatureList();
-    for (size_t i = 0; i < ForEachSigCount; i++) {
-      ForEachFuncList.push_back(std::make_pair(ForEachNames[i],
-                                               ForEachSigs[i]));
-      ForEachExpandList.push_back(std::string(ForEachNames[i]) + ".expand");
-    }
-
-    // Need to wait until ForEachExpandList is fully populated to fill in
-    // exported symbols.
-    for (size_t i = 0; i < ForEachSigCount; i++) {
-      ExportSymbols.push_back(ForEachExpandList[i].c_str());
-    }
-  }
-
-  if (ObjectSlotCount) {
-    ScriptCompiled::ObjectSlotList &objectSlotList = mpResult->mObjectSlots;
-    const uint32_t *ObjectSlots = ME.getObjectSlotList();
-    for (size_t i = 0; i < ObjectSlotCount; i++) {
-      objectSlotList.push_back(ObjectSlots[i]);
-    }
-  }
-
-  runInternalPasses(ForEachFuncList);
-
-  // Perform link-time optimization if we have multiple modules
-  if (option.RunLTO) {
-    runLTO(new llvm::TargetData(*TD), ExportSymbols, CodeGenOptLevel);
-  }
-
-  // Perform code generation
-  if (runMCCodeGen(new llvm::TargetData(*TD), TM) != 0) {
-    goto on_bcc_compile_error;
-  }
-
-  if (!option.LoadAfterCompile)
-    return 0;
-
-  // Load the ELF Object
-  {
-    BCCRuntimeSymbolResolver BCCRuntimesResolver;
-    LookupFunctionSymbolResolver<void*> RSSymbolResolver(mpSymbolLookupFn,
-                                                         mpSymbolLookupContext);
-
-    SymbolResolverProxy Resolver;
-    Resolver.chainResolver(BCCRuntimesResolver);
-    Resolver.chainResolver(RSSymbolResolver);
-
-    mRSExecutable =
-        rsloaderCreateExec((unsigned char *)&*mEmittedELFExecutable.begin(),
-                           mEmittedELFExecutable.size(),
-                           SymbolResolverProxy::LookupFunction, &Resolver);
-  }
-
-  if (!mRSExecutable) {
-    setError("Fail to load emitted ELF relocatable file");
-    goto on_bcc_compile_error;
-  }
-
-  rsloaderUpdateSectionHeaders(mRSExecutable,
-      (unsigned char*) mEmittedELFExecutable.begin());
-
-  // Once the ELF object has been loaded, populate the various slots for RS
-  // with the appropriate relocated addresses.
-  if (VarCount) {
-    ScriptCompiled::ExportVarList &VarList = mpResult->mExportVars;
-    for (size_t i = 0; i < VarCount; i++) {
-      VarList.push_back(rsloaderGetSymbolAddress(mRSExecutable,
-                                                 VarNameList[i].c_str()));
-    }
-  }
-
-  if (FuncCount) {
-    ScriptCompiled::ExportFuncList &FuncList = mpResult->mExportFuncs;
-    for (size_t i = 0; i < FuncCount; i++) {
-      FuncList.push_back(rsloaderGetSymbolAddress(mRSExecutable,
-                                                  FuncNameList[i].c_str()));
-    }
-  }
-
-  if (ForEachSigCount) {
-    ScriptCompiled::ExportForEachList &ForEachList = mpResult->mExportForEach;
-    for (size_t i = 0; i < ForEachSigCount; i++) {
-      ForEachList.push_back(rsloaderGetSymbolAddress(mRSExecutable,
-          ForEachExpandList[i].c_str()));
-    }
-  }
-
-#if DEBUG_MC_DISASSEMBLER
-  {
-    // Get MC codegen emitted function name list
-    size_t func_list_size = rsloaderGetFuncCount(mRSExecutable);
-    std::vector<char const *> func_list(func_list_size, NULL);
-    rsloaderGetFuncNameList(mRSExecutable, func_list_size, &*func_list.begin());
-
-    // Disassemble each function
-    for (size_t i = 0; i < func_list_size; ++i) {
-      void *func = rsloaderGetSymbolAddress(mRSExecutable, func_list[i]);
-      if (func) {
-        size_t size = rsloaderGetSymbolSize(mRSExecutable, func_list[i]);
-        Disassemble(DEBUG_MC_DISASSEMBLER_FILE,
-                    Target, TM, func_list[i], (unsigned char const *)func, size);
-      }
-    }
-  }
-#endif
-
-on_bcc_compile_error:
-  // ALOGE("on_bcc_compiler_error");
-  if (TD) {
-    delete TD;
-  }
-
-  if (TM) {
-    delete TM;
-  }
-
-  if (mError.empty()) {
-    return 0;
-  }
-
-  // ALOGE(getErrorMessage());
-  return 1;
+  return kSuccess;
 }
 
+Compiler::~Compiler() {
+  delete mTarget;
+}
 
-int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
-  // Decorate mEmittedELFExecutable with formatted ostream
-  llvm::raw_svector_ostream OutSVOS(mEmittedELFExecutable);
+enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
+  llvm::TargetData *target_data = NULL;
 
-  // Relax all machine instructions
-  TM->setMCRelaxAll(/* RelaxAll= */ true);
+  // Pass manager for link-time optimization
+  llvm::PassManager lto_passes;
 
-  // Create MC code generation pass manager
-  llvm::PassManager MCCodeGenPasses;
-
-  // Add TargetData to MC code generation pass manager
-  MCCodeGenPasses.add(TD);
-
-  // Add MC code generation passes to pass manager
-  llvm::MCContext *Ctx = NULL;
-  if (TM->addPassesToEmitMC(MCCodeGenPasses, Ctx, OutSVOS, false)) {
-    setError("Fail to add passes to emit file");
-    return 1;
+  // Prepare TargetData target data from Module
+  target_data = new (std::nothrow) llvm::TargetData(*mTarget->getTargetData());
+  if (target_data == NULL) {
+    return kErrTargetDataNoMemory;
   }
 
-  MCCodeGenPasses.run(*mModule);
-  OutSVOS.flush();
-  return 0;
-}
+  // Add TargetData to the pass manager.
+  lto_passes.add(target_data);
 
-int Compiler::runInternalPasses(RSInfo::ExportForeachFuncListTy pForEachFuncs) {
-  llvm::PassManager BCCPasses;
-
-  // Expand ForEach on CPU path to reduce launch overhead.
-  BCCPasses.add(createRSForEachExpandPass(pForEachFuncs));
-
-  BCCPasses.run(*mModule);
-
-  return 0;
-}
-
-int Compiler::runLTO(llvm::TargetData *TD,
-                     std::vector<const char*>& ExportSymbols,
-                     llvm::CodeGenOpt::Level OptimizationLevel) {
-  // Note: ExportSymbols is a workaround for getting all exported variable,
-  // function, and kernel names.
-  // We should refine it soon.
-
-  // TODO(logan): Remove this after we have finished the
-  // bccMarkExternalSymbol API.
-
-  // root(), init(), and .rs.dtor() are born to be exported
-  ExportSymbols.push_back("root");
-  ExportSymbols.push_back("init");
-  ExportSymbols.push_back(".rs.dtor");
-
-  // User-defined exporting symbols
-  std::vector<char const *> const &UserDefinedExternalSymbols =
-    mpResult->getUserDefinedExternalSymbols();
-
-  std::copy(UserDefinedExternalSymbols.begin(),
-            UserDefinedExternalSymbols.end(),
-            std::back_inserter(ExportSymbols));
-
-  llvm::PassManager LTOPasses;
-
-  // Add TargetData to LTO passes
-  LTOPasses.add(TD);
+  // Invokde "beforeAddLTOPasses" before adding the first pass.
+  if (!beforeAddLTOPasses(pScript, lto_passes)) {
+    return kErrHookBeforeAddLTOPasses;
+  }
 
   // We now create passes list performing LTO. These are copied from
-  // (including comments) llvm::createStandardLTOPasses().
-  // Only a subset of these LTO passes are enabled in optimization level 0
-  // as they interfere with interactive debugging.
-  // FIXME: figure out which passes (if any) makes sense for levels 1 and 2
-
-  if (OptimizationLevel != llvm::CodeGenOpt::None) {
-    // Internalize all other symbols not listed in ExportSymbols
-    LTOPasses.add(llvm::createInternalizePass(ExportSymbols));
-
+  // (including comments) llvm::PassManagerBuilder::populateLTOPassManager().
+  // Only a subset of these LTO passes are enabled in optimization level 0 as
+  // they interfere with interactive debugging.
+  //
+  // FIXME: Figure out which passes (if any) makes sense for levels 1 and 2.
+  //if ( != llvm::CodeGenOpt::None) {
+  if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
+    lto_passes.add(llvm::createGlobalOptimizerPass());
+    lto_passes.add(llvm::createConstantMergePass());
+  } else {
     // Propagate constants at call sites into the functions they call. This
     // opens opportunities for globalopt (and inlining) by substituting
     // function pointers passed as arguments to direct uses of functions.
-    LTOPasses.add(llvm::createIPSCCPPass());
+    lto_passes.add(llvm::createIPSCCPPass());
 
     // Now that we internalized some globals, see if we can hack on them!
-    LTOPasses.add(llvm::createGlobalOptimizerPass());
+    lto_passes.add(llvm::createGlobalOptimizerPass());
 
     // Linking modules together can lead to duplicated global constants, only
     // keep one copy of each constant...
-    LTOPasses.add(llvm::createConstantMergePass());
+    lto_passes.add(llvm::createConstantMergePass());
 
     // Remove unused arguments from functions...
-    LTOPasses.add(llvm::createDeadArgEliminationPass());
+    lto_passes.add(llvm::createDeadArgEliminationPass());
 
     // Reduce the code after globalopt and ipsccp. Both can open up
     // significant simplification opportunities, and both can propagate
     // functions through function pointers. When this happens, we often have
     // to resolve varargs calls, etc, so let instcombine do this.
-    LTOPasses.add(llvm::createInstructionCombiningPass());
+    lto_passes.add(llvm::createInstructionCombiningPass());
 
     // Inline small functions
-    LTOPasses.add(llvm::createFunctionInliningPass());
+    lto_passes.add(llvm::createFunctionInliningPass());
 
     // Remove dead EH info.
-    LTOPasses.add(llvm::createPruneEHPass());
+    lto_passes.add(llvm::createPruneEHPass());
 
     // Internalize the globals again after inlining
-    LTOPasses.add(llvm::createGlobalOptimizerPass());
+    lto_passes.add(llvm::createGlobalOptimizerPass());
 
     // Remove dead functions.
-    LTOPasses.add(llvm::createGlobalDCEPass());
+    lto_passes.add(llvm::createGlobalDCEPass());
 
     // If we didn't decide to inline a function, check to see if we can
     // transform it to pass arguments by value instead of by reference.
-    LTOPasses.add(llvm::createArgumentPromotionPass());
+    lto_passes.add(llvm::createArgumentPromotionPass());
 
     // The IPO passes may leave cruft around.  Clean up after them.
-    LTOPasses.add(llvm::createInstructionCombiningPass());
-    LTOPasses.add(llvm::createJumpThreadingPass());
+    lto_passes.add(llvm::createInstructionCombiningPass());
+    lto_passes.add(llvm::createJumpThreadingPass());
 
     // Break up allocas
-    LTOPasses.add(llvm::createScalarReplAggregatesPass());
+    lto_passes.add(llvm::createScalarReplAggregatesPass());
 
     // Run a few AA driven optimizations here and now, to cleanup the code.
-    LTOPasses.add(llvm::createFunctionAttrsPass());  // Add nocapture.
-    LTOPasses.add(llvm::createGlobalsModRefPass());  // IP alias analysis.
+    lto_passes.add(llvm::createFunctionAttrsPass());  // Add nocapture.
+    lto_passes.add(llvm::createGlobalsModRefPass());  // IP alias analysis.
 
     // Hoist loop invariants.
-    LTOPasses.add(llvm::createLICMPass());
+    lto_passes.add(llvm::createLICMPass());
 
     // Remove redundancies.
-    LTOPasses.add(llvm::createGVNPass());
+    lto_passes.add(llvm::createGVNPass());
 
     // Remove dead memcpys.
-    LTOPasses.add(llvm::createMemCpyOptPass());
+    lto_passes.add(llvm::createMemCpyOptPass());
 
     // Nuke dead stores.
-    LTOPasses.add(llvm::createDeadStoreEliminationPass());
+    lto_passes.add(llvm::createDeadStoreEliminationPass());
 
     // Cleanup and simplify the code after the scalar optimizations.
-    LTOPasses.add(llvm::createInstructionCombiningPass());
+    lto_passes.add(llvm::createInstructionCombiningPass());
 
-    LTOPasses.add(llvm::createJumpThreadingPass());
+    lto_passes.add(llvm::createJumpThreadingPass());
 
     // Delete basic blocks, which optimization passes may have killed.
-    LTOPasses.add(llvm::createCFGSimplificationPass());
+    lto_passes.add(llvm::createCFGSimplificationPass());
 
     // Now that we have optimized the program, discard unreachable functions.
-    LTOPasses.add(llvm::createGlobalDCEPass());
-
-  } else {
-    LTOPasses.add(llvm::createInternalizePass(ExportSymbols));
-    LTOPasses.add(llvm::createGlobalOptimizerPass());
-    LTOPasses.add(llvm::createConstantMergePass());
+    lto_passes.add(llvm::createGlobalDCEPass());
   }
 
-  LTOPasses.run(*mModule);
-
-#if ANDROID_ENGINEERING_BUILD
-  if (0 != gDebugDumpDirectory) {
-    std::string errs;
-    std::string Filename(gDebugDumpDirectory);
-    Filename += "/post-lto-module.ll";
-    llvm::raw_fd_ostream FS(Filename.c_str(), errs);
-    mModule->print(FS, 0);
-    FS.close();
+  // Invokde "afterAddLTOPasses" after pass manager finished its
+  // construction.
+  if (!afterAddLTOPasses(pScript, lto_passes)) {
+    return kErrHookAfterAddLTOPasses;
   }
-#endif
 
-  return 0;
+  // Invokde "beforeExecuteLTOPasses" before executing the passes.
+  if (!beforeExecuteLTOPasses(pScript, lto_passes)) {
+    return kErrHookBeforeExecuteLTOPasses;
+  }
+
+  lto_passes.run(pScript.getSource().getModule());
+
+  // Invokde "afterExecuteLTOPasses" before returning.
+  if (!afterExecuteLTOPasses(pScript)) {
+    return kErrHookAfterExecuteLTOPasses;
+  }
+
+  return kSuccess;
 }
 
+enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
+                                              llvm::raw_ostream &pResult) {
+  llvm::TargetData *target_data;
+  llvm::MCContext *mc_context = NULL;
 
-void *Compiler::getSymbolAddress(char const *name) {
-  return rsloaderGetSymbolAddress(mRSExecutable, name);
+  // Create pass manager for MC code generation.
+  llvm::PassManager codegen_passes;
+
+  // Prepare TargetData target data from Module
+  target_data = new (std::nothrow) llvm::TargetData(*mTarget->getTargetData());
+  if (target_data == NULL) {
+    return kErrTargetDataNoMemory;
+  }
+
+  // Add TargetData to the pass manager.
+  codegen_passes.add(target_data);
+
+  // Invokde "beforeAddCodeGenPasses" before adding the first pass.
+  if (!beforeAddCodeGenPasses(pScript, codegen_passes)) {
+    return kErrHookBeforeAddCodeGenPasses;
+  }
+
+  // Add passes to the pass manager to emit machine code through MC layer.
+  if (mTarget->addPassesToEmitMC(codegen_passes, mc_context, pResult,
+                                 /* DisableVerify */false)) {
+    return kPrepareCodeGenPass;
+  }
+
+  // Invokde "afterAddCodeGenPasses" after pass manager finished its
+  // construction.
+  if (!afterAddCodeGenPasses(pScript, codegen_passes)) {
+    return kErrHookAfterAddCodeGenPasses;
+  }
+
+  // Invokde "beforeExecuteCodeGenPasses" before executing the passes.
+  if (!beforeExecuteCodeGenPasses(pScript, codegen_passes)) {
+    return kErrHookBeforeExecuteCodeGenPasses;
+  }
+
+  // Execute the pass.
+  codegen_passes.run(pScript.getSource().getModule());
+
+  // Invokde "afterExecuteCodeGenPasses" before returning.
+  if (!afterExecuteCodeGenPasses(pScript)) {
+    return kErrHookAfterExecuteCodeGenPasses;
+  }
+
+  return kSuccess;
 }
 
-Compiler::~Compiler() {
-  rsloaderDisposeExec(mRSExecutable);
+enum Compiler::ErrorCode Compiler::compile(Script &pScript,
+                                           llvm::raw_ostream &pResult) {
+  llvm::Module &module = pScript.getSource().getModule();
+  enum ErrorCode err;
 
-  // llvm::llvm_shutdown();
+  if (mTarget == NULL) {
+    return kErrNoTargetMachine;
+  }
+
+  // Materialize the bitcode module.
+  if (module.getMaterializer() != NULL) {
+    std::string error;
+    // A module with non-null materializer means that it is a lazy-load module.
+    // Materialize it now via invoking MaterializeAllPermanently(). This
+    // function returns false when the materialization is successful.
+    if (module.MaterializeAllPermanently(&error)) {
+      ALOGE("Failed to materialize the module `%s'! (%s)",
+            module.getModuleIdentifier().c_str(), error.c_str());
+      return kErrMaterialization;
+    }
+  }
+
+  if (mEnableLTO && ((err = runLTO(pScript)) != kSuccess)) {
+    return err;
+  }
+
+  if ((err = runCodeGen(pScript, pResult)) != kSuccess) {
+    return err;
+  }
+
+  return kSuccess;
 }
 
+enum Compiler::ErrorCode Compiler::compile(Script &pScript,
+                                           OutputFile &pResult) {
+  // Check the state of the specified output file.
+  if (pResult.hasError()) {
+    return kErrInvalidOutputFileState;
+  }
 
-}  // namespace bcc
+  // Open the output file decorated in llvm::raw_ostream.
+  llvm::raw_ostream *out = pResult.dup();
+  if (out == NULL) {
+    return kErrPrepareOutput;
+  }
+
+  // Delegate the request.
+  enum Compiler::ErrorCode err = compile(pScript, *out);
+
+  // Close the output before return.
+  delete out;
+
+  return err;
+}

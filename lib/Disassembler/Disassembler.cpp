@@ -19,7 +19,6 @@
 #include "Config.h"
 
 #include "DebugHelper.h"
-#include "ExecutionEngine/Compiler.h"
 
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCDisassembler.h"
