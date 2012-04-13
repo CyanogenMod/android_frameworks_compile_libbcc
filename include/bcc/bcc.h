@@ -42,6 +42,7 @@ typedef struct LLVMOpaqueModule *LLVMModuleRef;
 #define BCC_INVALID_OPERATION 0x0502
 #define BCC_INVALID_VALUE     0x0501
 #define BCC_OUT_OF_MEMORY     0x0505
+#define BCC_DEPRECATED_API    0x0506
 
 
 /*-------------------------------------------------------------------------*/

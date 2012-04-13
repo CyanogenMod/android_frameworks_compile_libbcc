@@ -25,17 +25,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if defined(__HOST__)
-  #if defined(__cplusplus)
-    extern "C" {
-  #endif
-      extern char *TARGET_TRIPLE_STRING;
-  #if defined(__cplusplus)
-    };
-  #endif
-#else
-#endif
-
 #include <bcc/bcc.h>
 
 #define DEFAULT_OUTPUT_FILENAME "a.out"
@@ -310,8 +299,10 @@ int main(int argc, char** argv) {
  * Functions to process the command line option.
  */
 #if defined(__HOST__)
-static int optSetTriple(int, char **arg) {
-  TARGET_TRIPLE_STRING = arg[1];
+static int optSetTriple(int, char **) {
+  // FIXME: Will relax this contraint to let user designate the triple on the
+  //        host later.
+  //TARGET_TRIPLE_STRING = arg[1];
   return 1;
 }
 #endif

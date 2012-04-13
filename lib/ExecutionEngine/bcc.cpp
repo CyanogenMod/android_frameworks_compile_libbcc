@@ -19,21 +19,19 @@
 
 #include <bcc/bcc.h>
 
-#include <string>
+#include <llvm/Support/CodeGen.h>
 
 #include <utils/StopWatch.h>
 
-#include "Config.h"
-
-#include <bcc/bcc_mccache.h>
-#include "bcc_internal.h"
-
-#include "BCCContext.h"
-#include "Compiler.h"
 #include "DebugHelper.h"
+#include "Initialization.h"
+#include "RSExecutable.h"
 #include "RSScript.h"
 #include "Sha1Helper.h"
 #include "Source.h"
+
+#include "bcc_internal.h"
+#include <bcinfo/BitcodeWrapper.h>
 
 using namespace bcc;
 
@@ -54,21 +52,24 @@ static void bccPrintBuildStamp() {
 extern "C" BCCScriptRef bccCreateScript() {
   BCC_FUNC_LOGGER();
   bccPrintBuildStamp();
-  // FIXME: This is a workaround for this API: use global BCC context and
-  //        create an empty source to create a Script object.
-  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
-  if (context == NULL) {
-    return NULL;
+  init::Initialize();
+  RSScriptContext *rsctx = new (std::nothrow) RSScriptContext();
+  if (rsctx != NULL) {
+    rsctx->script = NULL;
+    rsctx->result = NULL;
   }
-
-  Source *source = Source::CreateEmpty(*context, "empty");
-  return wrap(new RSScript(*source));
+  return wrap(rsctx);
 }
 
 
 extern "C" void bccDisposeScript(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
-  delete unwrap(script);
+  RSScriptContext *rsctx = unwrap(script);
+  if (rsctx != NULL) {
+    delete rsctx->script;
+    delete rsctx->result;
+  }
+  delete rsctx;
 }
 
 
@@ -76,16 +77,18 @@ extern "C" int bccRegisterSymbolCallback(BCCScriptRef script,
                                          BCCSymbolLookupFn pFn,
                                          void *pContext) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->registerSymbolCallback(pFn, pContext);
+  unwrap(script)->driver.setRSRuntimeLookupFunction(pFn);
+  unwrap(script)->driver.setRSRuntimeLookupContext(pContext);
+  return BCC_NO_ERROR;
 }
 
 
 extern "C" int bccGetError(BCCScriptRef script) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->getError();
+  return BCC_DEPRECATED_API;
 }
 
-static bool helper_add_source(RSScript *pScript,
+static bool helper_add_source(RSScriptContext *pCtx,
                               char const *pName,
                               char const *pBitcode,
                               size_t pBitcodeSize,
@@ -100,76 +103,119 @@ static bool helper_add_source(RSScript *pScript,
     ALOGW("Set BCC_SKIP_DEP_SHA1 for flags to surpress this warning.\n");
   }
 
-  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
-  if (context == NULL) {
-    return false;
-  }
-
-  Source *source = Source::CreateFromBuffer(*context, pName,
+  Source *source = Source::CreateFromBuffer(pCtx->context, pName,
                                             pBitcode, pBitcodeSize);
   if (source == NULL) {
     return false;
   }
 
+  if (pCtx->script == NULL) {
+    pCtx->script = new (std::nothrow) RSScript(*source);
+    if (pCtx->script == NULL) {
+      ALOGE("Out of memory during script creation.");
+      return false;
+    }
+  } else {
+    bool result;
+    if (pIsLink) {
+      result = pCtx->script->mergeSource(*source);
+    } else {
+      result = pCtx->script->reset(*source);
+    }
+    if (!result) {
+      return false;
+    } else {
+      bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
+      pCtx->script->setCompilerVersion(wrapper.getCompilerVersion());
+      pCtx->script->setOptimizationLevel(
+          static_cast<RSScript::OptimizationLevel>(
+              wrapper.getOptimizationLevel()));
+    }
+  }
+
   if (need_dependency_check) {
     uint8_t sha1[20];
     calcSHA1(sha1, pBitcode, pBitcodeSize);
-    if (!pScript->addSourceDependency(pName, sha1)) {
+    if (!pCtx->script->addSourceDependency(pName, sha1)) {
       return false;
     }
   }
 
-  return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
+  return true;
 }
 
-static bool helper_add_source(RSScript *pScript,
+static bool helper_add_source(RSScriptContext *pCtx,
                               llvm::Module *pModule,
                               bool pIsLink) {
-  if (pModule == NULL)
-    return false;
-
-  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
-  if (context == NULL) {
-    return false;
-  }
-
   if (pModule == NULL) {
     ALOGE("Cannot add null module to script!");
     return false;
   }
 
-  Source *source = Source::CreateFromModule(*context, *pModule, true);
+  Source *source = Source::CreateFromModule(pCtx->context, *pModule, true);
   if (source == NULL) {
     return false;
   }
 
-  return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
+  if (pCtx->script == NULL) {
+    pCtx->script = new (std::nothrow) RSScript(*source);
+    if (pCtx->script == NULL) {
+      ALOGE("Out of memory during script creation.");
+      return false;
+    }
+  } else {
+    bool result;
+    if (pIsLink) {
+      result = pCtx->script->mergeSource(*source);
+    } else {
+      result = pCtx->script->reset(*source);
+    }
+    if (!result) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
-static bool helper_add_source(RSScript *pScript,
+static bool helper_add_source(RSScriptContext *pCtx,
                               char const *pPath,
                               unsigned long pFlags,
                               bool pIsLink) {
   bool need_dependency_check = !(pFlags & BCC_SKIP_DEP_SHA1);
-  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
-  if (context == NULL) {
+
+  Source *source = Source::CreateFromFile(pCtx->context, pPath);
+  if (source == NULL) {
     return false;
   }
 
-  Source *source = Source::CreateFromFile(*context, pPath);
-  if (source == NULL) {
-    return false;
+  if (pCtx->script == NULL) {
+    pCtx->script = new (std::nothrow) RSScript(*source);
+    if (pCtx->script == NULL) {
+      ALOGE("Out of memory during script creation.");
+      return false;
+    }
+  } else {
+    bool result;
+    if (pIsLink) {
+      result = pCtx->script->mergeSource(*source);
+    } else {
+      result = pCtx->script->reset(*source);
+    }
+    if (!result) {
+      return false;
+    }
   }
 
   if (need_dependency_check) {
     uint8_t sha1[20];
     calcFileSHA1(sha1, pPath);
-    if (!pScript->addSourceDependency(pPath, sha1)) {
+    if (!pCtx->script->addSourceDependency(pPath, sha1)) {
       return false;
     }
   }
 
-  return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
+  return true;
 }
 
 extern "C" int bccReadBC(BCCScriptRef script,
@@ -226,7 +272,7 @@ extern "C" int bccLinkFile(BCCScriptRef script,
 
 extern "C" void bccMarkExternalSymbol(BCCScriptRef script, char const *name) {
   BCC_FUNC_LOGGER();
-  unwrap(script)->markExternalSymbol(name);
+  return /* BCC_DEPRECATED_API */;
 }
 
 
@@ -235,32 +281,7 @@ extern "C" int bccPrepareRelocatable(BCCScriptRef script,
                                      bccRelocModelEnum RelocModel,
                                      unsigned long flags) {
   BCC_FUNC_LOGGER();
-  llvm::Reloc::Model RM;
-
-  switch (RelocModel) {
-    case bccRelocDefault: {
-      RM = llvm::Reloc::Default;
-      break;
-    }
-    case bccRelocStatic: {
-      RM = llvm::Reloc::Static;
-      break;
-    }
-    case bccRelocPIC: {
-      RM = llvm::Reloc::PIC_;
-      break;
-    }
-    case bccRelocDynamicNoPIC: {
-      RM = llvm::Reloc::DynamicNoPIC;
-      break;
-    }
-    default: {
-      ALOGE("Unrecognized relocation model for bccPrepareObject!");
-      return BCC_INVALID_VALUE;
-    }
-  }
-
-  return unwrap(script)->prepareRelocatable(objPath, RM, flags);
+  return BCC_DEPRECATED_API;
 }
 
 
@@ -269,7 +290,7 @@ extern "C" int bccPrepareSharedObject(BCCScriptRef script,
                                       char const *dsoPath,
                                       unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->prepareSharedObject(objPath, dsoPath, flags);
+  return BCC_DEPRECATED_API;
 }
 
 
@@ -281,14 +302,41 @@ extern "C" int bccPrepareExecutable(BCCScriptRef script,
 
   android::StopWatch compileTimer("bcc: PrepareExecutable time");
 
-  return unwrap(script)->prepareExecutable(cacheDir, cacheName, flags);
+  RSScriptContext *rsctx = unwrap(script);
+
+  if (rsctx->script == NULL) {
+    return 1;
+  }
+
+  // Construct the output path.
+  std::string output_path(cacheDir);
+  if (!output_path.empty() && (*output_path.rbegin() != '/')) {
+    output_path.append(1, '/');
+  }
+  output_path.append(cacheName);
+  output_path.append(".o");
+
+  // Make sure the result container is clean.
+  if (rsctx->result != NULL) {
+    delete rsctx->result;
+    rsctx->result = NULL;
+  }
+
+  rsctx->result = rsctx->driver.build(*rsctx->script, output_path);
+
+  return (rsctx->result == NULL);
 }
 
 
 extern "C" void *bccGetFuncAddr(BCCScriptRef script, char const *funcname) {
   BCC_FUNC_LOGGER();
 
-  void *addr = unwrap(script)->lookup(funcname);
+  RSScriptContext *rsctx = unwrap(script);
+
+  void *addr = NULL;
+  if (rsctx->result != NULL) {
+    addr = rsctx->result->getSymbolAddress(funcname);
+  }
 
 #if DEBUG_BCC_REFLECT
   ALOGD("Function Address: %s --> %p\n", funcname, addr);
@@ -303,19 +351,27 @@ extern "C" void bccGetExportVarList(BCCScriptRef script,
                                     void **varList) {
   BCC_FUNC_LOGGER();
 
-  if (varList) {
-    unwrap(script)->getExportVarList(varListSize, varList);
-
-#if DEBUG_BCC_REFLECT
-    size_t count = unwrap(script)->getExportVarCount();
-    ALOGD("ExportVarCount = %lu\n", (unsigned long)count);
+  const RSScriptContext *rsctx = unwrap(script);
+  if (varList && rsctx->result) {
+    const android::Vector<void *> &export_var_addrs =
+        rsctx->result->getExportVarAddrs();
+    size_t count = export_var_addrs.size();
 
     if (count > varListSize) {
       count = varListSize;
     }
 
     for (size_t i = 0; i < count; ++i) {
-      ALOGD("ExportVarList[%lu] = %p\n", (unsigned long)i, varList[i]);
+      varList[i] = export_var_addrs[i];
+    }
+
+#if DEBUG_BCC_REFLECT
+    ALOGD("ExportVarCount = %lu\n",
+          static_cast<unsigned long>(export_var_addrs.size()));
+
+    for (size_t i = 0; i < count; ++i) {
+      ALOGD("ExportVarList[%lu] = %p\n", static_cast<unsigned long>(i),
+            varList[i]);
     }
 #endif
   }
@@ -327,19 +383,27 @@ extern "C" void bccGetExportFuncList(BCCScriptRef script,
                                      void **funcList) {
   BCC_FUNC_LOGGER();
 
-  if (funcList) {
-    unwrap(script)->getExportFuncList(funcListSize, funcList);
-
-#if DEBUG_BCC_REFLECT
-    size_t count = unwrap(script)->getExportFuncCount();
-    ALOGD("ExportFuncCount = %lu\n", (unsigned long)count);
+  const RSScriptContext *rsctx = unwrap(script);
+  if (funcList && rsctx->result) {
+    const android::Vector<void *> &export_func_addrs =
+        rsctx->result->getExportFuncAddrs();
+    size_t count = export_func_addrs.size();
 
     if (count > funcListSize) {
       count = funcListSize;
     }
 
     for (size_t i = 0; i < count; ++i) {
-      ALOGD("ExportFuncList[%lu] = %p\n", (unsigned long)i, funcList[i]);
+      funcList[i] = export_func_addrs[i];
+    }
+
+#if DEBUG_BCC_REFLECT
+    ALOGD("ExportFuncCount = %lu\n",
+          static_cast<unsigned long>(export_var_addrs.size()));
+
+    for (size_t i = 0; i < count; ++i) {
+      ALOGD("ExportFuncList[%lu] = %p\n", static_cast<unsigned long>(i),
+            varList[i]);
     }
 #endif
   }
@@ -351,19 +415,27 @@ extern "C" void bccGetExportForEachList(BCCScriptRef script,
                                         void **forEachList) {
   BCC_FUNC_LOGGER();
 
-  if (forEachList) {
-    unwrap(script)->getExportForEachList(forEachListSize, forEachList);
-
-#if DEBUG_BCC_REFLECT
-    size_t count = unwrap(script)->getExportForEachCount();
-    ALOGD("ExportForEachCount = %lu\n", (unsigned long)count);
+  const RSScriptContext *rsctx = unwrap(script);
+  if (forEachList && rsctx->result) {
+    const android::Vector<void *> &export_foreach_func_addrs =
+        rsctx->result->getExportForeachFuncAddrs();
+    size_t count = export_foreach_func_addrs.size();
 
     if (count > forEachListSize) {
       count = forEachListSize;
     }
 
     for (size_t i = 0; i < count; ++i) {
-      ALOGD("ExportForEachList[%lu] = %p\n", (unsigned long)i, forEachList[i]);
+      forEachList[i] = export_foreach_func_addrs[i];
+    }
+
+#if DEBUG_BCC_REFLECT
+    ALOGD("ExportForEachCount = %lu\n",
+          static_cast<unsigned long>(export_foreach_func_addrs.size()));
+
+    for (size_t i = 0; i < count; ++i) {
+      ALOGD("ExportForEachList[%lu] = %p\n", static_cast<unsigned long>(i),
+            forEachList[i]);
     }
 #endif
   }
