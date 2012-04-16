@@ -15,7 +15,7 @@ extern rs_depth_func __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetDepthMask(rs_program_store ps) {
+        rsgProgramStoreIsDepthMaskEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -24,7 +24,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskR(rs_program_store ps) {
+        rsgProgramStoreIsColorMaskRedEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -33,7 +33,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskG(rs_program_store ps) {
+        rsgProgramStoreIsColorMaskGreenEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -42,7 +42,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskB(rs_program_store ps) {
+        rsgProgramStoreIsColorMaskBlueEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -51,7 +51,7 @@ extern bool __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetColorMaskA(rs_program_store ps) {
+        rsgProgramStoreIsColorMaskAlphaEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -78,7 +78,7 @@ extern rs_blend_dst_func __attribute__((overloadable))
 }
 
 extern bool __attribute__((overloadable))
-        rsgProgramStoreGetDitherEnabled(rs_program_store ps) {
+        rsgProgramStoreIsDitherEnabled(rs_program_store ps) {
     ProgramStore_t *prog = (ProgramStore_t *)ps.p;
     if (prog == NULL) {
         return false;
@@ -90,7 +90,7 @@ extern bool __attribute__((overloadable))
 * Program Raster
 */
 extern bool __attribute__((overloadable))
-        rsgProgramRasterGetPointSpriteEnabled(rs_program_raster pr) {
+        rsgProgramRasterIsPointSpriteEnabled(rs_program_raster pr) {
     ProgramRaster_t *prog = (ProgramRaster_t *)pr.p;
     if (prog == NULL) {
         return false;

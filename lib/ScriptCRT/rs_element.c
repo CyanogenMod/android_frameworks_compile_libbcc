@@ -75,7 +75,7 @@ extern uint32_t __attribute__((overloadable))
 }
 
 extern uint32_t __attribute__((overloadable))
-        rsElementGetSizeBytes(rs_element e) {
+        rsElementGetBytesSize(rs_element e) {
     Element_t *element = (Element_t *)e.p;
     if (element == NULL) {
         return 0;
