@@ -86,7 +86,7 @@ ssize_t OutputFile::write(const void *pBuf, size_t count) {
 
   if ((count <= 0) || (pBuf == NULL)) {
     // Keep safe and issue a warning.
-    ALOGW("OutputFile::write: count = %u, buffer = %p", count, pBuf);
+    ALOGW("OutputFile::write: count = %zu, buffer = %p", count, pBuf);
     return 0;
   }
 
