@@ -16,17 +16,25 @@
 
 #include "bcc/RenderScript/RSCompilerDriver.h"
 
+#include <llvm/Support/Path.h>
+
+#include "bcinfo/BitcodeWrapper.h"
+
 #include "bcc/RenderScript/RSExecutable.h"
+#include "bcc/RenderScript/RSScript.h"
 #include "bcc/Support/CompilerConfig.h"
 #include "bcc/Support/TargetCompilerConfigs.h"
+#include "bcc/Source.h"
 #include "bcc/Support/FileMutex.h"
 #include "bcc/Support/Log.h"
 #include "bcc/Support/InputFile.h"
 #include "bcc/Support/Initialization.h"
+#include "bcc/Support/Sha1Util.h"
 #include "bcc/Support/OutputFile.h"
 
 #include <cutils/properties.h>
 #include <utils/String8.h>
+#include <utils/StopWatch.h>
 
 using namespace bcc;
 
@@ -56,8 +64,10 @@ RSCompilerDriver::~RSCompilerDriver() {
   delete mConfig;
 }
 
-RSExecutable *RSCompilerDriver::loadScriptCache(const RSScript &pScript,
-                                                const std::string &pOutputPath){
+RSExecutable *
+RSCompilerDriver::loadScriptCache(const char *pOutputPath,
+                                  const RSInfo::DependencyTableTy &pDeps) {
+  android::StopWatch load_time("bcc: RSCompilerDriver::loadScriptCache time");
   RSExecutable *result = NULL;
 
   if (is_force_recompile())
@@ -69,7 +79,7 @@ RSExecutable *RSCompilerDriver::loadScriptCache(const RSScript &pScript,
   FileMutex<FileBase::kReadLock> read_output_mutex(pOutputPath);
 
   if (read_output_mutex.hasError() || !read_output_mutex.lock()) {
-    ALOGE("Unable to acquire the read lock for %s! (%s)", pOutputPath.c_str(),
+    ALOGE("Unable to acquire the read lock for %s! (%s)", pOutputPath,
           read_output_mutex.getErrorMessage().c_str());
     return NULL;
   }
@@ -80,7 +90,7 @@ RSExecutable *RSCompilerDriver::loadScriptCache(const RSScript &pScript,
   InputFile *output_file = new (std::nothrow) InputFile(pOutputPath);
 
   if ((output_file == NULL) || output_file->hasError()) {
-    ALOGE("Unable to open the %s for read! (%s)", pOutputPath.c_str(),
+    ALOGE("Unable to open the %s for read! (%s)", pOutputPath,
           output_file->getErrorMessage().c_str());
     delete output_file;
     return NULL;
@@ -93,7 +103,7 @@ RSExecutable *RSCompilerDriver::loadScriptCache(const RSScript &pScript,
 
   if (!output_file->lock()) {
     ALOGE("Unable to acquire the read lock on %s for reading %s! (%s)",
-          pOutputPath.c_str(), info_path.string(),
+          pOutputPath, info_path.string(),
           output_file->getErrorMessage().c_str());
     delete output_file;
     return NULL;
@@ -103,8 +113,7 @@ RSExecutable *RSCompilerDriver::loadScriptCache(const RSScript &pScript,
   // Open and load the RS info file.
   //===--------------------------------------------------------------------===//
   InputFile info_file(info_path.string());
-  RSInfo *info = RSInfo::ReadFromFile(info_file,
-                                      pScript.getSourceDependencies());
+  RSInfo *info = RSInfo::ReadFromFile(info_file, pDeps);
 
   // Release the lock on output_file.
   output_file->unlock();
@@ -122,12 +131,6 @@ RSExecutable *RSCompilerDriver::loadScriptCache(const RSScript &pScript,
     delete output_file;
     delete info;
     return NULL;
-  }
-
-  // TODO: Dirty hack for libRS. This can be removed once RSExecutable is public
-  //       to libRS.
-  if (!result->isThreadable()) {
-    mRSRuntime.getAddress("__clearThreadable");
   }
 
   return result;
@@ -170,8 +173,11 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   return changed;
 }
 
-RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
-                                              const std::string &pOutputPath) {
+RSExecutable *
+RSCompilerDriver::compileScript(RSScript &pScript,
+                                const char *pOutputPath,
+                                const RSInfo::DependencyTableTy &pDeps) {
+  android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
   RSExecutable *result = NULL;
   RSInfo *info = NULL;
 
@@ -180,8 +186,7 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // RS info may contains configuration (such as #optimization_level) to the
   // compiler therefore it should be extracted before compilation.
-  info = RSInfo::ExtractFromSource(pScript.getSource(),
-                                   pScript.getSourceDependencies());
+  info = RSInfo::ExtractFromSource(pScript.getSource(), pDeps);
   if (info == NULL) {
     return NULL;
   }
@@ -200,7 +205,7 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
 
   if (write_output_mutex.hasError() || !write_output_mutex.lock()) {
     ALOGE("Unable to acquire the lock for writing %s! (%s)",
-          pOutputPath.c_str(), write_output_mutex.getErrorMessage().c_str());
+          pOutputPath, write_output_mutex.getErrorMessage().c_str());
     return NULL;
   }
 
@@ -210,7 +215,7 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
   OutputFile *output_file = new (std::nothrow) OutputFile(pOutputPath);
 
   if ((output_file == NULL) || output_file->hasError()) {
-    ALOGE("Unable to open the %s for write! (%s)", pOutputPath.c_str(),
+    ALOGE("Unable to open the %s for write! (%s)", pOutputPath,
           output_file->getErrorMessage().c_str());
     delete info;
     delete output_file;
@@ -223,8 +228,7 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
   bool compiler_need_reconfigure = setupConfig(pScript);
 
   if (mConfig == NULL) {
-    ALOGE("Failed to setup config for RS compiler to compile %s!",
-          pOutputPath.c_str());
+    ALOGE("Failed to setup config for RS compiler to compile %s!", pOutputPath);
     delete info;
     delete output_file;
     return NULL;
@@ -235,7 +239,7 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
   if (compiler_need_reconfigure) {
     Compiler::ErrorCode err = mCompiler.config(*mConfig);
     if (err != Compiler::kSuccess) {
-      ALOGE("Failed to config the RS compiler for %s! (%s)",pOutputPath.c_str(),
+      ALOGE("Failed to config the RS compiler for %s! (%s)",pOutputPath,
             Compiler::GetErrorString(err));
       delete info;
       delete output_file;
@@ -248,7 +252,7 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   Compiler::ErrorCode compile_result = mCompiler.compile(pScript, *output_file);
   if (compile_result != Compiler::kSuccess) {
-    ALOGE("Unable to compile the source to file %s! (%s)", pOutputPath.c_str(),
+    ALOGE("Unable to compile the source to file %s! (%s)", pOutputPath,
           Compiler::GetErrorString(compile_result));
     delete info;
     delete output_file;
@@ -265,10 +269,6 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
     return NULL;
   }
 
-  // TODO: Dirty hack for libRS. This can be removed once RSExecutable is public
-  //       to libRS.
-  result->setThreadable(mRSRuntime.getAddress("__isThreadable") != NULL);
-
   //===--------------------------------------------------------------------===//
   // Write out the RS info file.
   //===--------------------------------------------------------------------===//
@@ -276,20 +276,107 @@ RSExecutable *RSCompilerDriver::compileScript(RSScript &pScript,
   // successfully compiled and loaded.
   if (!result->syncInfo(/* pForce */true)) {
     ALOGW("%s was successfully compiled and loaded but its RS info file failed "
-          "to write out!", pOutputPath.c_str());
+          "to write out!", pOutputPath);
   }
 
   return result;
 }
 
-RSExecutable *RSCompilerDriver::build(RSScript &pScript,
-                                      const std::string &pOutputPath) {
-  RSExecutable *result = loadScriptCache(pScript, pOutputPath);
+RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
+                                      const char *pCacheDir,
+                                      const char *pResName,
+                                      const char *pBitcode,
+                                      size_t pBitcodeSize) {
+  android::StopWatch build_time("bcc: RSCompilerDriver::build time");
+  //===--------------------------------------------------------------------===//
+  // Check parameters.
+  //===--------------------------------------------------------------------===//
+  if ((pCacheDir == NULL) || (pResName == NULL)) {
+    ALOGE("Invalid parameter passed to RSCompilerDriver::build()! (cache dir: "
+          "%s, resource name: %s)", ((pCacheDir) ? pCacheDir : "(null)"),
+                                    ((pResName) ? pResName : "(null)"));
+    return NULL;
+  }
+
+  if ((pBitcode == NULL) || (pBitcodeSize <= 0)) {
+    ALOGE("No bitcode supplied! (bitcode: %p, size of bitcode: %u)",
+          pBitcode, static_cast<unsigned>(pBitcodeSize));
+    return NULL;
+  }
+
+  //===--------------------------------------------------------------------===//
+  // Prepare dependency information.
+  //===--------------------------------------------------------------------===//
+  RSInfo::DependencyTableTy dep_info;
+  uint8_t bitcode_sha1[20];
+  Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
+  dep_info.push(std::make_pair(pResName, bitcode_sha1));
+
+  //===--------------------------------------------------------------------===//
+  // Construct output path.
+  //===--------------------------------------------------------------------===//
+  llvm::sys::Path output_path(pCacheDir);
+
+  // {pCacheDir}/{pResName}
+  if (!output_path.appendComponent(pResName)) {
+    ALOGE("Failed to construct output path %s/%s!", pCacheDir, pResName);
+    return NULL;
+  }
+
+  // {pCacheDir}/{pResName}.o
+  output_path.appendSuffix("o");
+
+  //===--------------------------------------------------------------------===//
+  // Load cache.
+  //===--------------------------------------------------------------------===//
+  RSExecutable *result = loadScriptCache(output_path.c_str(), dep_info);
 
   if (result != NULL) {
     // Cache hit
     return result;
   }
 
-  return compileScript(pScript, pOutputPath);
+  //===--------------------------------------------------------------------===//
+  // Load the bitcode and create script.
+  //===--------------------------------------------------------------------===//
+  Source *source = Source::CreateFromBuffer(pContext, pResName,
+                                            pBitcode, pBitcodeSize);
+  if (source == NULL) {
+    return NULL;
+  }
+
+  RSScript *script = new (std::nothrow) RSScript(*source);
+  if (script == NULL) {
+    ALOGE("Out of memory when create Script object for '%s'! (output: %s)",
+          pResName, output_path.c_str());
+    delete source;
+    return NULL;
+  }
+
+  // Link RS script with RenderScript runtime.
+  if (!RSScript::LinkRuntime(*script)) {
+    ALOGE("Failed to link script '%s' with RenderScript runtime!", pResName);
+    delete script;
+    return NULL;
+  }
+
+  // Read information from bitcode wrapper.
+  bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
+  script->setCompilerVersion(wrapper.getCompilerVersion());
+  script->setOptimizationLevel(static_cast<RSScript::OptimizationLevel>(
+                                   wrapper.getOptimizationLevel()));
+
+  //===--------------------------------------------------------------------===//
+  // Compile the script
+  //===--------------------------------------------------------------------===//
+  result = compileScript(*script, output_path.c_str(), dep_info);
+
+  // Script is no longer used. Free it to get more memory.
+  delete script;
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  return result;
 }

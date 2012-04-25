@@ -17,11 +17,6 @@
 #ifndef BCC_RS_SCRIPT_H
 #define BCC_RS_SCRIPT_H
 
-#include <string>
-
-#include <llvm/ADT/SmallVector.h>
-#include <llvm/Support/CodeGen.h>
-
 #include "bcc/Script.h"
 #include "bcc/Support/Sha1Util.h"
 
@@ -32,23 +27,6 @@ class Source;
 
 class RSScript : public Script {
 public:
-  class SourceDependency {
-  private:
-    std::string mSourceName;
-    uint8_t mSHA1[SHA1_DIGEST_LENGTH];
-
-  public:
-    SourceDependency(const std::string &pSourceName,
-                     const uint8_t *pSHA1);
-
-    inline const std::string &getSourceName() const
-    { return mSourceName; }
-
-    inline const uint8_t *getSHA1Checksum() const
-    { return mSHA1; }
-  };
-  typedef llvm::SmallVectorImpl<SourceDependency *> SourceDependencyListTy;
-
   // This is one-one mapping with the llvm::CodeGenOpt::Level in
   // llvm/Support/CodeGen.h. Therefore, value of this type can safely cast
   // to llvm::CodeGenOpt::Level. This makes RSScript LLVM-free.
@@ -60,8 +38,6 @@ public:
   };
 
 private:
-  llvm::SmallVector<SourceDependency *, 4> mSourceDependencies;
-
   const RSInfo *mInfo;
 
   unsigned mCompilerVersion;
@@ -76,15 +52,6 @@ public:
   static bool LinkRuntime(RSScript &pScript);
 
   RSScript(Source &pSource);
-
-  // Add dependency information for this script given the source named
-  // pSourceName. pSHA1 is the SHA-1 checksum of the given source. Return
-  // false on error.
-  bool addSourceDependency(const std::string &pSourceName,
-                           const uint8_t *pSHA1);
-
-  const SourceDependencyListTy &getSourceDependencies() const
-  { return mSourceDependencies; }
 
   // Set the associated RSInfo of the script.
   void setInfo(const RSInfo *pInfo)
@@ -104,8 +71,6 @@ public:
 
   OptimizationLevel getOptimizationLevel() const
   {  return mOptimizationLevel; }
-
-  ~RSScript();
 };
 
 } // end namespace bcc
