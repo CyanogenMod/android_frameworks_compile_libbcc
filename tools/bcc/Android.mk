@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+ifeq (darwin,$(BUILD_OS))
+else
+
 LOCAL_PATH := $(call my-dir)
 
 # Executable for host
@@ -51,3 +54,5 @@ include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_EXECUTABLE)
+
+endif
