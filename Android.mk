@@ -34,7 +34,7 @@ libbcc_WHOLE_STATIC_LIBRARIES += \
 
 
 #=====================================================================
-# Calculate SHA1 checksum for libbcc.so and libRS.so
+# Calculate SHA1 checksum for libbcc.so, libRS.so and libclcore.bc
 #=====================================================================
 
 include $(CLEAR_VARS)
@@ -45,7 +45,8 @@ LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 libbcc_SHA1_SRCS := \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
-  $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so
+  $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so \
+  $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore.bc,,)/libclcore.bc
 
 libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
 intermediates := $(call local-intermediates-dir)

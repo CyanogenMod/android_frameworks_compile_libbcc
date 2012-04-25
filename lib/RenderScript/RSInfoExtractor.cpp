@@ -167,6 +167,7 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   // pool.
   string_pool_size += ::strlen(LibBCCPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
+  string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
   for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
     const RSScript::SourceDependency *source_dep = pDeps[i];
     if (source_dep != NULL) {
@@ -366,6 +367,12 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   }
 
   if (!writeDependency(LibRSPath, LibRSSHA1,
+                       result->mStringPool, &cur_string_pool_offset,
+                       result->mDependencyTable)) {
+    goto bail;
+  }
+
+  if (!writeDependency(LibCLCorePath, LibCLCoreSHA1,
                        result->mStringPool, &cur_string_pool_offset,
                        result->mDependencyTable)) {
     goto bail;

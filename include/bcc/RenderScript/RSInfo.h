@@ -161,12 +161,14 @@ public:
 
   static const char LibBCCPath[];
   static const char LibRSPath[];
+  static const char LibCLCorePath[];
 
 private:
   // SHA-1 of the built-in dependencies. Will be initialized in
   // LoadBuiltInSHA1Information().
   static const uint8_t *LibBCCSHA1;
   static const uint8_t *LibRSSHA1;
+  static const uint8_t *LibCLCoreSHA1;
 
   static bool CheckDependency(const RSInfo &pInfo,
                               const char *pInputFilename,
