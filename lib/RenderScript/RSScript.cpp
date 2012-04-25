@@ -16,22 +16,11 @@
 
 #include "bcc/RenderScript/RSScript.h"
 
-#include <cstring>
-
-#include <llvm/ADT/STLExtras.h>
-
 #include "bcc/RenderScript/RSInfo.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 
 using namespace bcc;
-
-RSScript::SourceDependency::SourceDependency(const std::string &pSourceName,
-                                             const uint8_t *pSHA1)
-  : mSourceName(pSourceName) {
-  ::memcpy(mSHA1, pSHA1, sizeof(mSHA1));
-  return;
-}
 
 bool RSScript::LinkRuntime(RSScript &pScript) {
   // Using the same context with the source in pScript.
@@ -58,28 +47,9 @@ RSScript::RSScript(Source &pSource)
   : Script(pSource), mInfo(NULL), mCompilerVersion(0),
     mOptimizationLevel(kOptLvl3) { }
 
-RSScript::~RSScript() {
-  llvm::DeleteContainerPointers(mSourceDependencies);
-}
-
 bool RSScript::doReset() {
   mInfo = NULL;
   mCompilerVersion = 0;
   mOptimizationLevel = kOptLvl3;
-  llvm::DeleteContainerPointers(mSourceDependencies);
-  return true;
-}
-
-bool RSScript::addSourceDependency(const std::string &pSourceName,
-                                   const uint8_t *pSHA1) {
-  SourceDependency *source_dep =
-      new (std::nothrow) SourceDependency(pSourceName, pSHA1);
-  if (source_dep == NULL) {
-    ALOGE("Out of memory when record dependency information of `%s'!",
-          pSourceName.c_str());
-    return false;
-  }
-
-  mSourceDependencies.push_back(source_dep);
   return true;
 }

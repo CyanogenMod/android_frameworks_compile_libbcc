@@ -172,7 +172,7 @@ private:
 
   static bool CheckDependency(const RSInfo &pInfo,
                               const char *pInputFilename,
-                              const RSScript::SourceDependencyListTy &pDeps);
+                              const DependencyTableTy &pDeps);
   static bool AddBuiltInDependencies(RSInfo &pInfo);
 
   rsinfo::Header mHeader;
@@ -200,12 +200,12 @@ public:
   ~RSInfo();
 
   // Implemented in RSInfoExtractor.cpp.
-  static RSInfo *ExtractFromSource(
-      const Source &pSource, const RSScript::SourceDependencyListTy &pDeps);
+  static RSInfo *ExtractFromSource(const Source &pSource,
+                                   const DependencyTableTy &pDeps);
 
   // Implemented in RSInfoReader.cpp.
   static RSInfo *ReadFromFile(InputFile &pInput,
-                              const RSScript::SourceDependencyListTy &pDeps);
+                              const DependencyTableTy &pDeps);
 
   // Implemneted in RSInfoWriter.cpp
   bool write(OutputFile &pOutput);

@@ -26,8 +26,7 @@ libbcc_core_SRC_FILES := \
   BCCContextImpl.cpp \
   Compiler.cpp \
   Script.cpp \
-  Source.cpp \
-  bcc.cpp
+  Source.cpp
 
 #=====================================================================
 # Device Static Library: libbccCore
