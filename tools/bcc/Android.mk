@@ -29,9 +29,11 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_STATIC_LIBRARIES := libLLVMSupport
 LOCAL_SHARED_LIBRARIES := libbcc
 LOCAL_LDLIBS = -ldl
-LOCAL_SRC_FILES := main.cpp
+LOCAL_SRC_FILES := Main.cpp
 
 include $(LIBBCC_HOST_BUILD_MK)
+include $(LIBBCC_GEN_CONFIG_MK)
+include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_EXECUTABLE)
 
 # Executable for target
@@ -42,10 +44,12 @@ LOCAL_MODULE := bcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 
-LOCAL_SRC_FILES := main.cpp
+LOCAL_SRC_FILES := Main.cpp
 
-LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc
+LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libutils libcutils
 
 include external/stlport/libstlport.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
+include $(LIBBCC_GEN_CONFIG_MK)
+include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_EXECUTABLE)
