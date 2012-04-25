@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-#include "llvm/Pass.h"
+#ifndef BCC_EXECUTION_ENGINE_RS_TRANSFORMS_H
+#define BCC_EXECUTION_ENGINE_RS_TRANSFORMS_H
+
+#include "RSInfo.h"
+
+namespace llvm {
+  class ModulePass;
+}
 
 namespace bcc {
 
-llvm::ModulePass *createForEachExpandPass(std::vector<std::string>& Names,
-                                          std::vector<uint32_t>& Signatures);
+llvm::ModulePass *
+createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs);
 
-}  // namespace bcc
+} // end namespace bcc
+
+#endif // BCC_EXECUTION_ENGINE_RS_TRANSFORMS_H

@@ -39,6 +39,7 @@ libbcc_executionengine_SRC_FILES := \
   ObjectLoader.cpp \
   OutputFile.cpp \
   RSExecutable.cpp \
+  RSForEachExpand.cpp \
   RSInfo.cpp \
   RSInfoExtractor.cpp \
   RSInfoReader.cpp \

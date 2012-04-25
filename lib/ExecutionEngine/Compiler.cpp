@@ -33,7 +33,7 @@
 
 #include "librsloader.h"
 
-#include "Transforms/BCCTransforms.h"
+#include "RSTransforms.h"
 
 #include "llvm/ADT/StringRef.h"
 
@@ -270,8 +270,7 @@ int Compiler::compile(const CompilerOption &option) {
   std::vector<std::string> &VarNameList = mpResult->mExportVarsName;
   std::vector<std::string> &FuncNameList = mpResult->mExportFuncsName;
   std::vector<std::string> &ForEachExpandList = mpResult->mExportForEachName;
-  std::vector<std::string> ForEachNameList;
-  std::vector<uint32_t> ForEachSigList;
+  RSInfo::ExportForeachFuncListTy ForEachFuncList;
   std::vector<const char*> ExportSymbols;
 
   // Defaults to maximum optimization level from MetadataExtractor.
@@ -367,10 +366,9 @@ int Compiler::compile(const CompilerOption &option) {
     const char **ForEachNames = ME.getExportForEachNameList();
     const uint32_t *ForEachSigs = ME.getExportForEachSignatureList();
     for (size_t i = 0; i < ForEachSigCount; i++) {
-      std::string Name(ForEachNames[i]);
-      ForEachNameList.push_back(Name);
-      ForEachExpandList.push_back(Name + ".expand");
-      ForEachSigList.push_back(ForEachSigs[i]);
+      ForEachFuncList.push_back(std::make_pair(ForEachNames[i],
+                                               ForEachSigs[i]));
+      ForEachExpandList.push_back(std::string(ForEachNames[i]) + ".expand");
     }
 
     // Need to wait until ForEachExpandList is fully populated to fill in
@@ -388,7 +386,7 @@ int Compiler::compile(const CompilerOption &option) {
     }
   }
 
-  runInternalPasses(ForEachNameList, ForEachSigList);
+  runInternalPasses(ForEachFuncList);
 
   // Perform link-time optimization if we have multiple modules
   if (option.RunLTO) {
@@ -516,12 +514,11 @@ int Compiler::runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM) {
   return 0;
 }
 
-int Compiler::runInternalPasses(std::vector<std::string>& Names,
-                                std::vector<uint32_t>& Signatures) {
+int Compiler::runInternalPasses(RSInfo::ExportForeachFuncListTy pForEachFuncs) {
   llvm::PassManager BCCPasses;
 
   // Expand ForEach on CPU path to reduce launch overhead.
-  BCCPasses.add(createForEachExpandPass(Names, Signatures));
+  BCCPasses.add(createRSForEachExpandPass(pForEachFuncs));
 
   BCCPasses.run(*mModule);
 
