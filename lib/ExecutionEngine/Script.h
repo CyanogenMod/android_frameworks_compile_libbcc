@@ -17,18 +17,19 @@
 #ifndef BCC_SCRIPT_H
 #define BCC_SCRIPT_H
 
-#include <bcc/bcc.h>
-#include "bcc_internal.h"
-
-#include "BCCContext.h"
-#include "Compiler.h"
-
-#include <llvm/Support/CodeGen.h>
-
 #include <vector>
 #include <string>
 
+#include <stdint.h>
 #include <stddef.h>
+
+#include <llvm/ADT/SmallVector.h>
+
+#include <bcc/bcc.h>
+#include <bcc/bcc_mccache.h>
+#include "bcc_internal.h"
+
+#include "Compiler.h"
 
 namespace llvm {
   class Module;
@@ -38,7 +39,7 @@ namespace llvm {
 namespace bcc {
   class ScriptCompiled;
   class ScriptCached;
-  class SourceInfo;
+  class Source;
   struct CompilerOption;
 
   namespace ScriptStatus {
@@ -60,8 +61,6 @@ namespace bcc {
 
   class Script {
   private:
-    BCCContext mContext;
-
     int mErrorCode;
 
     ScriptStatus::StatusType mStatus;
@@ -88,11 +87,31 @@ namespace bcc {
 
     bool mIsContextSlotNotAvail;
 
-    // Source List
-    SourceInfo *mSourceList[2];
-    // Note: mSourceList[0] (main source)
-    // Note: mSourceList[1] (library source)
-    // TODO(logan): Generalize this, use vector or SmallVector instead!
+    // This is the source associated with this object and is going to be
+    // compiled.
+    Source *mSource;
+
+    class DependencyInfo {
+    private:
+      MCO_ResourceType mSourceType;
+      std::string mSourceName;
+      uint8_t mSHA1[20];
+
+    public:
+      DependencyInfo(MCO_ResourceType pSourceType,
+                     const std::string &pSourceName,
+                     const uint8_t *pSHA1);
+
+      inline MCO_ResourceType getSourceType() const
+      { return mSourceType; }
+
+      inline const std::string getSourceName() const
+      { return mSourceName; }
+
+      inline const uint8_t *getSHA1Checksum() const
+      { return mSHA1; }
+    };
+    llvm::SmallVector<DependencyInfo *, 2> mDependencyInfos;
 
     // External Function List
     std::vector<char const *> mUserDefinedExternalSymbols;
@@ -101,32 +120,31 @@ namespace bcc {
     BCCSymbolLookupFn mpExtSymbolLookupFn;
     void *mpExtSymbolLookupFnContext;
 
-  public:
-    Script() : mErrorCode(BCC_NO_ERROR), mStatus(ScriptStatus::Unknown),
-               mObjectType(ScriptObject::Unknown),
-               mIsContextSlotNotAvail(false),
-               mpExtSymbolLookupFn(NULL), mpExtSymbolLookupFnContext(NULL) {
-      Compiler::GlobalInitialization();
+    // Reset the state of this script object
+    void resetState();
 
-      mSourceList[0] = NULL;
-      mSourceList[1] = NULL;
-    }
+  public:
+    Script(Source &pSource);
 
     ~Script();
 
-    int addSourceBC(size_t idx,
-                    char const *resName,
-                    const char *bitcode,
-                    size_t bitcodeSize,
-                    unsigned long flags);
+    // Reset this object with the new source supplied. Return false if this
+    // object remains unchanged after the call (e.g., the supplied source is
+    // the same with the one contain in this object.) If pPreserveCurrent is
+    // false, the current containing source will be destroyed after successfully
+    // reset.
+    bool reset(Source &pSource, bool pPreserveCurrent = false);
 
-    int addSourceModule(size_t idx,
-                        llvm::Module *module,
-                        unsigned long flags);
+    // Merge (or link) another source into the current source associated with
+    // this Script object. Return false on error.
+    bool mergeSource(Source &pSource, bool pPreserveSource = false);
 
-    int addSourceFile(size_t idx,
-                      char const *path,
-                      unsigned long flags);
+    // Add dependency information for this script given the source named
+    // pSourceName. pSHA1 is the SHA-1 checksum of the given source. Return
+    // false on error.
+    bool addSourceDependencyInfo(MCO_ResourceType pSourceType,
+                                 const std::string &pSourceName,
+                                 const uint8_t *pSHA1);
 
     void markExternalSymbol(char const *name) {
       mUserDefinedExternalSymbols.push_back(name);
@@ -142,7 +160,7 @@ namespace bcc {
     int writeCache();
 
     /*
-     * Link the given bitcodes in mSourceList to shared object (.so).
+     * Link the given bitcodes in mSource to shared object (.so).
      *
      * Currently, it requires one to provide the relocatable object files with
      * given bitcodes to output a shared object.
@@ -153,7 +171,7 @@ namespace bcc {
      * you haven't done that yet) and then link the output relocatable object
      * file to .so in dsoPath.
      *
-     * TODO: Currently, we only support to link the bitcodes in mSourceList[0].
+     * TODO: Currently, we only support to link a bitcode (i.e., mSource.)
      *
      */
     int prepareSharedObject(char const *objPath,

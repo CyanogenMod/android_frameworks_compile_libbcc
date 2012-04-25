@@ -24,6 +24,7 @@ namespace llvm {
 namespace bcc {
 
 class BCCContextImpl;
+class Source;
 
 /*
  * class BCCContext manages the global data across the libbcc infrastructure.
@@ -37,6 +38,9 @@ public:
 
   llvm::LLVMContext &getLLVMContext();
   const llvm::LLVMContext &getLLVMContext() const;
+
+  void addSource(Source &pSource);
+  void removeSource(Source &pSource);
 
   // Global BCCContext
   static BCCContext *GetOrCreateGlobalContext();

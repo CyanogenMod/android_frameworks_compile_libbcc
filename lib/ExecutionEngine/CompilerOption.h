@@ -82,6 +82,9 @@ class CompilerOption {
     CodeModelOpt = llvm::CodeModel::Small;
 #endif
 
+    //-- Run LTO passes --//
+    RunLTO = true;
+
     //-- Load the result object after successful compilation  --//
     LoadAfterCompile = true;
   }
@@ -89,6 +92,7 @@ class CompilerOption {
   llvm::TargetOptions TargetOpt;
   llvm::CodeModel::Model CodeModelOpt;
   llvm::Reloc::Model RelocModelOpt;
+  bool RunLTO;
   bool LoadAfterCompile;
 
 };

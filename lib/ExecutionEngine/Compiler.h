@@ -93,8 +93,6 @@ namespace bcc {
 
     llvm::Module *mModule;
 
-    bool mHasLinked;
-
   public:
     Compiler(ScriptCompiled *result);
 
@@ -119,12 +117,7 @@ namespace bcc {
       return mEmittedELFExecutable;
     }
 
-    int readModule(llvm::Module *module) {
-      mModule = module;
-      return hasError();
-    }
-
-    int linkModule(llvm::Module *module);
+    int readModule(llvm::Module &pModule);
 
     int compile(const CompilerOption &option);
 

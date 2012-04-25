@@ -18,19 +18,22 @@
 //    This is an eager-compilation JIT running on Android.
 
 #include <bcc/bcc.h>
-#include "bcc_internal.h"
-
-#include "Config.h"
-
-#include "Compiler.h"
-#include "DebugHelper.h"
-#include "Script.h"
 
 #include <string>
 
 #include <utils/StopWatch.h>
 
-#include <llvm/Support/CodeGen.h>
+#include "Config.h"
+
+#include <bcc/bcc_mccache.h>
+#include "bcc_internal.h"
+
+#include "BCCContext.h"
+#include "Compiler.h"
+#include "DebugHelper.h"
+#include "Script.h"
+#include "Sha1Helper.h"
+#include "Source.h"
 
 using namespace bcc;
 
@@ -51,7 +54,15 @@ static void bccPrintBuildStamp() {
 extern "C" BCCScriptRef bccCreateScript() {
   BCC_FUNC_LOGGER();
   bccPrintBuildStamp();
-  return wrap(new bcc::Script());
+  // FIXME: This is a workaround for this API: use global BCC context and
+  //        create an empty source to create a Script object.
+  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
+  if (context == NULL) {
+    return NULL;
+  }
+
+  Source *source = Source::CreateEmpty(*context, "empty");
+  return wrap(new Script(*source));
 }
 
 
@@ -74,13 +85,102 @@ extern "C" int bccGetError(BCCScriptRef script) {
   return unwrap(script)->getError();
 }
 
+static bool helper_add_source(Script *pScript,
+                              char const *pName,
+                              char const *pBitcode,
+                              size_t pBitcodeSize,
+                              unsigned long pFlags,
+                              bool pIsLink) {
+  bool need_dependency_check = !(pFlags & BCC_SKIP_DEP_SHA1);
+  if (!pName && need_dependency_check) {
+    pFlags |= BCC_SKIP_DEP_SHA1;
+
+    ALOGW("It is required to give resName for sha1 dependency check.\n");
+    ALOGW("Sha1sum dependency check will be skipped.\n");
+    ALOGW("Set BCC_SKIP_DEP_SHA1 for flags to suppress this warning.\n");
+  }
+
+  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
+  if (context == NULL) {
+    return false;
+  }
+
+  Source *source = Source::CreateFromBuffer(*context, pName,
+                                            pBitcode, pBitcodeSize);
+  if (source == NULL) {
+    return false;
+  }
+
+  if (need_dependency_check) {
+    uint8_t sha1[20];
+    calcSHA1(sha1, pBitcode, pBitcodeSize);
+    if (!pScript->addSourceDependencyInfo(BCC_APK_RESOURCE, pName, sha1)) {
+      return false;
+    }
+  }
+
+  return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
+}
+
+static bool helper_add_source(Script *pScript,
+                              llvm::Module *pModule,
+                              bool pIsLink) {
+  if (pModule == NULL)
+    return false;
+
+  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
+  if (context == NULL) {
+    return false;
+  }
+
+  if (pModule == NULL) {
+    ALOGE("Cannot add null module to script!");
+    return false;
+  }
+
+  Source *source = Source::CreateFromModule(*context, *pModule, true);
+  if (source == NULL) {
+    return false;
+  }
+
+  return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
+}
+
+static bool helper_add_source(Script *pScript,
+                              char const *pPath,
+                              unsigned long pFlags,
+                              bool pIsLink) {
+  bool need_dependency_check = !(pFlags & BCC_SKIP_DEP_SHA1);
+  BCCContext *context = BCCContext::GetOrCreateGlobalContext();
+  if (context == NULL) {
+    return false;
+  }
+
+  Source *source = Source::CreateFromFile(*context, pPath);
+  if (source == NULL) {
+    return false;
+  }
+
+  if (need_dependency_check) {
+    uint8_t sha1[20];
+    calcFileSHA1(sha1, pPath);
+    if (!pScript->addSourceDependencyInfo(BCC_APK_RESOURCE, pPath, sha1)) {
+      return false;
+    }
+  }
+
+  return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
+}
+
 extern "C" int bccReadBC(BCCScriptRef script,
                          char const *resName,
                          char const *bitcode,
                          size_t bitcodeSize,
                          unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->addSourceBC(0, resName, bitcode, bitcodeSize, flags);
+  return (helper_add_source(unwrap(script), resName,
+                            bitcode, bitcodeSize,
+                            flags, /* pIsLink */false) == false);
 }
 
 
@@ -89,7 +189,8 @@ extern "C" int bccReadModule(BCCScriptRef script,
                              LLVMModuleRef module,
                              unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->addSourceModule(0, unwrap(module), flags);
+  return (helper_add_source(unwrap(script), unwrap(module),
+                            /* pIsLink */false) == false);
 }
 
 
@@ -97,7 +198,8 @@ extern "C" int bccReadFile(BCCScriptRef script,
                            char const *path,
                            unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->addSourceFile(0, path, flags);
+  return (helper_add_source(unwrap(script), path,
+                            flags, /* pIsLink */false) == false);
 }
 
 
@@ -107,7 +209,9 @@ extern "C" int bccLinkBC(BCCScriptRef script,
                          size_t bitcodeSize,
                          unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->addSourceBC(1, resName, bitcode, bitcodeSize, flags);
+  return (helper_add_source(unwrap(script), resName,
+                            bitcode, bitcodeSize,
+                            flags, /* pIsLink */true) == false);
 }
 
 
@@ -115,7 +219,8 @@ extern "C" int bccLinkFile(BCCScriptRef script,
                            char const *path,
                            unsigned long flags) {
   BCC_FUNC_LOGGER();
-  return unwrap(script)->addSourceFile(1, path, flags);
+  return (helper_add_source(unwrap(script), path,
+                            flags, /* pIsLink */true) == false);
 }
 
 
