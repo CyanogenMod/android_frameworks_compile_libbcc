@@ -73,6 +73,8 @@ private:
   virtual bool doReset();
 
 public:
+  static bool LinkRuntime(RSScript &pScript);
+
   RSScript(Source &pSource);
 
   // Add dependency information for this script given the source named
