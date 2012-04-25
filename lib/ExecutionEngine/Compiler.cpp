@@ -226,26 +226,26 @@ Compiler::Compiler(ScriptCompiled *result)
     mRSExecutable(NULL),
     mpSymbolLookupFn(NULL),
     mpSymbolLookupContext(NULL),
-    mModule(NULL),
-    mHasLinked(false) /* Turn off linker */ {
+    mModule(NULL) {
   llvm::remove_fatal_error_handler();
   llvm::install_fatal_error_handler(LLVMErrorHandler, &mError);
   return;
 }
 
-
-int Compiler::linkModule(llvm::Module *moduleWith) {
-  if (llvm::Linker::LinkModules(mModule, moduleWith,
-                                llvm::Linker::PreserveSource,
-                                &mError) != 0) {
-    return hasError();
+int Compiler::readModule(llvm::Module &pModule) {
+  mModule = &pModule;
+  if (pModule.getMaterializer() != NULL) {
+    // A module with non-null materializer means that it is a lazy-load module.
+    // Materialize it now via invoking MaterializeAllPermanently(). This
+    // function returns false when the materialization is successful.
+    if (pModule.MaterializeAllPermanently(&mError)) {
+      setError("Failed to materialize the module `" +
+               pModule.getModuleIdentifier() + "'! (" + mError + ")");
+      mModule = NULL;
+    }
   }
-
-  // Everything for linking should be settled down here with no error occurs
-  mHasLinked = true;
   return hasError();
 }
-
 
 int Compiler::compile(const CompilerOption &option) {
   llvm::Target const *Target = NULL;
@@ -390,7 +390,7 @@ int Compiler::compile(const CompilerOption &option) {
   runInternalPasses(ForEachNameList, ForEachSigList);
 
   // Perform link-time optimization if we have multiple modules
-  if (mHasLinked) {
+  if (option.RunLTO) {
     runLTO(new llvm::TargetData(*TD), ExportSymbols, CodeGenOptLevel);
   }
 

@@ -16,8 +16,19 @@
 
 #include "Script.h"
 
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <new>
+#include <cstring>
+
+#include <llvm/ADT/STLExtras.h>
+
+#include <cutils/properties.h>
+
 #include "Config.h"
-#include "bcinfo/BitcodeWrapper.h"
 
 #include "MCCacheReader.h"
 #include "MCCacheWriter.h"
@@ -30,16 +41,7 @@
 #include "ScriptCompiled.h"
 #include "ScriptCached.h"
 #include "Sha1Helper.h"
-#include "SourceInfo.h"
-
-#include <errno.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <new>
-#include <string.h>
-#include <cutils/properties.h>
+#include "Source.h"
 
 namespace {
 
@@ -52,6 +54,14 @@ bool getBooleanProp(const char *str) {
 } // namespace anonymous
 
 namespace bcc {
+
+Script::Script(Source &pSource)
+  : mSource(&pSource),
+    mpExtSymbolLookupFn(NULL),
+    mpExtSymbolLookupFnContext(NULL) {
+  resetState();
+  return;
+}
 
 Script::~Script() {
   switch (mStatus) {
@@ -66,111 +76,62 @@ Script::~Script() {
   default:
     break;
   }
+  llvm::DeleteContainerPointers(mDependencyInfos);
+}
 
-  for (size_t i = 0; i < 2; ++i) {
-    delete mSourceList[i];
-  }
+void Script::resetState() {
+  mErrorCode = BCC_NO_ERROR;
+  mStatus = ScriptStatus::Unknown;
+  mObjectType = ScriptObject::Unknown;
+  mIsContextSlotNotAvail = false;
+  // FIXME: mpExtSymbolLookupFn and mpExtSymbolLookupFnContext should be assign
+  //        to NULL during state resetting.
+  //mpExtSymbolLookupFn = NULL;
+  //mpExtSymbolLookupFnContext = NULL;
+  llvm::DeleteContainerPointers(mDependencyInfos);
+  return;
 }
 
 
-int Script::addSourceBC(size_t idx,
-                        char const *resName,
-                        const char *bitcode,
-                        size_t bitcodeSize,
-                        unsigned long flags) {
-
-  if (!resName) {
-    mErrorCode = BCC_INVALID_VALUE;
-    ALOGE("Invalid argument: resName = NULL\n");
-    return 1;
-  }
-
-  if (mStatus != ScriptStatus::Unknown) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    ALOGE("Bad operation: Adding source after bccPrepareExecutable\n");
-    return 1;
-  }
-
-  if (!bitcode) {
-    mErrorCode = BCC_INVALID_VALUE;
-    ALOGE("Invalid argument: bitcode = NULL\n");
-    return 1;
-  }
-
-  bcinfo::BitcodeWrapper wrapper(bitcode, bitcodeSize);
-
-  mSourceList[idx] = SourceInfo::createFromBuffer(resName,
-                                                  bitcode, bitcodeSize,
-                                                  flags);
-
-  if (!mSourceList[idx]) {
-    mErrorCode = BCC_OUT_OF_MEMORY;
-    ALOGE("Out of memory while adding source bitcode\n");
-    return 1;
-  }
-
-  return 0;
+Script::DependencyInfo::DependencyInfo(MCO_ResourceType pSourceType,
+                                       const std::string &pSourceName,
+                                       const uint8_t *pSHA1)
+  : mSourceType(pSourceType), mSourceName(pSourceName) {
+  ::memcpy(mSHA1, pSHA1, sizeof(mSHA1));
+  return;
 }
 
-
-int Script::addSourceModule(size_t idx,
-                            llvm::Module *module,
-                            unsigned long flags) {
-  if (mStatus != ScriptStatus::Unknown) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    ALOGE("Bad operation: Adding source after bccPrepareExecutable\n");
-    return 1;
+bool Script::reset(Source &pSource, bool pPreserveCurrent) {
+  if (mSource == &pSource) {
+    return false;
   }
 
-  if (!module) {
-    mErrorCode = BCC_INVALID_VALUE;
-    ALOGE("Invalid argument: module = NULL\n");
-    return 1;
+  if (!pPreserveCurrent) {
+    delete mSource;
   }
-
-  mSourceList[idx] = SourceInfo::createFromModule(module, flags);
-
-  if (!mSourceList[idx]) {
-    mErrorCode = BCC_OUT_OF_MEMORY;
-    ALOGE("Out of memory when add source module\n");
-    return 1;
-  }
-
-  return 0;
+  mSource = &pSource;
+  resetState();
+  return true;
 }
 
+bool Script::mergeSource(Source &pSource, bool pPreserveSource) {
+  return mSource->merge(pSource, pPreserveSource);
+}
 
-int Script::addSourceFile(size_t idx,
-                          char const *path,
-                          unsigned long flags) {
-  if (mStatus != ScriptStatus::Unknown) {
-    mErrorCode = BCC_INVALID_OPERATION;
-    ALOGE("Bad operation: Adding source after bccPrepareExecutable\n");
-    return 1;
+bool Script::addSourceDependencyInfo(MCO_ResourceType pSourceType,
+                                     const std::string &pSourceName,
+                                     const uint8_t *pSHA1) {
+  DependencyInfo *dep_info = new (std::nothrow) DependencyInfo(pSourceType,
+                                                               pSourceName,
+                                                               pSHA1);
+  if (dep_info == NULL) {
+    ALOGE("Out of memory when record dependency information of `%s'!",
+          pSourceName.c_str());
+    return false;
   }
 
-  if (!path) {
-    mErrorCode = BCC_INVALID_VALUE;
-    ALOGE("Invalid argument: path = NULL\n");
-    return 1;
-  }
-
-  struct stat sb;
-  if (stat(path, &sb) != 0) {
-    mErrorCode = BCC_INVALID_VALUE;
-    ALOGE("File not found: %s\n", path);
-    return 1;
-  }
-
-  mSourceList[idx] = SourceInfo::createFromFile(path, flags);
-
-  if (!mSourceList[idx]) {
-    mErrorCode = BCC_OUT_OF_MEMORY;
-    ALOGE("Out of memory while adding source file\n");
-    return 1;
-  }
-
-  return 0;
+  mDependencyInfos.push_back(dep_info);
+  return true;
 }
 
 int Script::prepareRelocatable(char const *objPath,
@@ -178,6 +139,7 @@ int Script::prepareRelocatable(char const *objPath,
                                unsigned long flags) {
   CompilerOption option;
   option.RelocModelOpt = RelocModel;
+  option.RunLTO = false;
   option.LoadAfterCompile = false;
 
   int status = internalCompile(option);
@@ -295,10 +257,11 @@ int Script::internalLoadCache(char const *cacheDir, char const *cacheName,
   reader.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
   reader.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 
-  for (size_t i = 0; i < 2; ++i) {
-    if (mSourceList[i]) {
-      mSourceList[i]->introDependency(reader);
-    }
+  for (unsigned i = 0; i < mDependencyInfos.size(); i++) {
+    const DependencyInfo *dep_info = mDependencyInfos[i];
+    reader.addDependency(dep_info->getSourceType(),
+                         dep_info->getSourceName(),
+                         dep_info->getSHA1Checksum());
   }
 
   if (checkOnly)
@@ -342,37 +305,10 @@ int Script::internalCompile(const CompilerOption &option) {
                                       mpExtSymbolLookupFnContext);
   }
 
-  if (!mSourceList[0]) {
-    ALOGE("Source bitcode is not set.\n");
-    return 1;
-  }
-
-  // Parse Source bitcode file (if necessary)
-  if (mSourceList[0]->prepareModule(mContext.mImpl->mLLVMContext) != 0) {
-    ALOGE("Unable to setup source module\n");
-    return 1;
-  }
-
-  // Parse Library bitcode file (if necessary)
-  if (mSourceList[1]) {
-    if (mSourceList[1]->prepareModule(mContext.mImpl->mLLVMContext) != 0) {
-      ALOGE("Unable to setup library module\n");
-      return 1;
-    }
-  }
-
   // Set the main source module
-  if (mCompiled->readModule(mSourceList[0]->getModule()) != 0) {
+  if (mCompiled->readModule(mSource->getModule()) != 0) {
     ALOGE("Unable to read source module\n");
     return 1;
-  }
-
-  // Link the source module with the library module
-  if (mSourceList[1]) {
-    if (mCompiled->linkModule(mSourceList[1]->getModule()) != 0) {
-      ALOGE("Unable to link library module\n");
-      return 1;
-    }
   }
 
   // Compile and JIT the code
@@ -422,11 +358,13 @@ int Script::writeCache() {
       writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 #endif
 
-      for (size_t i = 0; i < 2; ++i) {
-        if (mSourceList[i]) {
-          mSourceList[i]->introDependency(writer);
-        }
+      for (unsigned i = 0; i < mDependencyInfos.size(); i++) {
+        const DependencyInfo *dep_info = mDependencyInfos[i];
+        writer.addDependency(dep_info->getSourceType(),
+                             dep_info->getSourceName(),
+                             dep_info->getSHA1Checksum());
       }
+
 
       // libRS is threadable dirty hack
       // TODO: This should be removed in the future

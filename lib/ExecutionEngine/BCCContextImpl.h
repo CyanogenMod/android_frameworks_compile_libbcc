@@ -17,11 +17,13 @@
 #ifndef BCC_EXECUTION_ENGINE_CONTEXT_IMPL_H
 #define BCC_EXECUTION_ENGINE_CONTEXT_IMPL_H
 
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/LLVMContext.h>
 
 namespace bcc {
 
 class BCCContext;
+class Source;
 
 /*
  * class BCCContextImpl contains the implementation of BCCCotext.
@@ -30,8 +32,12 @@ class BCCContextImpl {
 public:
   llvm::LLVMContext mLLVMContext;
 
+  // The set of sources that initialized in this context. They will be destroyed
+  // automatically when this context is gone.
+  llvm::SmallPtrSet<Source *, 2> mOwnSources;
+
   BCCContextImpl(BCCContext &pContext) { }
-  ~BCCContextImpl() { }
+  ~BCCContextImpl();
 };
 
 } // namespace bcc
