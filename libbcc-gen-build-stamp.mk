@@ -55,3 +55,7 @@ $(GEN): $(LOCAL_PATH)/tools/build/gen-build-stamp.py $(LOCAL_LIBBCC_LIB_DEPS) \
 	$(transform-generated-source)
 
 LOCAL_GENERATED_SOURCES += $(GEN)
+
+LOCAL_CFLAGS := \
+  -DHAVE_BCC_CONFIG_MK_H \
+  $(LOCAL_CFLAGS)
