@@ -149,7 +149,7 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libdl libutils libcutils libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
-LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1.so
+LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
 LOCAL_REQUIRED_MODULES += libclcore_neon.bc
