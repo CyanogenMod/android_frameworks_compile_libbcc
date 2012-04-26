@@ -74,7 +74,12 @@ bool RSCompiler::beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM) {
        foreach_func_iter != foreach_func_end; foreach_func_iter++) {
     std::string name(foreach_func_iter->first);
     expanded_foreach_funcs.push_back(name.append(".expand"));
-    export_symbols.push_back(expanded_foreach_funcs.back().c_str());
+  }
+
+  // Need to wait until ForEachExpandList is fully populated to fill in
+  // exported symbols.
+  for (size_t i = 0; i < expanded_foreach_funcs.size(); i++) {
+    export_symbols.push_back(expanded_foreach_funcs[i].c_str());
   }
 
   pPM.add(llvm::createInternalizePass(export_symbols));
