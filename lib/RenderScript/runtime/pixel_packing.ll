@@ -29,8 +29,8 @@ define <4 x i8> @_Z17rsPackColorTo8888Dv3_f(<3 x float> %color) nounwind readnon
 define <4 x i8> @_Z17rsPackColorTo8888fff(float %r, float %g, float %b) nounwind readnone {
     %1 = insertelement <4 x float> undef, float %r, i32 0
     %2 = insertelement <4 x float> %1, float %g, i32 1
-    %3 = insertelement <4 x float> %1, float %b, i32 2
-    %4 = insertelement <4 x float> %1, float 1.0, i32 3
+    %3 = insertelement <4 x float> %2, float %b, i32 2
+    %4 = insertelement <4 x float> %3, float 1.0, i32 3
     %5 = tail call <4 x i8> @_Z17rsPackColorTo8888Dv4_f(<4 x float> %4) nounwind readnone
     ret <4 x i8> %5
 }
@@ -39,8 +39,8 @@ define <4 x i8> @_Z17rsPackColorTo8888fff(float %r, float %g, float %b) nounwind
 define <4 x i8> @_Z17rsPackColorTo8888ffff(float %r, float %g, float %b, float %a) nounwind readnone {
     %1 = insertelement <4 x float> undef, float %r, i32 0
     %2 = insertelement <4 x float> %1, float %g, i32 1
-    %3 = insertelement <4 x float> %1, float %b, i32 2
-    %4 = insertelement <4 x float> %1, float %a, i32 3
+    %3 = insertelement <4 x float> %2, float %b, i32 2
+    %4 = insertelement <4 x float> %3, float %a, i32 3
     %5 = tail call <4 x i8> @_Z17rsPackColorTo8888Dv4_f(<4 x float> %4) nounwind readnone
     ret <4 x i8> %5
 }
