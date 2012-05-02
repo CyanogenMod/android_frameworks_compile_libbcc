@@ -14,9 +14,6 @@
 # limitations under the License.
 #
 
-ifeq (darwin,$(BUILD_OS))
-else
-
 LOCAL_PATH := $(call my-dir)
 
 # Executable for host
@@ -29,6 +26,9 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
 
+# The definition of those functions in libLLVMSupport may elude libbcc due to linker.
+# Should include libLLVMSupport since bcc references some functions within it.
+LOCAL_STATIC_LIBRARIES := libLLVMSupport
 LOCAL_SHARED_LIBRARIES := libbcc
 LOCAL_LDLIBS = -ldl
 
@@ -54,5 +54,3 @@ include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_EXECUTABLE)
-
-endif
