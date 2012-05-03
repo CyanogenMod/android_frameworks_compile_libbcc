@@ -17,15 +17,15 @@
 #ifndef BCC_RS_COMPILER_DRIVER_H
 #define BCC_RS_COMPILER_DRIVER_H
 
+#include <string>
+
 #include "bcc/ExecutionEngine/BCCRuntimeSymbolResolver.h"
 #include "bcc/ExecutionEngine/SymbolResolvers.h"
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
-#include "bcc/RenderScript/RSInfo.h"
 #include "bcc/RenderScript/RSCompiler.h"
 
 namespace bcc {
 
-class BCCContext;
 class CompilerConfig;
 class RSExecutable;
 class RSScript;
@@ -39,16 +39,15 @@ private:
   LookupFunctionSymbolResolver<void*> mRSRuntime;
   SymbolResolverProxy mResolver;
 
-  RSExecutable *loadScriptCache(const char *pOutputPath,
-                                const RSInfo::DependencyTableTy &pDeps);
+  RSExecutable *loadScriptCache(const RSScript &pScript,
+                                const std::string &pOutputPath);
 
   // Setup the compiler config for the given script. Return true if mConfig has
   // been changed and false if it remains unchanged.
   bool setupConfig(const RSScript &pScript);
 
   RSExecutable *compileScript(RSScript &pScript,
-                              const char *pOutputPath,
-                              const RSInfo::DependencyTableTy &pDeps);
+                              const std::string &pOutputPath);
 
 public:
   RSCompilerDriver();
@@ -63,9 +62,8 @@ public:
   // FIXME: This method accompany with loadScriptCache and compileScript should
   //        all be const-methods. They're not now because the getAddress() in
   //        SymbolResolverInterface is not a const-method.
-  RSExecutable *build(BCCContext &pContext,
-                      const char *pCacheDir, const char *pResName,
-                      const char *pBitcode, size_t pBitcodeSize);
+  RSExecutable *build(RSScript &pScript,
+                      const std::string &pOutputPath);
 };
 
 } // end namespace bcc

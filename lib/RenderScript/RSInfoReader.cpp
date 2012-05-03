@@ -173,7 +173,8 @@ inline bool helper_read_list(const uint8_t *pData,
 
 } // end anonymous namespace
 
-RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) {
+RSInfo *RSInfo::ReadFromFile(InputFile &pInput,
+                             const RSScript::SourceDependencyListTy &pDeps) {
   android::FileMap *map = NULL;
   RSInfo *result = NULL;
   const uint8_t *data;
