@@ -154,8 +154,8 @@ LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 
 LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
-# Generate build information (Build time + Build git revision + Build Semi SHA1)
-include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
+# Generate build stamp (Build time + Build git revision + Build Semi SHA1)
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-stamp.mk
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
@@ -228,8 +228,8 @@ LOCAL_SHARED_LIBRARIES := libbcinfo
 
 LOCAL_LDLIBS := -ldl -lpthread
 
-# Generate build information (Build time + Build git revision + Build Semi SHA1)
-include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
+# Generate build stamp (Build time + Build git revision + Build Semi SHA1)
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-stamp.mk
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(BUILD_HOST_SHARED_LIBRARY)
