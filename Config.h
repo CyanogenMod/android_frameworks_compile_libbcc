@@ -58,19 +58,14 @@
   #endif
 #endif
 
-#define DEFAULT_ARM_TRIPLE_STRING      "armv7-none-linux-gnueabi"
-#define DEFAULT_MIPS_TRIPLE_STRING     "mipsel-none-linux-gnueabi"
-#define DEFAULT_X86_TRIPLE_STRING      "i686-unknown-linux"
-#define DEFAULT_X86_64_TRIPLE_STRING   "x86_64-unknown-linux"
-
 #if defined(DEFAULT_ARM_CODEGEN)
-  #define DEFAULT_TARGET_TRIPLE_STRING DEFAULT_ARM_TRIPLE_STRING
+  #define DEFAULT_TARGET_TRIPLE_STRING "armv7-none-linux-gnueabi"
 #elif defined(DEFAULT_MIPS_CODEGEN)
-  #define DEFAULT_TARGET_TRIPLE_STRING DEFAULT_MIPS_TRIPLE_STRING
+  #define DEFAULT_TARGET_TRIPLE_STRING "mipsel-none-linux-gnueabi"
 #elif defined(DEFAULT_X86_CODEGEN)
-  #define DEFAULT_TARGET_TRIPLE_STRING DEFAULT_X86_TRIPLE_STRING
+  #define DEFAULT_TARGET_TRIPLE_STRING "i686-unknown-linux"
 #elif defined(DEFAULT_X86_64_CODEGEN)
-  #define DEFAULT_TARGET_TRIPLE_STRING DEFAULT_X86_64_TRIPLE_STRING
+  #define DEFAULT_TARGET_TRIPLE_STRING "x86_64-unknown-linux"
 #endif
 
 #if (defined(__VFP_FP__) && !defined(__SOFTFP__))
