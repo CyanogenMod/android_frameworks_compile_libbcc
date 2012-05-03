@@ -17,94 +17,237 @@
 #ifndef BCC_EXECUTION_ENGINE_RS_SCRIPT_H
 #define BCC_EXECUTION_ENGINE_RS_SCRIPT_H
 
+#include <vector>
 #include <string>
+
+#include <stdint.h>
+#include <stddef.h>
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/CodeGen.h>
 
+#include <bcc/bcc.h>
+#include <bcc/bcc_mccache.h>
+#include "bcc_internal.h"
+
 #include "Script.h"
 
+namespace llvm {
+  class Module;
+  class GDBJITRegistrar;
+}
+
 namespace bcc {
+  class RSInfo;
+  class ScriptCompiled;
+  class ScriptCached;
+  class Source;
+  struct CompilerOption;
 
-class RSInfo;
-class Source;
+  namespace ScriptStatus {
+    enum StatusType {
+      Unknown,
+      Compiled,
+      Cached
+    };
+  }
 
-class RSScript : public Script {
-public:
-  class SourceDependency {
+  namespace ScriptObject {
+    enum ObjectType {
+      Unknown,
+      Relocatable,
+      SharedObject,
+      Executable,
+    };
+  }
+
+  class RSScript : public Script {
+  public:
+    class SourceDependency {
+    private:
+      std::string mSourceName;
+      uint8_t mSHA1[20];
+
+    public:
+      SourceDependency(const std::string &pSourceName,
+                       const uint8_t *pSHA1);
+
+      inline const std::string &getSourceName() const
+      { return mSourceName; }
+
+      inline const uint8_t *getSHA1Checksum() const
+      { return mSHA1; }
+    };
+    typedef llvm::SmallVectorImpl<SourceDependency *> SourceDependencyListTy;
+
   private:
-    std::string mSourceName;
-    uint8_t mSHA1[20];
+    int mErrorCode;
+
+    ScriptStatus::StatusType mStatus;
+    // The type of the object behind this script after compilation. For
+    // example, after returning from a successful call to prepareRelocatable(),
+    // the value of mObjectType will be ScriptObject::Relocatable.
+    ScriptObject::ObjectType mObjectType;
+
+    union {
+      ScriptCompiled *mCompiled;
+      ScriptCached *mCached;
+    };
+
+    std::string mCacheDir;
+    std::string mCacheName;
+
+    inline std::string getCachedObjectPath() const {
+      return std::string(mCacheDir + mCacheName + ".o");
+    }
+
+    inline std::string getCacheInfoPath() const {
+      return getCachedObjectPath().append(".info");
+    }
+
+    bool mIsContextSlotNotAvail;
+
+    llvm::SmallVector<SourceDependency *, 4> mSourceDependencies;
+
+    const RSInfo *mInfo;
+
+    // External Function List
+    std::vector<char const *> mUserDefinedExternalSymbols;
+
+    // Register Symbol Lookup Function
+    BCCSymbolLookupFn mpExtSymbolLookupFn;
+    void *mpExtSymbolLookupFnContext;
+
+    // This will be invoked when the containing source has been reset.
+    virtual bool doReset();
+
+    // Reset the state of this script object
+    void resetState();
 
   public:
-    SourceDependency(const std::string &pSourceName,
-                     const uint8_t *pSHA1);
+    RSScript(Source &pSource);
 
-    inline const std::string &getSourceName() const
-    { return mSourceName; }
+    ~RSScript();
 
-    inline const uint8_t *getSHA1Checksum() const
-    { return mSHA1; }
+    // Add dependency information for this script given the source named
+    // pSourceName. pSHA1 is the SHA-1 checksum of the given source. Return
+    // false on error.
+    bool addSourceDependency(const std::string &pSourceName,
+                             const uint8_t *pSHA1);
+
+    const SourceDependencyListTy &getSourceDependencies() const
+    { return mSourceDependencies; }
+
+    // Set the associated RSInfo of the script.
+    void setInfo(const RSInfo *pInfo)
+    { mInfo = pInfo; }
+
+    const RSInfo *getInfo() const
+    { return mInfo; }
+
+    void markExternalSymbol(char const *name) {
+      mUserDefinedExternalSymbols.push_back(name);
+    }
+
+    std::vector<char const *> const &getUserDefinedExternalSymbols() const {
+      return mUserDefinedExternalSymbols;
+    }
+
+    int prepareExecutable(char const *cacheDir,
+                          char const *cacheName,
+                          unsigned long flags);
+    int writeCache();
+
+    /*
+     * Link the given bitcodes in mSource to shared object (.so).
+     *
+     * Currently, it requires one to provide the relocatable object files with
+     * given bitcodes to output a shared object.
+     *
+     * The usage of this function is flexible. You can have a relocatable object
+     * compiled before and pass it in objPath to generate shared object. If the
+     * objPath is NULL, we'll invoke prepareRelocatable() to get .o first (if
+     * you haven't done that yet) and then link the output relocatable object
+     * file to .so in dsoPath.
+     *
+     * TODO: Currently, we only support to link a bitcode (i.e., mSource.)
+     *
+     */
+    int prepareSharedObject(char const *objPath,
+                            char const *dsoPath,
+                            unsigned long flags);
+
+    int prepareRelocatable(char const *objPath,
+                           llvm::Reloc::Model RelocModel,
+                           unsigned long flags);
+
+    char const *getCompilerErrorMessage();
+
+    void *lookup(const char *name);
+
+    size_t getExportVarCount() const;
+
+    size_t getExportFuncCount() const;
+
+    size_t getExportForEachCount() const;
+
+    size_t getPragmaCount() const;
+
+    size_t getFuncCount() const;
+
+    size_t getObjectSlotCount() const;
+
+    void getExportVarList(size_t size, void **list);
+
+    void getExportFuncList(size_t size, void **list);
+
+    void getExportForEachList(size_t size, void **list);
+
+    void getExportVarNameList(std::vector<std::string> &list);
+
+    void getExportFuncNameList(std::vector<std::string> &list);
+
+    void getExportForEachNameList(std::vector<std::string> &list);
+
+    void getPragmaList(size_t size,
+                       char const **keyList,
+                       char const **valueList);
+
+    void getFuncInfoList(size_t size, FuncInfo *list);
+
+    void getObjectSlotList(size_t size, uint32_t *list);
+
+    size_t getELFSize() const;
+
+    const char *getELF() const;
+
+    int registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext);
+
+    bool isCacheable() const;
+
+    void setError(int error) {
+      if (mErrorCode == BCC_NO_ERROR && error != BCC_NO_ERROR) {
+        mErrorCode = error;
+      }
+    }
+
+    int getError() {
+      int result = mErrorCode;
+      mErrorCode = BCC_NO_ERROR;
+      return result;
+    }
+
+  private:
+    //
+    // It returns 0 if there's a cache hit.
+    //
+    // Side effect: it will set mCacheDir, mCacheName.
+    int internalLoadCache(char const *cacheDir, char const *cacheName,
+                          bool checkOnly);
+
+    int internalCompile(const CompilerOption&);
   };
-  typedef llvm::SmallVectorImpl<SourceDependency *> SourceDependencyListTy;
 
-  // This is one-one mapping with the llvm::CodeGenOpt::Level in
-  // llvm/Support/CodeGen.h. Therefore, value of this type can safely cast
-  // to llvm::CodeGenOpt::Level. This makes RSScript LLVM-free.
-  enum OptimizationLevel {
-    kOptLvl0, // -O0
-    kOptLvl1, // -O1
-    kOptLvl2, // -O2, -Os
-    kOptLvl3  // -O3
-  };
-
-private:
-  llvm::SmallVector<SourceDependency *, 4> mSourceDependencies;
-
-  const RSInfo *mInfo;
-
-  unsigned mCompilerVersion;
-
-  OptimizationLevel mOptimizationLevel;
-
-private:
-  // This will be invoked when the containing source has been reset.
-  virtual bool doReset();
-
-public:
-  RSScript(Source &pSource);
-
-  // Add dependency information for this script given the source named
-  // pSourceName. pSHA1 is the SHA-1 checksum of the given source. Return
-  // false on error.
-  bool addSourceDependency(const std::string &pSourceName,
-                           const uint8_t *pSHA1);
-
-  const SourceDependencyListTy &getSourceDependencies() const
-  { return mSourceDependencies; }
-
-  // Set the associated RSInfo of the script.
-  void setInfo(const RSInfo *pInfo)
-  { mInfo = pInfo; }
-
-  const RSInfo *getInfo() const
-  { return mInfo; }
-
-  void setCompilerVersion(unsigned pCompilerVersion)
-  {  mCompilerVersion = pCompilerVersion; }
-
-  unsigned getCompilerVersion() const
-  {  return mCompilerVersion; }
-
-  void setOptimizationLevel(OptimizationLevel pOptimizationLevel)
-  {  mOptimizationLevel = pOptimizationLevel; }
-
-  OptimizationLevel getOptimizationLevel() const
-  {  return mOptimizationLevel; }
-
-  ~RSScript();
-};
-
-} // end namespace bcc
+} // namespace bcc
 
 #endif // BCC_EXECUTION_ENGINE_RS_SCRIPT_H
