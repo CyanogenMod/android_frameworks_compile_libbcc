@@ -139,6 +139,8 @@ namespace bcc {
 
     int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM);
 
+    static void *resolveSymbolAdapter(void *context, char const *name);
+
     int runInternalPasses(std::vector<std::string>& Names,
                           std::vector<uint32_t>& Signatures);
 

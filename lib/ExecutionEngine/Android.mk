@@ -25,7 +25,6 @@ include $(LOCAL_PATH)/../../libbcc-config.mk
 libbcc_executionengine_SRC_FILES := \
   BCCContext.cpp \
   BCCContextImpl.cpp \
-  BCCRuntimeSymbolResolver.cpp \
   Compiler.cpp \
   FileBase.cpp \
   GDBJIT.cpp \
@@ -35,14 +34,13 @@ libbcc_executionengine_SRC_FILES := \
   MCCacheReader.cpp \
   OutputFile.cpp \
   RSScript.cpp \
-  BCCRuntimeStub.c \
+  Runtime.c \
+  RuntimeStub.c \
   Script.cpp \
   ScriptCached.cpp \
   ScriptCompiled.cpp \
   Sha1Helper.cpp \
-  Source.cpp \
-  SymbolResolverProxy.cpp \
-  SymbolResolvers.cpp
+  Source.cpp
 
 
 #=====================================================================

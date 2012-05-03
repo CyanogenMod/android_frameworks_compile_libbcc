@@ -16,12 +16,10 @@
 
 #include "MCCacheReader.h"
 
-#include "BCCRuntimeSymbolResolver.h"
 #include "DebugHelper.h"
 #include "InputFile.h"
 #include "ScriptCached.h"
-#include "SymbolResolverProxy.h"
-#include "SymbolResolvers.h"
+#include "Runtime.h"
 
 #include <bcc/bcc_mccache.h>
 
@@ -430,6 +428,24 @@ bool MCCacheReader::readObjectSlotList() {
   return true;
 }
 
+void *MCCacheReader::resolveSymbolAdapter(void *context, char const *name) {
+  MCCacheReader *self = reinterpret_cast<MCCacheReader *>(context);
+
+  if (void *Addr = FindRuntimeFunction(name)) {
+    return Addr;
+  }
+
+  if (self->mpSymbolLookupFn) {
+    if (void *Addr =
+        self->mpSymbolLookupFn(self->mpSymbolLookupContext, name)) {
+      return Addr;
+    }
+  }
+
+  ALOGE("Unable to resolve symbol: %s\n", name);
+  return NULL;
+}
+
 bool MCCacheReader::readObjFile() {
   if (mpResult->mCachedELFExecutable.size() != 0) {
     ALOGE("Attempted to read cached object into a non-empty script");
@@ -445,19 +461,10 @@ bool MCCacheReader::readObjFile() {
     return false;
   }
   ALOGD("Read object file size %d", (int)mpResult->mCachedELFExecutable.size());
-
-  BCCRuntimeSymbolResolver bccRuntimesResolver;
-  LookupFunctionSymbolResolver<void *> rsSymbolResolver(mpSymbolLookupFn,
-                                                        mpSymbolLookupContext);
-
-  SymbolResolverProxy resolver;
-  resolver.chainResolver(bccRuntimesResolver);
-  resolver.chainResolver(rsSymbolResolver);
-
   mpResult->mRSExecutable =
   rsloaderCreateExec((unsigned char *)&*(mpResult->mCachedELFExecutable.begin()),
                      mpResult->mCachedELFExecutable.size(),
-                     SymbolResolverProxy::LookupFunction, &resolver);
+                     &resolveSymbolAdapter, this);
 
   // Point ELF section headers to location of executable code, otherwise
   // execution through GDB stops unexpectedly as GDB translates breakpoints

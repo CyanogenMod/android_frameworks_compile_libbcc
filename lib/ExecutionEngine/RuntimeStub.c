@@ -1,4 +1,4 @@
-#include "BCCRuntimeStub.h"
+#include "RuntimeStub.h"
 
 #include "runtime/lib/int_lib.h"
 
