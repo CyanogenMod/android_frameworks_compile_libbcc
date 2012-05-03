@@ -27,16 +27,13 @@ libbcc_executionengine_SRC_FILES := \
   BCCContextImpl.cpp \
   BCCRuntimeSymbolResolver.cpp \
   Compiler.cpp \
-  ELFObjectLoaderImpl.cpp \
   FileBase.cpp \
   GDBJIT.cpp \
   GDBJITRegistrar.cpp \
   InputFile.cpp \
   MCCacheWriter.cpp \
   MCCacheReader.cpp \
-  ObjectLoader.cpp \
   OutputFile.cpp \
-  RSExecutable.cpp \
   RSInfo.cpp \
   RSInfoExtractor.cpp \
   RSInfoReader.cpp \
@@ -65,10 +62,7 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_CFLAGS += -DTARGET_BUILD
 
-LOCAL_C_INCLUDES := \
-  $(libbcc_C_INCLUDES) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
+LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
 LOCAL_SHARED_LIBRARIES := libbcinfo
 
@@ -91,10 +85,7 @@ LOCAL_IS_HOST_MODULE := true
 
 LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_CFLAGS += -D__HOST__
-LOCAL_C_INCLUDES := \
-  $(libbcc_C_INCLUDES) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
+LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
 LOCAL_SHARED_LIBRARIES := libbcinfo
