@@ -21,7 +21,7 @@
 #include <utils/StopWatch.h>
 
 #include "bcc/Config/Config.h"
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 #include "bcc/Support/InputFile.h"
 
 #include "sha1.h"

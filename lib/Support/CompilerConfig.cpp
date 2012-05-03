@@ -20,7 +20,7 @@
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/Support/TargetRegistry.h>
 
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 #include "bcc/Support/TargetCompilerConfigs.h"
 
 using namespace bcc;

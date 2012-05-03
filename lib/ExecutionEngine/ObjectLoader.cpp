@@ -19,8 +19,8 @@
 #include <utils/FileMap.h>
 
 #include "bcc/ExecutionEngine/GDBJITRegistrar.h"
+#include "bcc/Support/DebugHelper.h"
 #include "bcc/Support/FileBase.h"
-#include "bcc/Support/Log.h"
 
 #include "ELFObjectLoaderImpl.h"
 

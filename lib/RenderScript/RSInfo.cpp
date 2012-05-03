@@ -21,7 +21,7 @@
 #include <new>
 
 #include "bcc/Support/FileBase.h"
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 #include "bcc/Support/Sha1Helper.h"
 
 using namespace bcc;
