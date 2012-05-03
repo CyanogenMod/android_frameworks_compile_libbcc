@@ -19,8 +19,29 @@
 
 #include "Config.h"
 
+#if USE_LOGGER
+
 #define LOG_TAG "bcc"
 #include <cutils/log.h>
+
+#else // !USE_LOGGER
+
+#undef ALOGV
+#undef ALOGI
+#undef ALOGD
+#undef ALOGW
+#undef ALOGE
+#undef LOGA
+
+#define ALOGV(...)
+#define ALOGI(...)
+#define ALOGD(...)
+#define ALOGW(...)
+#define ALOGE(...)
+#define LOGA(...)
+
+#endif
+
 
 #if !USE_FUNC_LOGGER
 
