@@ -1,5 +1,5 @@
 /*
- * Copyright 2012, The Android Open Source Project
+ * Copyright 2010-2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-#include "SymbolResolverProxy.h"
+#include "Script.h"
+
+#include "Source.h"
 
 using namespace bcc;
 
-void *SymbolResolverProxy::getAddress(const char *pName) {
-  // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
-    if (addr != NULL) {
-      return addr;
-    }
+bool Script::reset(Source &pSource, bool pPreserveCurrent) {
+  if (mSource == &pSource) {
+    return false;
   }
-  // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
+
+  if (!pPreserveCurrent) {
+    delete mSource;
+  }
+  mSource = &pSource;
+  return doReset();
 }
 
-void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {
-  mChain.push_back(&pResolver);
+bool Script::mergeSource(Source &pSource, bool pPreserveSource) {
+  return mSource->merge(pSource, pPreserveSource);
 }

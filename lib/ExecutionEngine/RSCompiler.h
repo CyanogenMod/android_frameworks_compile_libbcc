@@ -14,22 +14,19 @@
  * limitations under the License.
  */
 
-#include "SymbolResolverProxy.h"
+#ifndef BCC_EXECUTION_ENGINE_RS_COMPILER_H
+#define BCC_EXECUTION_ENGINE_RS_COMPILER_H
 
-using namespace bcc;
+#include "Compiler.h"
 
-void *SymbolResolverProxy::getAddress(const char *pName) {
-  // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
-    if (addr != NULL) {
-      return addr;
-    }
-  }
-  // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
-}
+namespace bcc {
 
-void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {
-  mChain.push_back(&pResolver);
-}
+class RSCompiler : public Compiler {
+private:
+  virtual bool beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM);
+  virtual bool beforeExecuteLTOPasses(Script &pScript, llvm::PassManager &pPM);
+};
+
+} // end namespace bcc
+
+#endif // BCC_EXECUTION_ENGINE_RS_COMPILER_H

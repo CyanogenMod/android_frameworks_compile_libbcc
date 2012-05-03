@@ -18,57 +18,16 @@
 LOCAL_PATH := $(call my-dir)
 
 #=====================================================================
-# Common: libbccExecutionEngine
-#=====================================================================
-
-libbcc_executionengine_SRC_FILES := \
-  BCCContext.cpp \
-  BCCContextImpl.cpp \
-  BCCRuntimeSymbolResolver.cpp \
-  Compiler.cpp \
-  CompilerConfig.cpp \
-  ELFObjectLoaderImpl.cpp \
-  FileBase.cpp \
-  GDBJIT.cpp \
-  GDBJITRegistrar.cpp \
-  Initialization.cpp \
-  InputFile.cpp \
-  ObjectLoader.cpp \
-  OutputFile.cpp \
-  RSCompiler.cpp \
-  RSCompilerDriver.cpp \
-  RSExecutable.cpp \
-  RSForEachExpand.cpp \
-  RSInfo.cpp \
-  RSInfoExtractor.cpp \
-  RSInfoReader.cpp \
-  RSInfoWriter.cpp \
-  RSScript.cpp \
-  BCCRuntimeStub.c \
-  Script.cpp \
-  Sha1Helper.cpp \
-  Source.cpp \
-  SymbolResolverProxy.cpp \
-  SymbolResolvers.cpp \
-  TargetCompilerConfigs.cpp \
-  bcc.cpp
-
-#=====================================================================
-# Device Static Library: libbccExecutionEngine
+# Device Static Library: libbccHelper
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccHelper
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
-LOCAL_SHARED_LIBRARIES := libbcinfo
+LOCAL_SRC_FILES := sha1.c
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
@@ -77,21 +36,17 @@ include $(BUILD_STATIC_LIBRARY)
 
 
 #=====================================================================
-# Host Static Library: libbccExecutionEngine
+# Host Static Library: libbccHelper
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccHelper
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
-LOCAL_SHARED_LIBRARIES := libbcinfo
+LOCAL_SRC_FILES := \
+  sha1.c
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)

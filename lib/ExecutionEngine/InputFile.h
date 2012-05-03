@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-#include "SymbolResolverProxy.h"
+#ifndef BCC_EXECUTION_ENGINE_INPUT_FILE_H
+#define BCC_EXECUTION_ENGINE_INPUT_FILE_H
 
-using namespace bcc;
+#include "File.h"
+#include "FileBase.h"
 
-void *SymbolResolverProxy::getAddress(const char *pName) {
-  // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
-    if (addr != NULL) {
-      return addr;
-    }
-  }
-  // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
-}
+namespace bcc {
 
-void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {
-  mChain.push_back(&pResolver);
-}
+class InputFile : public File<FileBase::kReadMode> {
+  typedef File<FileBase::kReadMode> super;
+public:
+  InputFile(const std::string &pFilename, unsigned pFlags = 0);
+
+  ssize_t read(void *pBuf, size_t count);
+};
+
+} // end namespace bcc
+
+#endif  // BCC_EXECUTION_ENGINE_INPUT_FILE_H
