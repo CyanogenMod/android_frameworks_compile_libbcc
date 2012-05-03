@@ -50,7 +50,8 @@ namespace bcc {
 
     llvm::OwningPtr<ScriptCached> mpResult;
 
-    std::map<std::string, unsigned char const *> mDependencies;
+    std::map<std::string,
+             std::pair<uint32_t, unsigned char const *> > mDependencies;
 
     bool mIsContextSlotNotAvail;
 
@@ -67,9 +68,11 @@ namespace bcc {
 
     ~MCCacheReader();
 
-    void addDependency(std::string const &resName,
+    void addDependency(MCO_ResourceType resType,
+                       std::string const &resName,
                        unsigned char const *sha1) {
-      mDependencies.insert(std::make_pair(resName, sha1));
+      mDependencies.insert(std::make_pair(resName,
+                           std::make_pair((uint32_t)resType, sha1)));
     }
 
     ScriptCached *readCacheFile(InputFile &objFile, InputFile &infoFile, Script *s);

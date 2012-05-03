@@ -36,7 +36,8 @@ namespace bcc {
 
     std::vector<std::pair<char const *, size_t> > mStringPool;
 
-    std::map<std::string, unsigned char const *> mDependencies;
+    std::map<std::string,
+             std::pair<uint32_t, unsigned char const *> > mDependencies;
 
     MCO_Header *mpHeaderSection;
     MCO_StringPool *mpStringPoolSection;
@@ -64,9 +65,11 @@ namespace bcc {
     bool writeCacheFile(OutputFile &objFile, OutputFile &infoFile,
                         RSScript *S, uint32_t libRS_threadable);
 
-    void addDependency(std::string const &resName,
+    void addDependency(MCO_ResourceType resType,
+                       std::string const &resName,
                        unsigned char const *sha1) {
-      mDependencies.insert(std::make_pair(resName, sha1));
+      mDependencies.insert(std::make_pair(resName,
+                           std::make_pair((uint32_t)resType, sha1)));
     }
 
   private:
