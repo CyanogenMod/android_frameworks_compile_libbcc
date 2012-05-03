@@ -132,7 +132,7 @@ int SourceInfo::prepareModule(llvm::LLVMContext *context) {
   case SourceKind::Buffer:
     {
       mem.reset(llvm::MemoryBuffer::getMemBuffer(
-          llvm::StringRef(buffer.bitcode, buffer.bitcodeSize)));
+          llvm::StringRef(buffer.bitcode, buffer.bitcodeSize), "", false));
 
       if (!mem.get()) {
         ALOGE("Unable to MemoryBuffer::getMemBuffer(addr=%p, size=%lu)\n",
