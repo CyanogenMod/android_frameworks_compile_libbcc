@@ -36,8 +36,6 @@
 #include <vector>
 #include <utility>
 
-#include "RSInfo.h"
-
 
 namespace llvm {
   class Module;
@@ -141,7 +139,8 @@ namespace bcc {
 
     int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM);
 
-    int runInternalPasses(RSInfo::ExportForeachFuncListTy pForEachFuncs);
+    int runInternalPasses(std::vector<std::string>& Names,
+                          std::vector<uint32_t>& Signatures);
 
     int runLTO(llvm::TargetData *TD,
                std::vector<const char*>& ExportSymbols,

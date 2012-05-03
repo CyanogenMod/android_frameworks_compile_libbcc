@@ -14,15 +14,10 @@
  * limitations under the License.
  */
 
-//#define RS_FOREACH_EXPAND_PASS_NDEBUG 0
-#include "RSTransforms.h"
-
-#include <cstdlib>
-
 #include "Config.h"
+#include "bcc/bcc_assert.h"
 
 #include "DebugHelper.h"
-#include "RSInfo.h"
 
 #include "llvm/DerivedTypes.h"
 #include "llvm/Function.h"
@@ -32,26 +27,24 @@
 #include "llvm/Type.h"
 #include "llvm/Support/IRBuilder.h"
 
-using namespace bcc;
-
 namespace {
-
-/* RSForEachExpandPass - This pass operates on functions that are able to be
- * called via rsForEach() or "foreach_<NAME>". We create an inner loop for the
- * ForEach-able function to be invoked over the appropriate data cells of the
- * input/output allocations (adjusting other relevant parameters as we go). We
- * support doing this for any ForEach-able compute kernels. The new function
- * name is the original function name followed by ".expand". Note that we
- * still generate code for the original function.
- */
-class RSForEachExpandPass : public llvm::ModulePass {
-private:
+  /* ForEachExpandPass - This pass operates on functions that are able to be
+   * called via rsForEach() or "foreach_<NAME>". We create an inner loop for
+   * the ForEach-able function to be invoked over the appropriate data cells
+   * of the input/output allocations (adjusting other relevant parameters as
+   * we go). We support doing this for any ForEach-able compute kernels.
+   * The new function name is the original function name followed by
+   * ".expand". Note that we still generate code for the original function.
+   */
+  class ForEachExpandPass : public llvm::ModulePass {
+  private:
   static char ID;
 
   llvm::Module *M;
   llvm::LLVMContext *C;
 
-  const RSInfo::ExportForeachFuncListTy &mFuncs;
+  std::vector<std::string>& mNames;
+  std::vector<uint32_t>& mSignatures;
 
   uint32_t getRootSignature(llvm::Function *F) {
     const llvm::NamedMDNode *ExportForEachMetadata =
@@ -72,13 +65,7 @@ private:
       return (1 << RootArgTys.size()) - 1;
     }
 
-#if !RS_FOREACH_EXPAND_PASS_NDEBUG
-    if (ExportForEachMetadata->getNumOperands() <= 0) {
-      ALOGE("Assert failed at %s:%d: Invalid #rs_export_foreach metadata in "
-            " '%s'!", __FILE__, __LINE__, M->getModuleIdentifier().c_str());
-      ::abort();
-    }
-#endif
+    bccAssert(ExportForEachMetadata->getNumOperands() > 0);
 
     // We only handle the case for legacy root() functions here, so this is
     // hard-coded to look at only the first such function.
@@ -120,9 +107,11 @@ private:
     return Signature & 16;
   }
 
-public:
-  RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs)
-      : ModulePass(ID), M(NULL), C(NULL), mFuncs(pForeachFuncs) {
+  public:
+  ForEachExpandPass(std::vector<std::string>& Names,
+                    std::vector<uint32_t>& Signatures)
+      : ModulePass(ID), M(NULL), C(NULL), mNames(Names),
+        mSignatures(Signatures) {
   }
 
   /* Performs the actual optimization on a selected function. On success, the
@@ -271,13 +260,7 @@ public:
       Args++;
     }
 
-#if !RS_FOREACH_EXPAND_PASS_NDEBUG
-    if (Args != F->arg_end()) {
-      ALOGE("Assert failed at %s:%d: Invalid signature to the foreach function "
-            "'%s'!", __FILE__, __LINE__, F->getName().str().c_str());
-      ::abort();
-    }
-#endif
+    bccAssert(Args == F->arg_end());
 
     llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
     llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
@@ -356,14 +339,11 @@ public:
     this->M = &M;
     C = &M.getContext();
 
-    for (RSInfo::ExportForeachFuncListTy::const_iterator
-             func_iter = mFuncs.begin(), func_end = mFuncs.end();
-         func_iter != func_end; func_iter++) {
-      const char *name = func_iter->first;
-      uint32_t signature = func_iter->second;
-      llvm::Function *kernel = M.getFunction(name);
+    bccAssert(mNames.size() == mSignatures.size());
+    for (int i = 0, e = mNames.size(); i != e; i++) {
+      llvm::Function *kernel = M.getFunction(mNames[i]);
       if (kernel && kernel->getReturnType()->isVoidTy()) {
-        Changed |= ExpandFunction(kernel, signature);
+        Changed |= ExpandFunction(kernel, mSignatures[i]);
       }
     }
 
@@ -374,17 +354,16 @@ public:
     return "ForEach-able Function Expansion";
   }
 
-}; // end RSForEachExpandPass
+  };
+}  // end anonymous namespace
 
-} // end anonymous namespace
-
-char RSForEachExpandPass::ID = 0;
+char ForEachExpandPass::ID = 0;
 
 namespace bcc {
 
-llvm::ModulePass *
-createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs){
-  return new RSForEachExpandPass(pForeachFuncs);
-}
+  llvm::ModulePass *createForEachExpandPass(std::vector<std::string>& Names,
+                                            std::vector<uint32_t>& Signatures) {
+    return new ForEachExpandPass(Names, Signatures);
+  }
 
-} // end namespace bcc
+}  // namespace bcc

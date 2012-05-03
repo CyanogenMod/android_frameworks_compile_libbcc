@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011-2012 The Android Open Source Project
+# Copyright (C) 2012 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,61 +19,27 @@ LOCAL_PATH := $(call my-dir)
 include $(LOCAL_PATH)/../../libbcc-config.mk
 
 #=====================================================================
-# Common: libbccExecutionEngine
+# Common: libbccTransforms
 #=====================================================================
 
-libbcc_executionengine_SRC_FILES := \
-  BCCContext.cpp \
-  BCCContextImpl.cpp \
-  BCCRuntimeSymbolResolver.cpp \
-  Compiler.cpp \
-  CompilerConfig.cpp \
-  ELFObjectLoaderImpl.cpp \
-  FileBase.cpp \
-  GDBJIT.cpp \
-  GDBJITRegistrar.cpp \
-  Initialization.cpp \
-  InputFile.cpp \
-  MCCacheWriter.cpp \
-  MCCacheReader.cpp \
-  ObjectLoader.cpp \
-  OutputFile.cpp \
-  RSExecutable.cpp \
-  RSInfo.cpp \
-  RSInfoExtractor.cpp \
-  RSInfoReader.cpp \
-  RSInfoWriter.cpp \
-  RSScript.cpp \
-  BCCRuntimeStub.c \
-  Script.cpp \
-  ScriptCached.cpp \
-  ScriptCompiled.cpp \
-  Sha1Helper.cpp \
-  Source.cpp \
-  SymbolResolverProxy.cpp \
-  SymbolResolvers.cpp \
-  TargetCompilerConfigs.cpp
-
+libbcc_transforms_SRC_FILES := \
+  ForEachExpand.cpp
 
 #=====================================================================
-# Device Static Library: libbccExecutionEngine
+# Device Static Library: libbccTransforms
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccTransforms
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_CFLAGS += -DTARGET_BUILD
 
-LOCAL_C_INCLUDES := \
-  $(libbcc_C_INCLUDES) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
-LOCAL_SHARED_LIBRARIES := libbcinfo
+LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
+LOCAL_SRC_FILES := $(libbcc_transforms_SRC_FILES)
 
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
@@ -82,25 +48,21 @@ include $(BUILD_STATIC_LIBRARY)
 
 
 #=====================================================================
-# Host Static Library: libbccExecutionEngine
+# Host Static Library: libbccTransforms
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccExecutionEngine
+LOCAL_MODULE := libbccTransforms
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_IS_HOST_MODULE := true
 
 LOCAL_CFLAGS += $(libbcc_CFLAGS)
 LOCAL_CFLAGS += -D__HOST__
-LOCAL_C_INCLUDES := \
-  $(libbcc_C_INCLUDES) \
-  $(RSLOADER_ROOT_PATH) \
-  $(RSLOADER_ROOT_PATH)/include
+LOCAL_C_INCLUDES := $(libbcc_C_INCLUDES)
 
-LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
-LOCAL_SHARED_LIBRARIES := libbcinfo
+LOCAL_SRC_FILES := $(libbcc_transforms_SRC_FILES)
 
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
 include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
