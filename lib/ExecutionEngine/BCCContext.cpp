@@ -19,9 +19,7 @@
 #include <new>
 
 #include "BCCContextImpl.h"
-#include "Compiler.h"
 #include "DebugHelper.h"
-#include "Source.h"
 
 using namespace bcc;
 
@@ -42,10 +40,7 @@ void BCCContext::DestroyGlobalContext() {
   GlobalContext = NULL;
 }
 
-BCCContext::BCCContext() : mImpl(new BCCContextImpl(*this)) {
-  // Initialize the LLVM compiler infrastructure.
-  Compiler::GlobalInitialization();
-}
+BCCContext::BCCContext() : mImpl(new BCCContextImpl(*this)) { }
 
 BCCContext::~BCCContext() {
   delete mImpl;
@@ -54,13 +49,8 @@ BCCContext::~BCCContext() {
     // Reset the GlobalContext.
     GlobalContext = NULL;
   }
+  return;
 }
-
-void BCCContext::addSource(Source &pSource)
-{ mImpl->mOwnSources.insert(&pSource); }
-
-void BCCContext::removeSource(Source &pSource)
-{ mImpl->mOwnSources.erase(&pSource); }
 
 llvm::LLVMContext &BCCContext::getLLVMContext()
 { return mImpl->mLLVMContext; }

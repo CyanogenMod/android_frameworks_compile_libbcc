@@ -24,7 +24,6 @@ include $(LOCAL_PATH)/../../libbcc-config.mk
 
 libbcc_executionengine_SRC_FILES := \
   BCCContext.cpp \
-  BCCContextImpl.cpp \
   Compiler.cpp \
   FileHandle.cpp \
   GDBJIT.cpp \
@@ -37,7 +36,7 @@ libbcc_executionengine_SRC_FILES := \
   ScriptCached.cpp \
   ScriptCompiled.cpp \
   Sha1Helper.cpp \
-  Source.cpp
+  SourceInfo.cpp
 
 
 #=====================================================================

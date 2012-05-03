@@ -17,16 +17,16 @@
 #ifndef BCC_SCRIPTCOMPILED_H
 #define BCC_SCRIPTCOMPILED_H
 
+#include "Compiler.h"
+#include "Script.h"
+
+#include <bcc/bcc.h>
+
 #include <list>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <bcc/bcc.h>
-
-#include "Compiler.h"
-#include "Script.h"
 
 namespace llvm {
   class Module;
@@ -73,8 +73,12 @@ namespace bcc {
 
     ~ScriptCompiled();
 
-    int readModule(llvm::Module &pModule) {
-      return mCompiler.readModule(pModule);
+    int readModule(llvm::Module *module) {
+      return mCompiler.readModule(module);
+    }
+
+    int linkModule(llvm::Module *module) {
+      return mCompiler.linkModule(module);
     }
 
     int compile(const CompilerOption &option) {
