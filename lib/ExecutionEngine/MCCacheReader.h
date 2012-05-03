@@ -31,12 +31,12 @@
 struct MCO_Header;
 
 namespace bcc {
+  class FileHandle;
   class Script;
-  class InputFile;
 
   class MCCacheReader {
   private:
-    InputFile *mObjFile, *mInfoFile;
+    FileHandle *mObjFile, *mInfoFile;
     off_t mInfoFileSize;
 
     MCO_Header *mpHeader;
@@ -75,8 +75,8 @@ namespace bcc {
                            std::make_pair((uint32_t)resType, sha1)));
     }
 
-    ScriptCached *readCacheFile(InputFile &objFile, InputFile &infoFile, Script *s);
-    bool checkCacheFile(InputFile &objFile, InputFile &infoFile, Script *S);
+    ScriptCached *readCacheFile(FileHandle *objFile, FileHandle *infoFile, Script *s);
+    bool checkCacheFile(FileHandle *objFile, FileHandle *infoFile, Script *S);
 
     bool isContextSlotNotAvail() const {
       return mIsContextSlotNotAvail;

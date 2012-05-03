@@ -19,7 +19,7 @@
 #include "Config.h"
 
 #include "DebugHelper.h"
-#include "InputFile.h"
+#include "FileHandle.h"
 
 #include <string.h>
 
@@ -50,11 +50,10 @@ void calcSHA1(unsigned char *result, char const *data, size_t size) {
 void calcFileSHA1(unsigned char *result, char const *filename) {
   android::StopWatch calcFileSHA1Timer("calcFileSHA1 time");
 
-  InputFile file(filename);
+  FileHandle file;
 
-  if (file.hasError()) {
-    ALOGE("Unable to open the file %s before SHA-1 checksum "
-          "calculation! (%s)", filename, file.getErrorMessage().c_str());
+  if (file.open(filename, OpenMode::Read) < 0) {
+    ALOGE("Unable to calculate the sha1 checksum of %s\n", filename);
     memset(result, '\0', 20);
     return;
   }
@@ -84,10 +83,9 @@ void calcFileSHA1(unsigned char *result, char const *filename) {
 }
 
 void readSHA1(unsigned char *result, int result_size, char const *filename) {
-  InputFile file(filename);
-  if (file.hasError()) {
-    ALOGE("Unable to open the binary sha1 file %s! (%s)", filename,
-          file.getErrorMessage().c_str());
+  FileHandle file;
+  if (file.open(filename, OpenMode::Read) < 0) {
+    ALOGE("Unable to read binary sha1 file %s\n", filename);
     memset(result, '\0', result_size);
     return;
   }

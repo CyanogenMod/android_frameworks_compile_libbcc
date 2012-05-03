@@ -24,6 +24,7 @@
 #endif
 
 #include "DebugHelper.h"
+#include "FileHandle.h"
 #include "Runtime.h"
 #include "ScriptCompiled.h"
 #include "Sha1Helper.h"

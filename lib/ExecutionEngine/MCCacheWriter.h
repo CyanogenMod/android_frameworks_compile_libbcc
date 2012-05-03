@@ -19,20 +19,21 @@
 
 #include <bcc/bcc_mccache.h>
 
+#include "FileHandle.h"
+
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace bcc {
-  class OutputFile;
   class RSScript;
 
   class MCCacheWriter {
   private:
     RSScript *mpOwner;
 
-    OutputFile *mObjFile, *mInfoFile;
+    FileHandle *mObjFile, *mInfoFile;
 
     std::vector<std::pair<char const *, size_t> > mStringPool;
 
@@ -62,7 +63,7 @@ namespace bcc {
 
     ~MCCacheWriter();
 
-    bool writeCacheFile(OutputFile &objFile, OutputFile &infoFile,
+    bool writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
                         RSScript *S, uint32_t libRS_threadable);
 
     void addDependency(MCO_ResourceType resType,
