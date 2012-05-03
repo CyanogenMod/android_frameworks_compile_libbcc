@@ -27,7 +27,6 @@
 
 #include "bcc/Config/BuildInfo.h"
 #include "bcc/RenderScript/RSExecutable.h"
-#include "bcc/RenderScript/RSInfo.h"
 #include "bcc/RenderScript/RSScript.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
@@ -259,13 +258,8 @@ extern "C" int bccLinkBC(BCCScriptRef script,
 extern "C" int bccLinkFile(BCCScriptRef script,
                            char const *path,
                            unsigned long flags) {
-  RSScriptContext *rsctx = unwrap(script);
-  if ((::strcmp(path, RSInfo::LibCLCorePath) == 0) &&
-      (rsctx->script != NULL)) {
-    return (RSScript::LinkRuntime(*rsctx->script) == false);
-  } else {
-    return BCC_DEPRECATED_API;
-  }
+  return (helper_add_source(unwrap(script), path,
+                            flags, /* pIsLink */true) == false);
 }
 
 
