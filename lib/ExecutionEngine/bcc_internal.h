@@ -35,7 +35,7 @@ namespace llvm {
 }
 
 namespace bcc {
-  class RSScript;
+  class Script;
 
   /* Function information struct */
   struct FuncInfo {
@@ -44,7 +44,7 @@ namespace bcc {
     size_t size;
   };
 
-  BCC_OPAQUE_TYPE_CONVERSION(bcc::RSScript *, BCCScriptRef);
+  BCC_OPAQUE_TYPE_CONVERSION(bcc::Script *, BCCScriptRef);
   BCC_OPAQUE_TYPE_CONVERSION(llvm::Module *, LLVMModuleRef);
 
 } // namespace bcc
