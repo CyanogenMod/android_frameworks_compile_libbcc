@@ -31,7 +31,7 @@
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 #include "bcc/Support/Initialization.h"
-#include "bcc/Support/Sha1Util.h"
+#include "bcc/Support/Sha1Helper.h"
 
 #include "bcc_internal.h"
 
@@ -132,9 +132,9 @@ static bool helper_add_source(RSScriptContext *pCtx,
   }
 
   if (need_dependency_check) {
-    uint8_t sha1[SHA1_DIGEST_LENGTH];
-    if (!Sha1Util::GetSHA1DigestFromBuffer(sha1, pBitcode, pBitcodeSize) ||
-        !pCtx->script->addSourceDependency(pName, sha1)) {
+    uint8_t sha1[20];
+    calcSHA1(sha1, pBitcode, pBitcodeSize);
+    if (!pCtx->script->addSourceDependency(pName, sha1)) {
       return false;
     }
   }
@@ -206,9 +206,9 @@ static bool helper_add_source(RSScriptContext *pCtx,
   }
 
   if (need_dependency_check) {
-    uint8_t sha1[SHA1_DIGEST_LENGTH];
-    if (!Sha1Util::GetSHA1DigestFromFile(sha1, pPath) ||
-        !pCtx->script->addSourceDependency(pPath, sha1)) {
+    uint8_t sha1[20];
+    calcFileSHA1(sha1, pPath);
+    if (!pCtx->script->addSourceDependency(pPath, sha1)) {
       return false;
     }
   }

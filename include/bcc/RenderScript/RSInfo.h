@@ -23,7 +23,6 @@
 
 #include "bcc/RenderScript/RSScript.h"
 #include "bcc/Support/Log.h"
-#include "bcc/Support/Sha1Util.h"
 
 #include <utils/String8.h>
 #include <utils/Vector.h>
@@ -82,7 +81,7 @@ const StringIndexTy gInvalidStringIndex = static_cast<StringIndexTy>(-1);
 struct __attribute__((packed)) DependencyTableItem {
   StringIndexTy id;
   // SHA-1 checksum is stored as a string in string pool (and has fixed-length
-  // SHA1_DIGEST_LENGTH (=20) bytes)
+  // 20 bytes)
   StringIndexTy sha1;
 };
 
@@ -165,8 +164,8 @@ public:
 private:
   // SHA-1 of the built-in dependencies. Will be initialized in
   // LoadBuiltInSHA1Information().
-  static const uint8_t *LibBCCSHA1;
-  static const uint8_t *LibRSSHA1;
+  static uint8_t LibBCCSHA1[20];
+  static uint8_t LibRSSHA1[20];
 
   static bool CheckDependency(const RSInfo &pInfo,
                               const char *pInputFilename,
