@@ -34,10 +34,6 @@ libbcc_executionengine_SRC_FILES := \
   MCCacheWriter.cpp \
   MCCacheReader.cpp \
   OutputFile.cpp \
-  RSInfo.cpp \
-  RSInfoExtractor.cpp \
-  RSInfoReader.cpp \
-  RSInfoWriter.cpp \
   RSScript.cpp \
   BCCRuntimeStub.c \
   Script.cpp \
