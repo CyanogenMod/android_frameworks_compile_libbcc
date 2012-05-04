@@ -17,7 +17,7 @@
 #include "MCCacheReader.h"
 
 #include "DebugHelper.h"
-#include "InputFile.h"
+#include "FileHandle.h"
 #include "ScriptCached.h"
 #include "Runtime.h"
 
@@ -49,8 +49,8 @@ MCCacheReader::~MCCacheReader() {
   if (mpFuncNameList) { free(mpFuncNameList); }
 }
 
-ScriptCached *MCCacheReader::readCacheFile(InputFile &objFile,
-                                           InputFile &infoFile,
+ScriptCached *MCCacheReader::readCacheFile(FileHandle *objFile,
+                                           FileHandle *infoFile,
                                            Script *S) {
   bool result = checkCacheFile(objFile, infoFile, S)
              && readPragmaList()
@@ -65,16 +65,16 @@ ScriptCached *MCCacheReader::readCacheFile(InputFile &objFile,
   return result ? mpResult.take() : NULL;
 }
 
-bool MCCacheReader::checkCacheFile(InputFile &objFile,
-                                   InputFile &infoFile,
-                                   Script *S) {
+bool MCCacheReader::checkCacheFile(FileHandle *objFile,
+                                            FileHandle *infoFile,
+                                            Script *S) {
   // Check file handle
-  if (objFile.hasError() || infoFile.hasError()) {
+  if (!objFile || objFile->getFD() < 0 || !infoFile || infoFile->getFD() < 0) {
     return false;
   }
 
-  mObjFile = &objFile;
-  mInfoFile = &infoFile;
+  mObjFile = objFile;
+  mInfoFile = infoFile;
 
   // Allocate ScriptCached object
   mpResult.reset(new (nothrow) ScriptCached(S));
@@ -101,7 +101,7 @@ bool MCCacheReader::checkCacheFile(InputFile &objFile,
 
 bool MCCacheReader::checkFileSize() {
   struct stat stfile;
-  if (::stat(mInfoFile->getName().c_str(), &stfile) < 0) {
+  if (fstat(mInfoFile->getFD(), &stfile) < 0) {
     ALOGE("Unable to stat cache file.\n");
     return false;
   }
@@ -118,7 +118,7 @@ bool MCCacheReader::checkFileSize() {
 
 
 bool MCCacheReader::readHeader() {
-  if (mInfoFile->seek(0) != 0) {
+  if (mInfoFile->seek(0, SEEK_SET) != 0) {
     ALOGE("Unable to seek to 0. (reason: %s)\n", strerror(errno));
     return false;
   }
@@ -226,7 +226,7 @@ bool MCCacheReader::checkSectionOffsetAndSize() {
   /* We have to ensure that some one will deallocate NAME##_raw */          \
   AUTO_MANAGED_HOLDER = NAME##_raw;                                         \
                                                                             \
-  if (mInfoFile->seek(mpHeader->NAME##_offset) == -1) {                     \
+  if (mInfoFile->seek(mpHeader->NAME##_offset, SEEK_SET) == -1) {           \
     ALOGE("Unable to seek to " #NAME " section\n");                          \
     return false;                                                           \
   }                                                                         \
