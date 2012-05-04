@@ -28,8 +28,8 @@
 #include <llvm/Type.h>
 
 #include "bcc/Config/Config.h"
+#include "bcc/Support/DebugHelper.h"
 #include "bcc/RenderScript/RSInfo.h"
-#include "bcc/Support/Log.h"
 
 using namespace bcc;
 

@@ -21,6 +21,7 @@
 
 libbcc_DEBUG_MC_DISASSEMBLER        := 0
 
+libbcc_USE_FUNC_LOGGER              := 0
 libbcc_DEBUG_BCC_REFLECT            := 0
 libbcc_DEBUG_MC_REFLECT             := 0
 

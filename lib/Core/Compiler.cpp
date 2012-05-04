@@ -30,7 +30,7 @@
 #include "bcc/Script.h"
 #include "bcc/Source.h"
 #include "bcc/Support/CompilerConfig.h"
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 #include "bcc/Support/OutputFile.h"
 
 using namespace bcc;

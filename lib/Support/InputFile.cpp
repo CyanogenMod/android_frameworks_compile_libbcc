@@ -16,7 +16,7 @@
 
 #include "bcc/Support/InputFile.h"
 
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 
 using namespace bcc;
 

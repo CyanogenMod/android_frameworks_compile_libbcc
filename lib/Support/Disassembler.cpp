@@ -33,7 +33,7 @@
 #include <llvm/Target/TargetOptions.h>
 
 #include "bcc/Config/Config.h"
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 
 #if USE_DISASSEMBLER
 

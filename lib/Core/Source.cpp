@@ -26,7 +26,7 @@
 #include <llvm/Support/system_error.h>
 
 #include "bcc/BCCContext.h"
-#include "bcc/Support/Log.h"
+#include "bcc/Support/DebugHelper.h"
 
 #include "BCCContextImpl.h"
 
