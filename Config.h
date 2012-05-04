@@ -1,9 +1,7 @@
 #ifndef BCC_CONFIG_H
 #define BCC_CONFIG_H
 
-#ifdef HAVE_BCC_CONFIG_MK_H
 #include "ConfigFromMk.h"
-#endif
 
 //---------------------------------------------------------------------------
 // Configuration for Disassembler
