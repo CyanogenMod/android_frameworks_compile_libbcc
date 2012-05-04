@@ -28,7 +28,8 @@ endif
 
 libbcc_WHOLE_STATIC_LIBRARIES += \
   libbccExecutionEngine \
-  libbccHelper
+  libbccHelper \
+  libbccTransforms
 
 
 #=====================================================================

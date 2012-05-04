@@ -24,12 +24,12 @@
 #include <stddef.h>
 
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/Support/CodeGen.h>
 
 #include <bcc/bcc.h>
 #include <bcc/bcc_mccache.h>
 #include "bcc_internal.h"
 
+#include "Compiler.h"
 #include "Script.h"
 
 namespace llvm {
