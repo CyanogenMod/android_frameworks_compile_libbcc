@@ -373,7 +373,7 @@ bool MetadataExtractor::extract() {
     mContext.reset(new llvm::LLVMContext());
     llvm::OwningPtr<llvm::MemoryBuffer> MEM(
       llvm::MemoryBuffer::getMemBuffer(
-        llvm::StringRef(mBitcode, mBitcodeSize)));
+        llvm::StringRef(mBitcode, mBitcodeSize), "", false));
     std::string error;
 
     // Module ownership is handled by the context, so we don't need to free it.
