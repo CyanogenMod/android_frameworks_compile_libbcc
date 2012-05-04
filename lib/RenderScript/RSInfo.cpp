@@ -29,11 +29,8 @@ using namespace bcc;
 
 const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
 const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
-const char RSInfo::LibCLCorePath[] = "/system/lib/libclcore.bc";
-
 const uint8_t *RSInfo::LibBCCSHA1 = NULL;
 const uint8_t *RSInfo::LibRSSHA1 = NULL;
-const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
 
 void RSInfo::LoadBuiltInSHA1Information() {
   if (LibBCCSHA1 != NULL) {
@@ -50,8 +47,6 @@ void RSInfo::LoadBuiltInSHA1Information() {
 
   LibBCCSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libbcc_so_SHA1"));
   LibRSSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libRS_so_SHA1"));
-  LibCLCoreSHA1 =
-      reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_bc_SHA1"));
 
   return;
 }
@@ -74,8 +69,8 @@ android::String8 RSInfo::GetPath(const FileBase &pFile) {
 bool RSInfo::CheckDependency(const RSInfo &pInfo,
                              const char *pInputFilename,
                              const RSScript::SourceDependencyListTy &pDeps) {
-  // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc.
-  static const unsigned NumBuiltInDependencies = 3;
+  // Built-in dependencies are libbcc.so and libRS.so.
+  static const unsigned NumBuiltInDependencies = 2;
 
   LoadBuiltInSHA1Information();
 
@@ -90,8 +85,6 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         pInfo.mDependencyTable[0];
     const std::pair<const char *, const uint8_t *> &cache_libRS_dep =
         pInfo.mDependencyTable[1];
-    const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
-        pInfo.mDependencyTable[2];
 
     // Check libbcc.so.
     if (::memcmp(cache_libbcc_dep.second, LibBCCSHA1, SHA1_DIGEST_LENGTH) != 0) {
@@ -110,17 +103,6 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         PRINT_DEPENDENCY("current - ", LibRSPath, LibRSSHA1);
         PRINT_DEPENDENCY("cache - ", cache_libRS_dep.first,
                                      cache_libRS_dep.second);
-        return false;
-    }
-
-    // Check libclcore.bc.
-    if (::memcmp(cache_libclcore_dep.second, LibCLCoreSHA1,
-                 SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibRSPath);
-        PRINT_DEPENDENCY("current - ", LibCLCorePath, LibCLCoreSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libclcore_dep.first,
-                                     cache_libclcore_dep.second);
         return false;
     }
 

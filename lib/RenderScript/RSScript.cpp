@@ -20,8 +20,6 @@
 
 #include <llvm/ADT/STLExtras.h>
 
-#include "bcc/RenderScript/RSInfo.h"
-#include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 
 using namespace bcc;
@@ -31,27 +29,6 @@ RSScript::SourceDependency::SourceDependency(const std::string &pSourceName,
   : mSourceName(pSourceName) {
   ::memcpy(mSHA1, pSHA1, sizeof(mSHA1));
   return;
-}
-
-bool RSScript::LinkRuntime(RSScript &pScript) {
-  // Using the same context with the source in pScript.
-  BCCContext &context = pScript.getSource().getContext();
-  Source *libclcore_source = Source::CreateFromFile(context,
-                                                    RSInfo::LibCLCorePath);
-  if (libclcore_source == NULL) {
-    ALOGE("Failed to load Renderscript library '%s' to link!",
-          RSInfo::LibCLCorePath);
-    return false;
-  }
-
-  if (!pScript.getSource().merge(*libclcore_source,
-                                 /* pPreserveSource */false)) {
-    ALOGE("Failed to link RenderScript library '%s'!", RSInfo::LibCLCorePath);
-    delete libclcore_source;
-    return false;
-  }
-
-  return true;
 }
 
 RSScript::RSScript(Source &pSource)
