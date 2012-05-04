@@ -126,7 +126,7 @@ bool writeDependency(const std::string &pSourceName, const uint8_t *pSHA1,
 } // end anonymous namespace
 
 RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
-                                  const DependencyTableTy &pDeps)
+                                  const RSScript::SourceDependencyListTy &pDeps)
 {
   const llvm::Module &module = pSource.getModule();
   const char *module_name = module.getModuleIdentifier().c_str();
@@ -169,10 +169,13 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
   for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
-    // +1 for null-terminator
-    string_pool_size += ::strlen(/* name */pDeps[i].first) + 1;
-    // +SHA1_DIGEST_LENGTH for SHA-1 checksum
-    string_pool_size += SHA1_DIGEST_LENGTH;
+    const RSScript::SourceDependency *source_dep = pDeps[i];
+    if (source_dep != NULL) {
+      // +1 for null-terminator
+      string_pool_size += source_dep->getSourceName().length() + 1;
+      // +SHA1_DIGEST_LENGTH for SHA-1 checksum
+      string_pool_size += SHA1_DIGEST_LENGTH;
+    }
   }
 
   // Allocate result object
@@ -379,10 +382,14 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   // Record dependency information.
   //===--------------------------------------------------------------------===//
   for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
-    if (!writeDependency(/* name */pDeps[i].first, /* SHA-1 */pDeps[i].second,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
+    const RSScript::SourceDependency *source_dep = pDeps[i];
+    if (source_dep != NULL) {
+      if (!writeDependency(source_dep->getSourceName(),
+                           source_dep->getSHA1Checksum(),
+                           result->mStringPool, &cur_string_pool_offset,
+                           result->mDependencyTable)) {
+        goto bail;
+      }
     }
   }
 

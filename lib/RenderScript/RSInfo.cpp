@@ -73,7 +73,7 @@ android::String8 RSInfo::GetPath(const FileBase &pFile) {
 
 bool RSInfo::CheckDependency(const RSInfo &pInfo,
                              const char *pInputFilename,
-                             const DependencyTableTy &pDeps) {
+                             const RSScript::SourceDependencyListTy &pDeps) {
   // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc.
   static const unsigned NumBuiltInDependencies = 3;
 
@@ -125,15 +125,19 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
     }
 
     for (unsigned i = 0; i < pDeps.size(); i++) {
+      const RSScript::SourceDependency &in_dep = *(pDeps[i]);
       const std::pair<const char *, const uint8_t *> &cache_dep =
           pInfo.mDependencyTable[i + NumBuiltInDependencies];
 
-      if ((::strcmp(pDeps[i].first, cache_dep.first) != 0) ||
-          (::memcmp(pDeps[i].second, cache_dep.second,
+      if ((::strncmp(in_dep.getSourceName().c_str(),
+                     cache_dep.first,
+                     in_dep.getSourceName().length()) != 0) ||
+          (::memcmp(in_dep.getSHA1Checksum(), cache_dep.second,
                     SHA1_DIGEST_LENGTH) != 0)) {
         ALOGD("Cache %s is dirty due to the source it dependends on has been "
               "changed:", pInputFilename);
-        PRINT_DEPENDENCY("given - ", pDeps[i].first, pDeps[i].second);
+        PRINT_DEPENDENCY("given - ", in_dep.getSourceName().c_str(),
+                                     in_dep.getSHA1Checksum());
         PRINT_DEPENDENCY("cache - ", cache_dep.first, cache_dep.second);
         return false;
       }

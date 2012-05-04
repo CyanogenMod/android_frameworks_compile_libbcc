@@ -40,6 +40,8 @@ LOCAL_LIBBCC_LIB_DEPS := \
       STATIC_LIBRARIES,$(lib),$(LOCAL_IS_HOST_MODULE))/$(lib)$(a_suffix)) \
   $(addprefix $($(my_prefix)OUT_INTERMEDIATE_LIBRARIES)/, \
     $(addsuffix $(so_suffix), $(LOCAL_SHARED_LIBRARIES))) \
+  $(LIBBCC_ROOT_PATH)/lib/Core/bcc.cpp
+
 
 # Build Rules for Automatically Generated Build Information
 GEN := $(local-intermediates-dir)/BuildInfo.cpp
