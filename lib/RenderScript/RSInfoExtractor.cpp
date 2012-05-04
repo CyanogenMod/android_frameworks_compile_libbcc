@@ -112,13 +112,12 @@ bool writeDependency(const std::string &pSourceName, const uint8_t *pSHA1,
 
   uint8_t *sha1 = reinterpret_cast<uint8_t *>(pStringPool + *pWriteStart);
 
-  // SHA-1 is special. It's size of SHA1_DIGEST_LENGTH (=20) bytes long without
-  // null-terminator.
-  ::memcpy(sha1, pSHA1, SHA1_DIGEST_LENGTH);
+  // SHA-1 is special. It's 20-bytes long without null-terminator.
+  ::memcpy(sha1, pSHA1, 20);
   // Record in the result RSInfo object.
   pDepTable.push(std::make_pair(source_name, sha1));
   // Update the string pool pointer.
-  *pWriteStart += SHA1_DIGEST_LENGTH;
+  *pWriteStart += 20;
 
   return true;
 }
@@ -165,15 +164,15 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
 
   // Don't forget to reserve the space for the dependency informationin string
   // pool.
-  string_pool_size += ::strlen(LibBCCPath) + 1 + SHA1_DIGEST_LENGTH;
-  string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
+  string_pool_size += ::strlen(LibBCCPath) + 1 + 20;
+  string_pool_size += ::strlen(LibRSPath) + 1 + 20;
   for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
     const RSScript::SourceDependency *source_dep = pDeps[i];
     if (source_dep != NULL) {
       // +1 for null-terminator
       string_pool_size += source_dep->getSourceName().length() + 1;
-      // +SHA1_DIGEST_LENGTH for SHA-1 checksum
-      string_pool_size += SHA1_DIGEST_LENGTH;
+      // +20 for SHA-1 checksum
+      string_pool_size += 20;
     }
   }
 
