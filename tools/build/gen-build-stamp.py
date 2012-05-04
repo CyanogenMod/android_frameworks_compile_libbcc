@@ -128,21 +128,25 @@ def main():
 /* File list:
 %s*/
 
-#include "bcc/Config/BuildInfo.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-using namespace bcc;
-
-const char* BuildInfo::GetBuildTime() {
+char const *bccGetBuildTime() {
   return %s;
 }
 
-const char *BuildInfo::GetBuildRev() {
+char const *bccGetBuildRev() {
   return %s;
 }
 
-const char *BuildInfo::GetBuildSourceBlob() {
+char const *bccGetBuildSHA1() {
   return %s;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 """ % (os.path.abspath(repo_dir),
        lib_list_str,
