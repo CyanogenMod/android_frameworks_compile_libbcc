@@ -14,130 +14,153 @@
  * limitations under the License.
  */
 
-#ifndef BCC_EXECUTION_ENGINE_COMPILER_H
-#define BCC_EXECUTION_ENGINE_COMPILER_H
+#ifndef BCC_COMPILER_H
+#define BCC_COMPILER_H
+
+#include <bcc/bcc.h>
+
+#include <Config.h>
+
+#include "librsloader.h"
+
+#include "llvm/ADT/OwningPtr.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Triple.h"
+#include "llvm/Target/TargetMachine.h"
+
+#include <stddef.h>
+
+#include <list>
+#include <string>
+#include <vector>
+#include <utility>
+
+#include "RSInfo.h"
+
 
 namespace llvm {
+  class Module;
+  class NamedMDNode;
+  class TargetData;
+}
 
-class raw_ostream;
-class PassManager;
-class TargetData;
-class TargetMachine;
-
-} // end namespace llvm
 
 namespace bcc {
+  class ScriptCompiled;
+  struct CompilerOption;
 
-class CompilerConfig;
-class OutputFile;
-class Script;
+  class Compiler {
+  private:
+    //////////////////////////////////////////////////////////////////////////
+    // The variable section below (e.g., Triple, CodeGenOptLevel)
+    // is initialized in GlobalInitialization()
+    //
+    static bool GlobalInitialized;
 
-//===----------------------------------------------------------------------===//
-// Design of Compiler
-//===----------------------------------------------------------------------===//
-// 1. A compiler instance can be constructed provided an "initial config."
-// 2. A compiler can later be re-configured using config().
-// 3. Once config() is invoked, it'll re-create TargetMachine instance (i.e.,
-//    mTarget) according to the configuration supplied. TargetMachine instance
-//    is *shared* across the different calls to compile() before the next call
-//    to config().
-// 4. Once a compiler instance is created, you can use the compile() service
-//    to compile the file over and over again. Each call uses TargetMachine
-//    instance to construct the compilation passes.
-class Compiler {
-public:
-  enum ErrorCode {
-    kSuccess,
+    // If given, this will be the name of the target triple to compile for.
+    // If not given, the initial values defined in this file will be used.
+    static std::string Triple;
+    static llvm::Triple::ArchType ArchType;
 
-    kInvalidConfigNoTarget,
-    kErrCreateTargetMachine,
-    kErrSwitchTargetMachine,
-    kErrNoTargetMachine,
-    kErrTargetDataNoMemory,
-    kErrMaterialization,
-    kErrInvalidOutputFileState,
-    kErrPrepareOutput,
-    kPrepareCodeGenPass,
+    static llvm::CodeGenOpt::Level CodeGenOptLevel;
 
-    kErrHookBeforeAddLTOPasses,
-    kErrHookAfterAddLTOPasses,
-    kErrHookBeforeExecuteLTOPasses,
-    kErrHookAfterExecuteLTOPasses,
+    // End of section of GlobalInitializing variables
+    /////////////////////////////////////////////////////////////////////////
+    // If given, the name of the target CPU to generate code for.
+    static std::string CPU;
 
-    kErrHookBeforeAddCodeGenPasses,
-    kErrHookAfterAddCodeGenPasses,
-    kErrHookBeforeExecuteCodeGenPasses,
-    kErrHookAfterExecuteCodeGenPasses,
+    // The list of target specific features to enable or disable -- this should
+    // be a list of strings starting with '+' (enable) or '-' (disable).
+    static std::vector<std::string> Features;
 
-    kMaxErrorCode,
-  };
+    static void LLVMErrorHandler(void *UserData, const std::string &Message);
 
-  static const char *GetErrorString(enum ErrorCode pErrCode);
+    friend class CodeEmitter;
+    friend class CodeMemoryManager;
 
-private:
-  llvm::TargetMachine *mTarget;
-  // LTO is enabled by default.
-  bool mEnableLTO;
+  private:
+    ScriptCompiled *mpResult;
 
-  enum ErrorCode runLTO(Script &pScript);
-  enum ErrorCode runCodeGen(Script &pScript, llvm::raw_ostream &pResult);
+    std::string mError;
 
-public:
-  Compiler();
-  Compiler(const CompilerConfig &pConfig);
+    // Compilation buffer for MC
+    llvm::SmallVector<char, 1024> mEmittedELFExecutable;
 
-  enum ErrorCode config(const CompilerConfig &pConfig);
+    // Loaded and relocated executable
+    RSExecRef mRSExecutable;
 
-  // Compile a script and output the result to a LLVM stream.
-  enum ErrorCode compile(Script &pScript, llvm::raw_ostream &pResult);
+    BCCSymbolLookupFn mpSymbolLookupFn;
+    void *mpSymbolLookupContext;
 
-  // Compile a script and output the result to a file.
-  enum ErrorCode compile(Script &pScript, OutputFile &pResult);
+    llvm::Module *mModule;
 
-  void enableLTO(bool pEnable = true)
-  { mEnableLTO = pEnable; }
+  public:
+    Compiler(ScriptCompiled *result);
 
-  virtual ~Compiler();
+    static void GlobalInitialization();
 
-protected:
-  //===--------------------------------------------------------------------===//
-  // Plugin callbacks for sub-class.
-  //===--------------------------------------------------------------------===//
-  // Called before adding first pass to code-generation passes.
-  virtual bool beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
+    static std::string const &getTargetTriple() {
+      return Triple;
+    }
 
-  // Called after adding last pass to code-generation passes.
-  virtual bool afterAddLTOPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
+    static llvm::Triple::ArchType getTargetArchType() {
+      return ArchType;
+    }
 
-  // Called before executing code-generation passes.
-  virtual bool beforeExecuteLTOPasses(Script &pScript,
-                                          llvm::PassManager &pPM)
-  { return true; }
+    void registerSymbolCallback(BCCSymbolLookupFn pFn, void *pContext) {
+      mpSymbolLookupFn = pFn;
+      mpSymbolLookupContext = pContext;
+    }
 
-  // Called after executing code-generation passes.
-  virtual bool afterExecuteLTOPasses(Script &pScript)
-  { return true; }
+    void *getSymbolAddress(char const *name);
 
-  // Called before adding first pass to code-generation passes.
-  virtual bool beforeAddCodeGenPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
+    const llvm::SmallVector<char, 1024> &getELF() const {
+      return mEmittedELFExecutable;
+    }
 
-  // Called after adding last pass to code-generation passes.
-  virtual bool afterAddCodeGenPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
+    int readModule(llvm::Module &pModule);
 
-  // Called before executing code-generation passes.
-  virtual bool beforeExecuteCodeGenPasses(Script &pScript,
-                                          llvm::PassManager &pPM)
-  { return true; }
+    int compile(const CompilerOption &option);
 
-  // Called after executing code-generation passes.
-  virtual bool afterExecuteCodeGenPasses(Script &pScript)
-  { return true; }
-};
+    char const *getErrorMessage() {
+      return mError.c_str();
+    }
 
-} // end namespace bcc
+    const llvm::Module *getModule() const {
+      return mModule;
+    }
 
-#endif // BCC_EXECUTION_ENGINE_COMPILER_H
+    ~Compiler();
+
+  private:
+
+    int runCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM,
+                   llvm::NamedMDNode const *ExportVarMetadata,
+                   llvm::NamedMDNode const *ExportFuncMetadata);
+
+    int runMCCodeGen(llvm::TargetData *TD, llvm::TargetMachine *TM);
+
+    int runInternalPasses(RSInfo::ExportForeachFuncListTy pForEachFuncs);
+
+    int runLTO(llvm::TargetData *TD,
+               std::vector<const char*>& ExportSymbols,
+               llvm::CodeGenOpt::Level OptimizationLevel);
+
+    bool hasError() const {
+      return !mError.empty();
+    }
+
+    void setError(const char *Error) {
+      mError.assign(Error);  // Copying
+    }
+
+    void setError(const std::string &Error) {
+      mError = Error;
+    }
+
+  };  // End of class Compiler
+
+} // namespace bcc
+
+#endif // BCC_COMPILER_H

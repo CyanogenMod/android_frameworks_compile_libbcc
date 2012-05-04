@@ -34,10 +34,10 @@ libbcc_executionengine_SRC_FILES := \
   GDBJITRegistrar.cpp \
   Initialization.cpp \
   InputFile.cpp \
+  MCCacheWriter.cpp \
+  MCCacheReader.cpp \
   ObjectLoader.cpp \
   OutputFile.cpp \
-  RSCompiler.cpp \
-  RSCompilerDriver.cpp \
   RSExecutable.cpp \
   RSForEachExpand.cpp \
   RSInfo.cpp \
@@ -47,6 +47,8 @@ libbcc_executionengine_SRC_FILES := \
   RSScript.cpp \
   BCCRuntimeStub.c \
   Script.cpp \
+  ScriptCached.cpp \
+  ScriptCompiled.cpp \
   Sha1Helper.cpp \
   Source.cpp \
   SymbolResolverProxy.cpp \

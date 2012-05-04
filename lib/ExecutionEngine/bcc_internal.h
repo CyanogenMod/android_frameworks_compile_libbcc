@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2012, The Android Open Source Project
+ * Copyright 2010, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,6 @@
 
 #include <bcc/bcc.h>
 
-#include "BCCContext.h"
-#include "RSCompilerDriver.h"
-
 #if defined(__cplusplus)
 
 #define BCC_OPAQUE_TYPE_CONVERSION(TRANSPARENT_TYPE, OPAQUE_TYPE)           \
@@ -38,23 +35,17 @@ namespace llvm {
 }
 
 namespace bcc {
+  class RSScript;
 
-class RSScript;
-class RSExecutable;
+  /* Function information struct */
+  struct FuncInfo {
+    char const *name;
+    void *addr;
+    size_t size;
+  };
 
-struct RSScriptContext {
-  // The context required in libbcc.
-  BCCContext context;
-  // The compiler driver
-  RSCompilerDriver driver;
-  // The script hold the source which is about to compile.
-  RSScript *script;
-  // The compilation result.
-  RSExecutable *result;
-};
-
-BCC_OPAQUE_TYPE_CONVERSION(bcc::RSScriptContext *, BCCScriptRef);
-BCC_OPAQUE_TYPE_CONVERSION(llvm::Module *, LLVMModuleRef);
+  BCC_OPAQUE_TYPE_CONVERSION(bcc::RSScript *, BCCScriptRef);
+  BCC_OPAQUE_TYPE_CONVERSION(llvm::Module *, LLVMModuleRef);
 
 } // namespace bcc
 

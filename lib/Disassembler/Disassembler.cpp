@@ -19,6 +19,7 @@
 #include "Config.h"
 
 #include "DebugHelper.h"
+#include "ExecutionEngine/Compiler.h"
 
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCDisassembler.h"
@@ -101,10 +102,8 @@ void Disassemble(char const *OutputFileName,
   const llvm::MCDisassembler *Disassmbler;
   llvm::MCInstPrinter *IP;
 
-  AsmInfo = Target->createMCAsmInfo(TM->getTargetTriple());
-  SubtargetInfo = Target->createMCSubtargetInfo(TM->getTargetTriple(),
-                                                TM->getTargetCPU(),
-                                                TM->getTargetFeatureString());
+  AsmInfo = Target->createMCAsmInfo(Compiler::getTargetTriple());
+  SubtargetInfo = Target->createMCSubtargetInfo(Compiler::getTargetTriple(), "", "");
   Disassmbler = Target->createMCDisassembler(*SubtargetInfo);
   IP = Target->createMCInstPrinter(AsmInfo->getAssemblerDialect(),
                                    *AsmInfo, *SubtargetInfo);
