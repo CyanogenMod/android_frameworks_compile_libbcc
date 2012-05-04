@@ -16,6 +16,7 @@
 #
 
 LOCAL_PATH := $(call my-dir)
+include $(LOCAL_PATH)/../../libbcc-config.mk
 
 #=====================================================================
 # Common: libbccExecutionEngine
@@ -50,8 +51,8 @@ libbcc_executionengine_SRC_FILES := \
   Source.cpp \
   SymbolResolverProxy.cpp \
   SymbolResolvers.cpp \
-  TargetCompilerConfigs.cpp \
-  bcc.cpp
+  TargetCompilerConfigs.cpp
+
 
 #=====================================================================
 # Device Static Library: libbccExecutionEngine
@@ -63,16 +64,19 @@ LOCAL_MODULE := libbccExecutionEngine
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
+LOCAL_CFLAGS += $(libbcc_CFLAGS)
+LOCAL_CFLAGS += -DTARGET_BUILD
+
 LOCAL_C_INCLUDES := \
+  $(libbcc_C_INCLUDES) \
   $(RSLOADER_ROOT_PATH) \
   $(RSLOADER_ROOT_PATH)/include
-
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
 LOCAL_SHARED_LIBRARIES := libbcinfo
 
-include $(LIBBCC_DEVICE_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
-include $(LLVM_DEVICE_BUILD_MK)
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
+include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
+include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_STATIC_LIBRARY)
 
 
@@ -85,15 +89,19 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbccExecutionEngine
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+LOCAL_IS_HOST_MODULE := true
 
+LOCAL_CFLAGS += $(libbcc_CFLAGS)
+LOCAL_CFLAGS += -D__HOST__
 LOCAL_C_INCLUDES := \
+  $(libbcc_C_INCLUDES) \
   $(RSLOADER_ROOT_PATH) \
   $(RSLOADER_ROOT_PATH)/include
 
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
 LOCAL_SHARED_LIBRARIES := libbcinfo
 
-include $(LIBBCC_HOST_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
-include $(LLVM_HOST_BUILD_MK)
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
+include $(LIBBCC_ROOT_PATH)/libbcc-build-rules.mk
+include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_STATIC_LIBRARY)
