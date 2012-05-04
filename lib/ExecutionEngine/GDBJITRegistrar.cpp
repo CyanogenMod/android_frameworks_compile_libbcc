@@ -30,15 +30,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "bcc/ExecutionEngine/GDBJITRegistrar.h"
-
-#include <llvm/ADT/DenseMap.h>
-#include <llvm/Support/ErrorHandling.h>
-#include <llvm/Support/Memory.h>
-#include <llvm/Support/Mutex.h>
-#include <llvm/Support/MutexGuard.h>
-
-#include "bcc/ExecutionEngine/GDBJIT.h"
+#include "GDBJITRegistrar.h"
+#include "llvm/ADT/DenseMap.h"
+#include "GDBJIT.h"
+#include "llvm/Support/Memory.h"
+#include "llvm/Support/MutexGuard.h"
+#include "llvm/Support/Mutex.h"
+#include "llvm/Support/ErrorHandling.h"
 
 #include <fstream>
 

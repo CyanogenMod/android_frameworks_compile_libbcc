@@ -27,10 +27,8 @@ libbcc_WHOLE_STATIC_LIBRARIES += libbccDisassembler
 endif
 
 libbcc_WHOLE_STATIC_LIBRARIES += \
-  libbccRenderScript \
   libbccExecutionEngine \
-  libbccCore \
-  libbccSupport
+  libbccHelper
 
 
 #=====================================================================

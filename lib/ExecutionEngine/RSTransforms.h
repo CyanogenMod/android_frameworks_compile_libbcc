@@ -14,22 +14,20 @@
  * limitations under the License.
  */
 
-#include "SymbolResolverProxy.h"
+#ifndef BCC_EXECUTION_ENGINE_RS_TRANSFORMS_H
+#define BCC_EXECUTION_ENGINE_RS_TRANSFORMS_H
 
-using namespace bcc;
+#include "RSInfo.h"
 
-void *SymbolResolverProxy::getAddress(const char *pName) {
-  // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
-    if (addr != NULL) {
-      return addr;
-    }
-  }
-  // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
+namespace llvm {
+  class ModulePass;
 }
 
-void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {
-  mChain.push_back(&pResolver);
-}
+namespace bcc {
+
+llvm::ModulePass *
+createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs);
+
+} // end namespace bcc
+
+#endif // BCC_EXECUTION_ENGINE_RS_TRANSFORMS_H

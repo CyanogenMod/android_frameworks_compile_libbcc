@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011-2012 The Android Open Source Project
+# Copyright (C) 2011 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ LOCAL_LIBBCC_LIB_DEPS := \
       STATIC_LIBRARIES,$(lib),$(LOCAL_IS_HOST_MODULE))/$(lib)$(a_suffix)) \
   $(addprefix $($(my_prefix)OUT_INTERMEDIATE_LIBRARIES)/, \
     $(addsuffix $(so_suffix), $(LOCAL_SHARED_LIBRARIES))) \
-  $(LIBBCC_ROOT_PATH)/lib/Core/bcc.cpp
+  $(LIBBCC_ROOT_PATH)/lib/ExecutionEngine/bcc.cpp
 
 
 # Build Rules for Automatically Generated Build Stamp

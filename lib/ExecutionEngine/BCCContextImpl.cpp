@@ -14,22 +14,20 @@
  * limitations under the License.
  */
 
-#include "SymbolResolverProxy.h"
+#include "BCCContextImpl.h"
+
+#include <vector>
+
+#include <llvm/ADT/STLExtras.h>
+
+#include "Source.h"
 
 using namespace bcc;
 
-void *SymbolResolverProxy::getAddress(const char *pName) {
-  // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
-    if (addr != NULL) {
-      return addr;
-    }
-  }
-  // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
-}
-
-void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {
-  mChain.push_back(&pResolver);
+BCCContextImpl::~BCCContextImpl() {
+  // Another temporary container is needed to store the Source objects that we
+  // are going to detroy. Since the destruction of Source object will call
+  // removeSource() and change the content of OwnSources.
+  std::vector<Source *> Sources(mOwnSources.begin(), mOwnSources.end());
+  llvm::DeleteContainerPointers(Sources);
 }

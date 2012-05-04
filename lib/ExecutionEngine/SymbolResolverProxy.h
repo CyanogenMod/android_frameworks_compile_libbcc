@@ -14,22 +14,28 @@
  * limitations under the License.
  */
 
-#include "SymbolResolverProxy.h"
+#ifndef BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
+#define BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
 
-using namespace bcc;
+#include "DebugHelper.h"
+#include "SymbolResolverInterface.h"
 
-void *SymbolResolverProxy::getAddress(const char *pName) {
-  // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
-    if (addr != NULL) {
-      return addr;
-    }
-  }
-  // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
-}
+#include <utils/Vector.h>
 
-void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {
-  mChain.push_back(&pResolver);
-}
+namespace bcc {
+
+class SymbolResolverProxy : public SymbolResolverInterface {
+private:
+  android::Vector<SymbolResolverInterface *> mChain;
+
+public:
+  SymbolResolverProxy() { }
+
+  void chainResolver(SymbolResolverInterface &pResolver);
+
+  virtual void *getAddress(const char *pName);
+};
+
+} // end namespace bcc
+
+#endif // BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
