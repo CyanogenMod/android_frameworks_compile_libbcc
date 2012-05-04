@@ -26,7 +26,7 @@
 #include <bcc/bcc.h>
 
 #include "Compiler.h"
-#include "RSScript.h"
+#include "Script.h"
 
 namespace llvm {
   class Module;
@@ -48,7 +48,7 @@ namespace bcc {
     typedef std::list<uint32_t> ObjectSlotList;
 
   private:
-    RSScript *mpOwner;
+    Script *mpOwner;
 
     Compiler mCompiler;
 
@@ -66,7 +66,7 @@ namespace bcc {
     FuncInfoMap mEmittedFunctions;
 
   public:
-    ScriptCompiled(RSScript *owner)
+    ScriptCompiled(Script *owner)
       : mpOwner(owner), mCompiler(this)
     {
     }

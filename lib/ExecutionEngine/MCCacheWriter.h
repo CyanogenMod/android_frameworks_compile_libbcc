@@ -27,11 +27,11 @@
 #include <vector>
 
 namespace bcc {
-  class RSScript;
+  class Script;
 
   class MCCacheWriter {
   private:
-    RSScript *mpOwner;
+    Script *mpOwner;
 
     FileHandle *mObjFile, *mInfoFile;
 
@@ -64,7 +64,7 @@ namespace bcc {
     ~MCCacheWriter();
 
     bool writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
-                        RSScript *S, uint32_t libRS_threadable);
+                        Script *S, uint32_t libRS_threadable);
 
     void addDependency(MCO_ResourceType resType,
                        std::string const &resName,

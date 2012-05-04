@@ -31,7 +31,6 @@ libbcc_executionengine_SRC_FILES := \
   GDBJITRegistrar.cpp \
   MCCacheWriter.cpp \
   MCCacheReader.cpp \
-  RSScript.cpp \
   Runtime.c \
   RuntimeStub.c \
   Script.cpp \
