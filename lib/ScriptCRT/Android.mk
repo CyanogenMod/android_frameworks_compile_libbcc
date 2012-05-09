@@ -16,10 +16,27 @@
 
 LOCAL_PATH := $(call my-dir)
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := libclcore.bc
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+# C/LLVM-IR source files for the library
+clcore_base_files := \
+    rs_allocation.c \
+    rs_cl.c \
+    rs_core.c \
+    rs_element.c \
+    rs_mesh.c \
+    rs_program.c \
+    rs_sample.c \
+    rs_sampler.c \
+    convert.ll \
+    matrix.ll \
+    pixel_packing.ll
+
+clcore_files := \
+    $(clcore_base_files) \
+    clamp.c
+
+clcore_neon_files := \
+    $(clcore_base_files) \
+    neon/clamp.ll
 
 ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
   RS_VERSION := $(PLATFORM_SDK_VERSION)
@@ -30,56 +47,22 @@ else
   RS_VERSION := "(1 + $(PLATFORM_SDK_VERSION))"
 endif
 
-# C source files for the library
-clcore_c_files := \
-    clamp.c \
-    rs_allocation.c \
-    rs_cl.c \
-    rs_core.c \
-    rs_element.c \
-    rs_mesh.c \
-    rs_program.c \
-    rs_sample.c \
-    rs_sampler.c
+# Build the base version of the library
+include $(CLEAR_VARS)
+LOCAL_MODULE := libclcore.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_SRC_FILES := $(clcore_files)
 
-# Hand-written bitcode for the library
-clcore_ll_files := \
-    convert.ll \
-    matrix.ll \
-    pixel_packing.ll
+include $(LOCAL_PATH)/build_bc_lib.mk
 
-include $(BUILD_SYSTEM)/base_rules.mk
+# Build a NEON-enabled version of the library (if possible)
+ifeq ($(ARCH_ARM_HAVE_NEON),true)
+include $(CLEAR_VARS)
+LOCAL_MODULE := libclcore_neon.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_SRC_FILES := $(clcore_neon_files)
 
-clcore_CLANG := $(HOST_OUT_EXECUTABLES)/clang$(HOST_EXECUTABLE_SUFFIX)
-clcore_LLVM_LINK := $(HOST_OUT_EXECUTABLES)/llvm-link$(HOST_EXECUTABLE_SUFFIX)
-clcore_LLVM_LD := $(HOST_OUT_EXECUTABLES)/llvm-ld$(HOST_EXECUTABLE_SUFFIX)
-clcore_LLVM_AS := $(HOST_OUT_EXECUTABLES)/llvm-as$(HOST_EXECUTABLE_SUFFIX)
-clcore_LLVM_DIS := $(HOST_OUT_EXECUTABLES)/llvm-dis$(HOST_EXECUTABLE_SUFFIX)
-
-clcore_c_bc_files := $(patsubst %.c,%.bc, \
-    $(addprefix $(intermediates)/, $(clcore_c_files)))
-
-clcore_ll_bc_files := $(patsubst %.ll,%.bc, \
-    $(addprefix $(intermediates)/, $(clcore_ll_files)))
-
-$(clcore_c_bc_files): PRIVATE_INCLUDES := \
-    frameworks/rs/scriptc \
-    external/clang/lib/Headers
-
-$(clcore_c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(clcore_CLANG)
-	@mkdir -p $(dir $@)
-	$(hide) $(clcore_CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) -MD -DRS_VERSION=$(RS_VERSION) -std=c99 -c -O3 -fno-builtin -emit-llvm -ccc-host-triple armv7-none-linux-gnueabi -fsigned-char $< -o $@
-
-$(clcore_ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(clcore_LLVM_AS)
-	@mkdir -p $(dir $@)
-	$(hide) $(clcore_LLVM_AS) $< -o $@
-
--include $(clcore_c_bc_files:%.bc=%.d)
--include $(clcore_ll_bc_files:%.bc=%.d)
-
-$(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(clcore_c_bc_files) $(clcore_ll_bc_files)
-$(LOCAL_BUILT_MODULE): $(clcore_c_bc_files) $(clcore_ll_bc_files)
-$(LOCAL_BUILT_MODULE): $(clcore_LLVM_LINK) $(clcore_LLVM_LD)
-$(LOCAL_BUILT_MODULE): $(clcore_LLVM_AS) $(clcore_LLVM_DIS)
-	@mkdir -p $(dir $@)
-	$(hide) $(clcore_LLVM_LINK) $(PRIVATE_BC_FILES) -o $@
+include $(LOCAL_PATH)/build_bc_lib.mk
+endif
