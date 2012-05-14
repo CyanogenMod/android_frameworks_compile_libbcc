@@ -186,16 +186,10 @@ void Compiler::GlobalInitialization() {
 #  endif
 #  endif
 
-#  if defined(ARCH_ARM_HAVE_NEON)
+#  if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
     Features.push_back("+neon");
     Features.push_back("+neonfp");
 #  else
-    Features.push_back("-neon");
-    Features.push_back("-neonfp");
-#  endif
-
-// FIXME(all): Turn NEON back on after debugging the rebase.
-#  if 1 || defined(DISABLE_ARCH_ARM_HAVE_NEON)
     Features.push_back("-neon");
     Features.push_back("-neonfp");
 #  endif
@@ -252,6 +246,8 @@ int Compiler::compile(const CompilerOption &option) {
   llvm::TargetData *TD = NULL;
   llvm::TargetMachine *TM = NULL;
 
+  std::vector<std::string> ExtraFeatures;
+
   std::string FeaturesStr;
 
   if (mModule == NULL)  // No module was loaded
@@ -305,16 +301,21 @@ int Compiler::compile(const CompilerOption &option) {
 #if defined(ARCH_ARM_HAVE_NEON)
   // Full-precision means we have to disable NEON
   if (ME.getRSFloatPrecision() == bcinfo::RS_FP_Full) {
-    Features.push_back("-neon");
-    Features.push_back("-neonfp");
+    ExtraFeatures.push_back("-neon");
+    ExtraFeatures.push_back("-neonfp");
   }
 #endif
 
-  if (!CPU.empty() || !Features.empty()) {
+  if (!CPU.empty() || !Features.empty() || !ExtraFeatures.empty()) {
     llvm::SubtargetFeatures F;
 
     for (std::vector<std::string>::const_iterator
          I = Features.begin(), E = Features.end(); I != E; I++) {
+      F.AddFeature(*I);
+    }
+
+    for (std::vector<std::string>::const_iterator
+         I = ExtraFeatures.begin(), E = ExtraFeatures.end(); I != E; I++) {
       F.AddFeature(*I);
     }
 
