@@ -147,6 +147,10 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libdl libutils libcutils libstlport
 # installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.so.sha1
 
+ifeq ($(ARCH_ARM_HAVE_NEON),true)
+LOCAL_REQUIRED_MODULES += libclcore_neon.bc
+endif
+
 # Link-Time Optimization on libbcc.so
 #
 # -Wl,--exclude-libs=ALL only applies to library archives. It would hide most
