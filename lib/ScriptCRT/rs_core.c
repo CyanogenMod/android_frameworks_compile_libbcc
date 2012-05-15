@@ -2,28 +2,10 @@
 #include "rs_graphics.rsh"
 #include "rs_structs.h"
 
-/* Declaration of 4 basic functions in libRS */
-extern void __attribute__((overloadable))
-    rsDebug(const char *, float, float);
-extern void __attribute__((overloadable))
-    rsDebug(const char *, float, float, float);
-extern void __attribute__((overloadable))
-    rsDebug(const char *, float, float, float, float);
+/* Function declarations from libRS */
 extern float4 __attribute__((overloadable)) convert_float4(uchar4 c);
 
 /* Implementation of Core Runtime */
-
-extern void __attribute__((overloadable)) rsDebug(const char *s, float2 v) {
-    rsDebug(s, v.x, v.y);
-}
-
-extern void __attribute__((overloadable)) rsDebug(const char *s, float3 v) {
-    rsDebug(s, v.x, v.y, v.z);
-}
-
-extern void __attribute__((overloadable)) rsDebug(const char *s, float4 v) {
-    rsDebug(s, v.x, v.y, v.z, v.w);
-}
 
 /*
 extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float r, float g, float b)
