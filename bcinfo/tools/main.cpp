@@ -18,6 +18,16 @@
 #include <bcinfo/BitcodeWrapper.h>
 #include <bcinfo/MetadataExtractor.h>
 
+#include <llvm/ADT/OwningPtr.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Assembly/AssemblyAnnotationWriter.h>
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/LLVMContext.h>
+#include <llvm/Module.h>
+#include <llvm/Support/ManagedStatic.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/ToolOutputFile.h>
+
 #include <ctype.h>
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -33,12 +43,14 @@
 
 #include <unistd.h>
 
+#include <string>
 #include <vector>
 
 // This file corresponds to the standalone bcinfo tool. It prints a variety of
 // information about a supplied bitcode input file.
 
-const char* inFile = NULL;
+std::string inFile;
+std::string outFile;
 
 extern int opterr;
 extern int optind;
@@ -72,6 +84,13 @@ static int parseOption(int argc, char** argv) {
   }
 
   inFile = argv[optind];
+
+  int l = inFile.length();
+  if (l > 3 && inFile[l-3] == '.' && inFile[l-2] == 'b' && inFile[l-1] == 'c') {
+    outFile = std::string(inFile.begin(), inFile.end() - 3) + ".ll";
+  } else {
+    outFile = inFile + ".ll";
+  }
   return 1;
 }
 
@@ -141,26 +160,26 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
 
 
 static size_t readBitcode(const char **bitcode) {
-  if (!inFile) {
+  if (!inFile.length()) {
     fprintf(stderr, "input file required\n");
-    return NULL;
+    return 0;
   }
 
   struct stat statInFile;
-  if (stat(inFile, &statInFile) < 0) {
+  if (stat(inFile.c_str(), &statInFile) < 0) {
     fprintf(stderr, "Unable to stat input file: %s\n", strerror(errno));
-    return NULL;
+    return 0;
   }
 
   if (!S_ISREG(statInFile.st_mode)) {
     fprintf(stderr, "Input file should be a regular file.\n");
-    return NULL;
+    return 0;
   }
 
-  FILE *in = fopen(inFile, "r");
+  FILE *in = fopen(inFile.c_str(), "r");
   if (!in) {
-    fprintf(stderr, "Could not open input file %s\n", inFile);
-    return NULL;
+    fprintf(stderr, "Could not open input file %s\n", inFile.c_str());
+    return 0;
   }
 
   size_t bitcodeSize = statInFile.st_size;
@@ -169,7 +188,7 @@ static size_t readBitcode(const char **bitcode) {
   size_t nread = fread((void*) *bitcode, 1, bitcodeSize, in);
 
   if (nread != bitcodeSize)
-      fprintf(stderr, "Could not read all of file %s\n", inFile);
+      fprintf(stderr, "Could not read all of file %s\n", inFile.c_str());
 
   fclose(in);
   return nread;
@@ -192,7 +211,6 @@ int main(int argc, char** argv) {
   }
 
   const char *bitcode = NULL;
-  const char *translatedBitcode = NULL;
   size_t bitcodeSize = readBitcode(&bitcode);
 
   unsigned int version = 0;
@@ -209,25 +227,58 @@ int main(int argc, char** argv) {
   printf("compilerVersion: %u\n", bcWrapper.getCompilerVersion());
   printf("optimizationLevel: %u\n\n", bcWrapper.getOptimizationLevel());
 
-  bcinfo::BitcodeTranslator *BT =
-      new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version);
+  llvm::OwningPtr<bcinfo::BitcodeTranslator> BT;
+  BT.reset(new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version));
   if (!BT->translate()) {
     fprintf(stderr, "failed to translate bitcode\n");
     return 3;
   }
 
-  bcinfo::MetadataExtractor *ME =
-      new bcinfo::MetadataExtractor(BT->getTranslatedBitcode(),
-                                    BT->getTranslatedBitcodeSize());
+  llvm::OwningPtr<bcinfo::MetadataExtractor> ME;
+  ME.reset(new bcinfo::MetadataExtractor(BT->getTranslatedBitcode(),
+                                         BT->getTranslatedBitcodeSize()));
   if (!ME->extract()) {
     fprintf(stderr, "failed to get metadata\n");
     return 4;
   }
 
-  dumpMetadata(ME);
+  dumpMetadata(ME.get());
 
-  delete ME;
-  delete BT;
+  const char *translatedBitcode = BT->getTranslatedBitcode();
+  size_t translatedBitcodeSize = BT->getTranslatedBitcodeSize();
+
+  llvm::LLVMContext &ctx = llvm::getGlobalContext();
+  llvm::llvm_shutdown_obj called_on_exit;
+
+  llvm::OwningPtr<llvm::MemoryBuffer> mem;
+
+  mem.reset(llvm::MemoryBuffer::getMemBuffer(
+      llvm::StringRef(translatedBitcode, translatedBitcodeSize),
+      inFile.c_str(), false));
+
+  llvm::OwningPtr<llvm::Module> module;
+  std::string errmsg;
+  module.reset(llvm::ParseBitcodeFile(mem.get(), ctx, &errmsg));
+  if (module.get() != 0 && module->MaterializeAllPermanently(&errmsg)) {
+    module.reset();
+  }
+
+  if (module.get() == 0) {
+    if (errmsg.size()) {
+      fprintf(stderr, "error: %s\n", errmsg.c_str());
+    } else {
+      fprintf(stderr, "error: failed to parse bitcode file\n");
+    }
+    return 5;
+  }
+
+  llvm::OwningPtr<llvm::tool_output_file> tof(
+      new llvm::tool_output_file(outFile.c_str(), errmsg,
+                                 llvm::raw_fd_ostream::F_Binary));
+  llvm::OwningPtr<llvm::AssemblyAnnotationWriter> ann;
+  module->print(tof->os(), ann.get());
+
+  tof->keep();
 
   releaseBitcode(&bitcode);
 
