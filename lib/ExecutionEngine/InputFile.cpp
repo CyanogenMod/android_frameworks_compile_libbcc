@@ -30,7 +30,7 @@ ssize_t InputFile::read(void *pBuf, size_t count) {
 
   if ((count <= 0) || (pBuf == NULL)) {
     // Keep safe and issue a warning.
-    ALOGW("InputFile::read: count = %u, buffer = %p", count, pBuf);
+    ALOGW("InputFile::read: count = %zu, buffer = %p", count, pBuf);
     return 0;
   }
 
