@@ -327,7 +327,7 @@ bool MetadataExtractor::populateFuncNameMetadata(
 bool MetadataExtractor::populateForEachMetadata(
     const llvm::NamedMDNode *Names,
     const llvm::NamedMDNode *Signatures) {
-  if (!Names || !Signatures) {
+  if (!Names && !Signatures) {
     // Handle legacy case for pre-ICS bitcode that doesn't contain a metadata
     // section for ForEach. We generate a full signature for a "root" function
     // which means that we need to set the bottom 5 bits in the mask.
@@ -344,8 +344,14 @@ bool MetadataExtractor::populateForEachMetadata(
     return true;
   }
 
-  mExportForEachSignatureCount = Signatures->getNumOperands();
-  if (!mExportForEachSignatureCount) {
+  if (Signatures) {
+    mExportForEachSignatureCount = Signatures->getNumOperands();
+    if (!mExportForEachSignatureCount) {
+      return true;
+    }
+  } else {
+    mExportForEachSignatureCount = 0;
+    mExportForEachSignatureList = NULL;
     return true;
   }
 
@@ -369,11 +375,21 @@ bool MetadataExtractor::populateForEachMetadata(
     }
   }
 
-  for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
-    llvm::MDNode *Name = Names->getOperand(i);
-    if (Name != NULL && Name->getNumOperands() == 1) {
-      TmpNameList[i] = createStringFromValue(Name->getOperand(0));
+  if (Names) {
+    for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
+      llvm::MDNode *Name = Names->getOperand(i);
+      if (Name != NULL && Name->getNumOperands() == 1) {
+        TmpNameList[i] = createStringFromValue(Name->getOperand(0));
+      }
     }
+  } else {
+    if (mExportForEachSignatureCount != 1) {
+      ALOGE("mExportForEachSignatureCount = %u, but should be 1",
+            mExportForEachSignatureCount);
+    }
+    char *RootName = new char[5];
+    strncpy(RootName, "root", 5);
+    TmpNameList[0] = RootName;
   }
 
   mExportForEachNameList = TmpNameList;
