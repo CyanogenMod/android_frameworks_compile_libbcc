@@ -48,6 +48,12 @@ bool getBooleanProp(const char *str) {
   return strcmp(buf, "0") != 0;
 }
 
+bool isSetProp(const char *str) {
+  char buf[PROPERTY_VALUE_MAX];
+  property_get(str, buf, "");
+  return buf[0] != '\0';
+}
+
 } // namespace anonymous
 
 namespace bcc {
@@ -759,6 +765,11 @@ bool Script::isCacheable() const {
     // Android system environment property: Disables the cache mechanism by
     // setting "debug.bcc.nocache".  So we will not load the cache file any
     // way.
+    return false;
+  }
+
+  if (isSetProp("debug.rs.precision")) {
+    // If we have a floating point precision override, don't use the cache.
     return false;
   }
 
