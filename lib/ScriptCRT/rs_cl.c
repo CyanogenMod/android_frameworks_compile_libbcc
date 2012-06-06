@@ -501,8 +501,18 @@ FN_FUNC_FN(log1p)
 extern float __attribute__((overloadable)) logb(float);
 FN_FUNC_FN(logb)
 
-extern float __attribute__((overloadable)) mad(float, float, float);
-FN_FUNC_FN_FN_FN(mad)
+extern float __attribute__((overloadable)) mad(float a, float b, float c) {
+    return a * b + c;
+}
+extern float2 __attribute__((overloadable)) mad(float2 a, float2 b, float2 c) {
+    return a * b + c;
+}
+extern float3 __attribute__((overloadable)) mad(float3 a, float3 b, float3 c) {
+    return a * b + c;
+}
+extern float4 __attribute__((overloadable)) mad(float4 a, float4 b, float4 c) {
+    return a * b + c;
+}
 
 extern float __attribute__((overloadable)) modf(float, float *);
 FN_FUNC_FN_PFN(modf);
