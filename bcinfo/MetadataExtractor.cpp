@@ -384,7 +384,7 @@ bool MetadataExtractor::populateForEachMetadata(
     }
   } else {
     if (mExportForEachSignatureCount != 1) {
-      ALOGE("mExportForEachSignatureCount = %u, but should be 1",
+      ALOGE("mExportForEachSignatureCount = %zu, but should be 1",
             mExportForEachSignatureCount);
     }
     char *RootName = new char[5];
