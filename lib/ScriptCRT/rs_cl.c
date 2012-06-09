@@ -751,7 +751,15 @@ FN_FUNC_FN_F(max)
 extern float __attribute__((overloadable)) degrees(float radians) {
     return radians * (180.f / M_PI);
 }
-FN_FUNC_FN(degrees)
+extern float2 __attribute__((overloadable)) degrees(float2 radians) {
+    return radians * (180.f / M_PI);
+}
+extern float3 __attribute__((overloadable)) degrees(float3 radians) {
+    return radians * (180.f / M_PI);
+}
+extern float4 __attribute__((overloadable)) degrees(float4 radians) {
+    return radians * (180.f / M_PI);
+}
 
 extern float __attribute__((overloadable)) mix(float start, float stop, float amount) {
     return start + (stop - start) * amount;
@@ -778,7 +786,15 @@ extern float4 __attribute__((overloadable)) mix(float4 start, float4 stop, float
 extern float __attribute__((overloadable)) radians(float degrees) {
     return degrees * (M_PI / 180.f);
 }
-FN_FUNC_FN(radians)
+extern float2 __attribute__((overloadable)) radians(float2 degrees) {
+    return degrees * (M_PI / 180.f);
+}
+extern float3 __attribute__((overloadable)) radians(float3 degrees) {
+    return degrees * (M_PI / 180.f);
+}
+extern float4 __attribute__((overloadable)) radians(float4 degrees) {
+    return degrees * (M_PI / 180.f);
+}
 
 extern float __attribute__((overloadable)) step(float edge, float v) {
     return (v < edge) ? 0.f : 1.f;
