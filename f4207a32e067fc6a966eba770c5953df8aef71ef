@@ -1,0 +1,9 @@
+Change-Id: If4207a32e067fc6a966eba770c5953df8aef71ef
+Code-Review+2: Steve Kondik <shade@chemlab.org>
+Verified+1: Steve Kondik <shade@chemlab.org>
+Code-Review+1: Bernhard Rosenkraenzer <Bernhard.Rosenkranzer@linaro.org>
+Submitted-by: Steve Kondik <shade@chemlab.org>
+Submitted-at: Sun, 10 Jun 2012 07:00:28 +0400
+Reviewed-on: http://review.cyanogenmod.com/17382
+Project: CyanogenMod/android_frameworks_compile_libbcc
+Branch: refs/heads/ics
