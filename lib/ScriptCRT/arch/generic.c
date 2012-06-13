@@ -17,6 +17,11 @@
 
 #include "rs_types.rsh"
 
+extern short __attribute__((overloadable, always_inline)) rsClamp(short amount, short low, short high);
+extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high);
+extern uchar4 __attribute__((overloadable)) convert_uchar4(short4);
+
+
 /*
  * CLAMP
  */
@@ -184,5 +189,39 @@ extern float4 __attribute__((overloadable)) fmin(float4 v1, float v2) {
     r.z = v1.z < v2 ? v1.z : v2;
     r.w = v1.w < v2 ? v1.w : v2;
     return r;
+}
+
+/*
+ * YUV
+ */
+extern uchar4 __attribute__((overloadable)) rsYuvToRGBA_uchar4(uchar y, uchar u, uchar v) {
+    short Y = ((short)y) - 16;
+    short U = ((short)u) - 128;
+    short V = ((short)v) - 128;
+
+    short4 p;
+    p.r = (Y * 298 + V * 409 + 128) >> 8;
+    p.g = (Y * 298 - U * 100 - V * 208 + 128) >> 8;
+    p.b = (Y * 298 + U * 516 + 128) >> 8;
+    p.a = 255;
+    p.r = rsClamp(p.r, (short)0, (short)255);
+    p.g = rsClamp(p.g, (short)0, (short)255);
+    p.b = rsClamp(p.b, (short)0, (short)255);
+
+    return convert_uchar4(p);
+}
+
+static float4 yuv_U_values = {0.f, -0.392f * 0.003921569f, +2.02 * 0.003921569f, 0.f};
+static float4 yuv_V_values = {1.603f * 0.003921569f, -0.815f * 0.003921569f, 0.f, 0.f};
+
+extern float4 __attribute__((overloadable)) rsYuvToRGBA_float4(uchar y, uchar u, uchar v) {
+    float4 color = (float)y * 0.003921569f;
+    float4 fU = ((float)u) - 128.f;
+    float4 fV = ((float)v) - 128.f;
+
+    color += fU * yuv_U_values;
+    color += fV * yuv_V_values;
+    color = clamp(color, 0.f, 1.f);
+    return color;
 }
 
