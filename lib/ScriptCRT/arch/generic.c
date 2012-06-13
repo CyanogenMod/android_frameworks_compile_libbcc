@@ -17,6 +17,10 @@
 
 #include "rs_types.rsh"
 
+/*
+ * CLAMP
+ */
+
 extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
     return amount < low ? low : (amount > high ? high : amount);
 }
@@ -69,4 +73,116 @@ extern float4 __attribute__((overloadable)) clamp(float4 amount, float low, floa
     return r;
 }
 
+
+/*
+ * FMAX
+ */
+
+extern float __attribute__((overloadable)) fmax(float v1, float v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern float2 __attribute__((overloadable)) fmax(float2 v1, float2 v2) {
+    float2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) fmax(float3 v1, float3 v2) {
+    float3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) fmax(float4 v1, float4 v2) {
+    float4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern float2 __attribute__((overloadable)) fmax(float2 v1, float v2) {
+    float2 r;
+    r.x = v1.x > v2 ? v1.x : v2;
+    r.y = v1.y > v2 ? v1.y : v2;
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) fmax(float3 v1, float v2) {
+    float3 r;
+    r.x = v1.x > v2 ? v1.x : v2;
+    r.y = v1.y > v2 ? v1.y : v2;
+    r.z = v1.z > v2 ? v1.z : v2;
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) fmax(float4 v1, float v2) {
+    float4 r;
+    r.x = v1.x > v2 ? v1.x : v2;
+    r.y = v1.y > v2 ? v1.y : v2;
+    r.z = v1.z > v2 ? v1.z : v2;
+    r.w = v1.w > v2 ? v1.w : v2;
+    return r;
+}
+
+extern float __attribute__((overloadable)) fmin(float v1, float v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+
+/*
+ * FMIN
+ */
+extern float2 __attribute__((overloadable)) fmin(float2 v1, float2 v2) {
+    float2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) fmin(float3 v1, float3 v2) {
+    float3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) fmin(float4 v1, float4 v2) {
+    float4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern float2 __attribute__((overloadable)) fmin(float2 v1, float v2) {
+    float2 r;
+    r.x = v1.x < v2 ? v1.x : v2;
+    r.y = v1.y < v2 ? v1.y : v2;
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) fmin(float3 v1, float v2) {
+    float3 r;
+    r.x = v1.x < v2 ? v1.x : v2;
+    r.y = v1.y < v2 ? v1.y : v2;
+    r.z = v1.z < v2 ? v1.z : v2;
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) fmin(float4 v1, float v2) {
+    float4 r;
+    r.x = v1.x < v2 ? v1.x : v2;
+    r.y = v1.y < v2 ? v1.y : v2;
+    r.z = v1.z < v2 ? v1.z : v2;
+    r.w = v1.w < v2 ? v1.w : v2;
+    return r;
+}
 
