@@ -447,13 +447,7 @@ FN_FUNC_FN(floor)
 extern float __attribute__((overloadable)) fma(float, float, float);
 FN_FUNC_FN_FN_FN(fma)
 
-extern float __attribute__((overloadable)) fmax(float, float);
-FN_FUNC_FN_FN(fmax);
-FN_FUNC_FN_F(fmax);
-
 extern float __attribute__((overloadable)) fmin(float, float);
-FN_FUNC_FN_FN(fmin);
-FN_FUNC_FN_F(fmin);
 
 extern float __attribute__((overloadable)) fmod(float, float);
 FN_FUNC_FN_FN(fmod)
