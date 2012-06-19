@@ -25,9 +25,7 @@ extern si_int __ctzsi2(si_int);
 #ifndef ANDROID /* no complex.h */
 extern double _Complex __divdc3(double, double, double, double);
 #endif
-#if !defined(__i386__)
 extern di_int __divdi3(di_int, di_int);
-#endif
 extern si_int __divsi3(si_int, si_int);
 #ifndef ANDROID /* no complex.h */
 extern float _Complex __divsc3(float, float, float, float);
@@ -44,8 +42,8 @@ extern double __floatdidf(di_int);
 extern float __floatdisf(di_int);
 extern double __floatundidf(du_int);
 extern float __floatundisf(du_int);
-extern di_int __moddi3(di_int, di_int);
 #endif
+extern di_int __moddi3(di_int, di_int);
 extern si_int __modsi3(si_int, si_int);
 #if !defined(__i386__) && !defined(__SSE2__)
 extern di_int __lshrdi3(di_int, si_int);
@@ -73,14 +71,10 @@ extern float __powisf2(float, si_int);
 extern di_int __subvdi3(di_int, di_int);
 extern si_int __subvsi3(si_int, si_int);
 extern si_int __ucmpdi2(du_int, du_int);
-#if !defined(__i386__)
 extern du_int __udivdi3(du_int, du_int);
-#endif
 extern su_int __udivsi3(su_int, su_int);
 extern du_int __udivmoddi4(du_int, du_int, du_int *);
-#if !defined(__i386__)
 extern du_int __umoddi3(du_int, du_int);
-#endif
 extern su_int __umodsi3(su_int, su_int);
 extern void __eprintf(char const *, char const *, char const *, char const *)
   __attribute__((visibility("hidden")));
