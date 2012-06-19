@@ -191,9 +191,525 @@ extern float4 __attribute__((overloadable)) fmin(float4 v1, float v2) {
     return r;
 }
 
+
+/*
+ * MAX
+ */
+
+extern char __attribute__((overloadable)) max(char v1, char v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern char2 __attribute__((overloadable)) max(char2 v1, char2 v2) {
+    char2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern char3 __attribute__((overloadable)) max(char3 v1, char3 v2) {
+    char3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.y = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern char4 __attribute__((overloadable)) max(char4 v1, char4 v2) {
+    char4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.y = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern short __attribute__((overloadable)) max(short v1, short v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern short2 __attribute__((overloadable)) max(short2 v1, short2 v2) {
+    short2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern short3 __attribute__((overloadable)) max(short3 v1, short3 v2) {
+    short3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern short4 __attribute__((overloadable)) max(short4 v1, short4 v2) {
+    short4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern int __attribute__((overloadable)) max(int v1, int v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern int2 __attribute__((overloadable)) max(int2 v1, int2 v2) {
+    int2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern int3 __attribute__((overloadable)) max(int3 v1, int3 v2) {
+    int3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern int4 __attribute__((overloadable)) max(int4 v1, int4 v2) {
+    int4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern int64_t __attribute__((overloadable)) max(int64_t v1, int64_t v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern long2 __attribute__((overloadable)) max(long2 v1, long2 v2) {
+    long2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern long3 __attribute__((overloadable)) max(long3 v1, long3 v2) {
+    long3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern long4 __attribute__((overloadable)) max(long4 v1, long4 v2) {
+    long4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern uchar __attribute__((overloadable)) max(uchar v1, uchar v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern uchar2 __attribute__((overloadable)) max(uchar2 v1, uchar2 v2) {
+    uchar2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern uchar3 __attribute__((overloadable)) max(uchar3 v1, uchar3 v2) {
+    uchar3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern uchar4 __attribute__((overloadable)) max(uchar4 v1, uchar4 v2) {
+    uchar4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern ushort __attribute__((overloadable)) max(ushort v1, ushort v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern ushort2 __attribute__((overloadable)) max(ushort2 v1, ushort2 v2) {
+    ushort2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern ushort3 __attribute__((overloadable)) max(ushort3 v1, ushort3 v2) {
+    ushort3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern ushort4 __attribute__((overloadable)) max(ushort4 v1, ushort4 v2) {
+    ushort4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern uint __attribute__((overloadable)) max(uint v1, uint v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern uint2 __attribute__((overloadable)) max(uint2 v1, uint2 v2) {
+    uint2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern uint3 __attribute__((overloadable)) max(uint3 v1, uint3 v2) {
+    uint3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern uint4 __attribute__((overloadable)) max(uint4 v1, uint4 v2) {
+    uint4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern ulong __attribute__((overloadable)) max(ulong v1, ulong v2) {
+    return v1 > v2 ? v1 : v2;
+}
+
+extern ulong2 __attribute__((overloadable)) max(ulong2 v1, ulong2 v2) {
+    ulong2 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern ulong3 __attribute__((overloadable)) max(ulong3 v1, ulong3 v2) {
+    ulong3 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern ulong4 __attribute__((overloadable)) max(ulong4 v1, ulong4 v2) {
+    ulong4 r;
+    r.x = v1.x > v2.x ? v1.x : v2.x;
+    r.y = v1.y > v2.y ? v1.y : v2.y;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
+    r.w = v1.w > v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern float __attribute__((overloadable)) max(float v1, float v2) {
+    return fmax(v1, v2);
+}
+
+extern float2 __attribute__((overloadable)) max(float2 v1, float2 v2) {
+    return fmax(v1, v2);
+}
+
+extern float2 __attribute__((overloadable)) max(float2 v1, float v2) {
+    return fmax(v1, v2);
+}
+
+extern float3 __attribute__((overloadable)) max(float3 v1, float3 v2) {
+    return fmax(v1, v2);
+}
+
+extern float3 __attribute__((overloadable)) max(float3 v1, float v2) {
+    return fmax(v1, v2);
+}
+
+extern float4 __attribute__((overloadable)) max(float4 v1, float4 v2) {
+    return fmax(v1, v2);
+}
+
+extern float4 __attribute__((overloadable)) max(float4 v1, float v2) {
+    return fmax(v1, v2);
+}
+
+
+/*
+ * MIN
+ */
+
+extern int8_t __attribute__((overloadable)) min(int8_t v1, int8_t v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern char2 __attribute__((overloadable)) min(char2 v1, char2 v2) {
+    char2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern char3 __attribute__((overloadable)) min(char3 v1, char3 v2) {
+    char3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern char4 __attribute__((overloadable)) min(char4 v1, char4 v2) {
+    char4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern int16_t __attribute__((overloadable)) min(int16_t v1, int16_t v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern short2 __attribute__((overloadable)) min(short2 v1, short2 v2) {
+    short2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern short3 __attribute__((overloadable)) min(short3 v1, short3 v2) {
+    short3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern short4 __attribute__((overloadable)) min(short4 v1, short4 v2) {
+    short4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern int32_t __attribute__((overloadable)) min(int32_t v1, int32_t v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern int2 __attribute__((overloadable)) min(int2 v1, int2 v2) {
+    int2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern int3 __attribute__((overloadable)) min(int3 v1, int3 v2) {
+    int3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern int4 __attribute__((overloadable)) min(int4 v1, int4 v2) {
+    int4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern int64_t __attribute__((overloadable)) min(int64_t v1, int64_t v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern long2 __attribute__((overloadable)) min(long2 v1, long2 v2) {
+    long2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern long3 __attribute__((overloadable)) min(long3 v1, long3 v2) {
+    long3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern long4 __attribute__((overloadable)) min(long4 v1, long4 v2) {
+    long4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern uchar __attribute__((overloadable)) min(uchar v1, uchar v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern uchar2 __attribute__((overloadable)) min(uchar2 v1, uchar2 v2) {
+    uchar2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern uchar3 __attribute__((overloadable)) min(uchar3 v1, uchar3 v2) {
+    uchar3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern uchar4 __attribute__((overloadable)) min(uchar4 v1, uchar4 v2) {
+    uchar4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern ushort __attribute__((overloadable)) min(ushort v1, ushort v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern ushort2 __attribute__((overloadable)) min(ushort2 v1, ushort2 v2) {
+    ushort2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern ushort3 __attribute__((overloadable)) min(ushort3 v1, ushort3 v2) {
+    ushort3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern ushort4 __attribute__((overloadable)) min(ushort4 v1, ushort4 v2) {
+    ushort4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern uint __attribute__((overloadable)) min(uint v1, uint v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern uint2 __attribute__((overloadable)) min(uint2 v1, uint2 v2) {
+    uint2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern uint3 __attribute__((overloadable)) min(uint3 v1, uint3 v2) {
+    uint3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern uint4 __attribute__((overloadable)) min(uint4 v1, uint4 v2) {
+    uint4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern ulong __attribute__((overloadable)) min(ulong v1, ulong v2) {
+    return v1 < v2 ? v1 : v2;
+}
+
+extern ulong2 __attribute__((overloadable)) min(ulong2 v1, ulong2 v2) {
+    ulong2 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    return r;
+}
+
+extern ulong3 __attribute__((overloadable)) min(ulong3 v1, ulong3 v2) {
+    ulong3 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    return r;
+}
+
+extern ulong4 __attribute__((overloadable)) min(ulong4 v1, ulong4 v2) {
+    ulong4 r;
+    r.x = v1.x < v2.x ? v1.x : v2.x;
+    r.y = v1.y < v2.y ? v1.y : v2.y;
+    r.z = v1.z < v2.z ? v1.z : v2.z;
+    r.w = v1.w < v2.w ? v1.w : v2.w;
+    return r;
+}
+
+extern float __attribute__((overloadable)) min(float v1, float v2) {
+    return fmin(v1, v2);
+}
+
+extern float2 __attribute__((overloadable)) min(float2 v1, float2 v2) {
+    return fmin(v1, v2);
+}
+
+extern float2 __attribute__((overloadable)) min(float2 v1, float v2) {
+    return fmin(v1, v2);
+}
+
+extern float3 __attribute__((overloadable)) min(float3 v1, float3 v2) {
+    return fmin(v1, v2);
+}
+
+extern float3 __attribute__((overloadable)) min(float3 v1, float v2) {
+    return fmin(v1, v2);
+}
+
+extern float4 __attribute__((overloadable)) min(float4 v1, float4 v2) {
+    return fmin(v1, v2);
+}
+
+extern float4 __attribute__((overloadable)) min(float4 v1, float v2) {
+    return fmin(v1, v2);
+}
+
+
 /*
  * YUV
  */
+
 extern uchar4 __attribute__((overloadable)) rsYuvToRGBA_uchar4(uchar y, uchar u, uchar v) {
     short Y = ((short)y) - 16;
     short U = ((short)u) - 128;
