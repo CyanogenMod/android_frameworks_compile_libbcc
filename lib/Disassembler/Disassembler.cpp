@@ -94,19 +94,29 @@ void Disassemble(char const *OutputFileName,
     return;
   }
 
+  ALOGI("Writing LLVM disassembly to file: %s\n", OutputFileName);
   // Disassemble the given function
   OS << "Disassembled code: " << Name << "\n";
 
   const llvm::MCAsmInfo *AsmInfo;
   const llvm::MCSubtargetInfo *SubtargetInfo;
-  const llvm::MCDisassembler *Disassmbler;
+  const llvm::MCDisassembler *Disassembler;
   llvm::MCInstPrinter *IP;
 
+  const std::string& TripleName(Compiler::getTargetTriple());
+
   AsmInfo = Target->createMCAsmInfo(Compiler::getTargetTriple());
-  SubtargetInfo = Target->createMCSubtargetInfo(Compiler::getTargetTriple(), "", "");
-  Disassmbler = Target->createMCDisassembler(*SubtargetInfo);
+  SubtargetInfo = Target->createMCSubtargetInfo(TripleName, "", "");
+  Disassembler = Target->createMCDisassembler(*SubtargetInfo);
+
+  const llvm::MCInstrInfo *MII = Target->createMCInstrInfo();
+  const llvm::MCRegisterInfo *MRI = Target->createMCRegInfo(TripleName);
+
   IP = Target->createMCInstPrinter(AsmInfo->getAssemblerDialect(),
-                                   *AsmInfo, *SubtargetInfo);
+                                   *AsmInfo,
+                                   *MII,
+                                   *MRI,
+                                   *SubtargetInfo);
 
   const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Func, FuncSize);
 
@@ -116,7 +126,7 @@ void Disassemble(char const *OutputFileName,
   for (Index = 0; Index < FuncSize; Index += Size) {
     llvm::MCInst Inst;
 
-    if (Disassmbler->getInstruction(Inst, Size, *BufferMObj, Index,
+    if (Disassembler->getInstruction(Inst, Size, *BufferMObj, Index,
                            /* REMOVED */ llvm::nulls(), llvm::nulls())) {
       OS.indent(4);
       OS.write("0x", 2);
@@ -136,7 +146,7 @@ void Disassemble(char const *OutputFileName,
   delete BufferMObj;
 
   delete AsmInfo;
-  delete Disassmbler;
+  delete Disassembler;
   delete IP;
 
   OS.close();
