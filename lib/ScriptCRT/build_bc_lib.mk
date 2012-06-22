@@ -16,6 +16,12 @@
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
+# We need to pass the +long64 flag to the underlying version of Clang, since
+# we are generating a library for use with Renderscript (64-bit long type,
+# not 32-bit).
+bc_clang_cc1_cflags := -target-feature +long64
+bc_translated_clang_cc1_cflags := $(addprefix -Xclang , $(bc_clang_cc1_cflags))
+
 bc_cflags := -MD \
              -DRS_VERSION=$(RS_VERSION) \
              -std=c99 \
@@ -24,7 +30,8 @@ bc_cflags := -MD \
              -fno-builtin \
              -emit-llvm \
              -ccc-host-triple armv7-none-linux-gnueabi \
-             -fsigned-char
+             -fsigned-char \
+	     $(bc_translated_clang_cc1_cflags)
 
 c_sources := $(filter %.c,$(LOCAL_SRC_FILES))
 ll_sources := $(filter %.ll,$(LOCAL_SRC_FILES))
