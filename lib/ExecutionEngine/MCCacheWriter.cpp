@@ -17,7 +17,7 @@
 #include "MCCacheWriter.h"
 
 #include "DebugHelper.h"
-#include "FileHandle.h"
+#include "OutputFile.h"
 #include "RSScript.h"
 
 #include <map>
@@ -47,14 +47,14 @@ MCCacheWriter::~MCCacheWriter() {
 #undef CHECK_AND_FREE
 }
 
-bool MCCacheWriter::writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
+bool MCCacheWriter::writeCacheFile(OutputFile &objFile, OutputFile &infoFile,
                                    RSScript *S, uint32_t libRS_threadable) {
-  if (!objFile || objFile->getFD() < 0 || !infoFile || infoFile->getFD() < 0) {
+  if (objFile.hasError() || infoFile.hasError()) {
     return false;
   }
 
-  mObjFile = objFile;
-  mInfoFile = infoFile;
+  mObjFile = &objFile;
+  mInfoFile = &infoFile;
   mpOwner = S;
 
   bool result = prepareHeader(libRS_threadable)
@@ -343,14 +343,14 @@ bool MCCacheWriter::calcSectionOffset() {
 bool MCCacheWriter::writeAll() {
 #define WRITE_SECTION(NAME, OFFSET, SIZE, SECTION)                          \
   do {                                                                      \
-    if (mInfoFile->seek(OFFSET, SEEK_SET) == -1) {                          \
-      ALOGE("Unable to seek to " #NAME " section for writing.\n");           \
+    if (mInfoFile->seek(OFFSET) == -1) {                                    \
+      ALOGE("Unable to seek to " #NAME " section for writing.\n");          \
       return false;                                                         \
     }                                                                       \
                                                                             \
     if (mInfoFile->write(reinterpret_cast<char *>(SECTION), (SIZE)) !=      \
         static_cast<ssize_t>(SIZE)) {                                       \
-      ALOGE("Unable to write " #NAME " section to cache file.\n");           \
+      ALOGE("Unable to write " #NAME " section to cache file.\n");          \
       return false;                                                         \
     }                                                                       \
   } while (0)

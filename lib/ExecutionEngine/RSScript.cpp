@@ -35,8 +35,10 @@
 #include "CompilerOption.h"
 
 #include "DebugHelper.h"
-#include "FileHandle.h"
+#include "FileMutex.h"
 #include "GDBJITRegistrar.h"
+#include "InputFile.h"
+#include "OutputFile.h"
 #include "ScriptCompiled.h"
 #include "ScriptCached.h"
 #include "Sha1Helper.h"
@@ -99,7 +101,6 @@ void RSScript::resetState() {
   return;
 }
 
-
 bool RSScript::doReset() {
   resetState();
   return true;
@@ -133,9 +134,10 @@ int RSScript::prepareRelocatable(char const *objPath,
     return status;
   }
 
-  FileHandle objFile;
-  if (objFile.open(objPath, OpenMode::Write) < 1) {
-    ALOGE("Failed to open %s for write.\n", objPath);
+  OutputFile objFile(objPath);
+  if (objFile.hasError()) {
+    ALOGE("Failed to open %s for write. (%s)", objPath,
+          objFile.getErrorMessage().c_str());
     return 1;
   }
 
@@ -218,15 +220,37 @@ int RSScript::internalLoadCache(char const *cacheDir, char const *cacheName,
   std::string objPath = getCachedObjectPath();
   std::string infoPath = getCacheInfoPath();
 
-  FileHandle objFile;
-  if (objFile.open(objPath.c_str(), OpenMode::Read) < 0) {
-    // Unable to open the executable file in read mode.
+  // Locks for reading object file and info file.
+  FileMutex<FileBase::kReadLock> objFileMutex(objPath);
+  FileMutex<FileBase::kReadLock> infoFileMutex(infoPath);
+
+  // Aquire read lock for object file.
+  if (objFileMutex.hasError() || !objFileMutex.lock()) {
+    ALOGE("Unable to acquire the lock for %s! (%s)", objPath.c_str(),
+          objFileMutex.getErrorMessage().c_str());
     return 1;
   }
 
-  FileHandle infoFile;
-  if (infoFile.open(infoPath.c_str(), OpenMode::Read) < 0) {
-    // Unable to open the metadata information file in read mode.
+  // Aquire read lock for info file.
+  if (infoFileMutex.hasError() || !infoFileMutex.lock()) {
+    ALOGE("Unable to acquire the lock for %s! (%s)", infoPath.c_str(),
+          infoFileMutex.getErrorMessage().c_str());
+    return 1;
+  }
+
+  // Open the object file and info file
+  InputFile objFile(objPath);
+  InputFile infoFile(infoPath);
+
+  if (objFile.hasError()) {
+    ALOGE("Unable to open %s for reading! (%s)", objPath.c_str(),
+          objFile.getErrorMessage().c_str());
+    return 1;
+  }
+
+  if (infoFile.hasError()) {
+    ALOGE("Unable to open %s for reading! (%s)", infoPath.c_str(),
+          infoFile.getErrorMessage().c_str());
     return 1;
   }
 
@@ -250,10 +274,10 @@ int RSScript::internalLoadCache(char const *cacheDir, char const *cacheName,
   }
 
   if (checkOnly)
-    return !reader.checkCacheFile(&objFile, &infoFile, this);
+    return !reader.checkCacheFile(objFile, infoFile, this);
 
   // Read cache file
-  ScriptCached *cached = reader.readCacheFile(&objFile, &infoFile, this);
+  ScriptCached *cached = reader.readCacheFile(objFile, infoFile, this);
 
   if (!cached) {
     mIsContextSlotNotAvail = reader.isContextSlotNotAvail();
@@ -312,71 +336,91 @@ int RSScript::writeCache() {
     return 1;
 
   if (isCacheable()) {
-
     std::string objPath = getCachedObjectPath();
     std::string infoPath = getCacheInfoPath();
 
-    // Remove the file if it already exists before writing the new file.
-    // The old file may still be mapped elsewhere in memory and we do not want
-    // to modify its contents.  (The same script may be running concurrently in
-    // the same process or a different process!)
-    ::unlink(objPath.c_str());
-    ::unlink(infoPath.c_str());
+    // Locks for writing object file and info file.
+    FileMutex<FileBase::kWriteLock> objFileMutex(objPath);
+    FileMutex<FileBase::kWriteLock> infoFileMutex(infoPath);
 
-    FileHandle objFile;
-    FileHandle infoFile;
+    // Acquire write lock for object file.
+    if (objFileMutex.hasError() || !objFileMutex.lock()) {
+      ALOGE("Unable to acquire the lock for %s! (%s)", objPath.c_str(),
+            objFileMutex.getErrorMessage().c_str());
+      return 1;
+    }
 
-    if (objFile.open(objPath.c_str(), OpenMode::Write) >= 0 &&
-        infoFile.open(infoPath.c_str(), OpenMode::Write) >= 0) {
+    // Acquire write lock for info file.
+    if (infoFileMutex.hasError() || !infoFileMutex.lock()) {
+      ALOGE("Unable to acquire the lock for %s! (%s)", infoPath.c_str(),
+            infoFileMutex.getErrorMessage().c_str());
+      return 1;
+    }
 
-      MCCacheWriter writer;
+    // Open the object file and info file
+    OutputFile objFile(objPath);
+    OutputFile infoFile(infoPath);
+
+    if (objFile.hasError()) {
+      ALOGE("Unable to open %s for writing! (%s)", objPath.c_str(),
+            objFile.getErrorMessage().c_str());
+      return 1;
+    }
+
+    if (infoFile.hasError()) {
+      ALOGE("Unable to open %s for writing! (%s)", infoPath.c_str(),
+            infoFile.getErrorMessage().c_str());
+      return 1;
+    }
+
+    MCCacheWriter writer;
 
 #ifdef TARGET_BUILD
-      // Dependencies
-      writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
-      writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
+    // Dependencies
+    writer.addDependency(BCC_FILE_RESOURCE, pathLibBCC_SHA1, sha1LibBCC_SHA1);
+    writer.addDependency(BCC_FILE_RESOURCE, pathLibRS, sha1LibRS);
 #endif
 
-      for (unsigned i = 0; i < mSourceDependencies.size(); i++) {
-        const SourceDependency *source_dep = mSourceDependencies[i];
-        writer.addDependency(source_dep->getSourceType(),
-                             source_dep->getSourceName(),
-                             source_dep->getSHA1Checksum());
+    for (unsigned i = 0; i < mSourceDependencies.size(); i++) {
+      const SourceDependency *source_dep = mSourceDependencies[i];
+      writer.addDependency(source_dep->getSourceType(),
+                           source_dep->getSourceName(),
+                           source_dep->getSHA1Checksum());
+    }
+
+
+    // libRS is threadable dirty hack
+    // TODO: This should be removed in the future
+    uint32_t libRS_threadable = 0;
+    if (mpExtSymbolLookupFn) {
+      libRS_threadable =
+        (uint32_t)mpExtSymbolLookupFn(mpExtSymbolLookupFnContext,
+                                      "__isThreadable");
+    }
+
+    if (!writer.writeCacheFile(objFile, infoFile, this, libRS_threadable)) {
+      // Erase the file contents.
+      objFile.truncate();
+      infoFile.truncate();
+
+      // Close the file such that we can remove it from the filesystem.
+      objFile.close();
+      infoFile.close();
+
+      if (::unlink(objPath.c_str()) != 0) {
+        ALOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
+             objPath.c_str(), ::strerror(errno));
       }
 
-
-      // libRS is threadable dirty hack
-      // TODO: This should be removed in the future
-      uint32_t libRS_threadable = 0;
-      if (mpExtSymbolLookupFn) {
-        libRS_threadable =
-          (uint32_t)mpExtSymbolLookupFn(mpExtSymbolLookupFnContext,
-                                        "__isThreadable");
-      }
-
-      if (!writer.writeCacheFile(&objFile, &infoFile, this, libRS_threadable)) {
-        objFile.truncate();
-        objFile.close();
-
-        if (unlink(objPath.c_str()) != 0) {
-          ALOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
-               objPath.c_str(), strerror(errno));
-        }
-
-        infoFile.truncate();
-        infoFile.close();
-
-        if (unlink(infoPath.c_str()) != 0) {
-          ALOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
-               infoPath.c_str(), strerror(errno));
-        }
+      if (::unlink(infoPath.c_str()) != 0) {
+        ALOGE("Unable to remove the invalid cache file: %s. (reason: %s)\n",
+             infoPath.c_str(), ::strerror(errno));
       }
     }
-  }
+  } // isCacheable()
 
   return 0;
 }
-
 
 char const *RSScript::getCompilerErrorMessage() {
   if (mStatus != ScriptStatus::Compiled) {
