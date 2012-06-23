@@ -58,7 +58,7 @@ Source *Source::CreateFromBuffer(BCCContext &pContext,
                                  size_t pBitcodeSize) {
   llvm::StringRef input_data(pBitcode, pBitcodeSize);
   llvm::MemoryBuffer *input_memory =
-      llvm::MemoryBuffer::getMemBuffer(input_data, pName);
+      llvm::MemoryBuffer::getMemBuffer(input_data, "", false);
 
   if (input_memory == NULL) {
     ALOGE("Unable to load bitcode `%s' from buffer!", pName);
