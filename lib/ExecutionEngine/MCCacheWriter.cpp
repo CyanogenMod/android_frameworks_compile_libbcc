@@ -18,7 +18,7 @@
 
 #include "DebugHelper.h"
 #include "FileHandle.h"
-#include "Script.h"
+#include "RSScript.h"
 
 #include <map>
 #include <string>
@@ -48,7 +48,7 @@ MCCacheWriter::~MCCacheWriter() {
 }
 
 bool MCCacheWriter::writeCacheFile(FileHandle *objFile, FileHandle *infoFile,
-                                 Script *S, uint32_t libRS_threadable) {
+                                   RSScript *S, uint32_t libRS_threadable) {
   if (!objFile || objFile->getFD() < 0 || !infoFile || infoFile->getFD() < 0) {
     return false;
   }

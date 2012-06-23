@@ -31,7 +31,7 @@
 #include "BCCContext.h"
 #include "Compiler.h"
 #include "DebugHelper.h"
-#include "Script.h"
+#include "RSScript.h"
 #include "Sha1Helper.h"
 #include "Source.h"
 
@@ -62,7 +62,7 @@ extern "C" BCCScriptRef bccCreateScript() {
   }
 
   Source *source = Source::CreateEmpty(*context, "empty");
-  return wrap(new Script(*source));
+  return wrap(new RSScript(*source));
 }
 
 
@@ -85,7 +85,7 @@ extern "C" int bccGetError(BCCScriptRef script) {
   return unwrap(script)->getError();
 }
 
-static bool helper_add_source(Script *pScript,
+static bool helper_add_source(RSScript *pScript,
                               char const *pName,
                               char const *pBitcode,
                               size_t pBitcodeSize,
@@ -114,7 +114,7 @@ static bool helper_add_source(Script *pScript,
   if (need_dependency_check) {
     uint8_t sha1[20];
     calcSHA1(sha1, pBitcode, pBitcodeSize);
-    if (!pScript->addSourceDependencyInfo(BCC_APK_RESOURCE, pName, sha1)) {
+    if (!pScript->addSourceDependency(BCC_APK_RESOURCE, pName, sha1)) {
       return false;
     }
   }
@@ -122,7 +122,7 @@ static bool helper_add_source(Script *pScript,
   return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
 }
 
-static bool helper_add_source(Script *pScript,
+static bool helper_add_source(RSScript *pScript,
                               llvm::Module *pModule,
                               bool pIsLink) {
   if (pModule == NULL)
@@ -146,7 +146,7 @@ static bool helper_add_source(Script *pScript,
   return ((pIsLink) ? pScript->mergeSource(*source) : pScript->reset(*source));
 }
 
-static bool helper_add_source(Script *pScript,
+static bool helper_add_source(RSScript *pScript,
                               char const *pPath,
                               unsigned long pFlags,
                               bool pIsLink) {
@@ -164,7 +164,7 @@ static bool helper_add_source(Script *pScript,
   if (need_dependency_check) {
     uint8_t sha1[20];
     calcFileSHA1(sha1, pPath);
-    if (!pScript->addSourceDependencyInfo(BCC_APK_RESOURCE, pPath, sha1)) {
+    if (!pScript->addSourceDependency(BCC_APK_RESOURCE, pPath, sha1)) {
       return false;
     }
   }
