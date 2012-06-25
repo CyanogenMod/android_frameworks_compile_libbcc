@@ -1,40 +1,5 @@
 #include "rs_types.rsh"
 
-// Conversions
-#define CVT_FUNC_2(typeout, typein)                             \
-extern typeout##2 __attribute__((overloadable))             \
-        convert_##typeout##2(typein##2 v) {                     \
-    typeout##2 r = {(typeout)v.x, (typeout)v.y};                \
-    return r;                                                   \
-}                                                               \
-extern typeout##3 __attribute__((overloadable))             \
-        convert_##typeout##3(typein##3 v) {                     \
-    typeout##3 r = {(typeout)v.x, (typeout)v.y, (typeout)v.z};  \
-    return r;                                                   \
-}                                                               \
-extern typeout##4 __attribute__((overloadable))             \
-        convert_##typeout##4(typein##4 v) {                     \
-    typeout##4 r = {(typeout)v.x, (typeout)v.y, (typeout)v.z,   \
-                    (typeout)v.w};                              \
-    return r;                                                   \
-}
-
-#define CVT_FUNC(type)  CVT_FUNC_2(type, uchar)     \
-                        CVT_FUNC_2(type, char)      \
-                        CVT_FUNC_2(type, ushort)    \
-                        CVT_FUNC_2(type, short)     \
-                        CVT_FUNC_2(type, uint)      \
-                        CVT_FUNC_2(type, int)       \
-                        CVT_FUNC_2(type, float)
-
-CVT_FUNC(char)
-//CVT_FUNC(uchar)
-CVT_FUNC(short)
-CVT_FUNC(ushort)
-CVT_FUNC(int)
-CVT_FUNC(uint)
-//CVT_FUNC(float)
-
 // Float ops, 6.11.2
 
 #define FN_FUNC_FN(fnc)                                         \
@@ -916,8 +881,6 @@ extern float4 __attribute__((overloadable)) normalize(float4 v) {
     return v / length(v);
 }
 
-#undef CVT_FUNC
-#undef CVT_FUNC_2
 #undef FN_FUNC_FN
 #undef IN_FUNC_FN
 #undef FN_FUNC_FN_FN
