@@ -25,17 +25,27 @@ using namespace bcc;
 bool RSScript::LinkRuntime(RSScript &pScript) {
   // Using the same context with the source in pScript.
   BCCContext &context = pScript.getSource().getContext();
-  Source *libclcore_source = Source::CreateFromFile(context,
-                                                    RSInfo::LibCLCorePath);
+  const char* core_lib = RSInfo::LibCLCorePath;
+
+  // NEON-capable devices can use an accelerated math library for all
+  // reduced precision scripts.
+#if defined(ARCH_ARM_HAVE_NEON)
+  const RSInfo* info = pScript.getInfo();
+  if ((info != NULL) &&
+      (info->getFloatPrecisionRequirement() != RSInfo::FP_Full)) {
+    core_lib = RSInfo::LibCLCoreNEONPath;
+  }
+#endif
+
+  Source *libclcore_source = Source::CreateFromFile(context, core_lib);
   if (libclcore_source == NULL) {
-    ALOGE("Failed to load Renderscript library '%s' to link!",
-          RSInfo::LibCLCorePath);
+    ALOGE("Failed to load Renderscript library '%s' to link!", core_lib);
     return false;
   }
 
   if (!pScript.getSource().merge(*libclcore_source,
                                  /* pPreserveSource */false)) {
-    ALOGE("Failed to link RenderScript library '%s'!", RSInfo::LibCLCorePath);
+    ALOGE("Failed to link RenderScript library '%s'!", core_lib);
     delete libclcore_source;
     return false;
   }
