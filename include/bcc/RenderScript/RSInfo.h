@@ -162,6 +162,9 @@ public:
   static const char LibBCCPath[];
   static const char LibRSPath[];
   static const char LibCLCorePath[];
+#if defined(ARCH_ARM_HAVE_NEON)
+  static const char LibCLCoreNEONPath[];
+#endif
 
 private:
   // SHA-1 of the built-in dependencies. Will be initialized in
@@ -169,6 +172,9 @@ private:
   static const uint8_t *LibBCCSHA1;
   static const uint8_t *LibRSSHA1;
   static const uint8_t *LibCLCoreSHA1;
+#if defined(ARCH_ARM_HAVE_NEON)
+  static const uint8_t *LibCLCoreNEONSHA1;
+#endif
 
   static bool CheckDependency(const RSInfo &pInfo,
                               const char *pInputFilename,

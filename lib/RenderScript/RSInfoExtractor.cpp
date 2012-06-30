@@ -168,6 +168,9 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   string_pool_size += ::strlen(LibBCCPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
+#if defined(ARCH_ARM_HAVE_NEON)
+  string_pool_size += ::strlen(LibCLCoreNEONPath) + 1 + SHA1_DIGEST_LENGTH;
+#endif
   for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
     // +1 for null-terminator
     string_pool_size += ::strlen(/* name */pDeps[i].first) + 1;
@@ -374,6 +377,14 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
                        result->mDependencyTable)) {
     goto bail;
   }
+
+#if defined(ARCH_ARM_HAVE_NEON)
+  if (!writeDependency(LibCLCoreNEONPath, LibCLCoreNEONSHA1,
+                       result->mStringPool, &cur_string_pool_offset,
+                       result->mDependencyTable)) {
+    goto bail;
+  }
+#endif
 
   //===--------------------------------------------------------------------===//
   // Record dependency information.

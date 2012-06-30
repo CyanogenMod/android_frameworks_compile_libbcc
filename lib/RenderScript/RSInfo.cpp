@@ -30,10 +30,16 @@ using namespace bcc;
 const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
 const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
 const char RSInfo::LibCLCorePath[] = "/system/lib/libclcore.bc";
+#if defined(ARCH_ARM_HAVE_NEON)
+const char RSInfo::LibCLCoreNEONPath[] = "/system/lib/libclcore_neon.bc";
+#endif
 
 const uint8_t *RSInfo::LibBCCSHA1 = NULL;
 const uint8_t *RSInfo::LibRSSHA1 = NULL;
 const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
+#if defined(ARCH_ARM_HAVE_NEON)
+const uint8_t *RSInfo::LibCLCoreNEONSHA1 = NULL;
+#endif
 
 void RSInfo::LoadBuiltInSHA1Information() {
   if (LibBCCSHA1 != NULL) {
@@ -52,6 +58,10 @@ void RSInfo::LoadBuiltInSHA1Information() {
   LibRSSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libRS_so_SHA1"));
   LibCLCoreSHA1 =
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_bc_SHA1"));
+#if defined(ARCH_ARM_HAVE_NEON)
+  LibCLCoreNEONSHA1 =
+      reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_neon_bc_SHA1"));
+#endif
 
   return;
 }
@@ -74,8 +84,13 @@ android::String8 RSInfo::GetPath(const FileBase &pFile) {
 bool RSInfo::CheckDependency(const RSInfo &pInfo,
                              const char *pInputFilename,
                              const DependencyTableTy &pDeps) {
-  // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc.
+  // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc plus
+  // libclcore_neon.bc if NEON is available on the target device.
+#if !defined(ARCH_ARM_HAVE_NEON)
   static const unsigned NumBuiltInDependencies = 3;
+#else
+  static const unsigned NumBuiltInDependencies = 4;
+#endif
 
   LoadBuiltInSHA1Information();
 
@@ -92,6 +107,10 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         pInfo.mDependencyTable[1];
     const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
         pInfo.mDependencyTable[2];
+#if defined(ARCH_ARM_HAVE_NEON)
+    const std::pair<const char *, const uint8_t *> &cache_libclcore_neon_dep =
+        pInfo.mDependencyTable[3];
+#endif
 
     // Check libbcc.so.
     if (::memcmp(cache_libbcc_dep.second, LibBCCSHA1, SHA1_DIGEST_LENGTH) != 0) {
@@ -123,6 +142,19 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
                                      cache_libclcore_dep.second);
         return false;
     }
+
+#if defined(ARCH_ARM_HAVE_NEON)
+    // Check libclcore_neon.bc if NEON is available.
+    if (::memcmp(cache_libclcore_neon_dep.second, LibCLCoreNEONSHA1,
+                 SHA1_DIGEST_LENGTH) != 0) {
+        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
+              LibRSPath);
+        PRINT_DEPENDENCY("current - ", LibCLCoreNEONPath, LibCLCoreNEONSHA1);
+        PRINT_DEPENDENCY("cache - ", cache_libclcore_neon_dep.first,
+                                     cache_libclcore_neon_dep.second);
+        return false;
+    }
+#endif
 
     for (unsigned i = 0; i < pDeps.size(); i++) {
       const std::pair<const char *, const uint8_t *> &cache_dep =

@@ -48,6 +48,11 @@ libbcc_SHA1_SRCS := \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so \
   $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore.bc,,)/libclcore.bc
 
+ifeq ($(ARCH_ARM_HAVE_NEON),true)
+libbcc_SHA1_SRCS += \
+  $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,)/libclcore_neon.bc
+endif
+
 libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
 intermediates := $(call local-intermediates-dir)
 
