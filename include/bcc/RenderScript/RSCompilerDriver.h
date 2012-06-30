@@ -47,6 +47,7 @@ private:
   bool setupConfig(const RSScript &pScript);
 
   RSExecutable *compileScript(RSScript &pScript,
+                              const char* pScriptName,
                               const char *pOutputPath,
                               const RSInfo::DependencyTableTy &pDeps);
 

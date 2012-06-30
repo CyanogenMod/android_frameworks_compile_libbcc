@@ -175,6 +175,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
 
 RSExecutable *
 RSCompilerDriver::compileScript(RSScript &pScript,
+                                const char* pScriptName,
                                 const char *pOutputPath,
                                 const RSInfo::DependencyTableTy &pDeps) {
   android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
@@ -197,6 +198,14 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   // This is required since RS compiler may need information in the info file
   // to do some transformation (e.g., expand foreach-able function.)
   pScript.setInfo(info);
+
+  //===--------------------------------------------------------------------===//
+  // Link RS script with RenderScript runtime.
+  //===--------------------------------------------------------------------===//
+  if (!RSScript::LinkRuntime(pScript)) {
+    ALOGE("Failed to link script '%s' with RenderScript runtime!", pScriptName);
+    return NULL;
+  }
 
   //===--------------------------------------------------------------------===//
   // Acquire the write lock for writing output object file.
@@ -353,13 +362,6 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
     return NULL;
   }
 
-  // Link RS script with RenderScript runtime.
-  if (!RSScript::LinkRuntime(*script)) {
-    ALOGE("Failed to link script '%s' with RenderScript runtime!", pResName);
-    delete script;
-    return NULL;
-  }
-
   // Read information from bitcode wrapper.
   bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
   script->setCompilerVersion(wrapper.getCompilerVersion());
@@ -369,7 +371,7 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   // Compile the script
   //===--------------------------------------------------------------------===//
-  result = compileScript(*script, output_path.c_str(), dep_info);
+  result = compileScript(*script, pResName, output_path.c_str(), dep_info);
 
   // Script is no longer used. Free it to get more memory.
   delete script;
