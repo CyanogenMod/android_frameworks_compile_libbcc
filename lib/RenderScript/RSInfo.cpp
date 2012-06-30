@@ -25,6 +25,8 @@
 #include "bcc/Support/FileBase.h"
 #include "bcc/Support/Log.h"
 
+#include <cutils/properties.h>
+
 using namespace bcc;
 
 const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
@@ -311,11 +313,13 @@ rsinfo::StringIndexTy RSInfo::getStringIdxInPool(const char *pStr) const {
   return (pStr - mStringPool);
 }
 
-enum RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
+RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
   // Check to see if we have any FP precision-related pragmas.
   static const char relaxed_pragma[] = "rs_fp_relaxed";
   static const char imprecise_pragma[] = "rs_fp_imprecise";
+  static const char full_pragma[] = "rs_fp_full";
   bool relaxed_pragma_seen = false;
+  RSInfo::FloatPrecision result;
 
   for (PragmaListTy::const_iterator pragma_iter = mPragmas.begin(),
            pragma_end = mPragmas.end(); pragma_iter != pragma_end;
@@ -328,16 +332,37 @@ enum RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
         ALOGW("Multiple float precision pragmas specified!");
       }
       // Fast return when there's rs_fp_imprecise specified.
-      return Imprecise;
+      result = FP_Imprecise;
     }
   }
 
   // Imprecise is selected over Relaxed precision.
   // In the absence of both, we stick to the default Full precision.
   if (relaxed_pragma_seen) {
-    return Relaxed;
+    result = FP_Relaxed;
   } else {
-    return Full;
+    result = FP_Full;
   }
-  // unreachable
+
+  // Provide an override for precsion via adb shell setprop
+  // adb shell setprop debug.rs.precision rs_fp_full
+  // adb shell setprop debug.rs.precision rs_fp_relaxed
+  // adb shell setprop debug.rs.precision rs_fp_imprecise
+  char precision_prop_buf[PROPERTY_VALUE_MAX];
+  property_get("debug.rs.precision", precision_prop_buf, "");
+
+  if (precision_prop_buf[0]) {
+    if (::strcmp(precision_prop_buf, relaxed_pragma) == 0) {
+      ALOGI("Switching to RS FP relaxed mode via setprop");
+      result = FP_Relaxed;
+    } else if (::strcmp(precision_prop_buf, imprecise_pragma) == 0) {
+      ALOGI("Switching to RS FP imprecise mode via setprop");
+      result = FP_Imprecise;
+    } else if (::strcmp(precision_prop_buf, full_pragma) == 0) {
+      ALOGI("Switching to RS FP full mode via setprop");
+      result = FP_Full;
+    }
+  }
+
+  return result;
 }

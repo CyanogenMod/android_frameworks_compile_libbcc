@@ -245,14 +245,14 @@ public:
 
 public:
   enum FloatPrecision {
-    Full,
-    Relaxed,
-    Imprecise,
+    FP_Full,
+    FP_Relaxed,
+    FP_Imprecise,
   };
 
   // Return the minimal floating point precision required for the associated
   // script.
-  enum FloatPrecision getFloatPrecisionRequirement() const;
+  FloatPrecision getFloatPrecisionRequirement() const;
 };
 
 } // end namespace bcc

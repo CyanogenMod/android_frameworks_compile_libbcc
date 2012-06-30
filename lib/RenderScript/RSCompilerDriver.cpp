@@ -43,6 +43,13 @@ namespace {
 bool is_force_recompile() {
   char buf[PROPERTY_VALUE_MAX];
 
+  // Re-compile if floating point precision has been overridden.
+  property_get("debug.rs.precision", buf, "");
+  if (buf[0] != '\0') {
+    return true;
+  }
+
+  // Re-compile if debug.rs.forcerecompile is set.
   property_get("debug.rs.forcerecompile", buf, "0");
   if ((::strcmp(buf, "1") == 0) || (::strcmp(buf, "true") == 0)) {
     return true;
@@ -163,7 +170,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
 #if defined(DEFAULT_ARM_CODEGEN)
   // NEON should be disable when full-precision floating point is required.
   assert((pScript.getInfo() != NULL) && "NULL RS info!");
-  if (pScript.getInfo()->getFloatPrecisionRequirement() == RSInfo::Full) {
+  if (pScript.getInfo()->getFloatPrecisionRequirement() == RSInfo::FP_Full) {
     // Must be ARMCompilerConfig.
     ARMCompilerConfig *arm_config = static_cast<ARMCompilerConfig *>(mConfig);
     changed |= arm_config->enableNEON(/* pEnable */false);
