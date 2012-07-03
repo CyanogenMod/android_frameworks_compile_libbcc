@@ -168,25 +168,3 @@ rsMatrixMultiply(rs_matrix2x2 *m, float2 in) {
     return rsMatrixMultiply((const rs_matrix2x2 *)m, in);
 }
 
-/////////////////////////////////////////////////////
-// int ops
-/////////////////////////////////////////////////////
-
-extern uint __attribute__((overloadable, always_inline)) rsClamp(uint amount, uint low, uint high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}
-extern int __attribute__((overloadable, always_inline)) rsClamp(int amount, int low, int high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}
-extern ushort __attribute__((overloadable, always_inline)) rsClamp(ushort amount, ushort low, ushort high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}
-extern short __attribute__((overloadable, always_inline)) rsClamp(short amount, short low, short high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}
-extern uchar __attribute__((overloadable, always_inline)) rsClamp(uchar amount, uchar low, uchar high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}
-extern char __attribute__((overloadable, always_inline)) rsClamp(char amount, char low, char high) {
-    return amount < low ? low : (amount > high ? high : amount);
-}

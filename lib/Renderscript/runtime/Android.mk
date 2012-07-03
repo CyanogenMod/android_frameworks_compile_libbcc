@@ -29,7 +29,8 @@ clcore_base_files := \
     convert.ll \
     matrix.ll \
     pixel_packing.ll \
-    math.ll
+    math.ll \
+    rsClamp.ll
 
 clcore_files := \
     $(clcore_base_files) \
