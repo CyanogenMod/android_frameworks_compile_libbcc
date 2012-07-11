@@ -200,7 +200,7 @@ SAMPLE_2D_FUNC(565, uint16_t, float3, getFrom565)
         break;                                                                                  \
     }                                                                                           \
                                                                                                 \
-    return result;                                                                              \
+    return result * 0.003921569f;                                                                              \
 } // End of body of the bilinear sampling function
 
 // Body of the nearest sampling function
@@ -227,7 +227,7 @@ SAMPLE_2D_FUNC(565, uint16_t, float3, getFrom565)
         break;                                                                                  \
     }                                                                                           \
                                                                                                 \
-    return result;                                                                              \
+    return result * 0.003921569f;                                                                              \
 } // End of body of the nearest sampling function
 
 static float4 __attribute__((overloadable))
