@@ -28,7 +28,8 @@ clcore_base_files := \
     rs_sampler.c \
     convert.ll \
     matrix.ll \
-    pixel_packing.ll
+    pixel_packing.ll \
+    math.ll
 
 clcore_files := \
     $(clcore_base_files) \
