@@ -26,9 +26,11 @@ libbcc_support_SRC_FILES := \
   FileBase.cpp \
   Initialization.cpp \
   InputFile.cpp \
+  LinkerConfig.cpp \
   OutputFile.cpp \
   Sha1Util.cpp \
-  TargetCompilerConfigs.cpp
+  TargetCompilerConfigs.cpp \
+  TargetLinkerConfigs.cpp
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
 libbcc_support_SRC_FILES += Disassembler.cpp

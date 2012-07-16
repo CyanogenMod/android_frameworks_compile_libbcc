@@ -25,6 +25,7 @@ libbcc_core_SRC_FILES := \
   BCCContext.cpp \
   BCCContextImpl.cpp \
   Compiler.cpp \
+  Linker.cpp \
   Script.cpp \
   Source.cpp
 
