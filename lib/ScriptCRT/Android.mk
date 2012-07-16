@@ -32,11 +32,11 @@ clcore_base_files := \
 
 clcore_files := \
     $(clcore_base_files) \
-    clamp.c
+    arch/generic.c
 
 clcore_neon_files := \
     $(clcore_base_files) \
-    neon/clamp.ll
+    arch/neon.ll
 
 ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
   RS_VERSION := $(PLATFORM_SDK_VERSION)
