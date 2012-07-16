@@ -732,12 +732,6 @@ XN_FUNC_XN_XN_BODY(float, fnc, body)
 UIN_FUNC_IN(abs)
 IN_FUNC_IN(clz)
 
-IN_FUNC_IN_IN_BODY(min, (v1 < v2 ? v1 : v2))
-FN_FUNC_FN_F(min)
-
-IN_FUNC_IN_IN_BODY(max, (v1 > v2 ? v1 : v2))
-FN_FUNC_FN_F(max)
-
 
 // 6.11.4
 
