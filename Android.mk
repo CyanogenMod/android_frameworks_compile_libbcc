@@ -32,14 +32,6 @@ libbcc_WHOLE_STATIC_LIBRARIES += \
   libbccCore \
   libbccSupport
 
-libmcld_STATIC_LIBRARIES += \
-  libmcldCodeGen \
-  libmcldTarget \
-  libmcldLDVariant \
-  libmcldMC \
-  libmcldSupport \
-  libmcldADT \
-  libmcldLD
 
 #=====================================================================
 # Calculate SHA1 checksum for libbcc.so, libRS.so and libclcore.bc
@@ -102,7 +94,7 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
       libLLVMARMAsmPrinter
   else
     ifeq ($(TARGET_ARCH),mips)
-      $(error "Disassembler is not available for MIPS architecture")
+	  $(error "Disassembler is not available for MIPS architecture")
     else
       ifeq ($(TARGET_ARCH),x86)
         LOCAL_STATIC_LIBRARIES += \
@@ -116,18 +108,12 @@ endif
 
 ifeq ($(TARGET_ARCH),arm)
   LOCAL_STATIC_LIBRARIES += \
-    libmcldARMTarget \
-    libmcldARMInfo \
-    $(libmcld_STATIC_LIBRARIES) \
     libLLVMARMCodeGen \
     libLLVMARMDesc \
     libLLVMARMInfo
 else
   ifeq ($(TARGET_ARCH), mips)
     LOCAL_STATIC_LIBRARIES += \
-      libmcldMipsTarget \
-      libmcldMipsInfo \
-      $(libmcld_STATIC_LIBRARIES) \
       libLLVMMipsCodeGen \
       libLLVMMipsAsmPrinter \
       libLLVMMipsDesc \
@@ -135,9 +121,6 @@ else
   else
     ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
       LOCAL_STATIC_LIBRARIES += \
-        libmcldX86Target \
-        libmcldX86Info \
-        $(libmcld_STATIC_LIBRARIES) \
         libLLVMX86CodeGen \
         libLLVMX86Desc \
         libLLVMX86Info \
@@ -186,7 +169,7 @@ endif
 # Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by
 # pixelflinger2.
 
-LOCAL_LDFLAGS += -Wl,--exclude-libs=libmcldARMTarget:libmcldARMInfo:libmcldMipsTarget:libmcldMipsInfo:libmcldX86Target:libmcldX86Info:libmcldCodeGen:libmcldTarget:libmcldLDVariant:libmcldMC:libmcldSupport:libmcldLD:libmcldADT:libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
+LOCAL_LDFLAGS += -Wl,--exclude-libs=libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
@@ -217,16 +200,6 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
     libLLVMX86Disassembler \
     libLLVMMCParser
 endif
-
-LOCAL_STATIC_LIBRARIES += \
-  libmcldARMTarget \
-  libmcldARMInfo \
-  libmcldMipsTarget \
-  libmcldMipsInfo \
-  libmcldX86Target \
-  libmcldX86Info
-
-LOCAL_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 
 LOCAL_STATIC_LIBRARIES += \
   libLLVMARMCodeGen \
