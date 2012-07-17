@@ -211,7 +211,7 @@ extern char3 __attribute__((overloadable)) max(char3 v1, char3 v2) {
     char3 r;
     r.x = v1.x > v2.x ? v1.x : v2.x;
     r.y = v1.y > v2.y ? v1.y : v2.y;
-    r.y = v1.z > v2.z ? v1.z : v2.z;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
     return r;
 }
 
@@ -219,7 +219,7 @@ extern char4 __attribute__((overloadable)) max(char4 v1, char4 v2) {
     char4 r;
     r.x = v1.x > v2.x ? v1.x : v2.x;
     r.y = v1.y > v2.y ? v1.y : v2.y;
-    r.y = v1.z > v2.z ? v1.z : v2.z;
+    r.z = v1.z > v2.z ? v1.z : v2.z;
     r.w = v1.w > v2.w ? v1.w : v2.w;
     return r;
 }
