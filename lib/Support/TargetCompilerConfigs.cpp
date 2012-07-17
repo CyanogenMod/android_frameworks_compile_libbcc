@@ -34,11 +34,8 @@ void ARMCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
 
 #if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
   if (pEnableNEON) {
-    // FIXME(all): Turn NEON back on after debugging the rebase.
-    //attributes.push_back("+neon");
-    //attributes.push_back("+neonfp");
-    pAttributes.push_back("-neon");
-    pAttributes.push_back("-neonfp");
+    pAttributes.push_back("+neon");
+    pAttributes.push_back("+neonfp");
   } else {
     pAttributes.push_back("-neon");
     pAttributes.push_back("-neonfp");
