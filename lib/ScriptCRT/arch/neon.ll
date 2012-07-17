@@ -651,6 +651,11 @@ define <2 x float> @_Z3minDv2_ff(<2 x float> %v1, float %v2) nounwind readnone {
   ret <2 x float> %1
 }
 
+define <3 x float> @_Z3minDv3_fS_(<3 x float> %v1, <3 x float> %v2) nounwind readnone {
+  %1 = tail call <3 x float> @_Z4fminDv3_fS_(<3 x float> %v1, <3 x float> %v2)
+  ret <3 x float> %1
+}
+
 define <3 x float> @_Z3minDv3_ff(<3 x float> %v1, float %v2) nounwind readnone {
   %1 = tail call <3 x float> @_Z4fminDv3_ff(<3 x float> %v1, float %v2)
   ret <3 x float> %1
