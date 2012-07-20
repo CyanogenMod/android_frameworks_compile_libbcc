@@ -16,6 +16,8 @@
 
 LOCAL_PATH := $(call my-dir)
 
+LLVM_ROOT_PATH := external/llvm
+
 # Executable for host
 # ========================================================
 include $(CLEAR_VARS)
@@ -28,6 +30,12 @@ LOCAL_SRC_FILES := \
 LOCAL_SHARED_LIBRARIES := \
   libbcinfo
 
+LOCAL_STATIC_LIBRARIES := \
+  libLLVMBitReader \
+  libLLVMBitWriter \
+  libLLVMCore \
+  libLLVMSupport
+
 LOCAL_CFLAGS += -D__HOST__
 
 LOCAL_C_INCLUDES := \
@@ -37,5 +45,6 @@ LOCAL_MODULE_TAGS := tests
 
 LOCAL_LDLIBS = -ldl
 
+include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_EXECUTABLE)
 
