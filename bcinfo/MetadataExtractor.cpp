@@ -20,6 +20,7 @@
 
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
+#include <cutils/properties.h>
 
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -221,6 +222,7 @@ void MetadataExtractor::populatePragmaMetadata(
   // Check to see if we have any FP precision-related pragmas.
   std::string Relaxed("rs_fp_relaxed");
   std::string Imprecise("rs_fp_imprecise");
+  std::string Full("rs_fp_full");
   bool RelaxedPragmaSeen = false;
   bool ImprecisePragmaSeen = false;
 
@@ -244,6 +246,26 @@ void MetadataExtractor::populatePragmaMetadata(
     mRSFloatPrecision = RS_FP_Imprecise;
   } else if (RelaxedPragmaSeen) {
     mRSFloatPrecision = RS_FP_Relaxed;
+  }
+
+  // Provide an override for precsion via adb shell setprop
+  // adb shell setprop debug.rs.precision rs_fp_full
+  // adb shell setprop debug.rs.precision rs_fp_relaxed
+  // adb shell setprop debug.rs.precision rs_fp_imprecise
+  char PrecisionPropBuf[PROPERTY_VALUE_MAX];
+  const std::string PrecisionPropName("debug.rs.precision");
+  property_get("debug.rs.precision", PrecisionPropBuf, "");
+  if (PrecisionPropBuf[0]) {
+    if (!Relaxed.compare(PrecisionPropBuf)) {
+      ALOGE("Switching to RS FP relaxed mode via setprop");
+      mRSFloatPrecision = RS_FP_Relaxed;
+    } else if (!Imprecise.compare(PrecisionPropBuf)) {
+      ALOGE("Switching to RS FP imprecise mode via setprop");
+      mRSFloatPrecision = RS_FP_Imprecise;
+    } else if (!Full.compare(PrecisionPropBuf)) {
+      ALOGE("Switching to RS FP full mode via setprop");
+      mRSFloatPrecision = RS_FP_Full;
+    }
   }
 
   return;
