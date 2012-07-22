@@ -43,6 +43,10 @@ public:
 
     // The openning file will be truncated to length 0.
     kTruncate = 1 << 1,
+
+    // The openning file will put its file pointer to the end of the file before
+    // each write.
+    kAppend = 1 << 2,
   };
 
   enum LockModeEnum {

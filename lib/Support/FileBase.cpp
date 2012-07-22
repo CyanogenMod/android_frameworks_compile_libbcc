@@ -44,6 +44,10 @@ FileBase::FileBase(const std::string &pFilename,
     mOpenFlags |= O_TRUNC;
   }
 
+  if (pFlags & kAppend) {
+    mOpenFlags |= O_APPEND;
+  }
+
   // Open the file.
   open();
 
