@@ -104,7 +104,7 @@ void *ELFObjectLoaderImpl::getSymbolAddress(const char *pName) const {
     return NULL;
   }
 
-  ELFSymbol<32> *symbol = mSymTab->getByName(pName);
+  const ELFSymbol<32> *symbol = mSymTab->getByName(pName);
   if (symbol == NULL) {
     ALOGV("Request symbol '%s' is not found in the object!", pName);
     return NULL;
@@ -112,6 +112,62 @@ void *ELFObjectLoaderImpl::getSymbolAddress(const char *pName) const {
 
   return symbol->getAddress(mObject->getHeader()->getMachine(),
                             /* autoAlloc */false);
+}
+
+size_t ELFObjectLoaderImpl::getSymbolSize(const char *pName) const {
+  if (mSymTab == NULL) {
+    return 0;
+  }
+
+  const ELFSymbol<32> *symbol = mSymTab->getByName(pName);
+
+  if (symbol == NULL) {
+    ALOGV("Request symbol '%s' is not found in the object!", pName);
+    return 0;
+  }
+
+  return static_cast<size_t>(symbol->getSize());
+
+}
+
+bool
+ELFObjectLoaderImpl::getSymbolNameList(android::Vector<const char *>& pNameList,
+                                       ObjectLoader::SymbolType pType) const {
+  if (mSymTab == NULL) {
+    return false;
+  }
+
+  unsigned elf_type;
+  switch (pType) {
+    case ObjectLoader::kFunctionType: {
+      elf_type = llvm::ELF::STT_FUNC;
+      break;
+    }
+    case ObjectLoader::kUnknownType: {
+      break;
+    }
+    default: {
+      assert(false && "Invalid symbol type given!");
+      return false;
+    }
+  }
+
+  for (size_t i = 0, e = mSymTab->size(); i != e; i++) {
+    ELFSymbol<32> *symbol = (*mSymTab)[i];
+    if (symbol == NULL) {
+      continue;
+    }
+
+    if ((pType == ObjectLoader::kUnknownType) ||
+        (symbol->getType() == elf_type)) {
+      const char *symbol_name = symbol->getName();
+      if (symbol_name != NULL) {
+        pNameList.push_back(symbol_name);
+      }
+    }
+  }
+
+  return true;
 }
 
 ELFObjectLoaderImpl::~ELFObjectLoaderImpl() {
