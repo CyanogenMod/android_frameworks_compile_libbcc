@@ -29,6 +29,7 @@
 namespace bcc {
 
 class FileBase;
+class OutputFile;
 class SymbolResolverProxy;
 
 /*
@@ -89,6 +90,9 @@ public:
   { return mLoader->getSymbolAddress(pName); }
 
   bool syncInfo(bool pForce = false);
+
+  // Disassemble and dump the relocated functions to the pOutput.
+  void dumpDisassembly(OutputFile &pOutput) const;
 
   inline const android::Vector<void *> &getExportVarAddrs() const
   { return mExportVarAddrs; }

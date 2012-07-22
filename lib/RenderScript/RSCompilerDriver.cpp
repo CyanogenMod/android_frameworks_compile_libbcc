@@ -287,6 +287,20 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   }
 
   //===--------------------------------------------------------------------===//
+  // Dump the disassembly for debug when possible.
+  //===--------------------------------------------------------------------===//
+#if DEBUG_MC_DISASSEMBLER
+  OutputFile *disassembly_output =
+      new (std::nothrow) OutputFile(DEBUG_MC_DISASSEMBLER_FILE,
+                                    FileBase::kAppend);
+
+  if (disassembly_output != NULL) {
+    result->dumpDisassembly(*disassembly_output);
+    delete disassembly_output;
+  }
+#endif
+
+  //===--------------------------------------------------------------------===//
   // Write out the RS info file.
   //===--------------------------------------------------------------------===//
   // Note that write failure only results in a warning since the source is

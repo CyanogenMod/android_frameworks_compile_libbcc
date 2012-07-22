@@ -16,6 +16,8 @@
 
 #include "bcc/RenderScript/RSExecutable.h"
 
+#include "bcc/Config/Config.h"
+#include "bcc/Support/Disassembler.h"
 #include "bcc/Support/FileBase.h"
 #include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"
@@ -155,6 +157,48 @@ bool RSExecutable::syncInfo(bool pForce) {
   mObjFile->unlock();
   mIsInfoDirty = false;
   return true;
+}
+
+void RSExecutable::dumpDisassembly(OutputFile &pOutput) const {
+#if DEBUG_MC_DISASSEMBLER
+  if (pOutput.hasError()) {
+    return;
+  }
+
+  // Get MC codegen emitted function name list.
+  android::Vector<const char *> func_list;
+
+  if (!mLoader->getSymbolNameList(func_list, ObjectLoader::kFunctionType)) {
+    ALOGW("Failed to get the list of function name in %s for disassembly!",
+          mObjFile->getName().c_str());
+  } else {
+    // Disassemble each function
+    for (size_t i = 0, e = func_list.size(); i != e; i++) {
+      const char* func_name = func_list[i];
+      void *func = mLoader->getSymbolAddress(func_name);
+      size_t func_size = mLoader->getSymbolSize(func_name);
+
+      if (func == NULL) {
+        continue;
+      }
+      DisassembleResult result =
+          Disassemble(pOutput, DEFAULT_TARGET_TRIPLE_STRING, func_name,
+                      reinterpret_cast<const uint8_t *>(func), func_size);
+
+      if (result != kDisassembleSuccess) {
+        ALOGW("Failed to disassemble the function %s in %s (error code=%zu)!",
+              func_name, mObjFile->getName().c_str(), result);
+
+        if (result != kDisassembleInvalidInstruction) {
+          ALOGW("And the error occured in disassembler is fatal. Abort "
+                "disassembler on remaining functions!");
+          break;
+        }
+      }
+    }
+  }
+#endif
+  return;
 }
 
 RSExecutable::~RSExecutable() {
