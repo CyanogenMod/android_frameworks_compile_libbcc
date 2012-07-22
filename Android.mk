@@ -89,20 +89,19 @@ ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),arm x86))
 LOCAL_WHOLE_STATIC_LIBRARIES += libbccCompilerRT
 endif
 
-LOCAL_STATIC_LIBRARIES += librsloader
+LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
   ifeq ($(TARGET_ARCH),arm)
-    LOCAL_STATIC_LIBRARIES += \
-      libLLVMARMDisassembler \
-      libLLVMARMAsmPrinter
+    LOCAL_WHOLE_STATIC_LIBRARIES += \
+      libLLVMARMDisassembler
   else
     ifeq ($(TARGET_ARCH),mips)
-      LOCAL_STATIC_LIBRARIES += \
+      LOCAL_WHOLE_STATIC_LIBRARIES += \
         libLLVMMipsDisassembler
     else
       ifeq ($(TARGET_ARCH),x86)
-        LOCAL_STATIC_LIBRARIES += \
+        LOCAL_WHOLE_STATIC_LIBRARIES += \
           libLLVMX86Disassembler
       else
         $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
@@ -112,29 +111,32 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
 endif
 
 ifeq ($(TARGET_ARCH),arm)
-  LOCAL_STATIC_LIBRARIES += \
+  LOCAL_WHOLE_STATIC_LIBRARIES += \
     libmcldARMTarget \
     libmcldARMInfo \
     $(libmcld_STATIC_LIBRARIES) \
+    libLLVMARMAsmParser \
     libLLVMARMCodeGen \
     libLLVMARMDesc \
     libLLVMARMInfo
 else
   ifeq ($(TARGET_ARCH), mips)
-    LOCAL_STATIC_LIBRARIES += \
+    LOCAL_WHOLE_STATIC_LIBRARIES += \
       libmcldMipsTarget \
       libmcldMipsInfo \
       $(libmcld_STATIC_LIBRARIES) \
+      libLLVMMipsAsmParser \
       libLLVMMipsCodeGen \
       libLLVMMipsAsmPrinter \
       libLLVMMipsDesc \
       libLLVMMipsInfo
   else
     ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
-      LOCAL_STATIC_LIBRARIES += \
+      LOCAL_WHOLE_STATIC_LIBRARIES += \
         libmcldX86Target \
         libmcldX86Info \
         $(libmcld_STATIC_LIBRARIES) \
+        libLLVMX86AsmParser \
         libLLVMX86CodeGen \
         libLLVMX86Desc \
         libLLVMX86Info \
@@ -146,8 +148,10 @@ else
   endif
 endif
 
-LOCAL_STATIC_LIBRARIES += \
+LOCAL_WHOLE_STATIC_LIBRARIES += \
+  libLLVMObject \
   libLLVMAsmPrinter \
+  libLLVMBitWriter \
   libLLVMBitReader \
   libLLVMSelectionDAG \
   libLLVMCodeGen \
@@ -156,6 +160,8 @@ LOCAL_STATIC_LIBRARIES += \
   libLLVMInstCombine \
   libLLVMipo \
   libLLVMipa \
+  libLLVMVectorize \
+  libLLVMInstrumentation \
   libLLVMTransformUtils \
   libLLVMAnalysis \
   libLLVMTarget \
@@ -205,18 +211,16 @@ LOCAL_IS_HOST_MODULE := true
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
-LOCAL_STATIC_LIBRARIES += librsloader
+LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
-  LOCAL_STATIC_LIBRARIES += \
-    libLLVMARMAsmPrinter \
+  LOCAL_WHOLE_STATIC_LIBRARIES += \
     libLLVMARMDisassembler \
     libLLVMMipsDisassembler \
-    libLLVMX86Disassembler \
-    libLLVMMCParser
+    libLLVMX86Disassembler
 endif
 
-LOCAL_STATIC_LIBRARIES += \
+LOCAL_WHOLE_STATIC_LIBRARIES += \
   libmcldARMTarget \
   libmcldARMInfo \
   libmcldMipsTarget \
@@ -224,36 +228,44 @@ LOCAL_STATIC_LIBRARIES += \
   libmcldX86Target \
   libmcldX86Info
 
-LOCAL_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
+LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 
-LOCAL_STATIC_LIBRARIES += \
+LOCAL_WHOLE_STATIC_LIBRARIES += \
+  libLLVMARMAsmParser \
   libLLVMARMCodeGen \
   libLLVMARMDesc \
   libLLVMARMInfo
 
-LOCAL_STATIC_LIBRARIES += \
+LOCAL_WHOLE_STATIC_LIBRARIES += \
+  libLLVMMipsAsmParser \
   libLLVMMipsCodeGen \
   libLLVMMipsAsmPrinter \
   libLLVMMipsDesc \
   libLLVMMipsInfo
 
-LOCAL_STATIC_LIBRARIES += \
+LOCAL_WHOLE_STATIC_LIBRARIES += \
+  libLLVMX86AsmParser \
   libLLVMX86CodeGen \
   libLLVMX86Desc \
   libLLVMX86AsmPrinter \
   libLLVMX86Info \
   libLLVMX86Utils
 
-LOCAL_STATIC_LIBRARIES += \
+LOCAL_WHOLE_STATIC_LIBRARIES += \
+  libLLVMObject \
   libLLVMAsmPrinter \
+  libLLVMBitWriter \
   libLLVMBitReader \
   libLLVMSelectionDAG \
   libLLVMCodeGen \
   libLLVMLinker \
+  libLLVMArchive \
   libLLVMScalarOpts \
   libLLVMInstCombine \
   libLLVMipo \
   libLLVMipa \
+  libLLVMVectorize \
+  libLLVMInstrumentation \
   libLLVMTransformUtils \
   libLLVMAnalysis \
   libLLVMTarget \

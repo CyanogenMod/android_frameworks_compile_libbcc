@@ -24,9 +24,6 @@ LOCAL_MODULE := bcc
 LOCAL_MODULE_TAGS := tests eng
 LOCAL_MODULE_CLASS := EXECUTABLES
 
-# The definition of those functions in libLLVMSupport may elude libbcc due to linker.
-# Should include libLLVMSupport since bcc references some functions within it.
-LOCAL_STATIC_LIBRARIES := libLLVMSupport
 LOCAL_SHARED_LIBRARIES := libbcc
 LOCAL_LDLIBS = -ldl
 LOCAL_SRC_FILES := Main.cpp
