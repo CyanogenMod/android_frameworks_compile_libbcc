@@ -69,6 +69,10 @@ void InitializeDisassembler() {
   LLVMInitializeARMDisassembler();
 #endif
 
+#if defined(PROVIDE_MIPS_CODEGEN)
+  LLVMInitializeMipsDisassembler();
+#endif
+
 #if defined(PROVIDE_X86_CODEGEN)
   LLVMInitializeX86Disassembler();
 #endif
