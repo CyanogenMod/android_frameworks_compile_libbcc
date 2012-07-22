@@ -17,30 +17,36 @@
 #ifndef BCC_SUPPORT_DISASSEMBLER_H
 #define BCC_SUPPORT_DISASSEMBLER_H
 
-#include "bcc/Config/Config.h"
-
-#if USE_DISASSEMBLER
-
-#include <string>
+#include <stdint.h>
+#include <stddef.h>
 
 namespace llvm {
-  class Target;
-  class TargetMachine;
-}
+  class raw_ostream;
+} // end namespace llvm
 
 namespace bcc {
 
-void InitializeDisassembler();
+class OutputFile;
 
-void Disassemble(char const *OutputFileName,
-                 llvm::Target const *Target,
-                 llvm::TargetMachine *TM,
-                 std::string const &Name,
-                 unsigned char const *Func,
-                 size_t FuncSize);
+enum DisassembleResult {
+  kDisassembleSuccess,
+  kDisassemblerNotAvailable,
+  kDisassembleInvalidOutput,
+  kDisassembleFailedPrepareOutput,
+  kDisassembleUnknownTarget,
+  kDisassembleFailedSetup,
+  kDisassembleOutOfMemory,
+  kDisassembleInvalidInstruction,
+};
+
+DisassembleResult Disassemble(llvm::raw_ostream &pOutput, const char *pTriple,
+                              const char *pFuncName, const uint8_t *pFunc,
+                              size_t pFuncSize);
+
+DisassembleResult Disassemble(OutputFile &pOutput, const char *pTriple,
+                              const char *pFuncName, const uint8_t *pFunc,
+                              size_t pFuncSize);
 
 } // end namespace bcc
-
-#endif // USE_DISASSEMBLER
 
 #endif // BCC_SUPPORT_DISASSEMBLER_H

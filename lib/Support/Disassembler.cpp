@@ -16,26 +16,27 @@
 
 #include "bcc/Support/Disassembler.h"
 
+#include "bcc/Config/Config.h"
+#if USE_DISASSEMBLER
+
+#include <string>
+
 #include <llvm/LLVMContext.h>
 
 #include <llvm/MC/MCAsmInfo.h>
 #include <llvm/MC/MCDisassembler.h>
 #include <llvm/MC/MCInst.h>
 #include <llvm/MC/MCInstPrinter.h>
+#include <llvm/MC/MCInstrInfo.h>
+#include <llvm/MC/MCRegisterInfo.h>
+#include <llvm/MC/MCSubtargetInfo.h>
 
 #include <llvm/Support/MemoryObject.h>
 #include <llvm/Support/TargetRegistry.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include <llvm/Target/TargetData.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Target/TargetOptions.h>
-
-#include "bcc/Config/Config.h"
+#include "bcc/Support/OutputFile.h"
 #include "bcc/Support/Log.h"
-
-#if USE_DISASSEMBLER
 
 namespace {
 
@@ -45,17 +46,17 @@ private:
   uint64_t mLength;
 
 public:
-  BufferMemoryObject(const uint8_t *Bytes, uint64_t Length)
-    : mBytes(Bytes), mLength(Length) {
+  BufferMemoryObject(const uint8_t *pBytes, uint64_t pLength)
+    : mBytes(pBytes), mLength(pLength) {
   }
 
   virtual uint64_t getBase() const { return 0; }
   virtual uint64_t getExtent() const { return mLength; }
 
-  virtual int readByte(uint64_t Addr, uint8_t *Byte) const {
-    if (Addr > getExtent())
+  virtual int readByte(uint64_t pAddr, uint8_t *pByte) const {
+    if (pAddr > getExtent())
       return -1;
-    *Byte = mBytes[Addr];
+    *pByte = mBytes[pAddr];
     return 0;
   }
 };
@@ -64,96 +65,164 @@ public:
 
 namespace bcc {
 
-void InitializeDisassembler() {
-#if defined(PROVIDE_ARM_CODEGEN)
-  LLVMInitializeARMDisassembler();
-#endif
+DisassembleResult Disassemble(llvm::raw_ostream &pOutput, const char *pTriple,
+                              const char *pFuncName, const uint8_t *pFunc,
+                              size_t pFuncSize) {
+  DisassembleResult result = kDisassembleSuccess;
+  uint64_t i = 0;
 
-#if defined(PROVIDE_MIPS_CODEGEN)
-  LLVMInitializeMipsDisassembler();
-#endif
+  const llvm::MCSubtargetInfo *subtarget_info = NULL;
+  const llvm::MCDisassembler *disassembler = NULL;
+  const llvm::MCInstrInfo *mc_inst_info = NULL;
+  const llvm::MCRegisterInfo *mc_reg_info = NULL;
+  const llvm::MCAsmInfo *asm_info = NULL;
+  llvm::MCInstPrinter *inst_printer = NULL;
 
-#if defined(PROVIDE_X86_CODEGEN)
-  LLVMInitializeX86Disassembler();
-#endif
-}
+  BufferMemoryObject *input_function = NULL;
 
-void Disassemble(char const *OutputFileName,
-                 llvm::Target const *Target,
-                 llvm::TargetMachine *TM,
-                 std::string const &Name,
-                 unsigned char const *Func,
-                 size_t FuncSize) {
+  std::string error;
+  const llvm::Target* target =
+      llvm::TargetRegistry::lookupTarget(pTriple, error);
 
-  std::string ErrorInfo;
-
-  // Open the disassembler output file
-  llvm::raw_fd_ostream OS(OutputFileName, ErrorInfo,
-                          llvm::raw_fd_ostream::F_Append);
-
-  if (!ErrorInfo.empty()) {
-    ALOGE("Unable to open disassembler output file: %s\n", OutputFileName);
-    return;
+  if (target == NULL) {
+    ALOGE("Invalid target triple for disassembler: %s (%s)!",
+          pTriple, error.c_str());
+    return kDisassembleUnknownTarget;
   }
 
-  ALOGI("Writing LLVM disassembly to file: %s\n", OutputFileName);
+  subtarget_info =
+      target->createMCSubtargetInfo(pTriple, /* CPU */"", /* Features */"");;
+
+  if (subtarget_info == NULL) {
+    result = kDisassembleFailedSetup;
+    goto bail;
+  }
+
+  disassembler = target->createMCDisassembler(*subtarget_info);
+
+  mc_inst_info = target->createMCInstrInfo();
+
+  mc_reg_info = target->createMCRegInfo(pTriple);
+
+  asm_info = target->createMCAsmInfo(pTriple);
+
+  if ((disassembler == NULL) || (mc_inst_info == NULL) ||
+      (mc_reg_info == NULL) || (asm_info == NULL)) {
+    result = kDisassembleFailedSetup;
+    goto bail;
+  }
+
+  inst_printer = target->createMCInstPrinter(asm_info->getAssemblerDialect(),
+                                             *asm_info, *mc_inst_info,
+                                             *mc_reg_info, *subtarget_info);
+
+  if (inst_printer == NULL) {
+    result = kDisassembleFailedSetup;
+    goto bail;
+  }
+
+  input_function = new (std::nothrow) BufferMemoryObject(pFunc, pFuncSize);
+
+  if (input_function == NULL) {
+    result = kDisassembleOutOfMemory;
+    goto bail;
+  }
+
   // Disassemble the given function
-  OS << "Disassembled code: " << Name << "\n";
+  pOutput << "Disassembled code: " << pFuncName << "\n";
 
-  const llvm::MCAsmInfo *AsmInfo;
-  const llvm::MCSubtargetInfo *SubtargetInfo;
-  const llvm::MCDisassembler *Disassembler;
-  llvm::MCInstPrinter *IP;
+  while (i < pFuncSize) {
+    llvm::MCInst inst;
+    uint64_t inst_size;
 
-  const std::string& TripleName(Compiler::getTargetTriple());
+    llvm::MCDisassembler::DecodeStatus decode_result =
+        disassembler->getInstruction(inst, inst_size, *input_function, i,
+                                     llvm::nulls(), llvm::nulls());
 
-  AsmInfo = Target->createMCAsmInfo(Compiler::getTargetTriple());
-  SubtargetInfo = Target->createMCSubtargetInfo(TripleName, "", "");
-  Disassembler = Target->createMCDisassembler(*SubtargetInfo);
+    switch (decode_result) {
+      case llvm::MCDisassembler::Fail: {
+        ALOGW("Invalid instruction encoding encountered at %llu of function %s "
+              "under %s.", i, pFuncName, pTriple);
+        i++;
+        break;
+      }
+      case llvm::MCDisassembler::SoftFail: {
+        ALOGW("Potentially undefined instruction encoding encountered at %llu "
+              "of function %s under %s.", i, pFuncName, pTriple);
+        // fall-through
+      }
+      case llvm::MCDisassembler::Success : {
+        const uint8_t *inst_addr = pFunc + i;
 
-  const llvm::MCInstrInfo *MII = Target->createMCInstrInfo();
-  const llvm::MCRegisterInfo *MRI = Target->createMCRegInfo(TripleName);
+        pOutput.indent(4);
+        pOutput << "0x";
+        pOutput.write_hex(reinterpret_cast<uintptr_t>(inst_addr));
+        pOutput << ": 0x";
+        pOutput.write_hex(*reinterpret_cast<const uint32_t *>(inst_addr));
+        inst_printer->printInst(&inst, pOutput, /* Annot */"");
+        pOutput << "\n";
 
-  IP = Target->createMCInstPrinter(AsmInfo->getAssemblerDialect(),
-                                   *AsmInfo,
-                                   *MII,
-                                   *MRI,
-                                   *SubtargetInfo);
-
-  const BufferMemoryObject *BufferMObj = new BufferMemoryObject(Func, FuncSize);
-
-  uint64_t Size;
-  uint64_t Index;
-
-  for (Index = 0; Index < FuncSize; Index += Size) {
-    llvm::MCInst Inst;
-
-    if (Disassembler->getInstruction(Inst, Size, *BufferMObj, Index,
-                           /* REMOVED */ llvm::nulls(), llvm::nulls())) {
-      OS.indent(4);
-      OS.write("0x", 2);
-      OS.write_hex((uint32_t)Func + Index);
-      OS.write(": 0x", 4);
-      OS.write_hex(*(uint32_t *)(Func + Index));
-      IP->printInst(&Inst, OS, "");
-      OS << "\n";
-    } else {
-      if (Size == 0)
-        Size = 1;  // skip illegible bytes
+        i += inst_size;
+        break;
+      }
     }
   }
 
-  OS << "\n";
+  pOutput << "\n";
 
-  delete BufferMObj;
+bail:
+  // Clean up
+  delete input_function;
+  delete inst_printer;
+  delete asm_info;
+  delete mc_reg_info;
+  delete mc_inst_info;
+  delete disassembler;
+  delete subtarget_info;
 
-  delete AsmInfo;
-  delete Disassembler;
-  delete IP;
+  return result;
+}
 
-  OS.close();
+DisassembleResult Disassemble(OutputFile &pOutput, const char *pTriple,
+                              const char *pFuncName, const uint8_t *pFunc,
+                              size_t FuncSize) {
+  // Check the state of the specified output file.
+  if (pOutput.hasError()) {
+    return kDisassembleInvalidOutput;
+  }
+
+  // Open the output file decorated in llvm::raw_ostream.
+  llvm::raw_ostream *output = pOutput.dup();
+  if (output == NULL) {
+    return kDisassembleFailedPrepareOutput;
+  }
+
+  // Delegate the request.
+  DisassembleResult result =
+      Disassemble(*output, pTriple, pFuncName, pFunc, FuncSize);
+
+  // Close the output before return.
+  delete output;
+
+  return result;
 }
 
 } // namespace bcc
+
+#else
+
+bcc::DisassembleResult Disassemble(llvm::raw_ostream &pOutput,
+                                   const char *pTriple, const char *pFuncName,
+                                   const uint8_t *pFunc, size_t pFuncSize) {
+  return bcc::kDisassemblerNotAvailable;
+}
+
+bcc::DisassembleResult bcc::Disassemble(OutputFile &pOutput,
+                                        const char *pTriple,
+                                        const char *pFuncName,
+                                        const uint8_t *pFunc,
+                                        size_t pFuncSize) {
+  return bcc::kDisassemblerNotAvailable;
+}
 
 #endif // USE_DISASSEMBLER

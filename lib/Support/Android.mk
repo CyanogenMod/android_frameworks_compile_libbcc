@@ -23,6 +23,7 @@ LOCAL_PATH := $(call my-dir)
 
 libbcc_support_SRC_FILES := \
   CompilerConfig.cpp \
+  Disassembler.cpp \
   FileBase.cpp \
   Initialization.cpp \
   InputFile.cpp \
@@ -31,10 +32,6 @@ libbcc_support_SRC_FILES := \
   Sha1Util.cpp \
   TargetCompilerConfigs.cpp \
   TargetLinkerConfigs.cpp
-
-ifeq ($(libbcc_USE_DISASSEMBLER),1)
-libbcc_support_SRC_FILES += Disassembler.cpp
-endif
 
 #=====================================================================
 # Device Static Library: libbccSupport
