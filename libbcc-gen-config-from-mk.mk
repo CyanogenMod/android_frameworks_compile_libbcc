@@ -14,17 +14,16 @@
 # limitations under the License.
 #
 
+# Build rules for extracting configuration from Android.mk
+intermediates := $(call local-intermediates-dir)
 
-# Build Rules for Extracting Configuration from Android.mk
-intermediates := $(local-intermediates-dir)
+GEN_CONFIG_FROM_MK := $(intermediates)/ConfigFromMk.h
 
-GEN := $(intermediates)/ConfigFromMk.h
-
-$(GEN): PRIVATE_PATH := $(LIBBCC_ROOT_PATH)
-$(GEN): PRIVATE_CUSTOM_TOOL = \
+$(GEN_CONFIG_FROM_MK): PRIVATE_PATH := $(LIBBCC_ROOT_PATH)
+$(GEN_CONFIG_FROM_MK): PRIVATE_CUSTOM_TOOL = \
         $(PRIVATE_PATH)/tools/build/gen-config-from-mk.py < $< > $@
-$(GEN): $(LIBBCC_ROOT_PATH)/libbcc-config.mk \
+$(GEN_CONFIG_FROM_MK): $(LIBBCC_ROOT_PATH)/libbcc-config.mk \
         $(LIBBCC_ROOT_PATH)/tools/build/gen-config-from-mk.py
 	$(transform-generated-source)
 
-LOCAL_GENERATED_SOURCES += $(GEN)
+LOCAL_GENERATED_SOURCES += $(GEN_CONFIG_FROM_MK)

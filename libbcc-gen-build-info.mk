@@ -55,7 +55,3 @@ $(GEN): $(gen_build_info) $(LOCAL_LIBBCC_LIB_DEPS) \
 	$(transform-generated-source)
 
 LOCAL_GENERATED_SOURCES += $(GEN)
-
-LOCAL_CFLAGS := \
-  -DHAVE_BCC_CONFIG_MK_H \
-  $(LOCAL_CFLAGS)
