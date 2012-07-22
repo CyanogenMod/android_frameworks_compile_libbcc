@@ -40,6 +40,9 @@ public:
   enum FlagEnum {
     // The openning file is a binary file.
     kBinary = 1 << 0,
+
+    // The openning file will be truncated to length 0.
+    kTruncate = 1 << 1,
   };
 
   enum LockModeEnum {

@@ -265,7 +265,7 @@ static inline
 bool CompileScript(Compiler &pCompiler, Script &pScript,
                    const std::string &pOutputPath) {
   // Open the output file.
-  OutputFile output_file(pOutputPath);
+  OutputFile output_file(pOutputPath, FileBase::kTruncate);
 
   if (output_file.hasError()) {
     llvm::errs() << "Failed to open the output file `" << pOutputPath

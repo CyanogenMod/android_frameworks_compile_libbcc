@@ -40,6 +40,9 @@ FileBase::FileBase(const std::string &pFilename,
     mOpenFlags |= O_BINARY;
   }
 #endif
+  if (pFlags & kTruncate) {
+    mOpenFlags |= O_TRUNC;
+  }
 
   // Open the file.
   open();

@@ -40,7 +40,7 @@ struct FileAttribute<FileBase::kReadMode> {
 // FileAttribute for accessing writable file
 template<>
 struct FileAttribute<FileBase::kWriteMode> {
-  enum { kOpenFlags       = O_RDWR | O_CREAT | O_TRUNC };
+  enum { kOpenFlags       = O_RDWR | O_CREAT };
   enum { kDefaultLockMode = FileBase::kWriteLock };
 };
 

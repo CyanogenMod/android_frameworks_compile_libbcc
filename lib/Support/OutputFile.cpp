@@ -54,8 +54,9 @@ OutputFile *OutputFile::CreateTemporary(const std::string &pFileTemplate,
     return NULL;
   }
 
-  // Create result OutputFile.
-  result = new (std::nothrow) OutputFile(tmp_filename, pFlags);
+  // Create result OutputFile. Temporary file is always truncated.
+  result = new (std::nothrow) OutputFile(tmp_filename,
+                                         pFlags | FileBase::kTruncate);
   if (result == NULL) {
     ALOGE("Out of memory when creates OutputFile for %s!", tmp_filename);
     // Fall through to the clean-up codes.

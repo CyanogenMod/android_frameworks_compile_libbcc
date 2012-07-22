@@ -128,7 +128,7 @@ bool RSExecutable::syncInfo(bool pForce) {
   }
 
   android::String8 info_path = RSInfo::GetPath(*mObjFile);
-  OutputFile info_file(info_path.string());
+  OutputFile info_file(info_path.string(), FileBase::kTruncate);
 
   if (info_file.hasError()) {
     ALOGE("Failed to open the info file %s for write! (%s)", info_path.string(),

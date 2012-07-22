@@ -228,7 +228,8 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // Open the output file for write.
   //===--------------------------------------------------------------------===//
-  OutputFile *output_file = new (std::nothrow) OutputFile(pOutputPath);
+  OutputFile *output_file =
+      new (std::nothrow) OutputFile(pOutputPath, FileBase::kTruncate);
 
   if ((output_file == NULL) || output_file->hasError()) {
     ALOGE("Unable to open the %s for write! (%s)", pOutputPath,
