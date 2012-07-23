@@ -19,6 +19,10 @@
 
 #include <cstddef>
 
+#include "bcc/Support/Log.h"
+
+#include <utils/Vector.h>
+
 namespace bcc {
 
 class FileBase;
@@ -26,6 +30,13 @@ class ObjectLoaderImpl;
 class SymbolResolverInterface;
 
 class ObjectLoader {
+public:
+  enum SymbolType {
+    // TODO: More types.
+    kFunctionType,
+    kUnknownType,
+  };
+
 private:
   ObjectLoaderImpl *mImpl;
 
@@ -45,6 +56,13 @@ public:
                             bool pEnableGDBDebug);
 
   void *getSymbolAddress(const char *pName) const;
+
+  size_t getSymbolSize(const char *pName) const;
+
+  // Get the symbol name where the symbol is of the type pType. If kUnknownType
+  // is given, it returns all symbols' names in the object.
+  bool getSymbolNameList(android::Vector<const char *>& pNameList,
+                         SymbolType pType = kUnknownType) const;
 
   ~ObjectLoader();
 };

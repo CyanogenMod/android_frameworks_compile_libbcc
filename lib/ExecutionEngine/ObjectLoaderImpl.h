@@ -19,6 +19,11 @@
 
 #include <cstring>
 
+#include "bcc/ExecutionEngine/ObjectLoader.h"
+#include "bcc/Support/Log.h"
+
+#include <utils/Vector.h>
+
 namespace bcc {
 
 class SymbolResolverInterface;
@@ -34,6 +39,11 @@ public:
   virtual bool prepareDebugImage(void *pDebugImg, size_t pDebugImgSize) = 0;
 
   virtual void *getSymbolAddress(const char *pName) const = 0;
+
+  virtual size_t getSymbolSize(const char *pName) const = 0;
+
+  virtual bool getSymbolNameList(android::Vector<const char *>& pNameList,
+                                 ObjectLoader::SymbolType pType) const = 0;
 
   virtual ~ObjectLoaderImpl() { }
 };

@@ -45,6 +45,10 @@ public:
 
   virtual void *getSymbolAddress(const char *pName) const;
 
+  virtual size_t getSymbolSize(const char *pName) const;
+
+  virtual bool getSymbolNameList(android::Vector<const char *>& pNameList,
+                                 ObjectLoader::SymbolType pType) const;
   ~ELFObjectLoaderImpl();
 };
 

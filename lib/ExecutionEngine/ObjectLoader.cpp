@@ -152,6 +152,15 @@ void *ObjectLoader::getSymbolAddress(const char *pName) const {
   return mImpl->getSymbolAddress(pName);
 }
 
+size_t ObjectLoader::getSymbolSize(const char *pName) const {
+  return mImpl->getSymbolSize(pName);
+}
+
+bool ObjectLoader::getSymbolNameList(android::Vector<const char *>& pNameList,
+                                     SymbolType pType) const {
+  return mImpl->getSymbolNameList(pNameList, pType);
+}
+
 ObjectLoader::~ObjectLoader() {
   delete mImpl;
   delete [] reinterpret_cast<uint8_t *>(mDebugImage);
