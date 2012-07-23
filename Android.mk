@@ -22,10 +22,6 @@ include $(LIBBCC_ROOT_PATH)/libbcc.mk
 # Whole Static Library to Be Linked In
 #=====================================================================
 
-ifeq ($(libbcc_USE_DISASSEMBLER),1)
-libbcc_WHOLE_STATIC_LIBRARIES += libbccDisassembler
-endif
-
 libbcc_WHOLE_STATIC_LIBRARIES += \
   libbccRenderScript \
   libbccExecutionEngine \
@@ -102,7 +98,8 @@ ifeq ($(libbcc_USE_DISASSEMBLER),1)
       libLLVMARMAsmPrinter
   else
     ifeq ($(TARGET_ARCH),mips)
-      $(error "Disassembler is not available for MIPS architecture")
+      LOCAL_STATIC_LIBRARIES += \
+        libLLVMMipsDisassembler
     else
       ifeq ($(TARGET_ARCH),x86)
         LOCAL_STATIC_LIBRARIES += \
@@ -186,7 +183,7 @@ endif
 # Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by
 # pixelflinger2.
 
-#LOCAL_LDFLAGS += -Wl,--exclude-libs=libmcldARMTarget:libmcldARMInfo:libmcldMipsTarget:libmcldMipsInfo:libmcldX86Target:libmcldX86Info:libmcldCodeGen:libmcldTarget:libmcldLDVariant:libmcldMC:libmcldSupport:libmcldLD:libmcldADT:libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
+#LOCAL_LDFLAGS += -Wl,--exclude-libs=libmcldARMTarget:libmcldARMInfo:libmcldMipsTarget:libmcldMipsInfo:libmcldX86Target:libmcldX86Info:libmcldCodeGen:libmcldTarget:libmcldLDVariant:libmcldMC:libmcldSupport:libmcldLD:libmcldADT:libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMipsDisassembler:libLLVMMipsAsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMX86CodeGen:libLLVMX86Desc:libLLVMX86Info:libLLVMX86Utils:libLLVMMipsCodeGen:libLLVMMipsDesc:libLLVMMipsInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
@@ -212,8 +209,9 @@ LOCAL_STATIC_LIBRARIES += librsloader
 
 ifeq ($(libbcc_USE_DISASSEMBLER),1)
   LOCAL_STATIC_LIBRARIES += \
-    libLLVMARMDisassembler \
     libLLVMARMAsmPrinter \
+    libLLVMARMDisassembler \
+    libLLVMMipsDisassembler \
     libLLVMX86Disassembler \
     libLLVMMCParser
 endif
