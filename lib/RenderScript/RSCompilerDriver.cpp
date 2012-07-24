@@ -289,9 +289,9 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // Dump the disassembly for debug when possible.
   //===--------------------------------------------------------------------===//
-#if DEBUG_MC_DISASSEMBLER
+#if USE_DISASSEMBLER
   OutputFile *disassembly_output =
-      new (std::nothrow) OutputFile(DEBUG_MC_DISASSEMBLER_FILE,
+      new (std::nothrow) OutputFile(DEBUG_DISASSEMBLER_FILE,
                                     FileBase::kAppend);
 
   if (disassembly_output != NULL) {

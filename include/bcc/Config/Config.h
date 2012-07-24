@@ -14,9 +14,9 @@
 #endif
 
 #if defined(__HOST__)
-#define DEBUG_MC_DISASSEMBLER_FILE "/tmp/mc-dis.s"
+#define DEBUG_DISASSEMBLER_FILE "/tmp/mc-dis.s"
 #else
-#define DEBUG_MC_DISASSEMBLER_FILE "/data/local/tmp/mc-dis.s"
+#define DEBUG_DISASSEMBLER_FILE "/data/local/tmp/mc-dis.s"
 #endif // defined(__HOST__)
 
 //---------------------------------------------------------------------------
