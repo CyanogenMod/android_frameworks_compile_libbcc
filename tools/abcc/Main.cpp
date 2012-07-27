@@ -78,7 +78,7 @@ static inline bool ParseArguments(int argc, const char *const *argv, Mode &mode,
   output = argv[2];
 
   // On-device version cannot configure the triple and sysroot.
-  unsigned arg_idx = 3;
+  int arg_idx = 3;
 #ifndef TARGET_BUILD
   if (::strcmp(argv[arg_idx], "--triple") == 0) {
     if ((arg_idx + 2 /* --triple [triple] input */) >= argc) {
