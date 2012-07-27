@@ -94,6 +94,9 @@ public:
   // Compile a script and output the result to a file.
   enum ErrorCode compile(Script &pScript, OutputFile &pResult);
 
+  const llvm::TargetMachine& getTargetMachine() const
+  { return *mTarget; }
+
   void enableLTO(bool pEnable = true)
   { mEnableLTO = pEnable; }
 
