@@ -42,6 +42,8 @@ const char* Linker::GetErrorString(enum Linker::ErrorCode pErrCode) {
     "Cannot create backend.",
     /* kDelegateLDInfo */
     "Cannot get linker information",
+    /* kFindNameSpec */
+    "Cannot find -lnamespec",
     /* kOpenNameSpec */
     "Cannot open -lnamespec",
     /* kOpenObjectFile */
@@ -184,8 +186,11 @@ enum Linker::ErrorCode Linker::addNameSpec(const std::string &pNameSpec) {
                                                  mcld::Input::Archive);
   }
 
+  if (NULL == path)
+    return kFindNameSpec;
+
   mcld::Input* input = mLDInfo->inputFactory().produce(pNameSpec, *path,
-                                                        mcld::Input::Unknown);
+                                                       mcld::Input::Unknown);
   mLDInfo->inputs().insert<mcld::InputTree::Positional>(mRoot, *input);
 
   advanceRoot();

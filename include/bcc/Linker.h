@@ -34,6 +34,7 @@ public:
     kDoubleConfig,
     kCreateBackend,
     kDelegateLDInfo,
+    kFindNameSpec,
     kOpenNameSpec,
     kOpenObjectFile,
     kNotConfig,
