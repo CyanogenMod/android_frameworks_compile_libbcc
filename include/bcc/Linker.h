@@ -17,10 +17,24 @@
 #ifndef BCC_LINKER_H
 #define BCC_LINKER_H
 
-#include <mcld/Support/MemoryAreaFactory.h>
-#include <mcld/Support/TargetRegistry.h>
-#include <mcld/MC/MCLDDriver.h>
-#include <mcld/MC/InputTree.h>
+#include <string>
+
+namespace mcld {
+
+class TargetLDBackend;
+class MCLDDriver;
+class MemoryFactory;
+class MCLDInfo;
+class TreeIteratorBase;
+class Input;
+
+namespace sys { namespace fs {
+
+class Path;
+
+} } // end namespace sys::fs
+
+} // end namespace mcld
 
 namespace bcc {
 
@@ -53,7 +67,7 @@ private:
   mcld::MCLDDriver *mDriver;
   MemoryFactory *mMemAreaFactory;
   mcld::MCLDInfo *mLDInfo;
-  mcld::InputTree::iterator mRoot;
+  mcld::TreeIteratorBase *mRoot;
   bool mShared;
   std::string mSOName;
 
