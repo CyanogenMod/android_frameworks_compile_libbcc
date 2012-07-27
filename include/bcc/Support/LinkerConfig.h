@@ -31,7 +31,7 @@ private:
   //===--------------------------------------------------------------------===//
   // Available Configurations
   //===--------------------------------------------------------------------===//
-  std::string mTriple;
+  const std::string mTriple;
   bool mShared;
   std::string mSOName;
 
