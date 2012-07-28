@@ -23,6 +23,8 @@ LOCAL_CFLAGS := \
 
 ifeq ($(TARGET_BUILD_VARIANT),eng)
 LOCAL_CFLAGS += -DANDROID_ENGINEERING_BUILD
+else
+LOCAL_CFLAGS += -D__DISABLE_ASSERTS
 endif
 
 #=====================================================================

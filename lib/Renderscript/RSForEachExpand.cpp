@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//#define RS_FOREACH_EXPAND_PASS_NDEBUG 0
+#include "bcc/Assert.h"
 #include "bcc/Renderscript/RSTransforms.h"
 
 #include <cstdlib>
@@ -71,13 +71,7 @@ private:
       return (1 << RootArgTys.size()) - 1;
     }
 
-#if !RS_FOREACH_EXPAND_PASS_NDEBUG
-    if (ExportForEachMetadata->getNumOperands() <= 0) {
-      ALOGE("Assert failed at %s:%d: Invalid #rs_export_foreach metadata in "
-            " '%s'!", __FILE__, __LINE__, M->getModuleIdentifier().c_str());
-      ::abort();
-    }
-#endif
+    bccAssert(ExportForEachMetadata->getNumOperands() > 0);
 
     // We only handle the case for legacy root() functions here, so this is
     // hard-coded to look at only the first such function.
@@ -270,13 +264,7 @@ public:
       Args++;
     }
 
-#if !RS_FOREACH_EXPAND_PASS_NDEBUG
-    if (Args != F->arg_end()) {
-      ALOGE("Assert failed at %s:%d: Invalid signature to the foreach function "
-            "'%s'!", __FILE__, __LINE__, F->getName().str().c_str());
-      ::abort();
-    }
-#endif
+    bccAssert(Args == F->arg_end());
 
     llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
     llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
