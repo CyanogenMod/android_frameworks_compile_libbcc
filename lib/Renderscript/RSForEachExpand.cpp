@@ -25,6 +25,7 @@
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/IRBuilder.h>
+#include <llvm/Target/TargetData.h>
 #include <llvm/Type.h>
 
 #include "bcc/Config/Config.h"
@@ -51,6 +52,9 @@ private:
   llvm::LLVMContext *C;
 
   const RSInfo::ExportForeachFuncListTy &mFuncs;
+
+  // Turns on optimization of allocation stride values.
+  bool mEnableStepOpt;
 
   uint32_t getRootSignature(llvm::Function *F) {
     const llvm::NamedMDNode *ExportForEachMetadata =
@@ -93,6 +97,27 @@ private:
     return 0;
   }
 
+  // Get the actual value we should use to step through an allocation.
+  // TD - Target Data size/layout information.
+  // T - Type of allocation (should be a pointer).
+  // OrigStep - Original step increment (root.expand() input from driver).
+  llvm::Value *getStepValue(llvm::TargetData *TD, llvm::Type *T,
+                            llvm::Value *OrigStep) {
+    bccAssert(TD);
+    bccAssert(T);
+    bccAssert(OrigStep);
+    llvm::PointerType *PT = llvm::dyn_cast<llvm::PointerType>(T);
+    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
+    if (mEnableStepOpt && T != VoidPtrTy && PT) {
+      llvm::Type *ET = PT->getElementType();
+      uint64_t ETSize = TD->getTypeStoreSize(ET);
+      llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
+      return llvm::ConstantInt::get(Int32Ty, ETSize);
+    } else {
+      return OrigStep;
+    }
+  }
+
   static bool hasIn(uint32_t Signature) {
     return Signature & 1;
   }
@@ -114,8 +139,10 @@ private:
   }
 
 public:
-  RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs)
-      : ModulePass(ID), M(NULL), C(NULL), mFuncs(pForeachFuncs) {
+  RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
+                      bool pEnableStepOpt)
+      : ModulePass(ID), M(NULL), C(NULL), mFuncs(pForeachFuncs),
+        mEnableStepOpt(pEnableStepOpt) {
   }
 
   /* Performs the actual optimization on a selected function. On success, the
@@ -133,6 +160,8 @@ public:
         return false;
       }
     }
+
+    llvm::TargetData TD(M);
 
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
@@ -209,8 +238,11 @@ public:
     Arg_p->setName("p");
     Arg_x1->setName("x1");
     Arg_x2->setName("x2");
-    Arg_instep->setName("instep");
-    Arg_outstep->setName("outstep");
+    Arg_instep->setName("arg_instep");
+    Arg_outstep->setName("arg_outstep");
+
+    llvm::Value *InStep = NULL;
+    llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
     llvm::BasicBlock *Begin =
@@ -230,6 +262,8 @@ public:
     if (hasIn(Signature)) {
       InTy = Args->getType();
       AIn = Builder.CreateAlloca(InTy, 0, "AIn");
+      InStep = getStepValue(&TD, InTy, Arg_instep);
+      InStep->setName("instep");
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
       Args++;
@@ -240,6 +274,8 @@ public:
     if (hasOut(Signature)) {
       OutTy = Args->getType();
       AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
+      OutStep = getStepValue(&TD, OutTy, Arg_outstep);
+      OutStep->setName("outstep");
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
       Args++;
@@ -311,14 +347,14 @@ public:
     if (In) {
       // In += instep
       llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(In, Int32Ty), Arg_instep), InTy);
+          Builder.CreatePtrToInt(In, Int32Ty), InStep), InTy);
       Builder.CreateStore(NewIn, AIn);
     }
 
     if (Out) {
       // Out += outstep
       llvm::Value *NewOut = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(Out, Int32Ty), Arg_outstep), OutTy);
+          Builder.CreatePtrToInt(Out, Int32Ty), OutStep), OutTy);
       Builder.CreateStore(NewOut, AOut);
     }
 
@@ -370,8 +406,9 @@ char RSForEachExpandPass::ID = 0;
 namespace bcc {
 
 llvm::ModulePass *
-createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs){
-  return new RSForEachExpandPass(pForeachFuncs);
+createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
+                          bool pEnableStepOpt){
+  return new RSForEachExpandPass(pForeachFuncs, pEnableStepOpt);
 }
 
 } // end namespace bcc
