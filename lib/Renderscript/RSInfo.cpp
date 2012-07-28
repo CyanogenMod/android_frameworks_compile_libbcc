@@ -15,7 +15,7 @@
  */
 
 //#define LOG_NDEBUG 0
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 
 #include <dlfcn.h>
 

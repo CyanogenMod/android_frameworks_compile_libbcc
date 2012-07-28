@@ -20,8 +20,8 @@
 #include "bcc/ExecutionEngine/BCCRuntimeSymbolResolver.h"
 #include "bcc/ExecutionEngine/SymbolResolvers.h"
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
-#include "bcc/RenderScript/RSInfo.h"
-#include "bcc/RenderScript/RSCompiler.h"
+#include "bcc/Renderscript/RSInfo.h"
+#include "bcc/Renderscript/RSCompiler.h"
 
 namespace bcc {
 

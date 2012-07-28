@@ -21,7 +21,7 @@
 
 #include <utility>
 
-#include "bcc/RenderScript/RSScript.h"
+#include "bcc/Renderscript/RSScript.h"
 #include "bcc/Support/Log.h"
 #include "bcc/Support/Sha1Util.h"
 

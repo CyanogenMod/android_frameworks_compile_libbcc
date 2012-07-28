@@ -18,7 +18,7 @@
 LOCAL_PATH := $(call my-dir)
 
 #=====================================================================
-# Common: libbccRenderScript
+# Common: libbccRenderscript
 #=====================================================================
 
 libbcc_renderscript_SRC_FILES := \
@@ -33,12 +33,12 @@ libbcc_renderscript_SRC_FILES := \
   RSScript.cpp
 
 #=====================================================================
-# Device Static Library: libbccRenderScript
+# Device Static Library: libbccRenderscript
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccRenderScript
+LOCAL_MODULE := libbccRenderscript
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
@@ -51,12 +51,12 @@ include $(BUILD_STATIC_LIBRARY)
 
 
 #=====================================================================
-# Host Static Library: libbccRenderScript
+# Host Static Library: libbccRenderscript
 #=====================================================================
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libbccRenderScript
+LOCAL_MODULE := libbccRenderscript
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_IS_HOST_MODULE := true
@@ -68,5 +68,5 @@ include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_STATIC_LIBRARY)
 
-# Build RenderScript runtime (libclcore.bc)
+# Build Renderscript runtime (libclcore.bc)
 include $(LOCAL_PATH)/runtime/Android.mk

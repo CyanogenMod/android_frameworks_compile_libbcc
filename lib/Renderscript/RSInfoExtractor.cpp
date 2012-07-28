@@ -17,7 +17,7 @@
 //===----------------------------------------------------------------------===//
 // This file implements RSInfo::ExtractFromSource()
 //===----------------------------------------------------------------------===//
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 
 #include <llvm/Constants.h>
 #include <llvm/Metadata.h>

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "bcc/RenderScript/RSScript.h"
+#include "bcc/Renderscript/RSScript.h"
 
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 
@@ -45,7 +45,7 @@ bool RSScript::LinkRuntime(RSScript &pScript) {
 
   if (!pScript.getSource().merge(*libclcore_source,
                                  /* pPreserveSource */false)) {
-    ALOGE("Failed to link RenderScript library '%s'!", core_lib);
+    ALOGE("Failed to link Renderscript library '%s'!", core_lib);
     delete libclcore_source;
     return false;
   }

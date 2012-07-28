@@ -21,7 +21,7 @@
 
 
 #include "bcc/ExecutionEngine/ObjectLoader.h"
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Log.h"
 
 #include <utils/Vector.h>
@@ -49,7 +49,7 @@ private:
   android::Vector<void *> mExportFuncAddrs;
   android::Vector<void *> mExportForeachFuncAddrs;
 
-  // FIXME: These are designed for RenderScript HAL and is initialized in
+  // FIXME: These are designed for Renderscript HAL and is initialized in
   //        RSExecutable::Create(). Both of them come from RSInfo::getPragmas().
   //        If possible, read the pragma key/value pairs directly from RSInfo.
   android::Vector<const char *> mPragmaKeys;
@@ -61,7 +61,7 @@ private:
 
 public:
   // This is a NULL-terminated string array which specifies "Special" functions
-  // in RenderScript (e.g., root().)
+  // in Renderscript (e.g., root().)
   static const char *SpecialFunctionNames[];
 
   // Return NULL on error. If the return object is non-NULL, it claims the

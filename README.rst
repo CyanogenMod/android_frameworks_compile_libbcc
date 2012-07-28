@@ -35,7 +35,7 @@ libbcc provides:
 Highlights of libbcc are:
 
 * libbcc supports bitcode from various language frontends, such as
-  RenderScript, GLSL (pixelflinger2).
+  Renderscript, GLSL (pixelflinger2).
 
 * libbcc strives to balance between library size, launch time and
   steady-state performance:

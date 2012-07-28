@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "bcc/RenderScript/RSCompiler.h"
+#include "bcc/Renderscript/RSCompiler.h"
 
 #include <llvm/Module.h>
 #include <llvm/PassManager.h>
 #include <llvm/Transforms/IPO.h>
 
-#include "bcc/RenderScript/RSExecutable.h"
-#include "bcc/RenderScript/RSInfo.h"
-#include "bcc/RenderScript/RSScript.h"
-#include "bcc/RenderScript/RSTransforms.h"
+#include "bcc/Renderscript/RSExecutable.h"
+#include "bcc/Renderscript/RSInfo.h"
+#include "bcc/Renderscript/RSScript.h"
+#include "bcc/Renderscript/RSTransforms.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 

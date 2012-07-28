@@ -17,7 +17,7 @@
 #ifndef BCC_RS_TRANSFORMS_H
 #define BCC_RS_TRANSFORMS_H
 
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 
 namespace llvm {
   class ModulePass;

@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "bcc/RenderScript/RSCompilerDriver.h"
+#include "bcc/Renderscript/RSCompilerDriver.h"
 
 #include <llvm/Support/Path.h>
 
 #include "bcinfo/BitcodeWrapper.h"
 
-#include "bcc/RenderScript/RSExecutable.h"
-#include "bcc/RenderScript/RSScript.h"
+#include "bcc/Renderscript/RSExecutable.h"
+#include "bcc/Renderscript/RSScript.h"
 #include "bcc/Support/CompilerConfig.h"
 #include "bcc/Support/TargetCompilerConfigs.h"
 #include "bcc/Source.h"
@@ -207,10 +207,10 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   pScript.setInfo(info);
 
   //===--------------------------------------------------------------------===//
-  // Link RS script with RenderScript runtime.
+  // Link RS script with Renderscript runtime.
   //===--------------------------------------------------------------------===//
   if (!RSScript::LinkRuntime(pScript)) {
-    ALOGE("Failed to link script '%s' with RenderScript runtime!", pScriptName);
+    ALOGE("Failed to link script '%s' with Renderscript runtime!", pScriptName);
     return NULL;
   }
 

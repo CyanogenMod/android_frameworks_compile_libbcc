@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "bcc/RenderScript/RSExecutable.h"
+#include "bcc/Renderscript/RSExecutable.h"
 
 #include "bcc/Config/Config.h"
 #include "bcc/Support/Disassembler.h"

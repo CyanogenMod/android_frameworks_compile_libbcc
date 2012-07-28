@@ -18,7 +18,7 @@
 // This file implements RSInfo::write()
 //===----------------------------------------------------------------------===//
 
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 
 #include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"

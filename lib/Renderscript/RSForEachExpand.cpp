@@ -15,7 +15,7 @@
  */
 
 //#define RS_FOREACH_EXPAND_PASS_NDEBUG 0
-#include "bcc/RenderScript/RSTransforms.h"
+#include "bcc/Renderscript/RSTransforms.h"
 
 #include <cstdlib>
 
@@ -28,7 +28,7 @@
 #include <llvm/Type.h>
 
 #include "bcc/Config/Config.h"
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Log.h"
 
 using namespace bcc;

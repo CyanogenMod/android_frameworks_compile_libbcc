@@ -18,7 +18,7 @@
 // This file implements RSInfo::ReadFromFile()
 //===----------------------------------------------------------------------===//
 
-#include "bcc/RenderScript/RSInfo.h"
+#include "bcc/Renderscript/RSInfo.h"
 
 #include <new>
 
