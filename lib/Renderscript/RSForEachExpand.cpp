@@ -22,9 +22,9 @@
 #include <llvm/DerivedTypes.h>
 #include <llvm/Function.h>
 #include <llvm/Instructions.h>
+#include <llvm/IRBuilder.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
-#include <llvm/Support/IRBuilder.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Type.h>
 

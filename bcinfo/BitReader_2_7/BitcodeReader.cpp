@@ -155,6 +155,17 @@ static GlobalValue::VisibilityTypes GetDecodedVisibility(unsigned Val) {
   }
 }
 
+static GlobalVariable::ThreadLocalMode GetDecodedThreadLocalMode(unsigned Val) {
+  switch (Val) {
+    case 0: return GlobalVariable::NotThreadLocal;
+    default: // Map unknown non-zero value to general dynamic.
+    case 1: return GlobalVariable::GeneralDynamicTLSModel;
+    case 2: return GlobalVariable::LocalDynamicTLSModel;
+    case 3: return GlobalVariable::InitialExecTLSModel;
+    case 4: return GlobalVariable::LocalExecTLSModel;
+  }
+}
+
 static int GetDecodedCastOpcode(unsigned Val) {
   switch (Val) {
   default: return -1;
@@ -539,7 +550,7 @@ bool BitcodeReader::ParseAttributeBlock() {
                                                   Attributes(Record[i+1])));
       }
 
-      MAttributes.push_back(AttrListPtr::get(Attrs.begin(), Attrs.end()));
+      MAttributes.push_back(AttrListPtr::get(Attrs));
       Attrs.clear();
       break;
     }
@@ -1763,9 +1774,10 @@ bool BitcodeReader::ParseModule() {
       GlobalValue::VisibilityTypes Visibility = GlobalValue::DefaultVisibility;
       if (Record.size() > 6)
         Visibility = GetDecodedVisibility(Record[6]);
-      bool isThreadLocal = false;
+
+      GlobalVariable::ThreadLocalMode TLM = GlobalVariable::NotThreadLocal;
       if (Record.size() > 7)
-        isThreadLocal = Record[7];
+        TLM = GetDecodedThreadLocalMode(Record[7]);
 
       bool UnnamedAddr = false;
       if (Record.size() > 8)
@@ -1773,12 +1785,11 @@ bool BitcodeReader::ParseModule() {
 
       GlobalVariable *NewGV =
         new GlobalVariable(*TheModule, Ty, isConstant, Linkage, 0, "", 0,
-                           isThreadLocal, AddressSpace);
+                           TLM, AddressSpace);
       NewGV->setAlignment(Alignment);
       if (!Section.empty())
         NewGV->setSection(Section);
       NewGV->setVisibility(Visibility);
-      NewGV->setThreadLocal(isThreadLocal);
       NewGV->setUnnamedAddr(UnnamedAddr);
 
       ValueList.push_back(NewGV);
