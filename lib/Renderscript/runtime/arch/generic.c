@@ -741,3 +741,111 @@ extern float4 __attribute__((overloadable)) rsYuvToRGBA_float4(uchar y, uchar u,
     return color;
 }
 
+
+/*
+ * APPROX_RECIP
+ */
+
+extern float __attribute__((overloadable)) approx_recip(float v) {
+    // FIXME:  actual algorithm for generic approximate reciprocal
+    return 1.f / v;
+}
+
+extern float2 __attribute__((overloadable)) approx_recip(float2 v) {
+    float2 r;
+    r.x = approx_recip(r.x);
+    r.y = approx_recip(r.y);
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) approx_recip(float3 v) {
+    float3 r;
+    r.x = approx_recip(r.x);
+    r.y = approx_recip(r.y);
+    r.z = approx_recip(r.z);
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) approx_recip(float4 v) {
+    float4 r;
+    r.x = approx_recip(r.x);
+    r.y = approx_recip(r.y);
+    r.z = approx_recip(r.z);
+    r.w = approx_recip(r.w);
+    return r;
+}
+
+
+/*
+ * APPROX_SQRT
+ */
+
+extern float __attribute__((overloadable)) approx_sqrt(float v) {
+    int i = *((int*)&v);
+    i = (1 << 29) + (i >> 1) - (1 << 22);
+    return *((float*)&i);
+}
+
+extern float2 __attribute__((overloadable)) approx_sqrt(float2 v) {
+    float2 r;
+    r.x = approx_sqrt(v.x);
+    r.y = approx_sqrt(v.y);
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) approx_sqrt(float3 v) {
+    float3 r;
+    r.x = approx_sqrt(v.x);
+    r.y = approx_sqrt(v.y);
+    r.z = approx_sqrt(v.z);
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) approx_sqrt(float4 v) {
+    float4 r;
+    r.x = approx_sqrt(v.x);
+    r.y = approx_sqrt(v.y);
+    r.z = approx_sqrt(v.z);
+    r.w = approx_sqrt(v.w);
+    return r;
+}
+
+
+/*
+ * APPROX_rsqrt
+ */
+
+extern float __attribute__((overloadable)) approx_rsqrt(float v) {
+    int i = *((int*)&v);
+    float r;
+    i = 0x5f3759df - (i >> 1);
+    r = *((float*)&i);
+    // Newton step: optional, can be repeated for more accuracy
+    //r = r * (1.5f - (0.5f*v) * r * r);
+    return r;
+}
+
+extern float2 __attribute__((overloadable)) approx_rsqrt(float2 v) {
+    float2 r;
+    r.x = approx_rsqrt(v.x);
+    r.y = approx_rsqrt(v.y);
+    return r;
+}
+
+extern float3 __attribute__((overloadable)) approx_rsqrt(float3 v) {
+    float3 r;
+    r.x = approx_rsqrt(v.x);
+    r.y = approx_rsqrt(v.y);
+    r.z = approx_rsqrt(v.z);
+    return r;
+}
+
+extern float4 __attribute__((overloadable)) approx_rsqrt(float4 v) {
+    float4 r;
+    r.x = approx_rsqrt(v.x);
+    r.y = approx_rsqrt(v.y);
+    r.z = approx_rsqrt(v.z);
+    r.w = approx_rsqrt(v.w);
+    return r;
+}
+
