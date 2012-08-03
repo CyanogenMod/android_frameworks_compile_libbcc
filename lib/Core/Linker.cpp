@@ -22,6 +22,7 @@
 #include <llvm/Support/ELF.h>
 
 #include <mcld/MC/MCLDDriver.h>
+#include <mcld/MC/InputTree.h>
 #include <mcld/MC/MCLinker.h>
 #include <mcld/MC/InputTree.h>
 #include <mcld/LD/LDSection.h>
@@ -129,9 +130,9 @@ enum Linker::ErrorCode Linker::config(const LinkerConfig& pConfig) {
     return kCreateBackend;
   }
 
-  mDriver = new mcld::MCLDDriver(*mLDInfo, *mBackend);
-
   mMemAreaFactory = new MemoryFactory();
+
+  mDriver = new mcld::MCLDDriver(*mLDInfo, *mBackend, *mMemAreaFactory);
 
   mDriver->initMCLinker();
 
@@ -361,12 +362,8 @@ enum Linker::ErrorCode Linker::setOutput(int pFileHandler) {
 enum Linker::ErrorCode Linker::link() {
   mDriver->normalize();
 
-  if (!mDriver->readSections() || !mDriver->mergeSections()) {
+  if (!mDriver->mergeSections()) {
     return kReadSections;
-  }
-
-  if (!mDriver->readSymbolTables()) {
-    return kReadSymbols;
   }
 
   if (!mDriver->addStandardSymbols() || !mDriver->addTargetSymbols()) {
