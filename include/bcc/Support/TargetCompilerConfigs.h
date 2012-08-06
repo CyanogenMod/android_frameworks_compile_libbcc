@@ -61,6 +61,7 @@ protected:
     : CompilerConfig(pTriple) {
     // Disable frame pointer elimination optimization on x86 family.
     getTargetOptions().NoFramePointerElim = true;
+    getTargetOptions().UseInitArray = true;
     return;
   }
 };
