@@ -103,6 +103,8 @@ int Script::addSourceBC(size_t idx,
   }
 
   bcinfo::BitcodeWrapper wrapper(bitcode, bitcodeSize);
+  mCompilerVersion = wrapper.getCompilerVersion();
+  mOptimizationLevel = wrapper.getOptimizationLevel();
 
   mSourceList[idx] = SourceInfo::createFromBuffer(resName,
                                                   bitcode, bitcodeSize,
