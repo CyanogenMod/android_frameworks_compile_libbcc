@@ -115,15 +115,12 @@ define <2 x float> @_Z5clampDv2_fff(<2 x float> %value, float %low, float %high)
   ret <2 x float> %b
 }
 
-
 define float @_Z5clampfff(float %value, float %low, float %high) nounwind readonly {
-  %_value = tail call <2 x float> @smear_2f(float %value) nounwind readnone
-  %_low = tail call <2 x float> @smear_2f(float %low) nounwind readnone
-  %_high = tail call <2 x float> @smear_2f(float %high) nounwind readnone
-  %a = tail call <2 x float> @llvm.arm.neon.vmins.v2f32(<2 x float> %_value, <2 x float> %_high) nounwind readnone
-  %b = tail call <2 x float> @llvm.arm.neon.vmaxs.v2f32(<2 x float> %a, <2 x float> %_low) nounwind readnone
-  %c = extractelement <2 x float> %b, i32 0
-  ret float %c
+  %1 = fcmp olt float %value, %high
+  %2 = select i1 %1, float %value, float %high
+  %3 = fcmp ogt float %2, %low
+  %4 = select i1 %3, float %2, float %low
+  ret float %4
 }
 
 
