@@ -38,7 +38,7 @@ namespace bcc {
   class ScriptCompiled;
   class ScriptCached;
   class SourceInfo;
-  struct CompilerOption;
+  class CompilerOption;
 
   namespace ScriptStatus {
     enum StatusType {

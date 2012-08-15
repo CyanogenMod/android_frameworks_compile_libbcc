@@ -46,7 +46,7 @@ namespace llvm {
 
 namespace bcc {
   class ScriptCompiled;
-  struct CompilerOption;
+  class CompilerOption;
 
   class Compiler {
   private:
