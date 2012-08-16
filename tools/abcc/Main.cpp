@@ -120,8 +120,19 @@ static inline bool ParseArguments(int argc, const char *const *argv, Mode &mode,
 
 static bool Build(int input_fd, int output_fd,
                   const char *triple, const char *sysroot) {
-  ABCCompilerDriver driver(triple, sysroot);
-  return driver.build(input_fd, output_fd);;
+  ABCCompilerDriver *driver = ABCCompilerDriver::Create(triple);
+
+  if (driver == NULL) {
+    return false;
+  }
+
+  driver->setAndroidSysroot(sysroot);
+
+  bool build_result = driver->build(input_fd, output_fd);;
+
+  delete driver;
+
+  return build_result;
 }
 
 static int ProcessFromFd(const char *input, const char *output,

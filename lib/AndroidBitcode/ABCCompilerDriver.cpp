@@ -20,6 +20,10 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "ARMABCCompilerDriver.h"
+#include "MipsABCCompilerDriver.h"
+#include "X86ABCCompilerDriver.h"
+
 #include "bcc/Config/Config.h"
 #include "bcc/Script.h"
 #include "bcc/Source.h"
@@ -34,11 +38,10 @@
 
 namespace bcc {
 
-ABCCompilerDriver::ABCCompilerDriver(const std::string &pTriple,
-                                     const std::string &pAndroidSysroot)
+ABCCompilerDriver::ABCCompilerDriver(const std::string &pTriple)
   : mContext(), mCompiler(), mLinker(),
     mCompilerConfig(NULL), mLinkerConfig(NULL),
-    mTriple(pTriple), mAndroidSysroot(pAndroidSysroot) {
+    mTriple(pTriple), mAndroidSysroot("/") {
 }
 
 ABCCompilerDriver::~ABCCompilerDriver() {
@@ -210,6 +213,38 @@ bool ABCCompilerDriver::link(const Script &pScript,
 }
 
 //------------------------------------------------------------------------------
+
+ABCCompilerDriver *ABCCompilerDriver::Create(const std::string &pTriple) {
+  std::string error;
+  const llvm::Target *target =
+      llvm::TargetRegistry::lookupTarget(pTriple, error);
+
+  if (target == NULL) {
+    ALOGE("Unsupported target '%s' (detail: %s)!", pTriple.c_str(),
+          error.c_str());
+    return NULL;
+  }
+
+  switch (llvm::Triple::getArchTypeForLLVMName(target->getName())) {
+    case llvm::Triple::arm:
+    case llvm::Triple::thumb: {
+      return new ARMABCCompilerDriver(pTriple);
+    }
+    case llvm::Triple::mipsel: {
+      return new MipsABCCompilerDriver(pTriple);
+    }
+    case llvm::Triple::x86: {
+      return new X86ABCCompilerDriver(pTriple);
+    }
+    default: {
+      ALOGE("Unknown architecture '%s' supplied in %s!", target->getName(),
+            pTriple.c_str());
+      break;
+    }
+  }
+
+  return NULL;
+}
 
 bool ABCCompilerDriver::build(int pInputFd, int pOutputFd) {
   //===--------------------------------------------------------------------===//

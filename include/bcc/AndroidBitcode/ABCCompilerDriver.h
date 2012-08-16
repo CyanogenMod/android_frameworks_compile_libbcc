@@ -50,11 +50,24 @@ private:
   bool link(const Script &pScript, const std::string &input_relocatable,
             int pOutputFd);
 
-public:
-  ABCCompilerDriver(const std::string &pTriple,
-                    const std::string &pAndroidSysroot);
+protected:
+  ABCCompilerDriver(const std::string &pTriple);
 
-  ~ABCCompilerDriver();
+public:
+  static ABCCompilerDriver *Create(const std::string &pTriple);
+
+  virtual ~ABCCompilerDriver();
+
+  inline const std::string &getAndroidSysroot() const {
+    return mAndroidSysroot;
+  }
+  inline void setAndroidSysroot(const std::string &pAndroidSysroot) {
+    mAndroidSysroot = pAndroidSysroot;
+  }
+
+  inline const std::string &getTriple() const {
+    return mTriple;
+  }
 
   // Compile the bitcode and link the shared object
   bool build(int pInputFd, int pOutputFd);
