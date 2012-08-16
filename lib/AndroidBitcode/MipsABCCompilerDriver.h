@@ -27,6 +27,9 @@ public:
       : ABCCompilerDriver(pTriple) { }
 
   virtual ~MipsABCCompilerDriver() { }
+
+private:
+  virtual const char **getNonPortableList() const;
 };
 
 } // end namespace bcc

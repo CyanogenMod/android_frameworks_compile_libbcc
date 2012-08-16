@@ -14,24 +14,31 @@
  * limitations under the License.
  */
 
-#ifndef BCC_X86_ABC_COMPILER_DRIVER_H
-#define BCC_X86_ABC_COMPILER_DRIVER_H
+#include "MipsABCCompilerDriver.h"
 
-#include "bcc/AndroidBitcode/ABCCompilerDriver.h"
+namespace {
+
+static const char *MipsNonPortableList[] = {
+  "stat",
+  "fstat",
+  "lstat",
+  "fstatat",
+  "socket",
+  "setsockopt",
+  "getsockopt",
+  "open",
+  "mmap",
+  "ioctl",
+
+  NULL  // NUL-terminator
+};
+
+} // end anonymous namespace
 
 namespace bcc {
 
-class X86ABCCompilerDriver : public ABCCompilerDriver {
-public:
-  X86ABCCompilerDriver(const std::string &pTriple)
-      : ABCCompilerDriver(pTriple) { }
-
-  virtual ~X86ABCCompilerDriver() { }
-
-private:
-  virtual const char **getNonPortableList() const;
-};
+const char **MipsABCCompilerDriver::getNonPortableList() const {
+  return MipsNonPortableList;
+}
 
 } // end namespace bcc
-
-#endif // BCC_X86_ABC_COMPILER_DRIVER_H

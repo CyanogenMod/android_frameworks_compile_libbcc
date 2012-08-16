@@ -98,16 +98,13 @@ bool ABCCompilerDriver::configLinker() {
   // Add non-portable function list. For each function X, linker will rename
   // it to X_portable. And X_portable" is implemented in libportable to solve
   // portable issues.
-  mLinkerConfig->addPortable("stat");
-  mLinkerConfig->addPortable("fstat");
-  mLinkerConfig->addPortable("lstat");
-  mLinkerConfig->addPortable("fstatat");
-  mLinkerConfig->addPortable("socket");
-  mLinkerConfig->addPortable("setsockopt");
-  mLinkerConfig->addPortable("getsockopt");
-  mLinkerConfig->addPortable("epoll_event");
-  mLinkerConfig->addPortable("epoll_ctl");
-  mLinkerConfig->addPortable("epoll_wait");
+  const char **non_portable_func = getNonPortableList();
+  if (non_portable_func != NULL) {
+    while (*non_portable_func != NULL) {
+      mLinkerConfig->addPortable(*non_portable_func);
+      non_portable_func++;
+    }
+  }
 
   // -shared
   mLinkerConfig->setShared(true);

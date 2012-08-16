@@ -51,6 +51,11 @@ private:
             int pOutputFd);
 
 protected:
+  virtual const char **getNonPortableList() const {
+    return NULL;
+  }
+
+protected:
   ABCCompilerDriver(const std::string &pTriple);
 
 public:

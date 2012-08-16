@@ -22,7 +22,9 @@ LOCAL_PATH := $(call my-dir)
 #=====================================================================
 
 libbcc_androidbitcode_SRC_FILES := \
-  ABCCompilerDriver.cpp
+  ABCCompilerDriver.cpp \
+  MipsABCCompilerDriver.cpp \
+  X86ABCCompilerDriver.cpp
 
 #=====================================================================
 # Device Static Library: libbccAndroidBitcode
