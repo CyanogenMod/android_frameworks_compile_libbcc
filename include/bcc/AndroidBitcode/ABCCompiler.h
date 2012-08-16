@@ -21,10 +21,14 @@
 
 namespace bcc {
 
+class ABCCompilerDriver;
+
 class ABCCompiler : public Compiler {
+private:
+  const ABCCompilerDriver &mDriver;
 
 public:
-  ABCCompiler() { }
+  ABCCompiler(const ABCCompilerDriver &pDriver) : mDriver(pDriver) { }
 
   virtual ~ABCCompiler() { }
 

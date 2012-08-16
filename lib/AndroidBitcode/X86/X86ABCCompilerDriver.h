@@ -30,6 +30,8 @@ public:
 
 private:
   virtual const char **getNonPortableList() const;
+
+  virtual ABCExpandVAArgPass *createExpandVAArgPass() const;
 };
 
 } // end namespace bcc

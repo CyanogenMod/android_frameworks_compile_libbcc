@@ -23,15 +23,19 @@ LOCAL_PATH := $(call my-dir)
 
 libbcc_androidbitcode_SRC_FILES := \
   ABCCompiler.cpp \
+  ABCExpandVAArgPass.cpp \
   ABCCompilerDriver.cpp
 
-libbcc_arm_androidbitcode_SRC_FILES :=
+libbcc_arm_androidbitcode_SRC_FILES := \
+  ARM/ARMABCExpandVAArg.cpp
 
 libbcc_mips_androidbitcode_SRC_FILES := \
-  Mips/MipsABCCompilerDriver.cpp
+  Mips/MipsABCCompilerDriver.cpp \
+  Mips/MipsABCExpandVAArg.cpp
 
 libbcc_x86_androidbitcode_SRC_FILES := \
-  X86/X86ABCCompilerDriver.cpp
+  X86/X86ABCCompilerDriver.cpp \
+  X86/X86ABCExpandVAArg.cpp
 
 
 #=====================================================================

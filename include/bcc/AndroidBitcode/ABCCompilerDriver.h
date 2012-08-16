@@ -26,6 +26,7 @@
 
 namespace bcc {
 
+class ABCExpandVAArgPass;
 class CompilerConfig;
 class LinkerConfig;
 
@@ -55,6 +56,9 @@ protected:
   virtual const char **getNonPortableList() const {
     return NULL;
   }
+
+public:
+  virtual ABCExpandVAArgPass *createExpandVAArgPass() const = 0;
 
 protected:
   ABCCompilerDriver(const std::string &pTriple);

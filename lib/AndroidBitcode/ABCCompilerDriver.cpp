@@ -17,6 +17,7 @@
 #include "bcc/AndroidBitcode/ABCCompilerDriver.h"
 
 #include <llvm/Module.h>
+#include <llvm/Pass.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
 #include <mcld/Config/Config.h>
@@ -44,7 +45,7 @@
 namespace bcc {
 
 ABCCompilerDriver::ABCCompilerDriver(const std::string &pTriple)
-  : mContext(), mCompiler(), mLinker(),
+  : mContext(), mCompiler(*this), mLinker(),
     mCompilerConfig(NULL), mLinkerConfig(NULL),
     mTriple(pTriple), mAndroidSysroot("/") {
 }

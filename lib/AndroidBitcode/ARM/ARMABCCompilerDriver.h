@@ -27,6 +27,9 @@ public:
       : ABCCompilerDriver(pTriple) { }
 
   virtual ~ARMABCCompilerDriver() { }
+
+private:
+  virtual ABCExpandVAArgPass *createExpandVAArgPass() const;
 };
 
 } // end namespace bcc

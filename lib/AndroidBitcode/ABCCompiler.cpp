@@ -21,8 +21,11 @@
 #include <llvm/Target/TargetData.h>
 #include <llvm/Target/TargetMachine.h>
 
+#include "bcc/AndroidBitcode/ABCCompilerDriver.h"
+#include "bcc/AndroidBitcode/ABCExpandVAArgPass.h"
 #include "bcc/Script.h"
 #include "bcc/Source.h"
+
 
 namespace bcc {
 
@@ -39,6 +42,7 @@ bool ABCCompiler::beforeAddCodeGenPasses(Script &pScript,
   }
 
   pm.add(target_data);
+  pm.add(mDriver.createExpandVAArgPass());
   pm.run(module);
 
   return true;
