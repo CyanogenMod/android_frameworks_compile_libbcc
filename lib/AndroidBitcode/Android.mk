@@ -22,9 +22,16 @@ LOCAL_PATH := $(call my-dir)
 #=====================================================================
 
 libbcc_androidbitcode_SRC_FILES := \
-  ABCCompilerDriver.cpp \
-  MipsABCCompilerDriver.cpp \
-  X86ABCCompilerDriver.cpp
+  ABCCompilerDriver.cpp
+
+libbcc_arm_androidbitcode_SRC_FILES :=
+
+libbcc_mips_androidbitcode_SRC_FILES := \
+  Mips/MipsABCCompilerDriver.cpp
+
+libbcc_x86_androidbitcode_SRC_FILES := \
+  X86/X86ABCCompilerDriver.cpp
+
 
 #=====================================================================
 # Device Static Library: libbccAndroidBitcode
@@ -35,8 +42,21 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbccAndroidBitcode
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-
 LOCAL_SRC_FILES := $(libbcc_androidbitcode_SRC_FILES)
+
+ifeq ($(TARGET_ARCH),arm)
+  LOCAL_SRC_FILES += $(libbcc_arm_androidbitcode_SRC_FILES)
+else
+  ifeq ($(TARGET_ARCH),mips)
+    LOCAL_SRC_FILES += $(libbcc_mips_androidbitcode_SRC_FILES)
+  else
+    ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
+      LOCAL_SRC_FILES += $(libbcc_x86_androidbitcode_SRC_FILES)
+    else
+      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+    endif
+  endif
+endif
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
@@ -52,8 +72,11 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libbccAndroidBitcode
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-
-LOCAL_SRC_FILES := $(libbcc_androidbitcode_SRC_FILES)
+LOCAL_SRC_FILES := \
+  $(libbcc_androidbitcode_SRC_FILES) \
+  $(libbcc_arm_androidbitcode_SRC_FILES) \
+  $(libbcc_mips_androidbitcode_SRC_FILES) \
+  $(libbcc_x86_androidbitcode_SRC_FILES) \
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)

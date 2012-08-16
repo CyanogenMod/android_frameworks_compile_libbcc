@@ -19,10 +19,7 @@
 #include <llvm/Module.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
-
-#include "ARMABCCompilerDriver.h"
-#include "MipsABCCompilerDriver.h"
-#include "X86ABCCompilerDriver.h"
+#include <mcld/Config/Config.h>
 
 #include "bcc/Config/Config.h"
 #include "bcc/Script.h"
@@ -34,7 +31,15 @@
 #include "bcc/Support/TargetLinkerConfigs.h"
 #include "bcc/Support/TargetCompilerConfigs.h"
 
-#include "mcld/Config/Config.h"
+#if defined(PROVIDE_ARM_CODEGEN)
+# include "ARM/ARMABCCompilerDriver.h"
+#endif
+#if defined(PROVIDE_MIPS_CODEGEN)
+# include "Mips/MipsABCCompilerDriver.h"
+#endif
+#if defined(PROVIDE_X86_CODEGEN)
+# include "X86/X86ABCCompilerDriver.h"
+#endif
 
 namespace bcc {
 
@@ -223,16 +228,22 @@ ABCCompilerDriver *ABCCompilerDriver::Create(const std::string &pTriple) {
   }
 
   switch (llvm::Triple::getArchTypeForLLVMName(target->getName())) {
+#if defined(PROVIDE_ARM_CODEGEN)
     case llvm::Triple::arm:
     case llvm::Triple::thumb: {
       return new ARMABCCompilerDriver(pTriple);
     }
+#endif
+#if defined(PROVIDE_MIPS_CODEGEN)
     case llvm::Triple::mipsel: {
       return new MipsABCCompilerDriver(pTriple);
     }
+#endif
+#if defined(PROVIDE_X86_CODEGEN)
     case llvm::Triple::x86: {
       return new X86ABCCompilerDriver(pTriple);
     }
+#endif
     default: {
       ALOGE("Unknown architecture '%s' supplied in %s!", target->getName(),
             pTriple.c_str());

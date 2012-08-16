@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "MipsABCCompilerDriver.h"
+#include "Mips/MipsABCCompilerDriver.h"
 
 namespace {
 
