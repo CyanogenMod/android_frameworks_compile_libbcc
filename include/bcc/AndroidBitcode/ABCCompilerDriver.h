@@ -17,6 +17,7 @@
 #ifndef BCC_ABC_COMPILER_DRIVER_H
 #define BCC_ABC_COMPILER_DRIVER_H
 
+#include "bcc/AndroidBitcode/ABCCompiler.h"
 #include "bcc/BCCContext.h"
 #include "bcc/Compiler.h"
 #include "bcc/Linker.h"
@@ -31,7 +32,7 @@ class LinkerConfig;
 class ABCCompilerDriver {
 private:
   BCCContext mContext;
-  Compiler mCompiler;
+  ABCCompiler mCompiler;
   Linker mLinker;
 
   CompilerConfig *mCompilerConfig;
@@ -66,6 +67,7 @@ public:
   inline const std::string &getAndroidSysroot() const {
     return mAndroidSysroot;
   }
+
   inline void setAndroidSysroot(const std::string &pAndroidSysroot) {
     mAndroidSysroot = pAndroidSysroot;
   }

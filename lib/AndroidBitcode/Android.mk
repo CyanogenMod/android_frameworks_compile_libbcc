@@ -22,6 +22,7 @@ LOCAL_PATH := $(call my-dir)
 #=====================================================================
 
 libbcc_androidbitcode_SRC_FILES := \
+  ABCCompiler.cpp \
   ABCCompilerDriver.cpp
 
 libbcc_arm_androidbitcode_SRC_FILES :=
