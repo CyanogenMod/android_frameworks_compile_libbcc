@@ -45,6 +45,9 @@ ifeq ($(TARGET_ARCH),arm)
   ifeq ($(ARCH_ARM_HAVE_NEON),true)
     LOCAL_CFLAGS += -DARCH_ARM_HAVE_NEON
   endif
+  ifeq ($(ARCH_ARM_HAVE_THUMB_SUPPORT),true)
+    LOCAL_CFLAGS += -DARCH_ARM_HAVE_THUMB_SUPPORT
+  endif
 else
   ifeq ($(TARGET_ARCH),mips)
     LOCAL_CFLAGS += -DFORCE_MIPS_CODEGEN
