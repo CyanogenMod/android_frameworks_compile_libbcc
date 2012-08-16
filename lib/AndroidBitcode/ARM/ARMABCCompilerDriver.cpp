@@ -14,42 +14,19 @@
  * limitations under the License.
  */
 
-#include "Mips/MipsABCCompilerDriver.h"
+#include "ARM/ARMABCCompilerDriver.h"
 
 #include "bcc/Support/TargetCompilerConfigs.h"
 #include "bcc/Support/TargetLinkerConfigs.h"
 
-namespace {
-
-static const char *MipsNonPortableList[] = {
-  "stat",
-  "fstat",
-  "lstat",
-  "fstatat",
-  "socket",
-  "setsockopt",
-  "getsockopt",
-  "open",
-  "mmap",
-  "ioctl",
-
-  NULL  // NUL-terminator
-};
-
-} // end anonymous namespace
-
 namespace bcc {
 
-CompilerConfig *MipsABCCompilerDriver::createCompilerConfig() const {
-  return new (std::nothrow) MipsCompilerConfig();
+CompilerConfig *ARMABCCompilerDriver::createCompilerConfig() const {
+  return new (std::nothrow) ARMCompilerConfig();
 }
 
-LinkerConfig *MipsABCCompilerDriver::createLinkerConfig() const {
-  return new (std::nothrow) MipsLinkerConfig();
-}
-
-const char **MipsABCCompilerDriver::getNonPortableList() const {
-  return MipsNonPortableList;
+LinkerConfig *ARMABCCompilerDriver::createLinkerConfig() const {
+  return new (std::nothrow) ARMLinkerConfig();
 }
 
 } // end namespace bcc

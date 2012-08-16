@@ -27,6 +27,7 @@ libbcc_androidbitcode_SRC_FILES := \
   ABCCompilerDriver.cpp
 
 libbcc_arm_androidbitcode_SRC_FILES := \
+  ARM/ARMABCCompilerDriver.cpp \
   ARM/ARMABCExpandVAArg.cpp
 
 libbcc_mips_androidbitcode_SRC_FILES := \

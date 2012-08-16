@@ -44,10 +44,9 @@
 
 namespace bcc {
 
-ABCCompilerDriver::ABCCompilerDriver(const std::string &pTriple)
+ABCCompilerDriver::ABCCompilerDriver()
   : mContext(), mCompiler(*this), mLinker(),
-    mCompilerConfig(NULL), mLinkerConfig(NULL),
-    mTriple(pTriple), mAndroidSysroot("/") {
+    mCompilerConfig(NULL), mLinkerConfig(NULL), mAndroidSysroot("/") {
 }
 
 ABCCompilerDriver::~ABCCompilerDriver() {
@@ -60,7 +59,7 @@ bool ABCCompilerDriver::configCompiler() {
     return true;
   }
 
-  mCompilerConfig = new (std::nothrow) CompilerConfig(mTriple);
+  mCompilerConfig = createCompilerConfig();
   if (mCompilerConfig == NULL) {
     ALOGE("Out of memory when create the compiler configuration!");
     return false;
@@ -88,7 +87,7 @@ bool ABCCompilerDriver::configLinker() {
     return true;
   }
 
-  mLinkerConfig = new (std::nothrow) LinkerConfig(mTriple);
+  mLinkerConfig = createLinkerConfig();
   if (mLinkerConfig == NULL) {
     ALOGE("Out of memory when create the linker configuration!");
     return false;
@@ -232,17 +231,17 @@ ABCCompilerDriver *ABCCompilerDriver::Create(const std::string &pTriple) {
 #if defined(PROVIDE_ARM_CODEGEN)
     case llvm::Triple::arm:
     case llvm::Triple::thumb: {
-      return new ARMABCCompilerDriver(pTriple);
+      return new ARMABCCompilerDriver();
     }
 #endif
 #if defined(PROVIDE_MIPS_CODEGEN)
     case llvm::Triple::mipsel: {
-      return new MipsABCCompilerDriver(pTriple);
+      return new MipsABCCompilerDriver();
     }
 #endif
 #if defined(PROVIDE_X86_CODEGEN)
     case llvm::Triple::x86: {
-      return new X86ABCCompilerDriver(pTriple);
+      return new X86ABCCompilerDriver();
     }
 #endif
     default: {

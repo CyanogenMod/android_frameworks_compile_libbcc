@@ -23,12 +23,14 @@ namespace bcc {
 
 class ARMABCCompilerDriver : public ABCCompilerDriver {
 public:
-  ARMABCCompilerDriver(const std::string &pTriple)
-      : ABCCompilerDriver(pTriple) { }
+  ARMABCCompilerDriver() : ABCCompilerDriver() { }
 
   virtual ~ARMABCCompilerDriver() { }
 
 private:
+  virtual CompilerConfig *createCompilerConfig() const;
+  virtual LinkerConfig *createLinkerConfig() const;
+
   virtual ABCExpandVAArgPass *createExpandVAArgPass() const;
 };
 

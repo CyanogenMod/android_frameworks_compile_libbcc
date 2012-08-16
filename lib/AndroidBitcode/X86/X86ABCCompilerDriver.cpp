@@ -16,6 +16,9 @@
 
 #include "X86/X86ABCCompilerDriver.h"
 
+#include "bcc/Support/TargetCompilerConfigs.h"
+#include "bcc/Support/TargetLinkerConfigs.h"
+
 namespace {
 
 static const char *X86NonPortableList[] = {
@@ -35,6 +38,16 @@ static const char *X86NonPortableList[] = {
 } // end anonymous namespace
 
 namespace bcc {
+
+CompilerConfig *X86ABCCompilerDriver::createCompilerConfig() const {
+  // x86-64 is currently unsupported.
+  return new (std::nothrow) X86_32CompilerConfig();
+}
+
+LinkerConfig *X86ABCCompilerDriver::createLinkerConfig() const {
+  // x86-64 is currently unsupported.
+  return new (std::nothrow) X86_32LinkerConfig();
+}
 
 const char **X86ABCCompilerDriver::getNonPortableList() const {
   return X86NonPortableList;
