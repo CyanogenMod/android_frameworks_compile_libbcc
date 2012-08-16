@@ -924,6 +924,19 @@ extern float4 __attribute__((overloadable)) approx_normalize(float4 v) {
     return v * approx_rsqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
 }
 
+extern float __attribute__((overloadable)) approx_recip(float);
+
+extern float __attribute__((overloadable)) approx_atan(float x) {
+    if (x == 0.f)
+        return 0.f;
+    if (x < 0.f)
+        return -1.f * approx_atan(-1.f * x);
+    if (x > 1.f)
+        return M_PI_2 - approx_atan(approx_recip(x));
+    return x * approx_recip(1.f + 0.28f * x*x);
+}
+FN_FUNC_FN(approx_atan)
+
 #undef FN_FUNC_FN
 #undef IN_FUNC_FN
 #undef FN_FUNC_FN_FN
