@@ -102,7 +102,12 @@ static inline bool ParseArguments(int argc, const char *const *argv, Mode &mode,
 #endif
 
   if (triple == NULL) {
-    triple = DEFAULT_TARGET_TRIPLE_STRING;
+#ifdef DEFAULT_ARM_CODEGEN
+    // Generate Thumb instead of ARM.
+    triple = DEFAULT_THUMB_TRIPLE_STRING;
+#else
+     triple = DEFAULT_TARGET_TRIPLE_STRING;
+#endif
   }
 
   if (sysroot == NULL) {
