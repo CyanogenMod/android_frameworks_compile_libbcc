@@ -22,7 +22,11 @@
 namespace bcc {
 
 CompilerConfig *ARMABCCompilerDriver::createCompilerConfig() const {
-  return new (std::nothrow) ARMCompilerConfig();
+  if (mInThumbMode) {
+    return new (std::nothrow) ThumbCompilerConfig();
+  } else {
+    return new (std::nothrow) ARMCompilerConfig();
+  }
 }
 
 LinkerConfig *ARMABCCompilerDriver::createLinkerConfig() const {

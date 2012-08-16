@@ -229,9 +229,11 @@ ABCCompilerDriver *ABCCompilerDriver::Create(const std::string &pTriple) {
 
   switch (llvm::Triple::getArchTypeForLLVMName(target->getName())) {
 #if defined(PROVIDE_ARM_CODEGEN)
-    case llvm::Triple::arm:
+    case llvm::Triple::arm: {
+      return new ARMABCCompilerDriver(/* pInThumbMode */false);
+    }
     case llvm::Triple::thumb: {
-      return new ARMABCCompilerDriver();
+      return new ARMABCCompilerDriver(/* pInThumbMode */true);
     }
 #endif
 #if defined(PROVIDE_MIPS_CODEGEN)
