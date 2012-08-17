@@ -21,10 +21,16 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := bcc
-LOCAL_MODULE_TAGS := tests eng
-LOCAL_MODULE_CLASS := EXECUTABLES
 
-LOCAL_SHARED_LIBRARIES := libbcc
+LOCAL_SRC_FILES := \
+  main.cpp
+
+LOCAL_SHARED_LIBRARIES := \
+  libbcc
+
+LOCAL_C_INCLUDES := \
+  $(LOCAL_PATH)/../../include
+
 LOCAL_LDLIBS = -ldl
 LOCAL_SRC_FILES := Main.cpp
 
