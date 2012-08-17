@@ -34,8 +34,6 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
-LOCAL_MODULE_TAGS := tests eng
-
 LOCAL_LDLIBS = -ldl
 
 LOCAL_CFLAGS += -D__HOST__ -Wall -Werror

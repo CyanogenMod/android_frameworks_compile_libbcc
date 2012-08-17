@@ -41,8 +41,6 @@ LOCAL_CFLAGS += -D__HOST__
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
-LOCAL_MODULE_TAGS := tests
-
 LOCAL_LDLIBS = -ldl
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
