@@ -33,7 +33,7 @@ namespace llvm {
 }
 
 namespace bcc {
-  struct CompilerOption;
+  class CompilerOption;
 
   class ScriptCompiled {
     friend class Compiler;
