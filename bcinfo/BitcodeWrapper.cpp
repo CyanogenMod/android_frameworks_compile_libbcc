@@ -30,7 +30,7 @@ namespace bcinfo {
 
 BitcodeWrapper::BitcodeWrapper(const char *bitcode, size_t bitcodeSize)
     : mFileType(BC_NOT_BC), mBitcode(bitcode),
-      mBitcodeEnd(bitcode + bitcodeSize - 1), mBitcodeSize(bitcodeSize),
+      mBitcodeSize(bitcodeSize),
       mHeaderVersion(0), mTargetAPI(0), mCompilerVersion(0),
       mOptimizationLevel(3) {
   InMemoryWrapperInput inMem(mBitcode, mBitcodeSize);
