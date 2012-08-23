@@ -21,7 +21,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := mcld
-LOCAL_MODULE_TAGS := tests eng
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
