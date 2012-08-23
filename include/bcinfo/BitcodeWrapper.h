@@ -50,7 +50,6 @@ class BitcodeWrapper {
  private:
   enum BCFileType mFileType;
   const char *mBitcode;
-  const char *mBitcodeEnd;
   size_t mBitcodeSize;
 
   uint32_t mHeaderVersion;
