@@ -51,15 +51,18 @@
 
 std::string inFile;
 std::string outFile;
+std::string infoFile;
 
 extern int opterr;
 extern int optind;
 
 bool translateFlag = false;
+bool infoFlag = false;
+bool verbose = true;
 
 static int parseOption(int argc, char** argv) {
   int c;
-  while ((c = getopt(argc, argv, "t")) != -1) {
+  while ((c = getopt(argc, argv, "itv")) != -1) {
     opterr = 0;
 
     switch(c) {
@@ -69,6 +72,16 @@ static int parseOption(int argc, char** argv) {
 
       case 't':
         translateFlag = true;
+        break;
+
+      case 'i':
+        // Turn off verbose so that we only generate the .info file.
+        infoFlag = true;
+        verbose = false;
+        break;
+
+      case 'v':
+        verbose = true;
         break;
 
       default:
@@ -88,10 +101,54 @@ static int parseOption(int argc, char** argv) {
   int l = inFile.length();
   if (l > 3 && inFile[l-3] == '.' && inFile[l-2] == 'b' && inFile[l-1] == 'c') {
     outFile = std::string(inFile.begin(), inFile.end() - 3) + ".ll";
+    infoFile = std::string(inFile.begin(), inFile.end() - 3) + ".bcinfo";
   } else {
     outFile = inFile + ".ll";
+    infoFile = inFile + ".bcinfo";
   }
   return 1;
+}
+
+
+static int dumpInfo(bcinfo::MetadataExtractor *ME) {
+  if (!ME) {
+    return 1;
+  }
+
+  FILE *info = fopen(infoFile.c_str(), "w");
+  if (!info) {
+    fprintf(stderr, "Could not open info file %s\n", infoFile.c_str());
+    return 2;
+  }
+
+  fprintf(info, "exportVarCount: %u\n", ME->getExportVarCount());
+  const char **varNameList = ME->getExportVarNameList();
+  for (size_t i = 0; i < ME->getExportVarCount(); i++) {
+    fprintf(info, "%s\n", varNameList[i]);
+  }
+
+  fprintf(info, "exportFuncCount: %u\n", ME->getExportFuncCount());
+  const char **funcNameList = ME->getExportFuncNameList();
+  for (size_t i = 0; i < ME->getExportFuncCount(); i++) {
+    fprintf(info, "%s\n", funcNameList[i]);
+  }
+
+  fprintf(info, "exportForEachCount: %u\n",
+          ME->getExportForEachSignatureCount());
+  const char **nameList = ME->getExportForEachNameList();
+  const uint32_t *sigList = ME->getExportForEachSignatureList();
+  for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
+    fprintf(info, "%u - %s\n", sigList[i], nameList[i]);
+  }
+
+  fprintf(info, "objectSlotCount: %u\n", ME->getObjectSlotCount());
+  const uint32_t *slotList = ME->getObjectSlotList();
+  for (size_t i = 0; i < ME->getObjectSlotCount(); i++) {
+    fprintf(info, "%u\n", slotList[i]);
+  }
+
+  fclose(info);
+  return 0;
 }
 
 
@@ -218,14 +275,18 @@ int main(int argc, char** argv) {
   bcinfo::BitcodeWrapper bcWrapper((const char *)bitcode, bitcodeSize);
   if (bcWrapper.getBCFileType() == bcinfo::BC_WRAPPER) {
     version = bcWrapper.getTargetAPI();
-    printf("Found bitcodeWrapper\n");
+    if (verbose) {
+      printf("Found bitcodeWrapper\n");
+    }
   } else if (translateFlag) {
     version = 12;
   }
 
-  printf("targetAPI: %u\n", version);
-  printf("compilerVersion: %u\n", bcWrapper.getCompilerVersion());
-  printf("optimizationLevel: %u\n\n", bcWrapper.getOptimizationLevel());
+  if (verbose) {
+    printf("targetAPI: %u\n", version);
+    printf("compilerVersion: %u\n", bcWrapper.getCompilerVersion());
+    printf("optimizationLevel: %u\n\n", bcWrapper.getOptimizationLevel());
+  }
 
   llvm::OwningPtr<bcinfo::BitcodeTranslator> BT;
   BT.reset(new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version));
@@ -242,43 +303,52 @@ int main(int argc, char** argv) {
     return 4;
   }
 
-  dumpMetadata(ME.get());
+  if (verbose) {
+    dumpMetadata(ME.get());
 
-  const char *translatedBitcode = BT->getTranslatedBitcode();
-  size_t translatedBitcodeSize = BT->getTranslatedBitcodeSize();
+    const char *translatedBitcode = BT->getTranslatedBitcode();
+    size_t translatedBitcodeSize = BT->getTranslatedBitcodeSize();
 
-  llvm::LLVMContext &ctx = llvm::getGlobalContext();
-  llvm::llvm_shutdown_obj called_on_exit;
+    llvm::LLVMContext &ctx = llvm::getGlobalContext();
+    llvm::llvm_shutdown_obj called_on_exit;
 
-  llvm::OwningPtr<llvm::MemoryBuffer> mem;
+    llvm::OwningPtr<llvm::MemoryBuffer> mem;
 
-  mem.reset(llvm::MemoryBuffer::getMemBuffer(
-      llvm::StringRef(translatedBitcode, translatedBitcodeSize),
-      inFile.c_str(), false));
+    mem.reset(llvm::MemoryBuffer::getMemBuffer(
+        llvm::StringRef(translatedBitcode, translatedBitcodeSize),
+        inFile.c_str(), false));
 
-  llvm::OwningPtr<llvm::Module> module;
-  std::string errmsg;
-  module.reset(llvm::ParseBitcodeFile(mem.get(), ctx, &errmsg));
-  if (module.get() != 0 && module->MaterializeAllPermanently(&errmsg)) {
-    module.reset();
-  }
-
-  if (module.get() == 0) {
-    if (errmsg.size()) {
-      fprintf(stderr, "error: %s\n", errmsg.c_str());
-    } else {
-      fprintf(stderr, "error: failed to parse bitcode file\n");
+    llvm::OwningPtr<llvm::Module> module;
+    std::string errmsg;
+    module.reset(llvm::ParseBitcodeFile(mem.get(), ctx, &errmsg));
+    if (module.get() != 0 && module->MaterializeAllPermanently(&errmsg)) {
+      module.reset();
     }
-    return 5;
+
+    if (module.get() == 0) {
+      if (errmsg.size()) {
+        fprintf(stderr, "error: %s\n", errmsg.c_str());
+      } else {
+        fprintf(stderr, "error: failed to parse bitcode file\n");
+      }
+      return 5;
+    }
+
+    llvm::OwningPtr<llvm::tool_output_file> tof(
+        new llvm::tool_output_file(outFile.c_str(), errmsg,
+                                   llvm::raw_fd_ostream::F_Binary));
+    llvm::OwningPtr<llvm::AssemblyAnnotationWriter> ann;
+    module->print(tof->os(), ann.get());
+
+    tof->keep();
   }
 
-  llvm::OwningPtr<llvm::tool_output_file> tof(
-      new llvm::tool_output_file(outFile.c_str(), errmsg,
-                                 llvm::raw_fd_ostream::F_Binary));
-  llvm::OwningPtr<llvm::AssemblyAnnotationWriter> ann;
-  module->print(tof->os(), ann.get());
-
-  tof->keep();
+  if (infoFlag) {
+    if (dumpInfo(ME.get()) != 0) {
+      fprintf(stderr, "Error dumping info file\n");
+      return 6;
+    }
+  }
 
   releaseBitcode(&bitcode);
 
