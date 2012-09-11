@@ -843,7 +843,7 @@ extern float __attribute__((overloadable)) dot(float4 lhs, float4 rhs) {
 }
 
 extern float __attribute__((overloadable)) length(float v) {
-    return v;
+    return fabs(v);
 }
 extern float __attribute__((overloadable)) length(float2 v) {
     return sqrt(v.x*v.x + v.y*v.y);
