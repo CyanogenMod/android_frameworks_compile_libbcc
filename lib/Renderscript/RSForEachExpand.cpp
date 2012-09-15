@@ -25,6 +25,7 @@
 #include <llvm/IRBuilder.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Type.h>
 
@@ -75,6 +76,10 @@ private:
       return (1 << RootArgTys.size()) - 1;
     }
 
+    if (ExportForEachMetadata->getNumOperands() == 0) {
+      return 0;
+    }
+
     bccAssert(ExportForEachMetadata->getNumOperands() > 0);
 
     // We only handle the case for legacy root() functions here, so this is
@@ -119,24 +124,29 @@ private:
   }
 
   static bool hasIn(uint32_t Signature) {
-    return Signature & 1;
+    return Signature & 0x01;
   }
 
   static bool hasOut(uint32_t Signature) {
-    return Signature & 2;
+    return Signature & 0x02;
   }
 
   static bool hasUsrData(uint32_t Signature) {
-    return Signature & 4;
+    return Signature & 0x04;
   }
 
   static bool hasX(uint32_t Signature) {
-    return Signature & 8;
+    return Signature & 0x08;
   }
 
   static bool hasY(uint32_t Signature) {
-    return Signature & 16;
+    return Signature & 0x10;
   }
+
+  static bool isKernel(uint32_t Signature) {
+    return Signature & 0x20;
+  }
+
 
 public:
   RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
@@ -315,17 +325,17 @@ public:
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
-    llvm::Value *In = NULL;
-    llvm::Value *Out = NULL;
+    llvm::Value *InPtr = NULL;
+    llvm::Value *OutPtr = NULL;
 
     if (AIn) {
-      In = Builder.CreateLoad(AIn, "In");
-      RootArgs.push_back(In);
+      InPtr = Builder.CreateLoad(AIn, "InPtr");
+      RootArgs.push_back(InPtr);
     }
 
     if (AOut) {
-      Out = Builder.CreateLoad(AOut, "Out");
-      RootArgs.push_back(Out);
+      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
+      RootArgs.push_back(OutPtr);
     }
 
     if (UsrData) {
@@ -344,17 +354,233 @@ public:
 
     Builder.CreateCall(F, RootArgs);
 
-    if (In) {
-      // In += instep
+    if (InPtr) {
+      // InPtr += instep
       llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(In, Int32Ty), InStep), InTy);
+          Builder.CreatePtrToInt(InPtr, Int32Ty), InStep), InTy);
       Builder.CreateStore(NewIn, AIn);
     }
 
-    if (Out) {
-      // Out += outstep
+    if (OutPtr) {
+      // OutPtr += outstep
       llvm::Value *NewOut = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(Out, Int32Ty), OutStep), OutTy);
+          Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
+      Builder.CreateStore(NewOut, AOut);
+    }
+
+    // X++;
+    llvm::Value *XPlusOne =
+        Builder.CreateNUWAdd(X, llvm::ConstantInt::get(Int32Ty, 1));
+    Builder.CreateStore(XPlusOne, AX);
+
+    // If (X < x2) goto Loop; else goto Exit;
+    Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
+    Builder.CreateCondBr(Cond, Loop, Exit);
+
+    // Exit:
+    Builder.SetInsertPoint(Exit);
+    Builder.CreateRetVoid();
+
+    return true;
+  }
+
+  /* Expand a pass-by-value kernel.
+   */
+  bool ExpandKernel(llvm::Function *F, uint32_t Signature) {
+    bccAssert(isKernel(Signature));
+    ALOGV("Expanding kernel Function %s", F->getName().str().c_str());
+
+    // TODO: Refactor this to share functionality with ExpandFunction.
+    llvm::TargetData TD(M);
+
+    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
+    llvm::Type *SizeTy = Int32Ty;
+
+    /* Defined in frameworks/base/libs/rs/rs_hal.h:
+     *
+     * struct RsForEachStubParamStruct {
+     *   const void *in;
+     *   void *out;
+     *   const void *usr;
+     *   size_t usr_len;
+     *   uint32_t x;
+     *   uint32_t y;
+     *   uint32_t z;
+     *   uint32_t lod;
+     *   enum RsAllocationCubemapFace face;
+     *   uint32_t ar[16];
+     * };
+     */
+    llvm::SmallVector<llvm::Type*, 9> StructTys;
+    StructTys.push_back(VoidPtrTy);  // const void *in
+    StructTys.push_back(VoidPtrTy);  // void *out
+    StructTys.push_back(VoidPtrTy);  // const void *usr
+    StructTys.push_back(SizeTy);     // size_t usr_len
+    StructTys.push_back(Int32Ty);    // uint32_t x
+    StructTys.push_back(Int32Ty);    // uint32_t y
+    StructTys.push_back(Int32Ty);    // uint32_t z
+    StructTys.push_back(Int32Ty);    // uint32_t lod
+    StructTys.push_back(Int32Ty);    // enum RsAllocationCubemapFace
+    StructTys.push_back(llvm::ArrayType::get(Int32Ty, 16));  // uint32_t ar[16]
+
+    llvm::Type *ForEachStubPtrTy = llvm::StructType::create(
+        StructTys, "RsForEachStubParamStruct")->getPointerTo();
+
+    /* Create the function signature for our expanded function.
+     * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
+     *       uint32_t instep, uint32_t outstep)
+     */
+    llvm::SmallVector<llvm::Type*, 8> ParamTys;
+    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
+    ParamTys.push_back(Int32Ty);           // uint32_t x1
+    ParamTys.push_back(Int32Ty);           // uint32_t x2
+    ParamTys.push_back(Int32Ty);           // uint32_t instep
+    ParamTys.push_back(Int32Ty);           // uint32_t outstep
+
+    llvm::FunctionType *FT =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
+    llvm::Function *ExpandedFunc =
+        llvm::Function::Create(FT,
+                               llvm::GlobalValue::ExternalLinkage,
+                               F->getName() + ".expand", M);
+
+    // Create and name the actual arguments to this expanded function.
+    llvm::SmallVector<llvm::Argument*, 8> ArgVec;
+    for (llvm::Function::arg_iterator B = ExpandedFunc->arg_begin(),
+                                      E = ExpandedFunc->arg_end();
+         B != E;
+         ++B) {
+      ArgVec.push_back(B);
+    }
+
+    if (ArgVec.size() != 5) {
+      ALOGE("Incorrect number of arguments to function: %zu",
+            ArgVec.size());
+      return false;
+    }
+    llvm::Value *Arg_p = ArgVec[0];
+    llvm::Value *Arg_x1 = ArgVec[1];
+    llvm::Value *Arg_x2 = ArgVec[2];
+    llvm::Value *Arg_instep = ArgVec[3];
+    llvm::Value *Arg_outstep = ArgVec[4];
+
+    Arg_p->setName("p");
+    Arg_x1->setName("x1");
+    Arg_x2->setName("x2");
+    Arg_instep->setName("arg_instep");
+    Arg_outstep->setName("arg_outstep");
+
+    llvm::Value *InStep = NULL;
+    llvm::Value *OutStep = NULL;
+
+    // Construct the actual function body.
+    llvm::BasicBlock *Begin =
+        llvm::BasicBlock::Create(*C, "Begin", ExpandedFunc);
+    llvm::IRBuilder<> Builder(Begin);
+
+    // uint32_t X = x1;
+    llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
+    Builder.CreateStore(Arg_x1, AX);
+
+    // Collect and construct the arguments for the kernel().
+    // Note that we load any loop-invariant arguments before entering the Loop.
+    llvm::Function::arg_iterator Args = F->arg_begin();
+
+    llvm::Type *InBaseTy = NULL;
+    llvm::Type *InTy = NULL;
+    llvm::AllocaInst *AIn = NULL;
+    if (hasIn(Signature)) {
+      InBaseTy = Args->getType();
+      InTy =InBaseTy->getPointerTo();
+      AIn = Builder.CreateAlloca(InTy, 0, "AIn");
+      InStep = getStepValue(&TD, InTy, Arg_instep);
+      InStep->setName("instep");
+      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
+          Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
+      Args++;
+    }
+
+    llvm::Type *OutBaseTy = NULL;
+    llvm::Type *OutTy = NULL;
+    llvm::AllocaInst *AOut = NULL;
+    if (hasOut(Signature)) {
+      OutBaseTy = F->getReturnType();
+      OutTy = OutBaseTy->getPointerTo();
+      AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
+      OutStep = getStepValue(&TD, OutTy, Arg_outstep);
+      OutStep->setName("outstep");
+      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
+          Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
+      // We don't increment Args, since we are using the actual return type.
+    }
+
+    // No usrData parameter on kernels.
+    bccAssert(!hasUsrData(Signature));
+
+    if (hasX(Signature)) {
+      Args++;
+    }
+
+    llvm::Value *Y = NULL;
+    if (hasY(Signature)) {
+      Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
+      Args++;
+    }
+
+    bccAssert(Args == F->arg_end());
+
+    llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
+    llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
+
+    // if (x1 < x2) goto Loop; else goto Exit;
+    llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
+    Builder.CreateCondBr(Cond, Loop, Exit);
+
+    // Loop:
+    Builder.SetInsertPoint(Loop);
+
+    // Populate the actual call to kernel().
+    llvm::SmallVector<llvm::Value*, 8> RootArgs;
+
+    llvm::Value *InPtr = NULL;
+    llvm::Value *In = NULL;
+    llvm::Value *OutPtr = NULL;
+
+    if (AIn) {
+      InPtr = Builder.CreateLoad(AIn, "InPtr");
+      In = Builder.CreateLoad(InPtr, "In");
+      RootArgs.push_back(In);
+    }
+
+    // We always have to load X, since it is used to iterate through the loop.
+    llvm::Value *X = Builder.CreateLoad(AX, "X");
+    if (hasX(Signature)) {
+      RootArgs.push_back(X);
+    }
+
+    if (Y) {
+      RootArgs.push_back(Y);
+    }
+
+    llvm::Value *RetVal = Builder.CreateCall(F, RootArgs);
+
+    if (AOut) {
+      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
+      Builder.CreateStore(RetVal, OutPtr);
+    }
+
+    if (InPtr) {
+      // InPtr += instep
+      llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
+          Builder.CreatePtrToInt(InPtr, Int32Ty), InStep), InTy);
+      Builder.CreateStore(NewIn, AIn);
+    }
+
+    if (OutPtr) {
+      // OutPtr += outstep
+      llvm::Value *NewOut = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
+          Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
       Builder.CreateStore(NewOut, AOut);
     }
 
@@ -385,7 +611,10 @@ public:
       const char *name = func_iter->first;
       uint32_t signature = func_iter->second;
       llvm::Function *kernel = M.getFunction(name);
-      if (kernel && kernel->getReturnType()->isVoidTy()) {
+      if (kernel && isKernel(signature)) {
+        Changed |= ExpandKernel(kernel, signature);
+      }
+      else if (kernel && kernel->getReturnType()->isVoidTy()) {
         Changed |= ExpandFunction(kernel, signature);
       }
     }
