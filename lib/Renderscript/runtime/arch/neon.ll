@@ -738,38 +738,38 @@ define <4 x i8> @_Z18rsYuvToRGBA_uchar4hhh(i8 %pY, i8 %pU, i8 %pV) nounwind read
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;              APPROX_RECIP              ;;;;;;;;;;
+;;;;;;;;;              half_RECIP              ;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-define float @_Z12approx_recipf(float %v) {
+define float @_Z10half_recipf(float %v) {
   %1 = insertelement <2 x float> undef, float %v, i32 0
   %2 = tail call <2 x float> @llvm.arm.neon.vrecpe.v2f32(<2 x float> %1) nounwind readnone
   %3 = extractelement <2 x float> %2, i32 0
   ret float %3
 }
 
-define <2 x float> @_Z12approx_recip2Dv2_h(<2 x float> %v) nounwind readnone {
+define <2 x float> @_Z10half_recip2Dv2_h(<2 x float> %v) nounwind readnone {
   %1 = tail call <2 x float> @llvm.arm.neon.vrecpe.v2f32(<2 x float> %v) nounwind readnone
   ret <2 x float> %1
 }
 
-define <3 x float> @_Z12approx_recip3Dv3_h(<3 x float> %v) nounwind readnone {
+define <3 x float> @_Z10half_recip3Dv3_h(<3 x float> %v) nounwind readnone {
   %1 = shufflevector <3 x float> %v, <3 x float> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
   %2 = tail call <4 x float> @llvm.arm.neon.vrecpe.v4f32(<4 x float> %1) nounwind readnone
   %3 = shufflevector <4 x float> %2, <4 x float> undef, <3 x i32> <i32 0, i32 1, i32 2>
   ret <3 x float> %3
 }
 
-define <4 x float> @_Z12approx_recip4Dv4_h(<4 x float> %v) nounwind readnone {
+define <4 x float> @_Z10half_recip4Dv4_h(<4 x float> %v) nounwind readnone {
   %1 = tail call <4 x float> @llvm.arm.neon.vrecpe.v4f32(<4 x float> %v) nounwind readnone
   ret <4 x float> %1
 }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;              APPROX_SQRT               ;;;;;;;;;;
+;;;;;;;;;              half_SQRT               ;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-define float @_Z11approx_sqrtf(float %v) {
+define float @_Z9half_sqrtf(float %v) {
   %1 = insertelement <2 x float> undef, float %v, i32 0
   %2 = tail call <2 x float> @llvm.arm.neon.vrsqrte.v2f32(<2 x float> %1) nounwind readnone
   %3 = tail call <2 x float> @llvm.arm.neon.vrecpe.v2f32(<2 x float> %2) nounwind readnone
@@ -777,13 +777,13 @@ define float @_Z11approx_sqrtf(float %v) {
   ret float %4
 }
 
-define <2 x float> @_Z11approx_sqrt2Dv2_h(<2 x float> %v) nounwind readnone {
+define <2 x float> @_Z9half_sqrt2Dv2_h(<2 x float> %v) nounwind readnone {
   %1 = tail call <2 x float> @llvm.arm.neon.vrsqrte.v2f32(<2 x float> %v) nounwind readnone
   %2 = tail call <2 x float> @llvm.arm.neon.vrecpe.v2f32(<2 x float> %1) nounwind readnone
   ret <2 x float> %2
 }
 
-define <3 x float> @_Z11approx_sqrt3Dv3_h(<3 x float> %v) nounwind readnone {
+define <3 x float> @_Z9half_sqrt3Dv3_h(<3 x float> %v) nounwind readnone {
   %1 = shufflevector <3 x float> %v, <3 x float> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
   %2 = tail call <4 x float> @llvm.arm.neon.vrsqrte.v4f32(<4 x float> %1) nounwind readnone
   %3 = tail call <4 x float> @llvm.arm.neon.vrecpe.v4f32(<4 x float> %2) nounwind readnone
@@ -791,7 +791,7 @@ define <3 x float> @_Z11approx_sqrt3Dv3_h(<3 x float> %v) nounwind readnone {
   ret <3 x float> %4
 }
 
-define <4 x float> @_Z11approx_sqrt4Dv4_h(<4 x float> %v) nounwind readnone {
+define <4 x float> @_Z9half_sqrt4Dv4_h(<4 x float> %v) nounwind readnone {
   %1 = tail call <4 x float> @llvm.arm.neon.vrsqrte.v4f32(<4 x float> %v) nounwind readnone
   %2 = tail call <4 x float> @llvm.arm.neon.vrecpe.v4f32(<4 x float> %1) nounwind readnone
   ret <4 x float> %2
@@ -799,29 +799,29 @@ define <4 x float> @_Z11approx_sqrt4Dv4_h(<4 x float> %v) nounwind readnone {
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;              APPROX_RSQRT              ;;;;;;;;;;
+;;;;;;;;;              half_RSQRT              ;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-define float @_Z12approx_rsqrtf(float %v) {
+define float @_Z10half_rsqrtf(float %v) {
   %1 = insertelement <2 x float> undef, float %v, i32 0
   %2 = tail call <2 x float> @llvm.arm.neon.vrsqrte.v2f32(<2 x float> %1) nounwind readnone
   %3 = extractelement <2 x float> %2, i32 0
   ret float %3
 }
 
-define <2 x float> @_Z12approx_rsqrt2Dv2_h(<2 x float> %v) nounwind readnone {
+define <2 x float> @_Z10half_rsqrt2Dv2_h(<2 x float> %v) nounwind readnone {
   %1 = tail call <2 x float> @llvm.arm.neon.vrsqrte.v2f32(<2 x float> %v) nounwind readnone
   ret <2 x float> %1
 }
 
-define <3 x float> @_Z12approx_rsqrt3Dv3_h(<3 x float> %v) nounwind readnone {
+define <3 x float> @_Z10half_rsqrt3Dv3_h(<3 x float> %v) nounwind readnone {
   %1 = shufflevector <3 x float> %v, <3 x float> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
   %2 = tail call <4 x float> @llvm.arm.neon.vrsqrte.v4f32(<4 x float> %1) nounwind readnone
   %3 = shufflevector <4 x float> %2, <4 x float> undef, <3 x i32> <i32 0, i32 1, i32 2>
   ret <3 x float> %3
 }
 
-define <4 x float> @_Z12approx_rsqrt4Dv4_h(<4 x float> %v) nounwind readnone {
+define <4 x float> @_Z10half_rsqrt4Dv4_h(<4 x float> %v) nounwind readnone {
   %1 = tail call <4 x float> @llvm.arm.neon.vrsqrte.v4f32(<4 x float> %v) nounwind readnone
   ret <4 x float> %1
 }

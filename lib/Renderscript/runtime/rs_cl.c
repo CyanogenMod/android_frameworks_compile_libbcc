@@ -881,51 +881,52 @@ extern float4 __attribute__((overloadable)) normalize(float4 v) {
     return v / length(v);
 }
 
-extern float __attribute__((overloadable)) approx_sqrt(float);
+extern float __attribute__((overloadable)) half_sqrt(float);
 
-extern float __attribute__((overloadable)) approx_length(float v) {
+extern float __attribute__((overloadable)) fast_length(float v) {
     return v;
 }
-extern float __attribute__((overloadable)) approx_length(float2 v) {
-    return approx_sqrt(v.x*v.x + v.y*v.y);
+extern float __attribute__((overloadable)) fast_length(float2 v) {
+    return half_sqrt(v.x*v.x + v.y*v.y);
 }
-extern float __attribute__((overloadable)) approx_length(float3 v) {
-    return approx_sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+extern float __attribute__((overloadable)) fast_length(float3 v) {
+    return half_sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
 }
-extern float __attribute__((overloadable)) approx_length(float4 v) {
-    return approx_sqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
-}
-
-extern float __attribute__((overloadable)) approx_distance(float lhs, float rhs) {
-    return approx_length(lhs - rhs);
-}
-extern float __attribute__((overloadable)) approx_distance(float2 lhs, float2 rhs) {
-    return approx_length(lhs - rhs);
-}
-extern float __attribute__((overloadable)) approx_distance(float3 lhs, float3 rhs) {
-    return approx_length(lhs - rhs);
-}
-extern float __attribute__((overloadable)) approx_distance(float4 lhs, float4 rhs) {
-    return approx_length(lhs - rhs);
+extern float __attribute__((overloadable)) fast_length(float4 v) {
+    return half_sqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
 }
 
-extern float __attribute__((overloadable)) approx_rsqrt(float);
+extern float __attribute__((overloadable)) fast_distance(float lhs, float rhs) {
+    return fast_length(lhs - rhs);
+}
+extern float __attribute__((overloadable)) fast_distance(float2 lhs, float2 rhs) {
+    return fast_length(lhs - rhs);
+}
+extern float __attribute__((overloadable)) fast_distance(float3 lhs, float3 rhs) {
+    return fast_length(lhs - rhs);
+}
+extern float __attribute__((overloadable)) fast_distance(float4 lhs, float4 rhs) {
+    return fast_length(lhs - rhs);
+}
 
-extern float __attribute__((overloadable)) approx_normalize(float v) {
+extern float __attribute__((overloadable)) half_rsqrt(float);
+
+extern float __attribute__((overloadable)) fast_normalize(float v) {
     return 1.f;
 }
-extern float2 __attribute__((overloadable)) approx_normalize(float2 v) {
-    return v * approx_rsqrt(v.x*v.x + v.y*v.y);
+extern float2 __attribute__((overloadable)) fast_normalize(float2 v) {
+    return v * half_rsqrt(v.x*v.x + v.y*v.y);
 }
-extern float3 __attribute__((overloadable)) approx_normalize(float3 v) {
-    return v * approx_rsqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+extern float3 __attribute__((overloadable)) fast_normalize(float3 v) {
+    return v * half_rsqrt(v.x*v.x + v.y*v.y + v.z*v.z);
 }
-extern float4 __attribute__((overloadable)) approx_normalize(float4 v) {
-    return v * approx_rsqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
+extern float4 __attribute__((overloadable)) fast_normalize(float4 v) {
+    return v * half_rsqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
 }
 
-extern float __attribute__((overloadable)) approx_recip(float);
+extern float __attribute__((overloadable)) half_recip(float);
 
+/*
 extern float __attribute__((overloadable)) approx_atan(float x) {
     if (x == 0.f)
         return 0.f;
@@ -936,6 +937,7 @@ extern float __attribute__((overloadable)) approx_atan(float x) {
     return x * approx_recip(1.f + 0.28f * x*x);
 }
 FN_FUNC_FN(approx_atan)
+*/
 
 #undef FN_FUNC_FN
 #undef IN_FUNC_FN
