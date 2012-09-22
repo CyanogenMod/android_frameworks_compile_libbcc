@@ -487,6 +487,26 @@ public:
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator Args = F->arg_begin();
 
+    llvm::Type *OutTy = NULL;
+    llvm::AllocaInst *AOut = NULL;
+    bool PassOutByReference = false;
+    if (hasOut(Signature)) {
+      llvm::Type *OutBaseTy = F->getReturnType();
+      if (OutBaseTy->isVoidTy()) {
+        PassOutByReference = true;
+        OutTy = Args->getType();
+        Args++;
+      } else {
+        OutTy = OutBaseTy->getPointerTo();
+        // We don't increment Args, since we are using the actual return type.
+      }
+      AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
+      OutStep = getStepValue(&TD, OutTy, Arg_outstep);
+      OutStep->setName("outstep");
+      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
+          Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
+    }
+
     llvm::Type *InBaseTy = NULL;
     llvm::Type *InTy = NULL;
     llvm::AllocaInst *AIn = NULL;
@@ -499,20 +519,6 @@ public:
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
       Args++;
-    }
-
-    llvm::Type *OutBaseTy = NULL;
-    llvm::Type *OutTy = NULL;
-    llvm::AllocaInst *AOut = NULL;
-    if (hasOut(Signature)) {
-      OutBaseTy = F->getReturnType();
-      OutTy = OutBaseTy->getPointerTo();
-      AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
-      OutStep = getStepValue(&TD, OutTy, Arg_outstep);
-      OutStep->setName("outstep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
-      // We don't increment Args, since we are using the actual return type.
     }
 
     // No usrData parameter on kernels.
@@ -547,6 +553,11 @@ public:
     llvm::Value *In = NULL;
     llvm::Value *OutPtr = NULL;
 
+    if (PassOutByReference) {
+      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
+      RootArgs.push_back(OutPtr);
+    }
+
     if (AIn) {
       InPtr = Builder.CreateLoad(AIn, "InPtr");
       In = Builder.CreateLoad(InPtr, "In");
@@ -565,7 +576,7 @@ public:
 
     llvm::Value *RetVal = Builder.CreateCall(F, RootArgs);
 
-    if (AOut) {
+    if (AOut && !PassOutByReference) {
       OutPtr = Builder.CreateLoad(AOut, "OutPtr");
       Builder.CreateStore(RetVal, OutPtr);
     }
