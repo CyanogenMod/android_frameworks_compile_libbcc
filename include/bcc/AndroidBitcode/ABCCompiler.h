@@ -28,7 +28,10 @@ private:
   const ABCCompilerDriver &mDriver;
 
 public:
-  ABCCompiler(const ABCCompilerDriver &pDriver) : mDriver(pDriver) { }
+  ABCCompiler(const ABCCompilerDriver &pDriver) : mDriver(pDriver) {
+    // Disable LTO
+    enableLTO(false);
+  }
 
   virtual ~ABCCompiler() { }
 
