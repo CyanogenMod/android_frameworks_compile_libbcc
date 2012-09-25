@@ -115,7 +115,7 @@ private:
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     if (mEnableStepOpt && T != VoidPtrTy && PT) {
       llvm::Type *ET = PT->getElementType();
-      uint64_t ETSize = TD->getTypeStoreSize(ET);
+      uint64_t ETSize = TD->getTypeAllocSize(ET);
       llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
       return llvm::ConstantInt::get(Int32Ty, ETSize);
     } else {
