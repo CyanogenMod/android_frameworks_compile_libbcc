@@ -117,6 +117,11 @@ bool ABCCompilerDriver::configLinker() {
   // -Bsymbolic.
   mLinkerConfig->setBsymbolic(true);
 
+  // Set kRelro for -z relro
+  // Not set kExecStack for -z noexecstack
+  // Not set kLazy for -z now
+  mLinkerConfig->setZOption(LinkerConfig::kRelro);
+
   // Config the linker.
   Linker::ErrorCode result = mLinker.config(*mLinkerConfig);
   if (result != Linker::kSuccess) {
