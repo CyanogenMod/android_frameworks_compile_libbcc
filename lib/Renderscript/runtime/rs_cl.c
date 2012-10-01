@@ -1,5 +1,9 @@
 #include "rs_types.rsh"
 
+extern float2 __attribute__((overloadable)) convert_float2(int2 c);
+extern float3 __attribute__((overloadable)) convert_float3(int3 c);
+extern float4 __attribute__((overloadable)) convert_float4(int4 c);
+
 // Float ops, 6.11.2
 
 #define FN_FUNC_FN(fnc)                                         \
@@ -492,13 +496,16 @@ extern float __attribute__((overloadable)) pown(float v, int p) {
     return pow(v, (float)p);
 }
 extern float2 __attribute__((overloadable)) pown(float2 v, int2 p) {
-    return pow(v, (float2)p);
+    float2 f2 = convert_float2(p);
+    return pow(v, f2);
 }
 extern float3 __attribute__((overloadable)) pown(float3 v, int3 p) {
-    return pow(v, (float3)p);
+    float3 f3 = convert_float3(p);
+    return pow(v, f3);
 }
 extern float4 __attribute__((overloadable)) pown(float4 v, int4 p) {
-    return pow(v, (float4)p);
+    float4 f4 = convert_float4(p);
+    return pow(v, f4);
 }
 
 extern float __attribute__((overloadable)) powr(float v, float p) {
