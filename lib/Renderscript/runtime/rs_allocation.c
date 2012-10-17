@@ -71,3 +71,29 @@ extern rs_element __attribute__((overloadable))
     rs_element returnElem = {type->mHal.state.element};
     return returnElem;
 }
+
+// TODO: this needs to be optimized, obviously
+static void memcpy(void* dst, void* src, size_t size) {
+    char* dst_c = (char*) dst, *src_c = (char*) src;
+    for (; size > 0; size--) {
+        *dst_c++ = *src_c++;
+    }
+}
+
+extern void __attribute__((overloadable))
+        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    memcpy((void*)&p[eSize * x], ptr, eSize);
+}
+
+extern void __attribute__((overloadable))
+        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x, uint32_t y) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t stride = alloc->mHal.drvState.stride;
+    memcpy((void*)&p[(eSize * x) + (y * stride)], ptr, eSize);
+}
+
