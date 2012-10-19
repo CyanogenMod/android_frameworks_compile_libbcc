@@ -338,6 +338,9 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   //===--------------------------------------------------------------------===//
   if (object_slots != NULL) {
     llvm::MDNode *node;
+    for (unsigned int i = 0; i <= export_var->getNumOperands(); i++) {
+      result->mObjectSlots.push(0);
+    }
     FOR_EACH_NODE_IN(object_slots, node) {
       llvm::StringRef val = getStringFromOperand(node->getOperand(0));
       if (val.empty()) {
@@ -349,6 +352,8 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
           ALOGE("Non-integer object slot value '%s' in %s!", val.str().c_str(),
                 module.getModuleIdentifier().c_str());
           goto bail;
+        } else {
+          result->mObjectSlots.editItemAt(slot) = 1;
         }
       }
     }
