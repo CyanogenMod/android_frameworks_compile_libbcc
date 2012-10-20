@@ -834,31 +834,10 @@ extern float4 __attribute__((overloadable)) cross(float4 lhs, float4 rhs) {
     return r;
 }
 
-extern float __attribute__((overloadable)) dot(float lhs, float rhs) {
-    return lhs * rhs;
-}
-extern float __attribute__((overloadable)) dot(float2 lhs, float2 rhs) {
-    return lhs.x*rhs.x + lhs.y*rhs.y;
-}
-extern float __attribute__((overloadable)) dot(float3 lhs, float3 rhs) {
-    return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z;
-}
-extern float __attribute__((overloadable)) dot(float4 lhs, float4 rhs) {
-    return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z + lhs.w*rhs.w;
-}
-
-extern float __attribute__((overloadable)) length(float v) {
-    return fabs(v);
-}
-extern float __attribute__((overloadable)) length(float2 v) {
-    return sqrt(v.x*v.x + v.y*v.y);
-}
-extern float __attribute__((overloadable)) length(float3 v) {
-    return sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
-}
-extern float __attribute__((overloadable)) length(float4 v) {
-    return sqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
-}
+extern float __attribute__((overloadable)) length(float v);
+extern float __attribute__((overloadable)) length(float2 v);
+extern float __attribute__((overloadable)) length(float3 v);
+extern float __attribute__((overloadable)) length(float4 v);
 
 extern float __attribute__((overloadable)) distance(float lhs, float rhs) {
     return length(lhs - rhs);

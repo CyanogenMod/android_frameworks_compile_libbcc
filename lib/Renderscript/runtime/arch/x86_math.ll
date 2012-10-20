@@ -5,6 +5,8 @@ declare float @llvm.sqrt.f32(float) nounwind readnone
 declare <2 x float> @llvm.sqrt.v2f32(<2 x float>) nounwind readnone
 declare <3 x float> @llvm.sqrt.v3f32(<3 x float>) nounwind readnone
 declare <4 x float> @llvm.sqrt.v4f32(<4 x float>) nounwind readnone
+declare float @llvm.exp.f32(float) nounwind readonly
+declare float @llvm.pow.f32(float, float) nounwind readonly
 
 define float @_Z4sqrtf(float %in) nounwind readnone alwaysinline {
   %1 = tail call float @llvm.sqrt.f32(float %in) nounwind readnone
@@ -26,8 +28,13 @@ define <4 x float> @_Z4sqrtDv4_f(<4 x float> %in) nounwind readnone alwaysinline
   ret <4 x float> %1
 }
 
-declare float @llvm.pow.f32(float, float)
-define float @_Z3powf(float %v1, float %v2) {
-  %1 = tail call float @llvm.pow.f32(float  %v1, float %v2)
+define float @_Z3expf(float %in) nounwind readnone {
+  %1 = tail call float @llvm.exp.f32(float %in) nounwind readnone
   ret float %1
 }
+
+define float @_Z3powff(float %v1, float %v2) nounwind readnone {
+  %1 = tail call float @llvm.pow.f32(float %v1, float %v2) nounwind readnone
+  ret float %1
+}
+
