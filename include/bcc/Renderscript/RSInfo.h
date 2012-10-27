@@ -153,7 +153,7 @@ public:
 
 public:
   // Calculate or load the SHA-1 information of the built-in dependencies.
-  static void LoadBuiltInSHA1Information();
+  static bool LoadBuiltInSHA1Information();
 
   // Return the path of the RS info file corresponded to the given output
   // executable file.

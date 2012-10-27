@@ -184,7 +184,9 @@ RSExecutable *
 RSCompilerDriver::compileScript(RSScript &pScript,
                                 const char* pScriptName,
                                 const char *pOutputPath,
-                                const RSInfo::DependencyTableTy &pDeps) {
+                                const char *pRuntimePath,
+                                const RSInfo::DependencyTableTy &pDeps,
+                                bool pSkipLoad) {
   android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
   RSExecutable *result = NULL;
   RSInfo *info = NULL;
@@ -209,7 +211,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // Link RS script with Renderscript runtime.
   //===--------------------------------------------------------------------===//
-  if (!RSScript::LinkRuntime(pScript)) {
+  if (!RSScript::LinkRuntime(pScript, pRuntimePath)) {
     ALOGE("Failed to link script '%s' with Renderscript runtime!", pScriptName);
     return NULL;
   }
@@ -276,6 +278,12 @@ RSCompilerDriver::compileScript(RSScript &pScript,
     return NULL;
   }
 
+  // No need to produce an RSExecutable in this case.
+  // TODO: Error handling in this case is nonexistent.
+  if (pSkipLoad) {
+    return NULL;
+  }
+
   //===--------------------------------------------------------------------===//
   // Create the RSExecutable.
   //===--------------------------------------------------------------------===//
@@ -317,7 +325,8 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
                                       const char *pCacheDir,
                                       const char *pResName,
                                       const char *pBitcode,
-                                      size_t pBitcodeSize) {
+                                      size_t pBitcodeSize,
+                                      const char *pRuntimePath) {
   android::StopWatch build_time("bcc: RSCompilerDriver::build time");
   //===--------------------------------------------------------------------===//
   // Check parameters.
@@ -393,7 +402,8 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   // Compile the script
   //===--------------------------------------------------------------------===//
-  result = compileScript(*script, pResName, output_path.c_str(), dep_info);
+  result = compileScript(*script, pResName, output_path.c_str(), pRuntimePath,
+                         dep_info, false);
 
   // Script is no longer used. Free it to get more memory.
   delete script;
@@ -404,3 +414,19 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
 
   return result;
 }
+
+
+RSExecutable *RSCompilerDriver::build(RSScript &pScript, const char *pOut,
+                                      const char *pRuntimePath) {
+  RSInfo::DependencyTableTy dep_info;
+  RSInfo *info = RSInfo::ExtractFromSource(pScript.getSource(), dep_info);
+  if (info == NULL) {
+    return NULL;
+  }
+  pScript.setInfo(info);
+
+  RSExecutable *result = compileScript(pScript, pOut, pOut, pRuntimePath,
+                                       dep_info, true);
+  return result;
+}
+

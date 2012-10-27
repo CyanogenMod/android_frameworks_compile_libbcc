@@ -49,7 +49,7 @@ private:
   virtual bool doReset();
 
 public:
-  static bool LinkRuntime(RSScript &pScript);
+  static bool LinkRuntime(RSScript &pScript, const char *rt_path = NULL);
 
   RSScript(Source &pSource);
 

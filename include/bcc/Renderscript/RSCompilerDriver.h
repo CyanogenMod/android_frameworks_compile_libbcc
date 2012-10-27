@@ -49,7 +49,9 @@ private:
   RSExecutable *compileScript(RSScript &pScript,
                               const char* pScriptName,
                               const char *pOutputPath,
-                              const RSInfo::DependencyTableTy &pDeps);
+                              const char *pRuntimePath,
+                              const RSInfo::DependencyTableTy &pDeps,
+                              bool pSkipLoad);
 
 public:
   RSCompilerDriver();
@@ -61,12 +63,23 @@ public:
   inline void setRSRuntimeLookupContext(void *pContext)
   { mRSRuntime.setContext(pContext); }
 
+  RSCompiler *getCompiler() {
+    return &mCompiler;
+  }
+
+  void setConfig(CompilerConfig *config) {
+    mConfig = config;
+  }
+
   // FIXME: This method accompany with loadScriptCache and compileScript should
   //        all be const-methods. They're not now because the getAddress() in
   //        SymbolResolverInterface is not a const-method.
   RSExecutable *build(BCCContext &pContext,
                       const char *pCacheDir, const char *pResName,
-                      const char *pBitcode, size_t pBitcodeSize);
+                      const char *pBitcode, size_t pBitcodeSize,
+                      const char *pRuntimePath);
+  RSExecutable *build(RSScript &pScript, const char *pOut,
+                      const char *pRuntimePath);
 };
 
 } // end namespace bcc

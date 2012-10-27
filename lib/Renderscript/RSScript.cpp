@@ -22,7 +22,7 @@
 
 using namespace bcc;
 
-bool RSScript::LinkRuntime(RSScript &pScript) {
+bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
   // Using the same context with the source in pScript.
   BCCContext &context = pScript.getSource().getContext();
   const char* core_lib = RSInfo::LibCLCorePath;
@@ -36,6 +36,10 @@ bool RSScript::LinkRuntime(RSScript &pScript) {
     core_lib = RSInfo::LibCLCoreNEONPath;
   }
 #endif
+
+  if (rt_path != NULL) {
+    core_lib = rt_path;
+  }
 
   Source *libclcore_source = Source::CreateFromFile(context, core_lib);
   if (libclcore_source == NULL) {

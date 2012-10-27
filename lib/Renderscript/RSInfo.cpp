@@ -43,17 +43,18 @@ const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
 const uint8_t *RSInfo::LibCLCoreNEONSHA1 = NULL;
 #endif
 
-void RSInfo::LoadBuiltInSHA1Information() {
+bool RSInfo::LoadBuiltInSHA1Information() {
+#ifdef TARGET_BUILD
   if (LibBCCSHA1 != NULL) {
     // Loaded before.
-    return;
+    return true;
   }
 
   void *h = ::dlopen("/system/lib/libbcc.sha1.so", RTLD_LAZY | RTLD_NOW);
   if (h == NULL) {
     ALOGE("Failed to load SHA-1 information from shared library '"
           "/system/lib/libbcc.sha1.so'! (%s)", ::dlerror());
-    return;
+    return false;
   }
 
   LibBCCSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libbcc_so_SHA1"));
@@ -65,7 +66,10 @@ void RSInfo::LoadBuiltInSHA1Information() {
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_neon_bc_SHA1"));
 #endif
 
-  return;
+  return true;
+#else  // TARGET_BUILD
+  return false;
+#endif  // TARGET_BUILD
 }
 
 android::String8 RSInfo::GetPath(const FileBase &pFile) {
