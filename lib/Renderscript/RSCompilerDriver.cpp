@@ -425,6 +425,10 @@ RSExecutable *RSCompilerDriver::build(RSScript &pScript, const char *pOut,
   }
   pScript.setInfo(info);
 
+  // Embed the info string directly in the ELF, since this path is for an
+  // offline (host) compilation.
+  pScript.setEmbedInfo(true);
+
   RSExecutable *result = compileScript(pScript, pOut, pOut, pRuntimePath,
                                        dep_info, true);
   return result;

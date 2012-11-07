@@ -28,11 +28,11 @@
 using namespace bcc;
 
 const char *RSExecutable::SpecialFunctionNames[] = {
-  "root",
-  "init",
-  ".rs.dtor",
-  // Must be NULL-terminated.
-  NULL
+  "root",      // Graphics drawing function or compute kernel.
+  "init",      // Initialization routine called implicitly on startup.
+  ".rs.dtor",  // Static global destructor for a script instance.
+  ".rs.info",  // Variable containing string of RS metadata info.
+  NULL         // Must be NULL-terminated.
 };
 
 RSExecutable *RSExecutable::Create(RSInfo &pInfo,

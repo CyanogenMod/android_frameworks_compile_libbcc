@@ -106,6 +106,9 @@ bool RSCompiler::beforeExecuteLTOPasses(Script &pScript,
   // Expand ForEach on CPU path to reduce launch overhead.
   rs_passes.add(createRSForEachExpandPass(info->getExportForeachFuncs(),
                                           /* pEnableStepOpt */ true));
+  if (script.getEmbedInfo()) {
+    rs_passes.add(createRSEmbedInfoPass(info));
+  }
 
   // Execute the pass.
   rs_passes.run(module);

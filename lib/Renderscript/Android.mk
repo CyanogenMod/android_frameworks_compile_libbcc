@@ -24,6 +24,7 @@ LOCAL_PATH := $(call my-dir)
 libbcc_renderscript_SRC_FILES := \
   RSCompiler.cpp \
   RSCompilerDriver.cpp \
+  RSEmbedInfo.cpp \
   RSExecutable.cpp \
   RSForEachExpand.cpp \
   RSInfo.cpp \
