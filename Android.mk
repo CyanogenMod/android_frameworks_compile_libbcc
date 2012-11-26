@@ -109,7 +109,7 @@ else
       libmcldMipsTarget \
       libmcldMipsInfo
   else
-    ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
+    ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64 x32))
       LOCAL_WHOLE_STATIC_LIBRARIES += \
         libmcldX86Target \
         libmcldX86Info

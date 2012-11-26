@@ -52,7 +52,7 @@ else
   ifeq ($(TARGET_ARCH),mips)
     LOCAL_CFLAGS += -DFORCE_MIPS_CODEGEN
   else
-    ifeq ($(TARGET_ARCH),x86)
+    ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64 x32))
       LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
       ifeq ($(ARCH_X86_HAVE_SSE2), true)
         LOCAL_CFLAGS += -DARCH_X86_HAVE_SSE2
