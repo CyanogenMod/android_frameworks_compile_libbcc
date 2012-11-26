@@ -9,7 +9,7 @@ static const void * __attribute__((overloadable))
         getElementAt(rs_allocation a, uint32_t x, uint32_t lod) {
     Allocation_t *alloc = (Allocation_t *)a.p;
     const Type_t *type = (const Type_t*)alloc->mHal.state.type;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
 
     const uint32_t offset = type->mHal.state.lodOffset[lod];
     const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
@@ -21,13 +21,13 @@ static const void * __attribute__((overloadable))
         getElementAt(rs_allocation a, uint32_t x, uint32_t y, uint32_t lod) {
     Allocation_t *alloc = (Allocation_t *)a.p;
     const Type_t *type = (const Type_t*)alloc->mHal.state.type;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
 
     const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
     const uint32_t offset = type->mHal.state.lodOffset[lod];
     uint32_t stride;
     if(lod == 0) {
-        stride = alloc->mHal.drvState.stride;
+        stride = alloc->mHal.drvState.lod[0].stride;
     } else {
         stride = type->mHal.state.lodDimX[lod] * eSize;
     }

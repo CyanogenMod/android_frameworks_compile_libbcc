@@ -47,8 +47,16 @@ typedef struct Allocation {
         } state;
 
         struct DrvState {
-            void * mallocPtr;
-            uint32_t stride;
+            struct LodState {
+                void * mallocPtr;
+                size_t stride;
+                uint32_t dimX;
+                uint32_t dimY;
+                uint32_t dimZ;
+            } lod[16/*android::renderscript::Allocation::MAX_LOD*/];
+            size_t faceOffset;
+            uint32_t lodCount;
+            uint32_t faceCount;
         } drvState;
     } mHal;
 } Allocation_t;
