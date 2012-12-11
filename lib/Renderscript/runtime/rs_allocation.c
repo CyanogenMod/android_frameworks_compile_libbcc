@@ -97,3 +97,62 @@ extern void __attribute__((overloadable))
     memcpy((void*)&p[(eSize * x) + (y * stride)], ptr, eSize);
 }
 
+#define SET_ELEMENT_AT(T)                                               \
+    extern void __attribute__((overloadable))                           \
+    __rsSetElementAt_##T(rs_allocation a, T val, uint32_t x) {          \
+        Allocation_t *alloc = (Allocation_t *)a.p;                      \
+        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        const uint32_t eSize = sizeof(T);                               \
+        *((T*)&p[(eSize * x)]) = val;                                   \
+    }                                                                   \
+    extern void __attribute__((overloadable))                           \
+    __rsSetElementAt_##T(rs_allocation a, T val, uint32_t x, uint32_t y) { \
+        Allocation_t *alloc = (Allocation_t *)a.p;                      \
+        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        const uint32_t eSize = sizeof(T);                               \
+        const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
+        *((T*)&p[(eSize * x) + (y * stride)]) = val;                    \
+    }
+
+SET_ELEMENT_AT(char)
+SET_ELEMENT_AT(char2)
+SET_ELEMENT_AT(char3)
+SET_ELEMENT_AT(char4)
+SET_ELEMENT_AT(uchar)
+SET_ELEMENT_AT(uchar2)
+SET_ELEMENT_AT(uchar3)
+SET_ELEMENT_AT(uchar4)
+SET_ELEMENT_AT(short)
+SET_ELEMENT_AT(short2)
+SET_ELEMENT_AT(short3)
+SET_ELEMENT_AT(short4)
+SET_ELEMENT_AT(ushort)
+SET_ELEMENT_AT(ushort2)
+SET_ELEMENT_AT(ushort3)
+SET_ELEMENT_AT(ushort4)
+SET_ELEMENT_AT(int)
+SET_ELEMENT_AT(int2)
+SET_ELEMENT_AT(int3)
+SET_ELEMENT_AT(int4)
+SET_ELEMENT_AT(uint)
+SET_ELEMENT_AT(uint2)
+SET_ELEMENT_AT(uint3)
+SET_ELEMENT_AT(uint4)
+SET_ELEMENT_AT(long)
+SET_ELEMENT_AT(long2)
+SET_ELEMENT_AT(long3)
+SET_ELEMENT_AT(long4)
+SET_ELEMENT_AT(ulong)
+SET_ELEMENT_AT(ulong2)
+SET_ELEMENT_AT(ulong3)
+SET_ELEMENT_AT(ulong4)
+SET_ELEMENT_AT(float)
+SET_ELEMENT_AT(float2)
+SET_ELEMENT_AT(float3)
+SET_ELEMENT_AT(float4)
+SET_ELEMENT_AT(double)
+SET_ELEMENT_AT(double2)
+SET_ELEMENT_AT(double3)
+SET_ELEMENT_AT(double4)
+
+#undef SET_ELEMENT_AT
