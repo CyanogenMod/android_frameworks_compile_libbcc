@@ -404,8 +404,10 @@ FN_FUNC_FN(exp10)
 extern float __attribute__((overloadable)) expm1(float);
 FN_FUNC_FN(expm1)
 
-extern float __attribute__((overloadable)) fabs(float);
-FN_FUNC_FN(fabs)
+extern float __attribute__((overloadable)) fabs(float v);
+extern float2 __attribute__((overloadable)) fabs(float2 v);
+extern float3 __attribute__((overloadable)) fabs(float3 v);
+extern float4 __attribute__((overloadable)) fabs(float4 v);
 
 extern float __attribute__((overloadable)) fdim(float, float);
 FN_FUNC_FN_FN(fdim)
