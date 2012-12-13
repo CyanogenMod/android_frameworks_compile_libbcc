@@ -21,6 +21,7 @@
 
 #include <cstring>
 #include <new>
+#include <string>
 
 #include "bcc/Support/FileBase.h"
 #include "bcc/Support/Log.h"
@@ -319,33 +320,36 @@ rsinfo::StringIndexTy RSInfo::getStringIdxInPool(const char *pStr) const {
 
 RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
   // Check to see if we have any FP precision-related pragmas.
-  static const char relaxed_pragma[] = "rs_fp_relaxed";
-  static const char imprecise_pragma[] = "rs_fp_imprecise";
-  static const char full_pragma[] = "rs_fp_full";
+  std::string relaxed_pragma("rs_fp_relaxed");
+  std::string imprecise_pragma("rs_fp_imprecise");
+  std::string full_pragma("rs_fp_full");
   bool relaxed_pragma_seen = false;
-  RSInfo::FloatPrecision result;
+  bool imprecise_pragma_seen = false;
+  RSInfo::FloatPrecision result = FP_Full;
 
   for (PragmaListTy::const_iterator pragma_iter = mPragmas.begin(),
            pragma_end = mPragmas.end(); pragma_iter != pragma_end;
        pragma_iter++) {
     const char *pragma_key = pragma_iter->first;
-    if (::strcmp(pragma_key, relaxed_pragma) == 0) {
-      relaxed_pragma_seen = true;
-    } else if (::strcmp(pragma_key, imprecise_pragma) == 0) {
-      if (relaxed_pragma_seen) {
-        ALOGW("Multiple float precision pragmas specified!");
+    if (!relaxed_pragma.compare(pragma_key)) {
+      if (relaxed_pragma_seen || imprecise_pragma_seen) {
+        ALOGE("Multiple float precision pragmas specified!");
       }
-      // Fast return when there's rs_fp_imprecise specified.
-      result = FP_Imprecise;
+      relaxed_pragma_seen = true;
+    } else if (!imprecise_pragma.compare(pragma_key)) {
+      if (relaxed_pragma_seen || imprecise_pragma_seen) {
+        ALOGE("Multiple float precision pragmas specified!");
+      }
+      imprecise_pragma_seen = true;
     }
   }
 
   // Imprecise is selected over Relaxed precision.
   // In the absence of both, we stick to the default Full precision.
-  if (relaxed_pragma_seen) {
+  if (imprecise_pragma_seen) {
+    result = FP_Imprecise;
+  } else if (relaxed_pragma_seen) {
     result = FP_Relaxed;
-  } else {
-    result = FP_Full;
   }
 
   // Provide an override for precsion via adb shell setprop
@@ -356,13 +360,13 @@ RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
   property_get("debug.rs.precision", precision_prop_buf, "");
 
   if (precision_prop_buf[0]) {
-    if (::strcmp(precision_prop_buf, relaxed_pragma) == 0) {
+    if (!relaxed_pragma.compare(precision_prop_buf)) {
       ALOGI("Switching to RS FP relaxed mode via setprop");
       result = FP_Relaxed;
-    } else if (::strcmp(precision_prop_buf, imprecise_pragma) == 0) {
+    } else if (!imprecise_pragma.compare(precision_prop_buf)) {
       ALOGI("Switching to RS FP imprecise mode via setprop");
       result = FP_Imprecise;
-    } else if (::strcmp(precision_prop_buf, full_pragma) == 0) {
+    } else if (!full_pragma.compare(precision_prop_buf)) {
       ALOGI("Switching to RS FP full mode via setprop");
       result = FP_Full;
     }
