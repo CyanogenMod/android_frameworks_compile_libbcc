@@ -18,6 +18,7 @@
 #include "bcc/Renderscript/RSTransforms.h"
 
 #include <cstdlib>
+#include <vector>
 
 #include <llvm/DerivedTypes.h>
 #include <llvm/Function.h>
@@ -106,13 +107,22 @@ public:
         << foreach_func_iter->first << "\n";
     }
 
+    std::vector<unsigned int> object_slot_numbers;
+    unsigned int i = 0;
     const RSInfo::ObjectSlotListTy &object_slots = mInfo->getObjectSlots();
-    s << "objectSlotCount: " << (unsigned int) object_slots.size() << "\n";
     for (RSInfo::ObjectSlotListTy::const_iterator
              slots_iter = object_slots.begin(),
              slots_end = object_slots.end();
          slots_iter != slots_end; slots_iter++) {
-      s << slots_iter << "\n";
+      if (*slots_iter) {
+        object_slot_numbers.push_back(i);
+      }
+      i++;
+    }
+    s << "objectSlotCount: " << (unsigned int) object_slot_numbers.size()
+      << "\n";
+    for (i = 0; i < object_slot_numbers.size(); i++) {
+      s << object_slot_numbers[i] << "\n";
     }
 
     s.flush();
