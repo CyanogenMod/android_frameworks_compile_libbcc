@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2012, The Android Open Source Project
+ * Copyright 2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,17 @@
 
 namespace mcld {
 
+class Module;
 class TargetLDBackend;
-class MCLDDriver;
-class MemoryFactory;
-class MCLDInfo;
+class ObjectLinker;
+class ContextFactory;
+class LinkerConfig;
 class TreeIteratorBase;
 class Input;
+class InputFactory;
+class InputBuilder;
+class MemoryArea;
+class MemoryAreaFactory;
 
 namespace sys { namespace fs {
 
@@ -38,7 +43,6 @@ class Path;
 
 namespace bcc {
 
-class MemoryFactory;
 class LinkerConfig;
 
 class Linker {
@@ -57,19 +61,23 @@ public:
     kReadSections,
     kReadSymbols,
     kAddAdditionalSymbols,
-    kMaxErrorCode,
+    kMaxErrorCode
   };
 
   static const char *GetErrorString(enum ErrorCode pErrCode);
 
 private:
+  const mcld::LinkerConfig *mLDConfig;
+  mcld::Module *mModule;
   mcld::TargetLDBackend *mBackend;
-  mcld::MCLDDriver *mDriver;
-  MemoryFactory *mMemAreaFactory;
-  mcld::MCLDInfo *mLDInfo;
+  mcld::ObjectLinker *mObjLinker;
+  mcld::InputFactory *mInputFactory;
+  mcld::MemoryAreaFactory *mMemAreaFactory;
+  mcld::ContextFactory *mContextFactory;
+  mcld::InputBuilder *mBuilder;
   mcld::TreeIteratorBase *mRoot;
-  bool mShared;
   std::string mSOName;
+  mcld::MemoryArea* mOutput;
 
 public:
   Linker();

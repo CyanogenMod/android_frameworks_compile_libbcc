@@ -34,6 +34,9 @@ libmcld_STATIC_LIBRARIES += \
   libmcldTarget \
   libmcldLDVariant \
   libmcldMC \
+  libmcldObject \
+  libmcldFragment \
+  libmcldCore \
   libmcldSupport \
   libmcldADT \
   libmcldLD

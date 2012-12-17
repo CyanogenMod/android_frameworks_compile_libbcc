@@ -17,6 +17,8 @@
 #include "bcc/Config/Config.h"
 #include "bcc/Support/TargetLinkerConfigs.h"
 
+#include <mcld/MC/InputFactory.h>
+
 using namespace bcc;
 
 #ifdef TARGET_BUILD
@@ -34,21 +36,29 @@ static const char* gDefaultSysroot = "/";
 ARMLinkerConfig::ARMLinkerConfig() : LinkerConfig(DEFAULT_ARM_TRIPLE_STRING) {
 
   // set up target-dependent constraints of attributes
-  getLDInfo()->attrFactory().constraint().enableWholeArchive();
-  getLDInfo()->attrFactory().constraint().disableAsNeeded();
-  getLDInfo()->attrFactory().constraint().setSharedSystem();
+  getLDConfig()->attribute().constraint().enableWholeArchive();
+  getLDConfig()->attribute().constraint().disableAsNeeded();
+  getLDConfig()->attribute().constraint().setSharedSystem();
 
   // set up the predefined attributes
-  getLDInfo()->attrFactory().predefined().setWholeArchive();
-  getLDInfo()->attrFactory().predefined().setDynamic();
+  getLDConfig()->attribute().predefined().unsetWholeArchive();
+  getLDConfig()->attribute().predefined().setDynamic();
 
   // set up target dependent options
-  if (getLDInfo()->options().sysroot().empty()) {
-    getLDInfo()->options().setSysroot(gDefaultSysroot);
+  if (getLDConfig()->options().sysroot().empty()) {
+    getLDConfig()->options().setSysroot(gDefaultSysroot);
   }
 
-  if (!getLDInfo()->options().hasDyld()) {
-    getLDInfo()->options().setDyld(gDefaultDyld);
+  if (!getLDConfig()->options().hasDyld()) {
+    getLDConfig()->options().setDyld(gDefaultDyld);
+  }
+
+  // set up section map
+  if (getLDConfig()->codeGenType() != mcld::LinkerConfig::Object) {
+    bool exist = false;
+    getLDConfig()->scripts().sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
+    getLDConfig()->scripts().sectionMap().append(".ARM.extab", ".ARM.extab", exist);
+    getLDConfig()->scripts().sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
   }
 }
 #endif // defined(PROVIDE_ARM_CODEGEN)
@@ -61,21 +71,21 @@ MipsLinkerConfig::MipsLinkerConfig()
   : LinkerConfig(DEFAULT_MIPS_TRIPLE_STRING) {
 
   // set up target-dependent constraints of attibutes
-  getLDInfo()->attrFactory().constraint().enableWholeArchive();
-  getLDInfo()->attrFactory().constraint().disableAsNeeded();
-  getLDInfo()->attrFactory().constraint().setSharedSystem();
+  getLDConfig()->attribute().constraint().enableWholeArchive();
+  getLDConfig()->attribute().constraint().disableAsNeeded();
+  getLDConfig()->attribute().constraint().setSharedSystem();
 
   // set up the predefined attributes
-  getLDInfo()->attrFactory().predefined().setWholeArchive();
-  getLDInfo()->attrFactory().predefined().setDynamic();
+  getLDConfig()->attribute().predefined().unsetWholeArchive();
+  getLDConfig()->attribute().predefined().setDynamic();
 
   // set up target dependent options
-  if (getLDInfo()->options().sysroot().empty()) {
-    getLDInfo()->options().setSysroot(gDefaultSysroot);
+  if (getLDConfig()->options().sysroot().empty()) {
+    getLDConfig()->options().setSysroot(gDefaultSysroot);
   }
 
-  if (!getLDInfo()->options().hasDyld()) {
-    getLDInfo()->options().setDyld(gDefaultDyld);
+  if (!getLDConfig()->options().hasDyld()) {
+    getLDConfig()->options().setDyld(gDefaultDyld);
   }
 }
 #endif // defined(PROVIDE_MIPS_CODEGEN)
@@ -87,21 +97,21 @@ MipsLinkerConfig::MipsLinkerConfig()
 X86FamilyLinkerConfigBase::X86FamilyLinkerConfigBase(const std::string& pTriple)
   : LinkerConfig(pTriple) {
   // set up target-dependent constraints of attibutes
-  getLDInfo()->attrFactory().constraint().enableWholeArchive();
-  getLDInfo()->attrFactory().constraint().disableAsNeeded();
-  getLDInfo()->attrFactory().constraint().setSharedSystem();
+  getLDConfig()->attribute().constraint().enableWholeArchive();
+  getLDConfig()->attribute().constraint().disableAsNeeded();
+  getLDConfig()->attribute().constraint().setSharedSystem();
 
   // set up the predefined attributes
-  getLDInfo()->attrFactory().predefined().setWholeArchive();
-  getLDInfo()->attrFactory().predefined().setDynamic();
+  getLDConfig()->attribute().predefined().unsetWholeArchive();
+  getLDConfig()->attribute().predefined().setDynamic();
 
   // set up target dependent options
-  if (getLDInfo()->options().sysroot().empty()) {
-    getLDInfo()->options().setSysroot(gDefaultSysroot);
+  if (getLDConfig()->options().sysroot().empty()) {
+    getLDConfig()->options().setSysroot(gDefaultSysroot);
   }
 
-  if (!getLDInfo()->options().hasDyld()) {
-    getLDInfo()->options().setDyld(gDefaultDyld);
+  if (!getLDConfig()->options().hasDyld()) {
+    getLDConfig()->options().setDyld(gDefaultDyld);
   }
 }
 
@@ -113,3 +123,29 @@ X86_64LinkerConfig::X86_64LinkerConfig()
   : X86FamilyLinkerConfigBase(DEFAULT_X86_64_TRIPLE_STRING) {
 }
 #endif // defined(PROVIDE_X86_CODEGEN)
+
+#if !defined(TARGET_BUILD)
+//===----------------------------------------------------------------------===//
+// General
+//===----------------------------------------------------------------------===//
+GeneralLinkerConfig::GeneralLinkerConfig(const std::string& pTriple)
+  : LinkerConfig(pTriple) {
+  // set up target-dependent constraints of attributes
+  getLDConfig()->attribute().constraint().enableWholeArchive();
+  getLDConfig()->attribute().constraint().disableAsNeeded();
+  getLDConfig()->attribute().constraint().setSharedSystem();
+
+  // set up the predefined attributes
+  getLDConfig()->attribute().predefined().unsetWholeArchive();
+  getLDConfig()->attribute().predefined().setDynamic();
+
+  // set up section map
+  if (llvm::Triple::arm == getLDConfig()->triple().getArch() &&
+      getLDConfig()->codeGenType() != mcld::LinkerConfig::Object) {
+    bool exist = false;
+    getLDConfig()->scripts().sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
+    getLDConfig()->scripts().sectionMap().append(".ARM.extab", ".ARM.extab", exist);
+    getLDConfig()->scripts().sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
+  }
+}
+#endif // defined(TARGET_BUILD)

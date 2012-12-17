@@ -19,8 +19,7 @@
 
 #include <llvm/Support/Signals.h>
 
-#include <mcld/MC/MCLDInfo.h>
-#include <mcld/MC/MCLDFile.h>
+#include <mcld/LinkerConfig.h>
 #include <mcld/MC/MCLDDirectory.h>
 #include <mcld/MC/ZOption.h>
 #include <mcld/LD/TextDiagnosticPrinter.h>
@@ -31,7 +30,7 @@
 using namespace bcc;
 
 LinkerConfig::LinkerConfig(const std::string &pTriple)
-  : mTriple(pTriple), mShared(false), mSOName(), mTarget(NULL), mLDInfo(NULL),
+  : mTriple(pTriple), mSOName(), mTarget(NULL), mLDConfig(NULL),
     mDiagLineInfo(NULL), mDiagPrinter(NULL) {
 
   initializeTarget();
@@ -40,7 +39,7 @@ LinkerConfig::LinkerConfig(const std::string &pTriple)
 }
 
 LinkerConfig::~LinkerConfig() {
-  delete mLDInfo;
+  delete mLDConfig;
 
   if (mDiagPrinter->getNumErrors() != 0) {
     // If here, the program failed ungracefully. Run the interrupt handlers to
@@ -67,49 +66,116 @@ bool LinkerConfig::initializeTarget() {
 }
 
 bool LinkerConfig::initializeLDInfo() {
-  if (NULL != mLDInfo) {
+  if (NULL != mLDConfig) {
     ALOGE("Cannot initialize mcld::MCLDInfo for given triple '%s!\n",
           mTriple.c_str());
     return false;
   }
 
-  mLDInfo = new mcld::MCLDInfo(getTriple(), 1, 32);
+  mLDConfig = new mcld::LinkerConfig(getTriple());
+  mLDConfig->setCodeGenType(mcld::LinkerConfig::Exec);
+
+  struct NameMap {
+    const char* from;
+    const char* to;
+  };
+
+  static const NameMap map[] =
+  {
+    {".text", ".text"},
+    {".rodata", ".rodata"},
+    {".data.rel.ro.local", ".data.rel.ro.local"},
+    {".data.rel.ro", ".data.rel.ro"},
+    {".data", ".data"},
+    {".bss", ".bss"},
+    {".tdata", ".tdata"},
+    {".tbss", ".tbss"},
+    {".init_array", ".init_array"},
+    {".fini_array", ".fini_array"},
+    // TODO: Support DT_INIT_ARRAY for all constructors?
+    {".ctors", ".ctors"},
+    {".dtors", ".dtors"},
+    // FIXME: in GNU ld, if we are creating a shared object .sdata2 and .sbss2
+    // sections would be handled differently.
+    {".sdata2", ".sdata"},
+    {".sbss2", ".sbss"},
+    {".sdata", ".sdata"},
+    {".sbss", ".sbss"},
+    {".lrodata", ".lrodata"},
+    {".ldata", ".ldata"},
+    {".lbss", ".lbss"},
+    {".gcc_except_table", ".gcc_except_table"},
+    {".gnu.linkonce.d.rel.ro.local", ".data.rel.ro.local"},
+    {".gnu.linkonce.d.rel.ro", ".data.rel.ro"},
+    {".gnu.linkonce.r", ".rodata"},
+    {".gnu.linkonce.d", ".data"},
+    {".gnu.linkonce.b", ".bss"},
+    {".gnu.linkonce.sb2", ".sbss"},
+    {".gnu.linkonce.sb", ".sbss"},
+    {".gnu.linkonce.s2", ".sdata"},
+    {".gnu.linkonce.s", ".sdata"},
+    {".gnu.linkonce.wi", ".debug_info"},
+    {".gnu.linkonce.td", ".tdata"},
+    {".gnu.linkonce.tb", ".tbss"},
+    {".gnu.linkonce.t", ".text"},
+    {".gnu.linkonce.lr", ".lrodata"},
+    {".gnu.linkonce.lb", ".lbss"},
+    {".gnu.linkonce.l", ".ldata"},
+  };
+
+  if (mLDConfig->codeGenType() != mcld::LinkerConfig::Object) {
+    const unsigned int map_size =  (sizeof(map) / sizeof(map[0]) );
+    for (unsigned int i = 0; i < map_size; ++i) {
+      bool exist = false;
+      mLDConfig->scripts().sectionMap().append(map[i].from,
+                                               map[i].to,
+                                               exist);
+    }
+  }
   return true;
 }
 
 bool LinkerConfig::initializeDiagnostic() {
   // Set up MsgHandler.
+  mDiagPrinter = new mcld::TextDiagnosticPrinter(mcld::errs(), *mLDConfig);
+
+  mcld::InitializeDiagnosticEngine(*mLDConfig, mDiagPrinter);
+
   mDiagLineInfo = mTarget->createDiagnosticLineInfo(*mTarget, mTriple);
 
-  mDiagPrinter = new mcld::TextDiagnosticPrinter(mcld::errs(), *mLDInfo);
-
-  mcld::InitializeDiagnosticEngine(*mLDInfo, mDiagLineInfo, mDiagPrinter);
-
+  mcld::getDiagnosticEngine().setLineInfo(*mDiagLineInfo);
   return true;
 }
 
+bool LinkerConfig::isShared() const {
+  return (mcld::LinkerConfig::DynObj == mLDConfig->codeGenType());
+}
+
 void LinkerConfig::setShared(bool pEnable) {
-  mShared = pEnable;
+  if (pEnable)
+    mLDConfig->setCodeGenType(mcld::LinkerConfig::DynObj);
+  else
+    mLDConfig->setCodeGenType(mcld::LinkerConfig::Exec);
   return;
 }
 
 void LinkerConfig::setBsymbolic(bool pEnable) {
-  mLDInfo->options().setBsymbolic(pEnable);
+  mLDConfig->options().setBsymbolic(pEnable);
   return;
 }
 
 void LinkerConfig::setSOName(const std::string &pSOName) {
-  mSOName = pSOName;
+  mLDConfig->options().setSOName(pSOName);
   return;
 }
 
 void LinkerConfig::setDyld(const std::string &pDyld) {
-  mLDInfo->options().setDyld(pDyld);
+  mLDConfig->options().setDyld(pDyld);
   return;
 }
 
 void LinkerConfig::setSysRoot(const std::string &pSysRoot) {
-  mLDInfo->options().setSysroot(mcld::sys::fs::Path(pSysRoot));
+  mLDConfig->options().setSysroot(mcld::sys::fs::Path(pSysRoot));
   return;
 }
 
@@ -117,93 +183,93 @@ void LinkerConfig::setZOption(unsigned int pOptions) {
   mcld::ZOption option;
   if (pOptions & kCombReloc) {
     option.setKind(mcld::ZOption::CombReloc);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
   else {
     option.setKind(mcld::ZOption::NoCombReloc);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kDefs) {
     option.setKind(mcld::ZOption::Defs);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kExecStack) {
     option.setKind(mcld::ZOption::ExecStack);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
   else {
     option.setKind(mcld::ZOption::NoExecStack);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kInitFirst) {
     option.setKind(mcld::ZOption::InitFirst);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kInterPose) {
     option.setKind(mcld::ZOption::InterPose);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kLoadFltr) {
     option.setKind(mcld::ZOption::LoadFltr);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kMulDefs) {
     option.setKind(mcld::ZOption::MulDefs);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kNoCopyReloc) {
     option.setKind(mcld::ZOption::NoCopyReloc);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kNoDefaultLib) {
     option.setKind(mcld::ZOption::NoDefaultLib);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kNoDelete) {
     option.setKind(mcld::ZOption::NoDelete);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kNoDLOpen) {
     option.setKind(mcld::ZOption::NoDLOpen);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kNoDump) {
     option.setKind(mcld::ZOption::NoDump);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kRelro) {
     option.setKind(mcld::ZOption::Relro);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
   else {
     option.setKind(mcld::ZOption::NoRelro);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kLazy) {
     option.setKind(mcld::ZOption::Lazy);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
   else {
     option.setKind(mcld::ZOption::Now);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 
   if (pOptions & kOrigin) {
     option.setKind(mcld::ZOption::Origin);
-    mLDInfo->options().addZOption(option);
+    mLDConfig->options().addZOption(option);
   }
 }
 
@@ -212,7 +278,7 @@ void LinkerConfig::addWrap(const std::string &pWrapSymbol) {
 
   // Add wname -> __wrap_wname.
   mcld::StringEntry<llvm::StringRef>* to_wrap =
-               mLDInfo->scripts().renameMap().insert(pWrapSymbol, exist);
+               mLDConfig->scripts().renameMap().insert(pWrapSymbol, exist);
 
   std::string to_wrap_str = "__wrap_" + pWrapSymbol;
   to_wrap->setValue(to_wrap_str);
@@ -224,7 +290,7 @@ void LinkerConfig::addWrap(const std::string &pWrapSymbol) {
   // Add __real_wname -> wname.
   std::string from_real_str = "__real_" + pWrapSymbol;
   mcld::StringEntry<llvm::StringRef>* from_real =
-             mLDInfo->scripts().renameMap().insert(from_real_str, exist);
+             mLDConfig->scripts().renameMap().insert(from_real_str, exist);
   from_real->setValue(pWrapSymbol);
 
   if (exist) {
@@ -239,7 +305,7 @@ void LinkerConfig::addPortable(const std::string &pPortableSymbol) {
 
   // Add pname -> pname_portable.
   mcld::StringEntry<llvm::StringRef>* to_port =
-                mLDInfo->scripts().renameMap().insert(pPortableSymbol, exist);
+                mLDConfig->scripts().renameMap().insert(pPortableSymbol, exist);
 
   std::string to_port_str = pPortableSymbol + "_portable";
   to_port->setValue(to_port_str);
@@ -251,7 +317,7 @@ void LinkerConfig::addPortable(const std::string &pPortableSymbol) {
   // Add __real_pname -> pname.
   std::string from_real_str = "__real_" + pPortableSymbol;
   mcld::StringEntry<llvm::StringRef>* from_real =
-           mLDInfo->scripts().renameMap().insert(from_real_str, exist);
+           mLDConfig->scripts().renameMap().insert(from_real_str, exist);
 
   from_real->setValue(pPortableSymbol);
 
@@ -264,17 +330,7 @@ void LinkerConfig::addPortable(const std::string &pPortableSymbol) {
 
 void LinkerConfig::addSearchDir(const std::string &pDirPath) {
   // SearchDirs will remove the created MCLDDirectory.
-  mcld::MCLDDirectory* sd = new mcld::MCLDDirectory(pDirPath);
-
-  if (sd->isInSysroot()) {
-    sd->setSysroot(mLDInfo->options().sysroot());
+  if (!mLDConfig->options().directories().insert(pDirPath)) {
+    mcld::warning(mcld::diag::warn_cannot_open_search_dir) << pDirPath;
   }
-
-  if (exists(sd->path()) && is_directory(sd->path())) {
-    mLDInfo->options().directories().add(*sd);
-  } else {
-    mcld::warning(mcld::diag::warn_cannot_open_search_dir) << sd->name();
-  }
-
-  return;
 }

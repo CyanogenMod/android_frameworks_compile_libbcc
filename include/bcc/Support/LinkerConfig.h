@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include <mcld/MC/MCLDInfo.h>
+#include <mcld/LinkerConfig.h>
 #include <mcld/Support/TargetRegistry.h>
 #include <mcld/LD/DiagnosticLineInfo.h>
 #include <mcld/LD/DiagnosticPrinter.h>
@@ -32,7 +32,6 @@ private:
   // Available Configurations
   //===--------------------------------------------------------------------===//
   const std::string mTriple;
-  bool mShared;
   std::string mSOName;
 
 private:
@@ -42,7 +41,7 @@ private:
   const mcld::Target *mTarget;
   bool initializeTarget();
 
-  mcld::MCLDInfo *mLDInfo;
+  mcld::LinkerConfig *mLDConfig;
   bool initializeLDInfo();
 
   mcld::DiagnosticLineInfo *mDiagLineInfo;
@@ -66,7 +65,7 @@ public:
     kRelro         = 1 << 12, ///< [on] -z relro, [off] -z norelro
     kLazy          = 1 << 13, ///< [on] -z lazy, [off] -z now
     kOrigin        = 1 << 14, ///< -z origin
-    kZOptionMask   = 0xFFFF,
+    kZOptionMask   = 0xFFFF
   };
 
 public:
@@ -79,14 +78,13 @@ public:
   inline const mcld::Target *getTarget() const
   { return mTarget; }
 
-  inline mcld::MCLDInfo* getLDInfo()
-  { return mLDInfo; }
+  inline mcld::LinkerConfig* getLDConfig()
+  { return mLDConfig; }
 
-  inline const mcld::MCLDInfo* getLDInfo() const
-  { return mLDInfo; }
+  inline const mcld::LinkerConfig* getLDConfig() const
+  { return mLDConfig; }
 
-  inline bool isShared() const
-  { return mShared; }
+  bool isShared() const;
 
   inline std::string getSOName() const
   { return mSOName; }
