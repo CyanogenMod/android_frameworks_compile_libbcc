@@ -12,6 +12,7 @@
  * ===----------------------------------------------------------------------===
  */ 
 
+#if !defined(__GNUC__) || __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8) // gcc >= 4.8 implements this in libgcc
 #include "int_lib.h"
 
 /* Returns: a * b */
@@ -52,3 +53,4 @@ __muldi3(di_int a, di_int b)
     r.s.high += x.s.high * y.s.low + x.s.low * y.s.high;
     return r.all;
 }
+#endif
