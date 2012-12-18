@@ -47,7 +47,9 @@ public:
 #if defined(PROVIDE_MIPS_CODEGEN)
 class MipsCompilerConfig : public CompilerConfig {
 public:
-  MipsCompilerConfig() : CompilerConfig(DEFAULT_MIPS_TRIPLE_STRING) {}
+  MipsCompilerConfig() : CompilerConfig(DEFAULT_MIPS_TRIPLE_STRING) {
+    setRelocationModel(llvm::Reloc::Static);
+  }
 };
 #endif // defined(PROVIDE_MIPS_CODEGEN)
 
