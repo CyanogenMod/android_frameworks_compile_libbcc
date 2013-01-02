@@ -423,9 +423,17 @@ extern float __attribute__((overloadable)) fmin(float, float);
 extern float __attribute__((overloadable)) fmod(float, float);
 FN_FUNC_FN_FN(fmod)
 
+extern float __attribute__((overloadable)) fract(float v) {
+    int i = (int)floor(v);
+    return fmin(v - i, 0x1.fffffep-1f);
+}
+FN_FUNC_FN(fract)
+
 extern float __attribute__((overloadable)) fract(float v, float *iptr) {
     int i = (int)floor(v);
-    iptr[0] = i;
+    if (iptr) {
+        iptr[0] = i;
+    }
     return fmin(v - i, 0x1.fffffep-1f);
 }
 FN_FUNC_FN_PFN(fract)
