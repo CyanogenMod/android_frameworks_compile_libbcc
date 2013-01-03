@@ -22,16 +22,11 @@
 namespace mcld {
 
 class Module;
-class TargetLDBackend;
-class ObjectLinker;
-class ContextFactory;
+class IRBuilder;
 class LinkerConfig;
-class TreeIteratorBase;
+class Linker;
 class Input;
-class InputFactory;
-class InputBuilder;
 class MemoryArea;
-class MemoryAreaFactory;
 
 namespace sys { namespace fs {
 
@@ -50,11 +45,10 @@ public:
   enum ErrorCode {
     kSuccess,
     kDoubleConfig,
-    kCreateBackend,
     kDelegateLDInfo,
     kFindNameSpec,
-    kOpenNameSpec,
     kOpenObjectFile,
+    kOpenMemory,
     kNotConfig,
     kNotSetUpOutput,
     kOpenOutput,
@@ -69,15 +63,11 @@ public:
 private:
   const mcld::LinkerConfig *mLDConfig;
   mcld::Module *mModule;
-  mcld::TargetLDBackend *mBackend;
-  mcld::ObjectLinker *mObjLinker;
-  mcld::InputFactory *mInputFactory;
-  mcld::MemoryAreaFactory *mMemAreaFactory;
-  mcld::ContextFactory *mContextFactory;
-  mcld::InputBuilder *mBuilder;
-  mcld::TreeIteratorBase *mRoot;
+  mcld::Linker *mLinker;
+  mcld::IRBuilder *mBuilder;
   std::string mSOName;
-  mcld::MemoryArea* mOutput;
+  std::string mOutputPath;
+  int mOutputHandler;
 
 public:
   Linker();
@@ -104,12 +94,6 @@ public:
 
 private:
   enum ErrorCode extractFiles(const LinkerConfig& pConfig);
-
-  enum ErrorCode openFile(const mcld::sys::fs::Path& pPath,
-                          enum ErrorCode pCode,
-                          mcld::Input& pInput);
-
-  void advanceRoot();
 };
 
 } // end namespace bcc

@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
+
 #include "bcc/Config/Config.h"
 #include "bcc/Support/TargetLinkerConfigs.h"
 
+#include <mcld/TargetOptions.h>
 #include <mcld/MC/InputFactory.h>
+#include <mcld/Fragment/Relocation.h>
 
 using namespace bcc;
 
@@ -34,6 +37,10 @@ static const char* gDefaultSysroot = "/";
 //===----------------------------------------------------------------------===//
 #if defined(PROVIDE_ARM_CODEGEN)
 ARMLinkerConfig::ARMLinkerConfig() : LinkerConfig(DEFAULT_ARM_TRIPLE_STRING) {
+
+  // set up target-dependent options
+  getLDConfig()->targets().setEndian(mcld::TargetOptions::Little);
+  getLDConfig()->targets().setBitClass(32);
 
   // set up target-dependent constraints of attributes
   getLDConfig()->attribute().constraint().enableWholeArchive();
@@ -60,6 +67,9 @@ ARMLinkerConfig::ARMLinkerConfig() : LinkerConfig(DEFAULT_ARM_TRIPLE_STRING) {
     getLDConfig()->scripts().sectionMap().append(".ARM.extab", ".ARM.extab", exist);
     getLDConfig()->scripts().sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
   }
+
+  // set up relocation factory
+  mcld::Relocation::SetUp(*getLDConfig());
 }
 #endif // defined(PROVIDE_ARM_CODEGEN)
 
@@ -70,6 +80,10 @@ ARMLinkerConfig::ARMLinkerConfig() : LinkerConfig(DEFAULT_ARM_TRIPLE_STRING) {
 MipsLinkerConfig::MipsLinkerConfig()
   : LinkerConfig(DEFAULT_MIPS_TRIPLE_STRING) {
 
+  // set up target-dependent options
+  getLDConfig()->targets().setEndian(mcld::TargetOptions::Little);
+  getLDConfig()->targets().setBitClass(32);
+
   // set up target-dependent constraints of attibutes
   getLDConfig()->attribute().constraint().enableWholeArchive();
   getLDConfig()->attribute().constraint().disableAsNeeded();
@@ -87,6 +101,9 @@ MipsLinkerConfig::MipsLinkerConfig()
   if (!getLDConfig()->options().hasDyld()) {
     getLDConfig()->options().setDyld(gDefaultDyld);
   }
+
+  // set up relocation factory
+  mcld::Relocation::SetUp(*getLDConfig());
 }
 #endif // defined(PROVIDE_MIPS_CODEGEN)
 
@@ -96,6 +113,10 @@ MipsLinkerConfig::MipsLinkerConfig()
 #if defined(PROVIDE_X86_CODEGEN)
 X86FamilyLinkerConfigBase::X86FamilyLinkerConfigBase(const std::string& pTriple)
   : LinkerConfig(pTriple) {
+  // set up target-dependent options
+  getLDConfig()->targets().setEndian(mcld::TargetOptions::Little);
+  getLDConfig()->targets().setBitClass(32);
+
   // set up target-dependent constraints of attibutes
   getLDConfig()->attribute().constraint().enableWholeArchive();
   getLDConfig()->attribute().constraint().disableAsNeeded();
@@ -113,6 +134,9 @@ X86FamilyLinkerConfigBase::X86FamilyLinkerConfigBase(const std::string& pTriple)
   if (!getLDConfig()->options().hasDyld()) {
     getLDConfig()->options().setDyld(gDefaultDyld);
   }
+
+  // set up relocation factory
+  mcld::Relocation::SetUp(*getLDConfig());
 }
 
 X86_32LinkerConfig::X86_32LinkerConfig()
@@ -130,6 +154,11 @@ X86_64LinkerConfig::X86_64LinkerConfig()
 //===----------------------------------------------------------------------===//
 GeneralLinkerConfig::GeneralLinkerConfig(const std::string& pTriple)
   : LinkerConfig(pTriple) {
+
+  // set up target-dependent options
+  getLDConfig()->targets().setEndian(mcld::TargetOptions::Little);
+  getLDConfig()->targets().setBitClass(32);
+
   // set up target-dependent constraints of attributes
   getLDConfig()->attribute().constraint().enableWholeArchive();
   getLDConfig()->attribute().constraint().disableAsNeeded();
@@ -140,12 +169,15 @@ GeneralLinkerConfig::GeneralLinkerConfig(const std::string& pTriple)
   getLDConfig()->attribute().predefined().setDynamic();
 
   // set up section map
-  if (llvm::Triple::arm == getLDConfig()->triple().getArch() &&
+  if (llvm::Triple::arm == getLDConfig()->targets().triple().getArch() &&
       getLDConfig()->codeGenType() != mcld::LinkerConfig::Object) {
     bool exist = false;
     getLDConfig()->scripts().sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
     getLDConfig()->scripts().sectionMap().append(".ARM.extab", ".ARM.extab", exist);
     getLDConfig()->scripts().sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
   }
+
+  // set up relocation factory
+  mcld::Relocation::SetUp(*getLDConfig());
 }
 #endif // defined(TARGET_BUILD)
