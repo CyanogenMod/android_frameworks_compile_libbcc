@@ -29,7 +29,7 @@ bc_cflags := -MD \
              -O3 \
              -fno-builtin \
              -emit-llvm \
-             -ccc-host-triple armv7-none-linux-gnueabi \
+             -target armv7-none-linux-gnueabi \
              -fsigned-char \
 	     $(bc_translated_clang_cc1_cflags)
 

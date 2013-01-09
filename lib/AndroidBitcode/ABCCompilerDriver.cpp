@@ -16,7 +16,7 @@
 
 #include "bcc/AndroidBitcode/ABCCompilerDriver.h"
 
-#include <llvm/Module.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
@@ -194,14 +194,6 @@ bool ABCCompilerDriver::link(const Script &pScript,
   // FIXME: Ugly const_cast here.
   mLinker.addObject(const_cast<char *>(input_relocatable.data()),
                     input_relocatable.size());
-
-  // Read dependent library list.
-  const Source &source = pScript.getSource();
-  for (llvm::Module::lib_iterator lib_iter = source.getModule().lib_begin(),
-          lib_end = source.getModule().lib_end(); lib_iter != lib_end;
-       ++lib_iter) {
-    mLinker.addNameSpec(*lib_iter);
-  }
 
   // TODO: Refactor libbcc/runtime/ to libcompilerRT.so and use it.
   mLinker.addNameSpec("bcc");

@@ -14,21 +14,21 @@
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "BitcodeReader.h"
 #include "BitReader_3_0.h"
-#include "llvm/Constants.h"
-#include "llvm/DerivedTypes.h"
-#include "llvm/InlineAsm.h"
-#include "llvm/IntrinsicInst.h"
-#include "llvm/IRBuilder.h"
-#include "llvm/Module.h"
-#include "llvm/Operator.h"
-#include "llvm/AutoUpgrade.h"
-#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/AutoUpgrade.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/OperandTraits.h"
+#include "llvm/IR/Operator.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Support/CFG.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/MemoryBuffer.h"
-#include "llvm/OperandTraits.h"
 using namespace llvm;
 using namespace llvm_3_0;
 
@@ -341,7 +341,7 @@ void BitcodeReader::FreeState() {
   ValueList.clear();
   MDValueList.clear();
 
-  std::vector<AttrListPtr>().swap(MAttributes);
+  std::vector<AttributeSet>().swap(MAttributes);
   std::vector<BasicBlock*>().swap(FunctionBBs);
   std::vector<Function*>().swap(FunctionsWithBodies);
   DeferredFunctionInfo.clear();
@@ -775,6 +775,11 @@ bool BitcodeReader::ParseAttributeBlock() {
       if (Record.size() & 1)
         return Error("Invalid ENTRY record");
 
+      for (unsigned i = 0, e = Record.size(); i != e; i += 2) {
+        Attribute ReconstitutedAttr =
+          Attribute::decodeLLVMAttributesForBitcode(Context, Record[i+1]);
+        Record[i+1] = ReconstitutedAttr.getBitMask();
+#if 0
       // FIXME : Remove this autoupgrade code in LLVM 3.0.
       // If Function attributes are using index 0 then transfer them
       // to index ~0. Index 0 is used for return value attributes but used to be
@@ -815,21 +820,17 @@ bool BitcodeReader::ParseAttributeBlock() {
 
         FnAttribute  |= RetAttribute & OldRetAttrs;
         RetAttribute &= ~OldRetAttrs;
+#endif
       }
 
       for (unsigned i = 0, e = Record.size(); i != e; i += 2) {
-        if (Record[i] == 0) {
-          if (RetAttribute != Attribute::None)
-            Attrs.push_back(AttributeWithIndex::get(0, RetAttribute));
-        } else if (Record[i] == ~0U) {
-          if (FnAttribute != Attribute::None)
-            Attrs.push_back(AttributeWithIndex::get(~0U, FnAttribute));
-        } else if (Attributes(Record[i+1]) != Attribute::None)
+        AttrBuilder B(Record[i+1]);
+        if (B.hasAttributes())
           Attrs.push_back(AttributeWithIndex::get(Record[i],
-                                                  Attributes(Record[i+1])));
+                                                  Attribute::get(Context, B)));
       }
 
-      MAttributes.push_back(AttrListPtr::get(Attrs));
+      MAttributes.push_back(AttributeSet::get(Context, Attrs));
       Attrs.clear();
       break;
     }
@@ -935,11 +936,11 @@ bool BitcodeReader::ParseTypeTableBody() {
       break;
     }
     case bitc::TYPE_CODE_FUNCTION_OLD: {
-      // FIXME: attrid is dead, remove it in LLVM 3.0
+      // FIXME: attrid is dead, remove it in LLVM 4.0
       // FUNCTION: [vararg, attrid, retty, paramty x N]
       if (Record.size() < 3)
         return Error("Invalid FUNCTION type record");
-      std::vector<Type*> ArgTys;
+      SmallVector<Type*, 8> ArgTys;
       for (unsigned i = 3, e = Record.size(); i != e; ++i) {
         if (Type *T = getTypeByID(Record[i]))
           ArgTys.push_back(T);
@@ -976,7 +977,7 @@ bool BitcodeReader::ParseTypeTableBody() {
     case bitc::TYPE_CODE_STRUCT_ANON: {  // STRUCT: [ispacked, eltty x N]
       if (Record.size() < 1)
         return Error("Invalid STRUCT type record");
-      std::vector<Type*> EltTys;
+      SmallVector<Type*, 8> EltTys;
       for (unsigned i = 1, e = Record.size(); i != e; ++i) {
         if (Type *T = getTypeByID(Record[i]))
           EltTys.push_back(T);
@@ -1169,7 +1170,7 @@ RestartScan:
       break;
     case bitc::TYPE_CODE_OPAQUE:    // OPAQUE
       if (NextTypeID < TypeList.size() && TypeList[NextTypeID] == 0)
-        ResultTy = StructType::create(Context);
+        ResultTy = StructType::create(Context, "");
       break;
     case TYPE_CODE_STRUCT_OLD_3_0: {// STRUCT_OLD
       if (NextTypeID >= TypeList.size()) break;
@@ -1180,7 +1181,7 @@ RestartScan:
 
       // Set a type.
       if (TypeList[NextTypeID] == 0)
-        TypeList[NextTypeID] = StructType::create(Context);
+        TypeList[NextTypeID] = StructType::create(Context, "");
 
       std::vector<Type*> EltTys;
       for (unsigned i = 1, e = Record.size(); i != e; ++i) {
@@ -1641,7 +1642,7 @@ bool BitcodeReader::ParseConstants() {
         return Error("Invalid CST_AGGREGATE record");
 
       unsigned Size = Record.size();
-      std::vector<Constant*> Elts;
+      SmallVector<Constant*, 16> Elts;
 
       if (StructType *STy = dyn_cast<StructType>(CurTy)) {
         for (unsigned i = 0; i != Size; ++i)
@@ -1998,13 +1999,14 @@ bool BitcodeReader::ParseModule() {
     // Read a record.
     switch (Stream.ReadRecord(Code, Record)) {
     default: break;  // Default behavior, ignore unknown content.
-    case bitc::MODULE_CODE_VERSION:  // VERSION: [version#]
+    case bitc::MODULE_CODE_VERSION: {  // VERSION: [version#]
       if (Record.size() < 1)
         return Error("Malformed MODULE_CODE_VERSION");
       // Only version #0 is supported so far.
       if (Record[0] != 0)
         return Error("Unknown bitstream version!");
       break;
+    }
     case bitc::MODULE_CODE_TRIPLE: {  // TRIPLE: [strchr x N]
       std::string S;
       if (ConvertToString(Record, 0, S))
@@ -2030,7 +2032,8 @@ bool BitcodeReader::ParseModule() {
       std::string S;
       if (ConvertToString(Record, 0, S))
         return Error("Invalid MODULE_CODE_DEPLIB record");
-      TheModule->addLibrary(S);
+      // ANDROID: Ignore value, since we never used it anyways.
+      // TheModule->addLibrary(S);
       break;
     }
     case bitc::MODULE_CODE_SECTIONNAME: {  // SECTIONNAME: [strchr x N]
@@ -2219,7 +2222,7 @@ bool BitcodeReader::ParseBitcodeInto(Module *M) {
       // have to read and ignore these final 4 bytes :-(
       if (Stream.GetAbbrevIDWidth() == 2 && Code == 2 &&
           Stream.Read(6) == 2 && Stream.Read(24) == 0xa0a0a &&
-	  Stream.AtEndOfStream())
+          Stream.AtEndOfStream())
         return false;
 
       return Error("Invalid record at top-level");
@@ -2818,7 +2821,7 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
     case bitc::FUNC_CODE_INST_INVOKE: {
       // INVOKE: [attrs, cc, normBB, unwindBB, fnty, op0,op1,op2, ...]
       if (Record.size() < 4) return Error("Invalid INVOKE record");
-      AttrListPtr PAL = getAttributes(Record[0]);
+      AttributeSet PAL = getAttributes(Record[0]);
       unsigned CCInfo = Record[1];
       BasicBlock *NormalBB = getBasicBlock(Record[2]);
       BasicBlock *UnwindBB = getBasicBlock(Record[3]);
@@ -3093,7 +3096,7 @@ bool BitcodeReader::ParseFunctionBody(Function *F) {
       if (Record.size() < 3)
         return Error("Invalid CALL record");
 
-      AttrListPtr PAL = getAttributes(Record[0]);
+      AttributeSet PAL = getAttributes(Record[0]);
       unsigned CCInfo = Record[1];
 
       unsigned OpNum = 2;

@@ -19,9 +19,9 @@
 //===----------------------------------------------------------------------===//
 #include "bcc/Renderscript/RSInfo.h"
 
-#include <llvm/Constants.h>
-#include <llvm/Metadata.h>
-#include <llvm/Module.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/Module.h>
 
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"

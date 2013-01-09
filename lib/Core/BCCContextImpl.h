@@ -18,7 +18,7 @@
 #define BCC_CORE_CONTEXT_IMPL_H
 
 #include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/LLVMContext.h>
+#include <llvm/IR/LLVMContext.h>
 
 namespace bcc {
 

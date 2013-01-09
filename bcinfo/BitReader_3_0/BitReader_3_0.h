@@ -15,9 +15,9 @@
 #define BITREADER_3_0_H
 
 #include "llvm/GVMaterializer.h"
-#include "llvm/Attributes.h"
-#include "llvm/Type.h"
-#include "llvm/OperandTraits.h"
+#include "llvm/IR/Attributes.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/OperandTraits.h"
 #include "llvm/Bitcode/BitstreamReader.h"
 #include "llvm/Bitcode/LLVMBitCodes.h"
 #include "llvm/Support/ValueHandle.h"

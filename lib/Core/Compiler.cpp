@@ -18,11 +18,11 @@
 
 #include <llvm/Analysis/Passes.h>
 #include <llvm/CodeGen/RegAllocRegistry.h>
-#include <llvm/Module.h>
+#include <llvm/IR/Module.h>
 #include <llvm/PassManager.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
+#include <llvm/IR/DataLayout.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/Scalar.h>
@@ -49,8 +49,8 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
     /* kErrNoTargetMachine */
     "Failed to compile the script since there's no available TargetMachine."
     " (missing call to Compiler::config()?)",
-    /* kErrTargetDataNoMemory */
-    "Out of memory when create TargetData during compilation.",
+    /* kErrDataLayoutNoMemory */
+    "Out of memory when create DataLayout during compilation.",
     /* kErrMaterialization */
     "Failed to materialize the module.",
     /* kErrInvalidOutputFileState */
@@ -153,19 +153,19 @@ Compiler::~Compiler() {
 }
 
 enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
-  llvm::TargetData *target_data = NULL;
+  llvm::DataLayout *data_layout = NULL;
 
   // Pass manager for link-time optimization
   llvm::PassManager lto_passes;
 
-  // Prepare TargetData target data from Module
-  target_data = new (std::nothrow) llvm::TargetData(*mTarget->getTargetData());
-  if (target_data == NULL) {
-    return kErrTargetDataNoMemory;
+  // Prepare DataLayout target data from Module
+  data_layout = new (std::nothrow) llvm::DataLayout(*mTarget->getDataLayout());
+  if (data_layout == NULL) {
+    return kErrDataLayoutNoMemory;
   }
 
-  // Add TargetData to the pass manager.
-  lto_passes.add(target_data);
+  // Add DataLayout to the pass manager.
+  lto_passes.add(data_layout);
 
   // Invokde "beforeAddLTOPasses" before adding the first pass.
   if (!beforeAddLTOPasses(pScript, lto_passes)) {
@@ -278,20 +278,20 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
 
 enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
                                               llvm::raw_ostream &pResult) {
-  llvm::TargetData *target_data;
+  llvm::DataLayout *data_layout;
   llvm::MCContext *mc_context = NULL;
 
   // Create pass manager for MC code generation.
   llvm::PassManager codegen_passes;
 
-  // Prepare TargetData target data from Module
-  target_data = new (std::nothrow) llvm::TargetData(*mTarget->getTargetData());
-  if (target_data == NULL) {
-    return kErrTargetDataNoMemory;
+  // Prepare DataLayout target data from Module
+  data_layout = new (std::nothrow) llvm::DataLayout(*mTarget->getDataLayout());
+  if (data_layout == NULL) {
+    return kErrDataLayoutNoMemory;
   }
 
-  // Add TargetData to the pass manager.
-  codegen_passes.add(target_data);
+  // Add DataLayout to the pass manager.
+  codegen_passes.add(data_layout);
 
   // Invokde "beforeAddCodeGenPasses" before adding the first pass.
   if (!beforeAddCodeGenPasses(pScript, codegen_passes)) {

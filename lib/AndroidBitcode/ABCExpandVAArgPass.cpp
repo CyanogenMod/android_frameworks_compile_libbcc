@@ -20,7 +20,7 @@
 #include "bcc/AndroidBitcode/ABCExpandVAArgPass.h"
 
 #include <llvm/ADT/STLExtras.h>
-#include <llvm/Instructions.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
 
 namespace bcc {

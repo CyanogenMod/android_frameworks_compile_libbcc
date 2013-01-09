@@ -15,14 +15,14 @@
  */
 
 #include <llvm/ADT/Triple.h>
-#include <llvm/DerivedTypes.h>
-#include <llvm/Function.h>
-#include <llvm/Instructions.h>
-#include <llvm/IRBuilder.h>
-#include <llvm/Module.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
-#include <llvm/Type.h>
-#include <llvm/Target/TargetData.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/DataLayout.h>
 
 #include "bcc/AndroidBitcode/ABCExpandVAArgPass.h"
 
@@ -43,14 +43,14 @@ private:
     llvm::Type *ty = pty->getContainedType(0);
     llvm::Value *va_list_addr = pInst->getOperand(0);
     llvm::IRBuilder<> builder(pInst);
-    const llvm::TargetData *td = getAnalysisIfAvailable<llvm::TargetData>();
+    const llvm::DataLayout *dl = getAnalysisIfAvailable<llvm::DataLayout>();
 
     llvm::Type *bp = llvm::Type::getInt8PtrTy(*mContext);
     llvm::Type *bpp = bp->getPointerTo(0);
     llvm::Value *va_list_addr_bpp = builder.CreateBitCast(va_list_addr,
                                                           bpp, "ap");
     llvm::Value *addr = builder.CreateLoad(va_list_addr_bpp, "ap.cur");
-    int64_t type_align = td->getABITypeAlignment(ty);
+    int64_t type_align = dl->getABITypeAlignment(ty);
     llvm::Value *addr_typed;
     llvm::IntegerType *int_ty = llvm::Type::getInt32Ty(*mContext);
 
@@ -69,7 +69,7 @@ private:
     llvm::Value *aligned_addr = builder.CreateBitCast(addr_typed, bp);
     type_align = std::max((unsigned)type_align, (unsigned) 4);
     uint64_t offset =
-      llvm::RoundUpToAlignment(td->getTypeSizeInBits(ty) / 8, type_align);
+      llvm::RoundUpToAlignment(dl->getTypeSizeInBits(ty) / 8, type_align);
     llvm::Value *next_addr =
       builder.CreateGEP(aligned_addr, llvm::ConstantInt::get(int_ty, offset),
                         "ap.next");

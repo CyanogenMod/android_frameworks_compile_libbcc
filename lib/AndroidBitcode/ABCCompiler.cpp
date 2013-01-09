@@ -16,9 +16,9 @@
 
 #include "bcc/AndroidBitcode/ABCCompiler.h"
 
-#include <llvm/Module.h>
+#include <llvm/IR/Module.h>
 #include <llvm/PassManager.h>
-#include <llvm/Target/TargetData.h>
+#include <llvm/IR/DataLayout.h>
 #include <llvm/Target/TargetMachine.h>
 
 #include "bcc/AndroidBitcode/ABCCompilerDriver.h"
@@ -34,14 +34,14 @@ bool ABCCompiler::beforeAddCodeGenPasses(Script &pScript,
   llvm::PassManager pm;
   llvm::Module &module = pScript.getSource().getModule();
   const llvm::TargetMachine &tm = getTargetMachine();
-  llvm::TargetData *target_data =
-    new (std::nothrow) llvm::TargetData(*(tm.getTargetData()));
+  llvm::DataLayout *data_layout =
+    new (std::nothrow) llvm::DataLayout(*(tm.getDataLayout()));
 
-  if (target_data == NULL) {
+  if (data_layout == NULL) {
     return false;
   }
 
-  pm.add(target_data);
+  pm.add(data_layout);
   pm.add(mDriver.createExpandVAArgPass());
   pm.run(module);
 

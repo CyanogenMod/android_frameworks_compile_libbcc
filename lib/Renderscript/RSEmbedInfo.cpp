@@ -20,15 +20,14 @@
 #include <cstdlib>
 #include <vector>
 
-#include <llvm/DerivedTypes.h>
-#include <llvm/Function.h>
-#include <llvm/Instructions.h>
-#include <llvm/IRBuilder.h>
-#include <llvm/Module.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
-#include <llvm/Type.h>
+#include <llvm/IR/Type.h>
 
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSInfo.h"

@@ -19,15 +19,15 @@
 
 #include <cstdlib>
 
-#include <llvm/DerivedTypes.h>
-#include <llvm/Function.h>
-#include <llvm/Instructions.h>
-#include <llvm/IRBuilder.h>
-#include <llvm/Module.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
-#include <llvm/Type.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Type.h>
 
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSInfo.h"
@@ -103,19 +103,19 @@ private:
   }
 
   // Get the actual value we should use to step through an allocation.
-  // TD - Target Data size/layout information.
+  // DL - Target Data size/layout information.
   // T - Type of allocation (should be a pointer).
   // OrigStep - Original step increment (root.expand() input from driver).
-  llvm::Value *getStepValue(llvm::TargetData *TD, llvm::Type *T,
+  llvm::Value *getStepValue(llvm::DataLayout *DL, llvm::Type *T,
                             llvm::Value *OrigStep) {
-    bccAssert(TD);
+    bccAssert(DL);
     bccAssert(T);
     bccAssert(OrigStep);
     llvm::PointerType *PT = llvm::dyn_cast<llvm::PointerType>(T);
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     if (mEnableStepOpt && T != VoidPtrTy && PT) {
       llvm::Type *ET = PT->getElementType();
-      uint64_t ETSize = TD->getTypeAllocSize(ET);
+      uint64_t ETSize = DL->getTypeAllocSize(ET);
       llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
       return llvm::ConstantInt::get(Int32Ty, ETSize);
     } else {
@@ -171,7 +171,7 @@ public:
       }
     }
 
-    llvm::TargetData TD(M);
+    llvm::DataLayout DL(M);
 
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
@@ -272,7 +272,7 @@ public:
     if (hasIn(Signature)) {
       InTy = Args->getType();
       AIn = Builder.CreateAlloca(InTy, 0, "AIn");
-      InStep = getStepValue(&TD, InTy, Arg_instep);
+      InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
@@ -284,7 +284,7 @@ public:
     if (hasOut(Signature)) {
       OutTy = Args->getType();
       AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
-      OutStep = getStepValue(&TD, OutTy, Arg_outstep);
+      OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
@@ -391,7 +391,7 @@ public:
     ALOGV("Expanding kernel Function %s", F->getName().str().c_str());
 
     // TODO: Refactor this to share functionality with ExpandFunction.
-    llvm::TargetData TD(M);
+    llvm::DataLayout DL(M);
 
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
@@ -501,7 +501,7 @@ public:
         // We don't increment Args, since we are using the actual return type.
       }
       AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
-      OutStep = getStepValue(&TD, OutTy, Arg_outstep);
+      OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
@@ -514,7 +514,7 @@ public:
       InBaseTy = Args->getType();
       InTy =InBaseTy->getPointerTo();
       AIn = Builder.CreateAlloca(InTy, 0, "AIn");
-      InStep = getStepValue(&TD, InTy, Arg_instep);
+      InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
       Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
