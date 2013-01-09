@@ -32,9 +32,7 @@ typedef struct Allocation {
             const void *type;
             uint32_t usageFlags;
             rs_allocation_mipmap_control mipmapControl;
-            uint32_t dimensionX;
-            uint32_t dimensionY;
-            uint32_t dimensionZ;
+            uint32_t yuv;
             uint32_t elementSizeBytes;
             bool hasMipmaps;
             bool hasFaces;
@@ -43,7 +41,6 @@ typedef struct Allocation {
             int32_t surfaceTextureID;
             void * wndSurface;
             void * surfaceTexture;
-            rs_data_type eType;
         } state;
 
         struct DrvState {

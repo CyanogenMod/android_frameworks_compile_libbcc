@@ -6,19 +6,19 @@
 extern uint32_t __attribute__((overloadable))
     rsAllocationGetDimX(rs_allocation a) {
     Allocation_t *alloc = (Allocation_t *)a.p;
-    return alloc->mHal.state.dimensionX;
+    return alloc->mHal.drvState.lod[0].dimX;
 }
 
 extern uint32_t __attribute__((overloadable))
         rsAllocationGetDimY(rs_allocation a) {
     Allocation_t *alloc = (Allocation_t *)a.p;
-    return alloc->mHal.state.dimensionY;
+    return alloc->mHal.drvState.lod[0].dimY;
 }
 
 extern uint32_t __attribute__((overloadable))
         rsAllocationGetDimZ(rs_allocation a) {
     Allocation_t *alloc = (Allocation_t *)a.p;
-    return alloc->mHal.state.dimensionZ;
+    return alloc->mHal.drvState.lod[0].dimZ;
 }
 
 extern uint32_t __attribute__((overloadable))
@@ -56,7 +56,7 @@ extern const void * __attribute__((overloadable))
     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
     const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
     const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
-    const uint32_t dimY = alloc->mHal.state.dimensionY;
+    const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;
     return &p[(eSize * x) + (y * stride) + (z * stride * dimY)];
 }
 
