@@ -25,13 +25,13 @@ define <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv3_f(%struct.rs_matrix3
 
   %px = getelementptr inbounds %struct.rs_matrix3x3* %m, i32 0, i32 0, i32 0
   %px2 = bitcast float* %px to <4 x float>*
-  %xm = load <4 x float>* %px2
+  %xm = load <4 x float>* %px2, align 4
   %py = getelementptr inbounds %struct.rs_matrix3x3* %m, i32 0, i32 0, i32 3
   %py2 = bitcast float* %py to <4 x float>*
-  %ym = load <4 x float>* %py2
+  %ym = load <4 x float>* %py2, align 4
   %pz = getelementptr inbounds %struct.rs_matrix3x3* %m, i32 0, i32 0, i32 6
   %pz2 = bitcast float* %pz to <3 x float>*
-  %zm2 = load <3 x float>* %pz2
+  %zm2 = load <3 x float>* %pz2, align 4
   %zm = shufflevector <3 x float> %zm2, <3 x float> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
 
   %a1 = fmul <4 x float> %x, %xm
@@ -56,10 +56,10 @@ define <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv2_f(%struct.rs_matrix3
 
   %px = getelementptr inbounds %struct.rs_matrix3x3* %m, i32 0, i32 0, i32 0
   %px2 = bitcast float* %px to <4 x float>*
-  %xm = load <4 x float>* %px2
+  %xm = load <4 x float>* %px2, align 4
   %py = getelementptr inbounds %struct.rs_matrix3x3* %m, i32 0, i32 0, i32 3
   %py2 = bitcast float* %py to <4 x float>*
-  %ym = load <4 x float>* %py2
+  %ym = load <4 x float>* %py2, align 4
 
   %a1 = fmul <4 x float> %x, %xm
   %a2 = fmul <4 x float> %y, %ym
@@ -85,16 +85,16 @@ define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv4_f(%struct.rs_matrix4
 
   %px = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 0
   %px2 = bitcast float* %px to <4 x float>*
-  %xm = load <4 x float>* %px2
+  %xm = load <4 x float>* %px2, align 4
   %py = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 4
   %py2 = bitcast float* %py to <4 x float>*
-  %ym = load <4 x float>* %py2
+  %ym = load <4 x float>* %py2, align 4
   %pz = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 8
   %pz2 = bitcast float* %pz to <4 x float>*
-  %zm = load <4 x float>* %pz2
+  %zm = load <4 x float>* %pz2, align 4
   %pw = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 12
   %pw2 = bitcast float* %pw to <4 x float>*
-  %wm = load <4 x float>* %pw2
+  %wm = load <4 x float>* %pw2, align 4
 
   %a1 = fmul <4 x float> %x, %xm
   %a2 = fmul <4 x float> %y, %ym
@@ -121,16 +121,16 @@ define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv3_f(%struct.rs_matrix4
 
   %px = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 0
   %px2 = bitcast float* %px to <4 x float>*
-  %xm = load <4 x float>* %px2
+  %xm = load <4 x float>* %px2, align 4
   %py = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 4
   %py2 = bitcast float* %py to <4 x float>*
-  %ym = load <4 x float>* %py2
+  %ym = load <4 x float>* %py2, align 4
   %pz = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 8
   %pz2 = bitcast float* %pz to <4 x float>*
-  %zm = load <4 x float>* %pz2
+  %zm = load <4 x float>* %pz2, align 4
   %pw = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 12
   %pw2 = bitcast float* %pw to <4 x float>*
-  %wm = load <4 x float>* %pw2
+  %wm = load <4 x float>* %pw2, align 4
 
   %a1 = fmul <4 x float> %x, %xm
   %a2 = fadd <4 x float> %wm, %a1
@@ -154,13 +154,13 @@ define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv2_f(%struct.rs_matrix4
 
   %px = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 0
   %px2 = bitcast float* %px to <4 x float>*
-  %xm = load <4 x float>* %px2
+  %xm = load <4 x float>* %px2, align 4
   %py = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 4
   %py2 = bitcast float* %py to <4 x float>*
-  %ym = load <4 x float>* %py2
+  %ym = load <4 x float>* %py2, align 4
   %pw = getelementptr inbounds %struct.rs_matrix4x4* %m, i32 0, i32 0, i32 12
   %pw2 = bitcast float* %pw to <4 x float>*
-  %wm = load <4 x float>* %pw2
+  %wm = load <4 x float>* %pw2, align 4
 
   %a1 = fmul <4 x float> %x, %xm
   %a2 = fadd <4 x float> %wm, %a1
