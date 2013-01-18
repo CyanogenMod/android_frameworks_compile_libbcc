@@ -4,6 +4,10 @@ extern float2 __attribute__((overloadable)) convert_float2(int2 c);
 extern float3 __attribute__((overloadable)) convert_float3(int3 c);
 extern float4 __attribute__((overloadable)) convert_float4(int4 c);
 
+extern int2 __attribute__((overloadable)) convert_int2(float2 c);
+extern int3 __attribute__((overloadable)) convert_int3(float3 c);
+extern int4 __attribute__((overloadable)) convert_int4(float4 c);
+
 // Float ops, 6.11.2
 
 #define FN_FUNC_FN(fnc)                                         \
@@ -955,6 +959,111 @@ extern float __attribute__((overloadable)) approx_atan(float x) {
 }
 FN_FUNC_FN(approx_atan)
 */
+
+typedef union
+{
+  float fv;
+  int32_t iv;
+} ieee_float_shape_type;
+
+/* Get a 32 bit int from a float.  */
+
+#define GET_FLOAT_WORD(i,d)                 \
+do {                                \
+  ieee_float_shape_type gf_u;                   \
+  gf_u.fv = (d);                     \
+  (i) = gf_u.iv;                      \
+} while (0)
+
+/* Set a float from a 32 bit int.  */
+
+#define SET_FLOAT_WORD(d,i)                 \
+do {                                \
+  ieee_float_shape_type sf_u;                   \
+  sf_u.iv = (i);                      \
+  (d) = sf_u.fv;                     \
+} while (0)
+
+
+
+// Valid -125 to 125
+extern float __attribute__((overloadable)) native_exp2(float v) {
+    int32_t iv = (int)v;
+    int32_t x = iv + (iv >> 31); // ~floor(v)
+    float r = (v - x);
+
+    float fo;
+    SET_FLOAT_WORD(fo, (x + 127) << 23);
+
+    r *= 0.694f; // ~ log(e) / log(2)
+    float r2 = r*r;
+    float adj = 1.f + r + (r2 * 0.5f) + (r2*r * 0.166666f) + (r2*r2 * 0.0416666f);
+    return fo * adj;
+}
+
+extern float2 __attribute__((overloadable)) native_exp2(float2 v) {
+    int2 iv = convert_int2(v);
+    int2 x = iv + (iv >> (int2)31);//floor(v);
+    float2 r = (v - convert_float2(x));
+
+    x += 127;
+
+    float2 fo = (float2)(x << (int2)23);
+
+    r *= 0.694f; // ~ log(e) / log(2)
+    float2 r2 = r*r;
+    float2 adj = 1.f + r + (r2 * 0.5f) + (r2*r * 0.166666f) + (r2*r2 * 0.0416666f);
+    return fo * adj;
+}
+
+extern float4 __attribute__((overloadable)) native_exp2(float4 v) {
+    int4 iv = convert_int4(v);
+    int4 x = iv + (iv >> (int4)31);//floor(v);
+    float4 r = (v - convert_float4(x));
+
+    x += 127;
+
+    float4 fo = (float4)(x << (int4)23);
+
+    r *= 0.694f; // ~ log(e) / log(2)
+    float4 r2 = r*r;
+    float4 adj = 1.f + r + (r2 * 0.5f) + (r2*r * 0.166666f) + (r2*r2 * 0.0416666f);
+    return fo * adj;
+}
+
+extern float3 __attribute__((overloadable)) native_exp2(float3 v) {
+    float4 t = 1.f;
+    t.xyz = v;
+    return native_exp2(t).xyz;
+}
+
+
+extern float __attribute__((overloadable)) native_exp(float v) {
+    return native_exp2(v * 1.442695041f);
+}
+extern float2 __attribute__((overloadable)) native_exp(float2 v) {
+    return native_exp2(v * 1.442695041f);
+}
+extern float3 __attribute__((overloadable)) native_exp(float3 v) {
+    return native_exp2(v * 1.442695041f);
+}
+extern float4 __attribute__((overloadable)) native_exp(float4 v) {
+    return native_exp2(v * 1.442695041f);
+}
+
+extern float __attribute__((overloadable)) native_exp10(float v) {
+    return native_exp2(v * 3.321928095f);
+}
+extern float2 __attribute__((overloadable)) native_exp10(float2 v) {
+    return native_exp2(v * 3.321928095f);
+}
+extern float3 __attribute__((overloadable)) native_exp10(float3 v) {
+    return native_exp2(v * 3.321928095f);
+}
+extern float4 __attribute__((overloadable)) native_exp10(float4 v) {
+    return native_exp2(v * 3.321928095f);
+}
+
 
 #undef FN_FUNC_FN
 #undef IN_FUNC_FN
