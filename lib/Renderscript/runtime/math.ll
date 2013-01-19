@@ -17,21 +17,3 @@ define float @_Z3powf(float %v1, float %v2) nounwind readnone alwaysinline {
   %1 = tail call float @llvm.pow.f32(float  %v1, float %v2)
   ret float %1
 }
-
-define float @_Z4fabsf(float %v) nounwind readnone alwaysinline {
-  %1 = tail call float @llvm.fabs.f32(float %v)
-  ret float %1
-}
-define <2 x float> @_Z4fabsDv2_f(<2 x float> %v) nounwind readnone alwaysinline {
-  %1 = tail call <2 x float> @llvm.fabs.v2f32(<2 x float> %v)
-  ret <2 x float> %1
-}
-define <3 x float> @_Z4fabsDv3_f(<3 x float> %v) nounwind readnone alwaysinline {
-  %1 = tail call <3 x float> @llvm.fabs.v3f32(<3 x float> %v)
-  ret <3 x float> %1
-}
-define <4 x float> @_Z4fabsDv4_f(<4 x float> %v) nounwind readnone alwaysinline {
-  %1 = tail call <4 x float> @llvm.fabs.v4f32(<4 x float> %v)
-  ret <4 x float> %1
-}
-
