@@ -8,6 +8,17 @@ extern int2 __attribute__((overloadable)) convert_int2(float2 c);
 extern int3 __attribute__((overloadable)) convert_int3(float3 c);
 extern int4 __attribute__((overloadable)) convert_int4(float4 c);
 
+
+extern float __attribute__((overloadable)) fmin(float v, float v2);
+extern float2 __attribute__((overloadable)) fmin(float2 v, float v2);
+extern float3 __attribute__((overloadable)) fmin(float3 v, float v2);
+extern float4 __attribute__((overloadable)) fmin(float4 v, float v2);
+
+extern float __attribute__((overloadable)) fmax(float v, float v2);
+extern float2 __attribute__((overloadable)) fmax(float2 v, float v2);
+extern float3 __attribute__((overloadable)) fmax(float3 v, float v2);
+extern float4 __attribute__((overloadable)) fmax(float4 v, float v2);
+
 // Float ops, 6.11.2
 
 #define FN_FUNC_FN(fnc)                                         \
@@ -1057,6 +1068,92 @@ extern float3 __attribute__((overloadable)) native_exp10(float3 v) {
 }
 extern float4 __attribute__((overloadable)) native_exp10(float4 v) {
     return native_exp2(v * 3.321928095f);
+}
+
+extern float __attribute__((overloadable)) native_log2(float v) {
+    int32_t ibits;
+    GET_FLOAT_WORD(ibits, v);
+
+    int32_t e = (ibits >> 23) & 0xff;
+
+    ibits &= 0x7fffff;
+    ibits |= 127 << 23;
+
+    float ir;
+    SET_FLOAT_WORD(ir, ibits);
+
+    ir -= 1.5f;
+    float ir2 = ir*ir;
+    float adj2 = 0.405465108f + // -0.00009f +
+                 (0.666666667f * ir) -
+                 (0.222222222f * ir2) +
+                 (0.098765432f * ir*ir2) -
+                 (0.049382716f * ir2*ir2) +
+                 (0.026337449f * ir*ir2*ir2) -
+                 (0.014631916f * ir2*ir2*ir2);
+    adj2 *= (1.f / 0.693147181f);
+
+    return (float)(e - 127) + adj2;
+}
+extern float2 __attribute__((overloadable)) native_log2(float2 v) {
+    float2 v2 = {native_log2(v.x), native_log2(v.y)};
+    return v2;
+}
+extern float3 __attribute__((overloadable)) native_log2(float3 v) {
+    float3 v2 = {native_log2(v.x), native_log2(v.y), native_log2(v.z)};
+    return v2;
+}
+extern float4 __attribute__((overloadable)) native_log2(float4 v) {
+    float4 v2 = {native_log2(v.x), native_log2(v.y), native_log2(v.z), native_log2(v.w)};
+    return v2;
+}
+
+extern float __attribute__((overloadable)) native_log(float v) {
+    return native_log2(v) * (1.f / 1.442695041f);
+}
+extern float2 __attribute__((overloadable)) native_log(float2 v) {
+    return native_log2(v) * (1.f / 1.442695041f);
+}
+extern float3 __attribute__((overloadable)) native_log(float3 v) {
+    return native_log2(v) * (1.f / 1.442695041f);
+}
+extern float4 __attribute__((overloadable)) native_log(float4 v) {
+    return native_log2(v) * (1.f / 1.442695041f);
+}
+
+extern float __attribute__((overloadable)) native_log10(float v) {
+    return native_log2(v) * (1.f / 3.321928095f);
+}
+extern float2 __attribute__((overloadable)) native_log10(float2 v) {
+    return native_log2(v) * (1.f / 3.321928095f);
+}
+extern float3 __attribute__((overloadable)) native_log10(float3 v) {
+    return native_log2(v) * (1.f / 3.321928095f);
+}
+extern float4 __attribute__((overloadable)) native_log10(float4 v) {
+    return native_log2(v) * (1.f / 3.321928095f);
+}
+
+
+extern float __attribute__((overloadable)) native_powr(float v, float y) {
+    float v2 = native_log2(v);
+    v2 = fmax(v2, -125.f);
+    return native_exp2(v2 * y);
+}
+extern float2 __attribute__((overloadable)) native_powr(float2 v, float2 y) {
+    float2 v2 = native_log2(v);
+    v2 = fmax(v2, -125.f);
+    return native_exp2(v2 * y);
+}
+extern float3 __attribute__((overloadable)) native_powr(float3 v, float3 y) {
+    float3 v2 = native_log2(v);
+    v2 = fmax(v2, -125.f);
+    return native_exp2(v2 * y);
+}
+extern float4 __attribute__((overloadable)) native_powr(float4 v, float4 y) {
+    float4 v2 = native_log2(v);
+    v2 = fmax(v2, -125.f);
+    return native_exp2(v2 * y);
 }
 
 
