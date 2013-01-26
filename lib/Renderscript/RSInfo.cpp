@@ -31,6 +31,7 @@
 using namespace bcc;
 
 const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
+const char RSInfo::LibCompilerRTPath[] = "/system/lib/libcompiler_rt.so";
 const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
 const char RSInfo::LibCLCorePath[] = "/system/lib/libclcore.bc";
 #if defined(ARCH_ARM_HAVE_NEON)
@@ -38,6 +39,7 @@ const char RSInfo::LibCLCoreNEONPath[] = "/system/lib/libclcore_neon.bc";
 #endif
 
 const uint8_t *RSInfo::LibBCCSHA1 = NULL;
+const uint8_t *RSInfo::LibCompilerRTSHA1 = NULL;
 const uint8_t *RSInfo::LibRSSHA1 = NULL;
 const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
 #if defined(ARCH_ARM_HAVE_NEON)
@@ -59,6 +61,8 @@ bool RSInfo::LoadBuiltInSHA1Information() {
   }
 
   LibBCCSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libbcc_so_SHA1"));
+  LibCompilerRTSHA1 =
+      reinterpret_cast<const uint8_t *>(::dlsym(h, "libcompiler_rt_so_SHA1"));
   LibRSSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libRS_so_SHA1"));
   LibCLCoreSHA1 =
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_bc_SHA1"));
@@ -94,9 +98,9 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
   // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc plus
   // libclcore_neon.bc if NEON is available on the target device.
 #if !defined(ARCH_ARM_HAVE_NEON)
-  static const unsigned NumBuiltInDependencies = 3;
-#else
   static const unsigned NumBuiltInDependencies = 4;
+#else
+  static const unsigned NumBuiltInDependencies = 5;
 #endif
 
   LoadBuiltInSHA1Information();
@@ -110,13 +114,15 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
     // Built-in dependencies always go first.
     const std::pair<const char *, const uint8_t *> &cache_libbcc_dep =
         pInfo.mDependencyTable[0];
-    const std::pair<const char *, const uint8_t *> &cache_libRS_dep =
+    const std::pair<const char *, const uint8_t *> &cache_libcompiler_rt_dep =
         pInfo.mDependencyTable[1];
-    const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
+    const std::pair<const char *, const uint8_t *> &cache_libRS_dep =
         pInfo.mDependencyTable[2];
+    const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
+        pInfo.mDependencyTable[3];
 #if defined(ARCH_ARM_HAVE_NEON)
     const std::pair<const char *, const uint8_t *> &cache_libclcore_neon_dep =
-        pInfo.mDependencyTable[3];
+        pInfo.mDependencyTable[4];
 #endif
 
     // Check libbcc.so.
@@ -126,6 +132,17 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         PRINT_DEPENDENCY("current - ", LibBCCPath, LibBCCSHA1);
         PRINT_DEPENDENCY("cache - ", cache_libbcc_dep.first,
                                      cache_libbcc_dep.second);
+        return false;
+    }
+
+    // Check libcompiler_rt.so.
+    if (::memcmp(cache_libcompiler_rt_dep.second, LibCompilerRTSHA1,
+                 SHA1_DIGEST_LENGTH) != 0) {
+        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
+              LibCompilerRTPath);
+        PRINT_DEPENDENCY("current - ", LibCompilerRTPath, LibCompilerRTSHA1);
+        PRINT_DEPENDENCY("cache - ", cache_libcompiler_rt_dep.first,
+                                     cache_libcompiler_rt_dep.second);
         return false;
     }
 

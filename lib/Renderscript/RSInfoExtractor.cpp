@@ -166,6 +166,7 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   // Don't forget to reserve the space for the dependency informationin string
   // pool.
   string_pool_size += ::strlen(LibBCCPath) + 1 + SHA1_DIGEST_LENGTH;
+  string_pool_size += ::strlen(LibCompilerRTPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
 #if defined(ARCH_ARM_HAVE_NEON)
@@ -365,6 +366,12 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
     // Record built-in dependency information.
     //===------------------------------------------------------------------===//
     if (!writeDependency(LibBCCPath, LibBCCSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+
+    if (!writeDependency(LibCompilerRTPath, LibCompilerRTSHA1,
                          result->mStringPool, &cur_string_pool_offset,
                          result->mDependencyTable)) {
       goto bail;

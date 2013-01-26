@@ -56,6 +56,7 @@ LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 libbcc_SHA1_SRCS := \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
+  $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libcompiler_rt.so \
   $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so \
   $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore.bc,,)/libclcore.bc
 
@@ -181,7 +182,7 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libdl libutils libcutils libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
-LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1
+LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1 libcompiler_rt
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
 LOCAL_REQUIRED_MODULES += libclcore_neon.bc

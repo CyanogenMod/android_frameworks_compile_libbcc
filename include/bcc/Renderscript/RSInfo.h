@@ -160,6 +160,7 @@ public:
   static android::String8 GetPath(const FileBase &pFile);
 
   static const char LibBCCPath[];
+  static const char LibCompilerRTPath[];
   static const char LibRSPath[];
   static const char LibCLCorePath[];
 #if defined(ARCH_ARM_HAVE_NEON)
@@ -170,6 +171,7 @@ private:
   // SHA-1 of the built-in dependencies. Will be initialized in
   // LoadBuiltInSHA1Information().
   static const uint8_t *LibBCCSHA1;
+  static const uint8_t *LibCompilerRTSHA1;
   static const uint8_t *LibRSSHA1;
   static const uint8_t *LibCLCoreSHA1;
 #if defined(ARCH_ARM_HAVE_NEON)
