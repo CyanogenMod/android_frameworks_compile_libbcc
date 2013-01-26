@@ -22,8 +22,6 @@ LOCAL_PATH := $(call my-dir)
 #=====================================================================
 
 libbcc_executionengine_SRC_FILES := \
-  BCCRuntimeStub.c \
-  BCCRuntimeSymbolResolver.cpp \
   ELFObjectLoaderImpl.cpp \
   GDBJIT.cpp \
   GDBJITRegistrar.cpp \
