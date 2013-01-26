@@ -17,7 +17,7 @@
 #ifndef BCC_RS_COMPILER_DRIVER_H
 #define BCC_RS_COMPILER_DRIVER_H
 
-#include "bcc/ExecutionEngine/BCCRuntimeSymbolResolver.h"
+#include "bcc/ExecutionEngine/CompilerRTSymbolResolver.h"
 #include "bcc/ExecutionEngine/SymbolResolvers.h"
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
 #include "bcc/Renderscript/RSInfo.h"
@@ -35,7 +35,7 @@ private:
   CompilerConfig *mConfig;
   RSCompiler mCompiler;
 
-  BCCRuntimeSymbolResolver mBCCRuntime;
+  CompilerRTSymbolResolver mCompilerRuntime;
   LookupFunctionSymbolResolver<void*> mRSRuntime;
   SymbolResolverProxy mResolver;
 

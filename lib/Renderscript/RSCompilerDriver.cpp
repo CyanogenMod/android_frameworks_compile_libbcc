@@ -63,7 +63,7 @@ bool is_force_recompile() {
 RSCompilerDriver::RSCompilerDriver() : mConfig(NULL), mCompiler() {
   init::Initialize();
   // Chain the symbol resolvers for BCC runtimes and RS runtimes.
-  mResolver.chainResolver(mBCCRuntime);
+  mResolver.chainResolver(mCompilerRuntime);
   mResolver.chainResolver(mRSRuntime);
 }
 
