@@ -16,6 +16,9 @@
 
 LOCAL_PATH := $(call my-dir)
 
+# Don't build for PDK or unbundled branches
+ifeq (,$(TARGET_BUILD_PDK)$(TARGET_BUILD_APPS))
+
 # Executable for host
 # ========================================================
 include $(CLEAR_VARS)
@@ -24,9 +27,6 @@ LOCAL_MODULE := bcc_compat
 LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_CFLAGS := -DFORCE_ARM_CODEGEN
-
-LOCAL_SRC_FILES := \
-  main.cpp
 
 LOCAL_SHARED_LIBRARIES := \
   libbcc
@@ -41,3 +41,5 @@ include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_EXECUTABLE)
+
+endif  # Don't build for PDK or unbundled branches
