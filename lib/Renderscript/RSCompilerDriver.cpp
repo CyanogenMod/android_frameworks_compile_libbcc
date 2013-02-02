@@ -60,14 +60,19 @@ bool is_force_recompile() {
 
 } // end anonymous namespace
 
-RSCompilerDriver::RSCompilerDriver() : mConfig(NULL), mCompiler() {
+RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
+    mConfig(NULL), mCompiler(), mCompilerRuntime(NULL) {
   init::Initialize();
-  // Chain the symbol resolvers for BCC runtimes and RS runtimes.
-  mResolver.chainResolver(mCompilerRuntime);
+  // Chain the symbol resolvers for compiler_rt and RS runtimes.
+  if (pUseCompilerRT) {
+    mCompilerRuntime = new CompilerRTSymbolResolver();
+    mResolver.chainResolver(*mCompilerRuntime);
+  }
   mResolver.chainResolver(mRSRuntime);
 }
 
 RSCompilerDriver::~RSCompilerDriver() {
+  delete mCompilerRuntime;
   delete mConfig;
 }
 

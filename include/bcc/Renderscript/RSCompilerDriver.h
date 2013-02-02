@@ -35,7 +35,7 @@ private:
   CompilerConfig *mConfig;
   RSCompiler mCompiler;
 
-  CompilerRTSymbolResolver mCompilerRuntime;
+  CompilerRTSymbolResolver *mCompilerRuntime;
   LookupFunctionSymbolResolver<void*> mRSRuntime;
   SymbolResolverProxy mResolver;
 
@@ -54,7 +54,7 @@ private:
                               bool pSkipLoad);
 
 public:
-  RSCompilerDriver();
+  RSCompilerDriver(bool pUseCompilerRT = true);
   ~RSCompilerDriver();
 
   inline void setRSRuntimeLookupFunction(

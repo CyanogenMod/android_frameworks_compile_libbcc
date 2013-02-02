@@ -27,8 +27,8 @@ public:
       DyldSymbolResolver("/system/lib/libcompiler_rt.so") { }
 
  virtual void *getAddress(const char *pName) {
-   // Compiler runtimes are always prefixed by "__"
-   if ((pName[0] == '_') && (pName[1] == '_')) {
+   // Compiler runtime functions are always prefixed by "__"
+   if (pName && (pName[0] == '_') && (pName[1] == '_')) {
      return DyldSymbolResolver::getAddress(pName);
    } else {
      return NULL;
