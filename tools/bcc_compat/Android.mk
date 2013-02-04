@@ -16,8 +16,8 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# Don't build for PDK or unbundled branches
-ifeq (,$(TARGET_BUILD_PDK)$(TARGET_BUILD_APPS))
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
 
 # Executable for host
 # ========================================================
