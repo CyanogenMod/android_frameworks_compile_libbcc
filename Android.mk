@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
+
 LOCAL_PATH := $(call my-dir)
 LIBBCC_ROOT_PATH := $(LOCAL_PATH)
 include $(LIBBCC_ROOT_PATH)/libbcc.mk
@@ -201,7 +204,6 @@ include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
 
-
 #=====================================================================
 # Host Shared Library libbcc
 #=====================================================================
@@ -292,6 +294,7 @@ include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
 include $(LIBBCC_HOST_BUILD_MK)
 include $(BUILD_HOST_SHARED_LIBRARY)
 
+endif # Don't build in unbundled branches
 
 #=====================================================================
 # Include Subdirectories

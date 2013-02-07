@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
+
 local_cflags_for_libbcinfo := -Wall -Wno-unused-parameter -Werror
 ifneq ($(TARGET_BUILD_VARIANT),eng)
 local_cflags_for_libbcinfo += -D__DISABLE_ASSERTS
@@ -87,6 +90,8 @@ LOCAL_LDLIBS := -ldl -lpthread
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
+
+endif # don't build for unbundled branches
 
 #=====================================================================
 # Include Subdirectories
