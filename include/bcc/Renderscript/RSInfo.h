@@ -42,7 +42,7 @@ namespace rsinfo {
 #define RSINFO_MAGIC      "\0rsinfo\n"
 
 /* RS info file version, encoded in 4 bytes of ASCII */
-#define RSINFO_VERSION    "003\0"
+#define RSINFO_VERSION    "004\0"
 
 struct __attribute__((packed)) ListHeader {
   // The offset from the beginning of the file of data
