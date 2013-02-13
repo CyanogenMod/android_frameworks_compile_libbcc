@@ -66,6 +66,8 @@ public:
   inline const BCCContext &getContext() const
   { return mContext; }
 
+  void setModule(llvm::Module *pModule);
+
   inline llvm::Module &getModule()
   { return *mModule;  }
   inline const llvm::Module &getModule() const

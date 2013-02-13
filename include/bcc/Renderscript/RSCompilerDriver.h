@@ -77,7 +77,8 @@ public:
   RSExecutable *build(BCCContext &pContext,
                       const char *pCacheDir, const char *pResName,
                       const char *pBitcode, size_t pBitcodeSize,
-                      const char *pRuntimePath);
+                      const char *pRuntimePath,
+                      RSLinkRuntimeCallback pLinkRuntimeCallback = NULL);
   RSExecutable *build(RSScript &pScript, const char *pOut,
                       const char *pRuntimePath);
 };

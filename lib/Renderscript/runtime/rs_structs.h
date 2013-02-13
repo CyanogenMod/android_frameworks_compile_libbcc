@@ -1,5 +1,5 @@
-#ifndef _RS_CORE_H_
-#define _RS_CORE_H_
+#ifndef _RS_STRUCTS_H_
+#define _RS_STRUCTS_H_
 
 /*****************************************************************************
  * CAUTION

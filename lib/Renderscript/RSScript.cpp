@@ -47,6 +47,11 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
     return false;
   }
 
+  if (NULL != pScript.mLinkRuntimeCallback) {
+    pScript.mLinkRuntimeCallback(&pScript,
+        &pScript.getSource().getModule(), &libclcore_source->getModule());
+  }
+
   if (!pScript.getSource().merge(*libclcore_source,
                                  /* pPreserveSource */false)) {
     ALOGE("Failed to link Renderscript library '%s'!", core_lib);
@@ -59,7 +64,8 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
 
 RSScript::RSScript(Source &pSource)
   : Script(pSource), mInfo(NULL), mCompilerVersion(0),
-    mOptimizationLevel(kOptLvl3) { }
+    mOptimizationLevel(kOptLvl3), mLinkRuntimeCallback(NULL),
+    mEmbedInfo(false) { }
 
 bool RSScript::doReset() {
   mInfo = NULL;
