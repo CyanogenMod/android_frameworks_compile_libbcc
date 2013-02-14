@@ -33,15 +33,10 @@ bool ARMBaseCompilerConfig::HasThumb2() {
   // Cross-compiler can always generate Thumb-2 instructions.
   return true;
 #else // defined(TARGET_BUILD)
-#  if defined(ARCH_ARM_HAVE_THUMB_SUPPORT)
-#    if (__ARM_ARCH__ >= 7) || defined(__ARM_ARCH_6T2__)
+#  if (__ARM_ARCH__ >= 7) || defined(__ARM_ARCH_6T2__)
   return true;
-#    else
+#  else
   // ARM prior to V6T2 doesn't support Thumb-2.
-  return false;
-#    endif
-#  else // !defined(ARCH_ARM_HAVE_THUMB_SUPPORT)
-  // Target that doesn't support Thumb feature won't support Thumb-2, either.
   return false;
 #  endif
 #endif
