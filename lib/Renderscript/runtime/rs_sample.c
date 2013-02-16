@@ -47,6 +47,15 @@ static uint32_t wrapI(rs_sampler_value wrap, int32_t coord, int32_t size) {
             coord += size;
         }
     }
+    if (wrap == RS_SAMPLER_MIRRORED_REPEAT) {
+        coord = coord % (size * 2);
+        if (coord < 0) {
+            coord = (size * 2) + coord;
+        }
+        if (coord >= size) {
+            coord = (size * 2) - coord;
+        }
+    }
     return (uint32_t)max(0, min(coord, size - 1));
 }
 
