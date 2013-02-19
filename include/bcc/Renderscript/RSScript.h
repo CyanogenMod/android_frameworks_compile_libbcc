@@ -20,10 +20,17 @@
 #include "bcc/Script.h"
 #include "bcc/Support/Sha1Util.h"
 
+namespace llvm {
+  class Module;
+}  // end namespace llvm
+
 namespace bcc {
 
 class RSInfo;
+class RSScript;
 class Source;
+
+typedef llvm::Module* (*RSLinkRuntimeCallback) (bcc::RSScript *, llvm::Module *, llvm::Module *);
 
 class RSScript : public Script {
 public:
@@ -43,6 +50,8 @@ private:
   unsigned mCompilerVersion;
 
   OptimizationLevel mOptimizationLevel;
+
+  RSLinkRuntimeCallback mLinkRuntimeCallback;
 
   bool mEmbedInfo;
 
@@ -78,6 +87,10 @@ public:
 
   OptimizationLevel getOptimizationLevel() const {
     return mOptimizationLevel;
+  }
+
+  void setLinkRuntimeCallback(RSLinkRuntimeCallback fn){
+    mLinkRuntimeCallback = fn;
   }
 
   void setEmbedInfo(bool pEnable) {

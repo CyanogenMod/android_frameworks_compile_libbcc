@@ -53,6 +53,11 @@ static inline llvm::Module *helper_load_bitcode(llvm::LLVMContext &pContext,
 
 namespace bcc {
 
+void Source::setModule(llvm::Module *pModule) {
+  if (!mNoDelete && (mModule != pModule)) delete mModule;
+  mModule = pModule;
+}
+
 Source *Source::CreateFromBuffer(BCCContext &pContext,
                                  const char *pName,
                                  const char *pBitcode,

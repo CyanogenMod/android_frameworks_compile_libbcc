@@ -331,7 +331,8 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
                                       const char *pResName,
                                       const char *pBitcode,
                                       size_t pBitcodeSize,
-                                      const char *pRuntimePath) {
+                                      const char *pRuntimePath,
+                                      RSLinkRuntimeCallback pLinkRuntimeCallback) {
   android::StopWatch build_time("bcc: RSCompilerDriver::build time");
   //===--------------------------------------------------------------------===//
   // Check parameters.
@@ -397,6 +398,8 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
     delete source;
     return NULL;
   }
+
+  script->setLinkRuntimeCallback(pLinkRuntimeCallback);
 
   // Read information from bitcode wrapper.
   bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
