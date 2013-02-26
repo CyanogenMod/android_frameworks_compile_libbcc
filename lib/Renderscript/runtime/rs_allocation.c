@@ -97,62 +97,103 @@ extern void __attribute__((overloadable))
     memcpy((void*)&p[(eSize * x) + (y * stride)], ptr, eSize);
 }
 
-#define SET_ELEMENT_AT(T)                                               \
+extern void __attribute__((overloadable))
+        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x, uint32_t y, uint32_t z) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
+    const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;
+    memcpy((void*)&p[(eSize * x) + (y * stride) + (z * stride * dimY)], ptr, eSize);
+}
+
+#define ELEMENT_AT(T)                                                   \
     extern void __attribute__((overloadable))                           \
-    __rsSetElementAt_##T(rs_allocation a, T val, uint32_t x) {          \
+    rsSetElementAt_##T(rs_allocation a, T val, uint32_t x) {            \
         Allocation_t *alloc = (Allocation_t *)a.p;                      \
-        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        uint8_t *p = (uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
         const uint32_t eSize = sizeof(T);                               \
         *((T*)&p[(eSize * x)]) = val;                                   \
     }                                                                   \
     extern void __attribute__((overloadable))                           \
-    __rsSetElementAt_##T(rs_allocation a, T val, uint32_t x, uint32_t y) { \
+    rsSetElementAt_##T(rs_allocation a, T val, uint32_t x, uint32_t y) { \
         Allocation_t *alloc = (Allocation_t *)a.p;                      \
-        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        uint8_t *p = (uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
         const uint32_t eSize = sizeof(T);                               \
         const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
         *((T*)&p[(eSize * x) + (y * stride)]) = val;                    \
+    }                                                                   \
+    extern void __attribute__((overloadable))                           \
+            rsSetElementAt(rs_allocation a, T val, uint32_t x, uint32_t y, uint32_t z) { \
+        Allocation_t *alloc = (Allocation_t *)a.p;                      \
+        uint8_t *p = (uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
+        const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;         \
+        uint8_t *dp = &p[(sizeof(T) * x) + (y * stride) + (z * stride * dimY)]; \
+        ((T*)dp)[0] = val;                                        \
+    }                                                                   \
+    extern T __attribute__((overloadable))                              \
+    rsGetElementAt_##T(rs_allocation a, uint32_t x) {                   \
+        Allocation_t *alloc = (Allocation_t *)a.p;                      \
+        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        return *((T*)&p[(sizeof(T) * x)]);                              \
+    }                                                                   \
+    extern T __attribute__((overloadable))                              \
+    rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y) {       \
+        Allocation_t *alloc = (Allocation_t *)a.p;                      \
+        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
+        return *((T*)&p[(sizeof(T) * x) + (y * stride)]);               \
+    }                                                                   \
+    extern T __attribute__((overloadable))                              \
+            rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) { \
+        Allocation_t *alloc = (Allocation_t *)a.p;                      \
+        const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
+        const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
+        const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;         \
+        const uint8_t *dp = &p[(sizeof(T) * x) + (y * stride) + (z * stride * dimY)]; \
+        return ((const T*)dp)[0];                                       \
     }
 
-SET_ELEMENT_AT(char)
-SET_ELEMENT_AT(char2)
-SET_ELEMENT_AT(char3)
-SET_ELEMENT_AT(char4)
-SET_ELEMENT_AT(uchar)
-SET_ELEMENT_AT(uchar2)
-SET_ELEMENT_AT(uchar3)
-SET_ELEMENT_AT(uchar4)
-SET_ELEMENT_AT(short)
-SET_ELEMENT_AT(short2)
-SET_ELEMENT_AT(short3)
-SET_ELEMENT_AT(short4)
-SET_ELEMENT_AT(ushort)
-SET_ELEMENT_AT(ushort2)
-SET_ELEMENT_AT(ushort3)
-SET_ELEMENT_AT(ushort4)
-SET_ELEMENT_AT(int)
-SET_ELEMENT_AT(int2)
-SET_ELEMENT_AT(int3)
-SET_ELEMENT_AT(int4)
-SET_ELEMENT_AT(uint)
-SET_ELEMENT_AT(uint2)
-SET_ELEMENT_AT(uint3)
-SET_ELEMENT_AT(uint4)
-SET_ELEMENT_AT(long)
-SET_ELEMENT_AT(long2)
-SET_ELEMENT_AT(long3)
-SET_ELEMENT_AT(long4)
-SET_ELEMENT_AT(ulong)
-SET_ELEMENT_AT(ulong2)
-SET_ELEMENT_AT(ulong3)
-SET_ELEMENT_AT(ulong4)
-SET_ELEMENT_AT(float)
-SET_ELEMENT_AT(float2)
-SET_ELEMENT_AT(float3)
-SET_ELEMENT_AT(float4)
-SET_ELEMENT_AT(double)
-SET_ELEMENT_AT(double2)
-SET_ELEMENT_AT(double3)
-SET_ELEMENT_AT(double4)
+ELEMENT_AT(char)
+ELEMENT_AT(char2)
+ELEMENT_AT(char3)
+ELEMENT_AT(char4)
+ELEMENT_AT(uchar)
+ELEMENT_AT(uchar2)
+ELEMENT_AT(uchar3)
+ELEMENT_AT(uchar4)
+ELEMENT_AT(short)
+ELEMENT_AT(short2)
+ELEMENT_AT(short3)
+ELEMENT_AT(short4)
+ELEMENT_AT(ushort)
+ELEMENT_AT(ushort2)
+ELEMENT_AT(ushort3)
+ELEMENT_AT(ushort4)
+ELEMENT_AT(int)
+ELEMENT_AT(int2)
+ELEMENT_AT(int3)
+ELEMENT_AT(int4)
+ELEMENT_AT(uint)
+ELEMENT_AT(uint2)
+ELEMENT_AT(uint3)
+ELEMENT_AT(uint4)
+ELEMENT_AT(long)
+ELEMENT_AT(long2)
+ELEMENT_AT(long3)
+ELEMENT_AT(long4)
+ELEMENT_AT(ulong)
+ELEMENT_AT(ulong2)
+ELEMENT_AT(ulong3)
+ELEMENT_AT(ulong4)
+ELEMENT_AT(float)
+ELEMENT_AT(float2)
+ELEMENT_AT(float3)
+ELEMENT_AT(float4)
+ELEMENT_AT(double)
+ELEMENT_AT(double2)
+ELEMENT_AT(double3)
+ELEMENT_AT(double4)
 
-#undef SET_ELEMENT_AT
+#undef ELEMENT_AT
