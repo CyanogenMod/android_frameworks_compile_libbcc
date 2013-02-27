@@ -42,10 +42,6 @@ libbcinfo_SRC_FILES := \
 libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
 libbcinfo_STATIC_LIBRARIES := \
   libLLVMWrap \
-  libLLVMBitReader \
-  libLLVMBitWriter \
-  libLLVMCore \
-  libLLVMSupport \
   libLLVMBitReader_2_7 \
   libLLVMBitReader_3_0
 
@@ -64,7 +60,11 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 
 LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
-LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES)
+LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES) \
+  libLLVMBitReader \
+  libLLVMBitWriter \
+  libLLVMCore \
+  libLLVMSupport
 LOCAL_SHARED_LIBRARIES := libcutils libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
@@ -85,6 +85,7 @@ LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_STATIC_LIBRARIES += libcutils
+LOCAL_SHARED_LIBRARIES += libLLVM
 
 LOCAL_LDLIBS := -ldl -lpthread
 

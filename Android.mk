@@ -217,13 +217,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
-ifeq ($(libbcc_USE_DISASSEMBLER),1)
-  LOCAL_WHOLE_STATIC_LIBRARIES += \
-    libLLVMARMDisassembler \
-    libLLVMMipsDisassembler \
-    libLLVMX86Disassembler
-endif
-
 LOCAL_WHOLE_STATIC_LIBRARIES += \
   libmcldARMTarget \
   libmcldARMInfo \
@@ -234,56 +227,11 @@ LOCAL_WHOLE_STATIC_LIBRARIES += \
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libLLVMARMAsmParser \
-  libLLVMARMAsmPrinter \
-  libLLVMARMCodeGen \
-  libLLVMARMDesc \
-  libLLVMARMInfo
-
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libLLVMMipsAsmParser \
-  libLLVMMipsCodeGen \
-  libLLVMMipsAsmPrinter \
-  libLLVMMipsDesc \
-  libLLVMMipsInfo
-
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libLLVMX86AsmParser \
-  libLLVMX86CodeGen \
-  libLLVMX86Desc \
-  libLLVMX86AsmPrinter \
-  libLLVMX86Info \
-  libLLVMX86Utils
-
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libLLVMObject \
-  libLLVMAsmPrinter \
-  libLLVMBitWriter \
-  libLLVMBitReader \
-  libLLVMSelectionDAG \
-  libLLVMCodeGen \
-  libLLVMLinker \
-  libLLVMArchive \
-  libLLVMScalarOpts \
-  libLLVMInstCombine \
-  libLLVMipo \
-  libLLVMipa \
-  libLLVMVectorize \
-  libLLVMInstrumentation \
-  libLLVMTransformUtils \
-  libLLVMAnalysis \
-  libLLVMTarget \
-  libLLVMMCParser \
-  libLLVMMC \
-  libLLVMCore \
-  libLLVMSupport
-
 LOCAL_STATIC_LIBRARIES += \
   libutils \
   libcutils
 
-LOCAL_SHARED_LIBRARIES := libbcinfo
+LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM
 
 LOCAL_LDLIBS := -ldl -lpthread
 
