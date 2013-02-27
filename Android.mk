@@ -120,6 +120,7 @@ ifeq ($(TARGET_ARCH),arm)
     libmcldARMInfo \
     $(libmcld_STATIC_LIBRARIES) \
     libLLVMARMAsmParser \
+    libLLVMARMAsmPrinter \
     libLLVMARMCodeGen \
     libLLVMARMDesc \
     libLLVMARMInfo
@@ -235,6 +236,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += \
   libLLVMARMAsmParser \
+  libLLVMARMAsmPrinter \
   libLLVMARMCodeGen \
   libLLVMARMDesc \
   libLLVMARMInfo
