@@ -30,6 +30,7 @@ LOCAL_CFLAGS := -DFORCE_ARM_CODEGEN
 
 LOCAL_SHARED_LIBRARIES := \
   libbcc \
+  libbcinfo \
   libLLVM
 
 LOCAL_C_INCLUDES := \

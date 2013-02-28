@@ -60,12 +60,8 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 
 LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
-LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES) \
-  libLLVMBitReader \
-  libLLVMBitWriter \
-  libLLVMCore \
-  libLLVMSupport
-LOCAL_SHARED_LIBRARIES := libcutils libstlport
+LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES)
+LOCAL_SHARED_LIBRARIES := libLLVM libcutils libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)

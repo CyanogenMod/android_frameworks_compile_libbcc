@@ -95,87 +95,28 @@ LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
-ifeq ($(libbcc_USE_DISASSEMBLER),1)
-  ifeq ($(TARGET_ARCH),arm)
-    LOCAL_WHOLE_STATIC_LIBRARIES += \
-      libLLVMARMDisassembler
-  else
-    ifeq ($(TARGET_ARCH),mips)
-      LOCAL_WHOLE_STATIC_LIBRARIES += \
-        libLLVMMipsDisassembler
-    else
-      ifeq ($(TARGET_ARCH),x86)
-        LOCAL_WHOLE_STATIC_LIBRARIES += \
-          libLLVMX86Disassembler
-      else
-        $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
-      endif
-    endif
-  endif
-endif
-
 ifeq ($(TARGET_ARCH),arm)
   LOCAL_WHOLE_STATIC_LIBRARIES += \
     libmcldARMTarget \
-    libmcldARMInfo \
-    $(libmcld_STATIC_LIBRARIES) \
-    libLLVMARMAsmParser \
-    libLLVMARMAsmPrinter \
-    libLLVMARMCodeGen \
-    libLLVMARMDesc \
-    libLLVMARMInfo
+    libmcldARMInfo
 else
   ifeq ($(TARGET_ARCH), mips)
     LOCAL_WHOLE_STATIC_LIBRARIES += \
       libmcldMipsTarget \
-      libmcldMipsInfo \
-      $(libmcld_STATIC_LIBRARIES) \
-      libLLVMMipsAsmParser \
-      libLLVMMipsCodeGen \
-      libLLVMMipsAsmPrinter \
-      libLLVMMipsDesc \
-      libLLVMMipsInfo
+      libmcldMipsInfo
   else
     ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
       LOCAL_WHOLE_STATIC_LIBRARIES += \
         libmcldX86Target \
-        libmcldX86Info \
-        $(libmcld_STATIC_LIBRARIES) \
-        libLLVMX86AsmParser \
-        libLLVMX86CodeGen \
-        libLLVMX86Desc \
-        libLLVMX86Info \
-        libLLVMX86Utils \
-        libLLVMX86AsmPrinter
+        libmcldX86Info
     else
       $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
     endif
   endif
 endif
 
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libLLVMObject \
-  libLLVMAsmPrinter \
-  libLLVMBitWriter \
-  libLLVMBitReader \
-  libLLVMSelectionDAG \
-  libLLVMCodeGen \
-  libLLVMLinker \
-  libLLVMScalarOpts \
-  libLLVMInstCombine \
-  libLLVMipo \
-  libLLVMipa \
-  libLLVMVectorize \
-  libLLVMInstrumentation \
-  libLLVMTransformUtils \
-  libLLVMAnalysis \
-  libLLVMTarget \
-  libLLVMMCParser \
-  libLLVMMC \
-  libLLVMCore \
-  libLLVMSupport
-
-LOCAL_SHARED_LIBRARIES := libbcinfo libdl libutils libcutils libstlport
+LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
+LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
@@ -184,17 +125,6 @@ LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1 libcompiler_rt
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
 LOCAL_REQUIRED_MODULES += libclcore_neon.bc
 endif
-
-# Link-Time Optimization on libbcc.so
-#
-# -Wl,--exclude-libs=ALL only applies to library archives. It would hide most
-# of the symbols in this shared library. As a result, it reduced the size of
-# libbcc.so by about 800k in 2010.
-#
-# Note that libLLVMBitReader:libLLVMCore:libLLVMSupport are used by
-# pixelflinger2.
-
-#LOCAL_LDFLAGS += -Wl,--exclude-libs=libmcldARMTarget:libmcldARMInfo:libmcldMipsTarget:libmcldMipsInfo:libmcldX86Target:libmcldX86Info:libmcldCodeGen:libmcldTarget:libmcldLDVariant:libmcldMC:libmcldSupport:libmcldLD:libmcldADT:libLLVMARMDisassembler:libLLVMARMAsmPrinter:libLLVMX86Disassembler:libLLVMX86AsmPrinter:libLLVMMipsDisassembler:libLLVMMipsAsmPrinter:libLLVMMCParser:libLLVMARMCodeGen:libLLVMARMDesc:libLLVMARMInfo:libLLVMX86CodeGen:libLLVMX86Desc:libLLVMX86Info:libLLVMX86Utils:libLLVMMipsCodeGen:libLLVMMipsDesc:libLLVMMipsInfo:libLLVMSelectionDAG:libLLVMAsmPrinter:libLLVMCodeGen:libLLVMLinker:libLLVMTarget:libLLVMMC:libLLVMScalarOpts:libLLVMInstCombine:libLLVMipo:libLLVMipa:libLLVMTransformUtils:libLLVMAnalysis
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
