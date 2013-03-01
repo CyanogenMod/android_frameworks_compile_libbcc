@@ -27,7 +27,9 @@ LOCAL_SRC_FILES := \
   main.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-  libbcc
+  libbcc \
+  libbcinfo \
+  libLLVM
 
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
@@ -49,7 +51,7 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
 
-LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libutils libcutils
+LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libLLVM libutils libcutils
 
 include external/stlport/libstlport.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
