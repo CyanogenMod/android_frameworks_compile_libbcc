@@ -601,8 +601,6 @@ extern float __attribute__((overloadable)) sinpi(float v) {
 }
 FN_FUNC_FN(sinpi)
 
-FN_FUNC_FN(sqrt)
-
 extern float __attribute__((overloadable)) tan(float);
 FN_FUNC_FN(tan)
 

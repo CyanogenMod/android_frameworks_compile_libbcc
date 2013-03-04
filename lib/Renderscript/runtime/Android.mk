@@ -29,16 +29,27 @@ clcore_base_files := \
     convert.ll \
     matrix.ll \
     pixel_packing.ll \
-    math.ll \
     rsClamp.ll
 
 clcore_files := \
     $(clcore_base_files) \
-    arch/generic.c
+    math.ll \
+    arch/generic.c \
+    arch/sqrt.c \
 
 clcore_neon_files := \
     $(clcore_base_files) \
-    arch/neon.ll
+    math.ll \
+    arch/neon.ll \
+    arch/sqrt.c
+
+ifeq ($(ARCH_X86_HAVE_SSE2), true)
+    clcore_x86_files := \
+    $(clcore_base_files) \
+    arch/x86_generic.c \
+    arch/x86_clamp.ll \
+    arch/x86_math.ll
+endif
 
 ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
   RS_VERSION := $(PLATFORM_SDK_VERSION)
@@ -57,6 +68,18 @@ LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_SRC_FILES := $(clcore_files)
 
 include $(LOCAL_PATH)/build_bc_lib.mk
+
+# Build an optimized version of the library if the device is SSE2- or above
+# capable.
+ifeq ($(ARCH_X86_HAVE_SSE2),true)
+include $(CLEAR_VARS)
+LOCAL_MODULE := libclcore_x86.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_SRC_FILES := $(clcore_x86_files)
+
+include $(LOCAL_PATH)/build_bc_lib.mk
+endif
 
 # Build a NEON-enabled version of the library (if possible)
 ifeq ($(ARCH_ARM_HAVE_NEON),true)

@@ -162,6 +162,9 @@ public:
   static const char LibBCCPath[];
   static const char LibRSPath[];
   static const char LibCLCorePath[];
+#if defined(ARCH_X86_HAVE_SSE2)
+  static const char LibCLCoreX86Path[];
+#endif
 #if defined(ARCH_ARM_HAVE_NEON)
   static const char LibCLCoreNEONPath[];
 #endif
