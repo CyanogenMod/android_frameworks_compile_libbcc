@@ -122,6 +122,10 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils libstlport
 # installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libbcc.sha1 libcompiler_rt
 
+ifeq ($(ARCH_X86_HAVE_SSE2),true)
+LOCAL_REQUIRED_MODULES += libclcore_x86.bc
+endif
+
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
 LOCAL_REQUIRED_MODULES += libclcore_neon.bc
 endif

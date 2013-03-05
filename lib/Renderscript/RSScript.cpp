@@ -27,6 +27,11 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
   BCCContext &context = pScript.getSource().getContext();
   const char* core_lib = RSInfo::LibCLCorePath;
 
+  // SSE2- or above capable devices will use an optimized library.
+#if defined(ARCH_X86_HAVE_SSE2)
+  core_lib = RSInfo::LibCLCoreX86Path;
+#endif
+
   // NEON-capable devices can use an accelerated math library for all
   // reduced precision scripts.
 #if defined(ARCH_ARM_HAVE_NEON)
