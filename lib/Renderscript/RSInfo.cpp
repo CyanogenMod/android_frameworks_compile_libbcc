@@ -34,6 +34,9 @@ const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
 const char RSInfo::LibCompilerRTPath[] = "/system/lib/libcompiler_rt.so";
 const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
 const char RSInfo::LibCLCorePath[] = "/system/lib/libclcore.bc";
+#if defined(ARCH_X86_HAVE_SSE2)
+const char RSInfo::LibCLCoreX86Path[] = "/system/lib/libclcore_x86.bc";
+#endif
 #if defined(ARCH_ARM_HAVE_NEON)
 const char RSInfo::LibCLCoreNEONPath[] = "/system/lib/libclcore_neon.bc";
 #endif
