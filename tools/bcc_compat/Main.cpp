@@ -63,9 +63,7 @@ llvm::cl::opt<std::string>
 OptRuntimePath("rt-path", llvm::cl::desc("Specify the runtime library path"),
                llvm::cl::value_desc("path"));
 
-#ifdef TARGET_BUILD
-const std::string OptTargetTriple(DEFAULT_TARGET_TRIPLE_STRING);
-#else
+#ifndef TARGET_BUILD
 llvm::cl::opt<std::string>
 OptTargetTriple("mtriple",
                 llvm::cl::desc("Specify the target triple (default: "
@@ -176,6 +174,11 @@ bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
   if (config == NULL) {
     llvm::errs() << "Out of memory when create the compiler configuration!\n";
     return false;
+  }
+
+  // Compatibility mode on x86 requires atom code generation.
+  if (config->getTriple().find("i686") != std::string::npos) {
+    config->setCPU("atom");
   }
 
   // Setup the config according to the value of command line option.

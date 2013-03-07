@@ -26,8 +26,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := bcc_compat
 LOCAL_MODULE_CLASS := EXECUTABLES
 
-LOCAL_CFLAGS := -DFORCE_ARM_CODEGEN
-
 LOCAL_SHARED_LIBRARIES := \
   libbcc \
   libbcinfo \
