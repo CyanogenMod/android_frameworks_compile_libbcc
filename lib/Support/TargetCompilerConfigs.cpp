@@ -60,10 +60,9 @@ ARMBaseCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
     }
   }
 
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
+#if defined(ARCH_ARM_HAVE_NEON)
   if (pEnableNEON) {
     pAttributes.push_back("+neon");
-    pAttributes.push_back("+neonfp");
   } else {
     pAttributes.push_back("-neon");
     pAttributes.push_back("-neonfp");
@@ -91,7 +90,7 @@ ARMBaseCompilerConfig::ARMBaseCompilerConfig(const std::string &pTriple,
 }
 
 bool ARMBaseCompilerConfig::enableNEON(bool pEnable) {
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
+#if defined(ARCH_ARM_HAVE_NEON)
   if (mEnableNEON != pEnable) {
     std::vector<std::string> attributes;
     GetFeatureVector(attributes, mInThumbMode, pEnable);
