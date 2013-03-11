@@ -12,10 +12,7 @@
  * ===----------------------------------------------------------------------===
  */
 
-#if !defined(__GNUC__) || __GNUC__ < 4 || \
-    (__GNUC__ == 4 && __GNUC_MINOR__ < 8 && !defined(HAS_HW_DIV))
-// gcc >= 4.8 implements this in libgcc
-// gcc 4.7 also implements this in libgcc with -mcpu=cortex-a15
+#if !defined(__GNUC__) || __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 7) // gcc >= 4.7 implements this in libgcc
 #include "int_lib.h"
 
 su_int __udivsi3(su_int n, su_int d);
