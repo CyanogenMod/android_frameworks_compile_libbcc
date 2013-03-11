@@ -12,7 +12,8 @@
  * ===----------------------------------------------------------------------===
  */
 
-#if !defined(__GNUC__) || __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 7) // gcc >= 4.7 implements this in libgcc
+#if !defined(__GNUC__) || __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 7) || defined(ARCH_X86)
+// ARM gcc >= 4.7 implements this in libgcc
 #include "int_lib.h"
 #include <float.h>
 
