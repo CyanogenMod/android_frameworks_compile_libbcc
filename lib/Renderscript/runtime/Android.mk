@@ -28,7 +28,6 @@ clcore_base_files := \
     rs_sample.c \
     rs_sampler.c \
     convert.ll \
-    pixel_packing.ll \
     rsClamp.ll
 
 clcore_files := \
