@@ -875,11 +875,6 @@ define <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv3_f(%struct.rs_matrix3
   ret <3 x float> %a6
 }
 
-define <3 x float> @_Z16rsMatrixMultiplyP12rs_matrix3x3Dv3_f(%struct.rs_matrix3x3* nocapture %m, <3 x float> %in) nounwind readonly {
-  %r = tail call <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv3_f(%struct.rs_matrix3x3* nocapture %m, <3 x float> %in) nounwind
-  ret <3 x float> %r
-}
-
 define <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv2_f(%struct.rs_matrix3x3* nocapture %m, <2 x float> %in) nounwind readonly {
   %x0 = extractelement <2 x float> %in, i32 0
   %x = tail call <4 x float> @smear_f(float %x0) nounwind readnone
@@ -898,11 +893,6 @@ define <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv2_f(%struct.rs_matrix3
   %a3 = fadd <4 x float> %a1, %a2
   %a4 = shufflevector <4 x float> %a3, <4 x float> undef, <3 x i32> <i32 0, i32 1, i32 2>
   ret <3 x float> %a4
-}
-
-define <3 x float> @_Z16rsMatrixMultiplyP12rs_matrix3x3Dv2_f(%struct.rs_matrix3x3* nocapture %m, <2 x float> %in) nounwind readonly {
-  %r = tail call <3 x float> @_Z16rsMatrixMultiplyPK12rs_matrix3x3Dv2_f(%struct.rs_matrix3x3* nocapture %m, <2 x float> %in) nounwind
-  ret <3 x float> %r
 }
 
 define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv4_f(%struct.rs_matrix4x4* nocapture %m, <4 x float> %in) nounwind readonly {
@@ -938,11 +928,6 @@ define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv4_f(%struct.rs_matrix4
   ret <4 x float> %a7
 }
 
-define <4 x float> @_Z16rsMatrixMultiplyP12rs_matrix4x4Dv4_f(%struct.rs_matrix4x4* nocapture %m, <4 x float> %in) nounwind readonly {
-  %r = tail call <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv4_f(%struct.rs_matrix4x4* nocapture %m, <4 x float> %in) nounwind
-  ret <4 x float> %r
-}
-
 define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv3_f(%struct.rs_matrix4x4* nocapture %m, <3 x float> %in) nounwind readonly {
   %x0 = extractelement <3 x float> %in, i32 0
   %x = tail call <4 x float> @smear_f(float %x0) nounwind readnone
@@ -973,11 +958,6 @@ define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv3_f(%struct.rs_matrix4
   ret <4 x float> %a6
 }
 
-define <4 x float> @_Z16rsMatrixMultiplyP12rs_matrix4x4Dv3_f(%struct.rs_matrix4x4* nocapture %m, <3 x float> %in) nounwind readonly {
-  %r = tail call <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv3_f(%struct.rs_matrix4x4* nocapture %m, <3 x float> %in) nounwind
-  ret <4 x float> %r
-}
-
 define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv2_f(%struct.rs_matrix4x4* nocapture %m, <2 x float> %in) nounwind readonly {
   %x0 = extractelement <2 x float> %in, i32 0
   %x = tail call <4 x float> @smear_f(float %x0) nounwind readnone
@@ -999,10 +979,5 @@ define <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv2_f(%struct.rs_matrix4
   %a3 = fmul <4 x float> %y, %ym
   %a4 = fadd <4 x float> %a2, %a3
   ret <4 x float> %a4
-}
-
-define <4 x float> @_Z16rsMatrixMultiplyP12rs_matrix4x4Dv2_f(%struct.rs_matrix4x4* nocapture %m, <2 x float> %in) nounwind readonly {
-  %r = tail call <4 x float> @_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv2_f(%struct.rs_matrix4x4* nocapture %m, <2 x float> %in) nounwind
-  ret <4 x float> %r
 }
 
