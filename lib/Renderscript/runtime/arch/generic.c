@@ -20,13 +20,52 @@
 extern short __attribute__((overloadable, always_inline)) rsClamp(short amount, short low, short high);
 extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high);
 extern uchar4 __attribute__((overloadable)) convert_uchar4(short4);
+extern uchar4 __attribute__((overloadable)) convert_uchar4(float4);
+extern float4 __attribute__((overloadable)) convert_float4(uchar4);
 extern float __attribute__((overloadable)) sqrt(float);
+
+/**
+ * clz
+ */
+extern uint32_t __attribute__((overloadable)) clz(uint32_t v) {
+    return __builtin_clz(v);
+}
+extern uint16_t __attribute__((overloadable)) clz(uint16_t v) {
+    return (uint16_t)__builtin_clz(v);
+}
+extern uint8_t __attribute__((overloadable)) clz(uint8_t v) {
+    return (uint8_t)__builtin_clz(v);
+}
+extern int32_t __attribute__((overloadable)) clz(int32_t v) {
+    return (int32_t)__builtin_clz((uint32_t)v);
+}
+extern int16_t __attribute__((overloadable)) clz(int16_t v) {
+    return (int16_t)__builtin_clz(v);
+}
+extern int8_t __attribute__((overloadable)) clz(int8_t v) {
+    return (int8_t)__builtin_clz(v);
+}
+
+extern uint32_t __attribute__((overloadable)) abs(int32_t v) {
+    if (v < 0)
+        return -v;
+    return v;
+}
+extern uint16_t __attribute__((overloadable)) abs(int16_t v) {
+    if (v < 0)
+        return -v;
+    return v;
+}
+extern uint8_t __attribute__((overloadable)) abs(int8_t v) {
+    if (v < 0)
+        return -v;
+    return v;
+}
 
 
 /*
  * CLAMP
  */
-
 extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
     return amount < low ? low : (amount > high ? high : amount);
 }
@@ -706,6 +745,16 @@ extern float4 __attribute__((overloadable)) min(float4 v1, float v2) {
     return fmin(v1, v2);
 }
 
+extern float step(float edge, float v) {
+    if (v < edge) return 0.f;
+    return 1.f;
+}
+
+extern float sign(float value) {
+    if (value > 0) return 1.f;
+    if (value < 0) return -1.f;
+    return value;
+}
 
 /*
  * YUV
@@ -842,6 +891,9 @@ extern float4 __attribute__((overloadable)) half_rsqrt(float4 v) {
     return r;
 }
 
+/**
+ * matrix ops
+ */
 
 extern float4 __attribute__((overloadable))
 rsMatrixMultiply(const rs_matrix4x4 *m, float4 in) {
@@ -909,5 +961,46 @@ rsMatrixMultiply(const rs_matrix3x3 *m, float2 in) {
 extern float3 __attribute__((overloadable))
 rsMatrixMultiply(rs_matrix3x3 *m, float2 in) {
     return rsMatrixMultiply((const rs_matrix3x3 *)m, in);
+}
+
+/**
+ * Pixel Ops
+ */
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float r, float g, float b)
+{
+    uchar4 c;
+    c.x = (uchar)clamp((r * 255.f + 0.5f), 0.f, 255.f);
+    c.y = (uchar)clamp((g * 255.f + 0.5f), 0.f, 255.f);
+    c.z = (uchar)clamp((b * 255.f + 0.5f), 0.f, 255.f);
+    c.w = 255;
+    return c;
+}
+
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float r, float g, float b, float a)
+{
+    uchar4 c;
+    c.x = (uchar)clamp((r * 255.f + 0.5f), 0.f, 255.f);
+    c.y = (uchar)clamp((g * 255.f + 0.5f), 0.f, 255.f);
+    c.z = (uchar)clamp((b * 255.f + 0.5f), 0.f, 255.f);
+    c.w = (uchar)clamp((a * 255.f + 0.5f), 0.f, 255.f);
+    return c;
+}
+
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float3 color)
+{
+    color *= 255.f;
+    color += 0.5f;
+    color = clamp(color, 0.f, 255.f);
+    uchar4 c = {color.x, color.y, color.z, 255};
+    return c;
+}
+
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float4 color)
+{
+    color *= 255.f;
+    color += 0.5f;
+    color = clamp(color, 0.f, 255.f);
+    uchar4 c = {color.x, color.y, color.z, color.w};
+    return c;
 }
 
