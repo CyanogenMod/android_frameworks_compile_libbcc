@@ -236,3 +236,79 @@ extern float3 __attribute__((overloadable))
 rsMatrixMultiply(rs_matrix3x3 *m, float2 in) {
     return rsMatrixMultiply((const rs_matrix3x3 *)m, in);
 }
+
+extern void __attribute__((overloadable))
+rsMatrixLoadMultiply(rs_matrix4x4 *ret, const rs_matrix4x4 *lhs, const rs_matrix4x4 *rhs) {
+    for (int i=0 ; i<4 ; i++) {
+        float ri0 = 0;
+        float ri1 = 0;
+        float ri2 = 0;
+        float ri3 = 0;
+        for (int j=0 ; j<4 ; j++) {
+            const float rhs_ij = rsMatrixGet(rhs, i, j);
+            ri0 += rsMatrixGet(lhs, j, 0) * rhs_ij;
+            ri1 += rsMatrixGet(lhs, j, 1) * rhs_ij;
+            ri2 += rsMatrixGet(lhs, j, 2) * rhs_ij;
+            ri3 += rsMatrixGet(lhs, j, 3) * rhs_ij;
+        }
+        rsMatrixSet(ret, i, 0, ri0);
+        rsMatrixSet(ret, i, 1, ri1);
+        rsMatrixSet(ret, i, 2, ri2);
+        rsMatrixSet(ret, i, 3, ri3);
+    }
+}
+
+extern void __attribute__((overloadable))
+rsMatrixLoadMultiply(rs_matrix4x4 *lhs, const rs_matrix4x4 *rhs) {
+    rs_matrix4x4 r;
+    rsMatrixLoadMultiply(&r, lhs, rhs);
+    rsMatrixLoad(lhs, &r);
+}
+
+extern void __attribute__((overloadable))
+rsMatrixLoadMultiply(rs_matrix3x3 *ret, const rs_matrix3x3 *lhs, const rs_matrix3x3 *rhs) {
+    for (int i=0 ; i<3 ; i++) {
+        float ri0 = 0;
+        float ri1 = 0;
+        float ri2 = 0;
+        for (int j=0 ; j<3 ; j++) {
+            const float rhs_ij = rsMatrixGet(rhs, i, j);
+            ri0 += rsMatrixGet(lhs, j, 0) * rhs_ij;
+            ri1 += rsMatrixGet(lhs, j, 1) * rhs_ij;
+            ri2 += rsMatrixGet(lhs, j, 2) * rhs_ij;
+        }
+        rsMatrixSet(ret, i, 0, ri0);
+        rsMatrixSet(ret, i, 1, ri1);
+        rsMatrixSet(ret, i, 2, ri2);
+    }
+}
+
+extern void __attribute__((overloadable))
+rsMatrixLoadMultiply(rs_matrix3x3 *lhs, const rs_matrix3x3 *rhs) {
+    rs_matrix3x3 r;
+    rsMatrixLoadMultiply(&r, lhs, rhs);
+    rsMatrixLoad(lhs, &r);
+}
+
+extern void __attribute__((overloadable))
+rsMatrixLoadMultiply(rs_matrix2x2 *ret, const rs_matrix2x2 *lhs, const rs_matrix2x2 *rhs) {
+    for (int i=0 ; i<2 ; i++) {
+        float ri0 = 0;
+        float ri1 = 0;
+        for (int j=0 ; j<2 ; j++) {
+            const float rhs_ij = rsMatrixGet(rhs, i, j);
+            ri0 += rsMatrixGet(lhs, j, 0) * rhs_ij;
+            ri1 += rsMatrixGet(lhs, j, 1) * rhs_ij;
+        }
+        rsMatrixSet(ret, i, 0, ri0);
+        rsMatrixSet(ret, i, 1, ri1);
+    }
+}
+
+extern void __attribute__((overloadable))
+rsMatrixLoadMultiply(rs_matrix2x2 *lhs, const rs_matrix2x2 *rhs) {
+    rs_matrix2x2 r;
+    rsMatrixLoadMultiply(&r, lhs, rhs);
+    rsMatrixLoad(lhs, &r);
+}
+

@@ -412,7 +412,7 @@ FN_FUNC_FN(exp2)
 extern float __attribute__((overloadable)) pow(float, float);
 
 extern float __attribute__((overloadable)) exp10(float v) {
-    return pow(10.f, v);
+    return exp2(v * 3.321928095f);
 }
 FN_FUNC_FN(exp10)
 
@@ -474,7 +474,7 @@ FN_FUNC_FN(log10)
 
 
 extern float __attribute__((overloadable)) log2(float v) {
-    return log10(v) / log10(2.f);
+    return log10(v) * 3.321928095f;
 }
 FN_FUNC_FN(log2)
 
