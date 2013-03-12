@@ -23,11 +23,11 @@ clcore_base_files := \
     rs_core.c \
     rs_element.c \
     rs_mesh.c \
+    rs_matrix.c \
     rs_program.c \
     rs_sample.c \
     rs_sampler.c \
     convert.ll \
-    matrix.ll \
     pixel_packing.ll \
     rsClamp.ll
 
