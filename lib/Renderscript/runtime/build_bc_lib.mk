@@ -16,6 +16,8 @@
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
+BCC_STRIP_ATTR := $(HOST_OUT_EXECUTABLES)/bcc_strip_attr$(HOST_EXECUTABLE_SUFFIX)
+
 # We need to pass the +long64 flag to the underlying version of Clang, since
 # we are generating a library for use with Renderscript (64-bit long type,
 # not 32-bit).
@@ -57,9 +59,15 @@ $(ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(LLVM_AS)
 -include $(c_bc_files:%.bc=%.d)
 -include $(ll_bc_files:%.bc=%.d)
 
-$(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(c_bc_files) $(ll_bc_files)
-$(LOCAL_BUILT_MODULE): $(c_bc_files) $(ll_bc_files)
-$(LOCAL_BUILT_MODULE): $(LLVM_LINK) $(clcore_LLVM_LD)
-$(LOCAL_BUILT_MODULE): $(LLVM_AS)
+unstripped := $(dir $(LOCAL_BUILT_MODULE))unstripped.bc
+
+$(unstripped): PRIVATE_BC_FILES := $(c_bc_files) $(ll_bc_files)
+$(unstripped): $(c_bc_files) $(ll_bc_files)
+$(unstripped): $(LLVM_LINK) $(clcore_LLVM_LD)
+$(unstripped): $(LLVM_AS)
 	@mkdir -p $(dir $@)
 	$(hide) $(LLVM_LINK) $(PRIVATE_BC_FILES) -o $@
+
+
+$(LOCAL_BUILT_MODULE): $(unstripped) $(BCC_STRIP_ATTR)
+	$(hide) $(BCC_STRIP_ATTR) -o $@ $(unstripped)
