@@ -45,7 +45,7 @@ extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float4 color)
 }
 */
 
-extern float4 __attribute__((overloadable)) rsUnpackColor8888(uchar4 c)
+extern float4 rsUnpackColor8888(uchar4 c)
 {
     return convert_float4(c) * 0.003921569f;
 }
