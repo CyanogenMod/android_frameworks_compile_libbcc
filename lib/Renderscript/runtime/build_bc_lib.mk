@@ -62,7 +62,7 @@ $(ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(LLVM_AS)
 $(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(c_bc_files) $(ll_bc_files)
 $(LOCAL_BUILT_MODULE): $(c_bc_files) $(ll_bc_files)
 $(LOCAL_BUILT_MODULE): $(LLVM_LINK) $(clcore_LLVM_LD)
-$(LOCAL_BUILT_MODULE): $(LLVM_AS)
+$(LOCAL_BUILT_MODULE): $(LLVM_AS) $(BCC_STRIP_ATTR)
 	@mkdir -p $(dir $@)
 	$(hide) $(LLVM_LINK) $(PRIVATE_BC_FILES) -o $@.unstripped
 	$(hide) $(BCC_STRIP_ATTR) -o $@ $@.unstripped
