@@ -24,45 +24,6 @@ extern uchar4 __attribute__((overloadable)) convert_uchar4(float4);
 extern float4 __attribute__((overloadable)) convert_float4(uchar4);
 extern float __attribute__((overloadable)) sqrt(float);
 
-/**
- * clz
- */
-extern uint32_t __attribute__((overloadable)) clz(uint32_t v) {
-    return __builtin_clz(v);
-}
-extern uint16_t __attribute__((overloadable)) clz(uint16_t v) {
-    return (uint16_t)__builtin_clz(v);
-}
-extern uint8_t __attribute__((overloadable)) clz(uint8_t v) {
-    return (uint8_t)__builtin_clz(v);
-}
-extern int32_t __attribute__((overloadable)) clz(int32_t v) {
-    return (int32_t)__builtin_clz((uint32_t)v);
-}
-extern int16_t __attribute__((overloadable)) clz(int16_t v) {
-    return (int16_t)__builtin_clz(v);
-}
-extern int8_t __attribute__((overloadable)) clz(int8_t v) {
-    return (int8_t)__builtin_clz(v);
-}
-
-extern uint32_t __attribute__((overloadable)) abs(int32_t v) {
-    if (v < 0)
-        return -v;
-    return v;
-}
-extern uint16_t __attribute__((overloadable)) abs(int16_t v) {
-    if (v < 0)
-        return -v;
-    return v;
-}
-extern uint8_t __attribute__((overloadable)) abs(int8_t v) {
-    if (v < 0)
-        return -v;
-    return v;
-}
-
-
 /*
  * CLAMP
  */
@@ -743,17 +704,6 @@ extern float4 __attribute__((overloadable)) min(float4 v1, float4 v2) {
 
 extern float4 __attribute__((overloadable)) min(float4 v1, float v2) {
     return fmin(v1, v2);
-}
-
-extern float step(float edge, float v) {
-    if (v < edge) return 0.f;
-    return 1.f;
-}
-
-extern float sign(float value) {
-    if (value > 0) return 1.f;
-    if (value < 0) return -1.f;
-    return value;
 }
 
 /*

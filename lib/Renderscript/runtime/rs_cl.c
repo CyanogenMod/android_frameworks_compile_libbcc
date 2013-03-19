@@ -719,6 +719,49 @@ XN_FUNC_XN_XN_BODY(uint, fnc, body)   \
 XN_FUNC_XN_XN_BODY(int, fnc, body)    \
 XN_FUNC_XN_XN_BODY(float, fnc, body)
 
+
+/**
+ * abs
+ */
+extern uint32_t __attribute__((overloadable)) abs(int32_t v) {
+    if (v < 0)
+        return -v;
+    return v;
+}
+extern uint16_t __attribute__((overloadable)) abs(int16_t v) {
+    if (v < 0)
+        return -v;
+    return v;
+}
+extern uint8_t __attribute__((overloadable)) abs(int8_t v) {
+    if (v < 0)
+        return -v;
+    return v;
+}
+
+/**
+ * clz
+ */
+extern uint32_t __attribute__((overloadable)) clz(uint32_t v) {
+    return __builtin_clz(v);
+}
+extern uint16_t __attribute__((overloadable)) clz(uint16_t v) {
+    return (uint16_t)__builtin_clz(v);
+}
+extern uint8_t __attribute__((overloadable)) clz(uint8_t v) {
+    return (uint8_t)__builtin_clz(v);
+}
+extern int32_t __attribute__((overloadable)) clz(int32_t v) {
+    return (int32_t)__builtin_clz((uint32_t)v);
+}
+extern int16_t __attribute__((overloadable)) clz(int16_t v) {
+    return (int16_t)__builtin_clz(v);
+}
+extern int8_t __attribute__((overloadable)) clz(int8_t v) {
+    return (int8_t)__builtin_clz(v);
+}
+
+
 UIN_FUNC_IN(abs)
 IN_FUNC_IN(clz)
 
