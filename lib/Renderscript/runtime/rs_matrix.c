@@ -259,7 +259,7 @@ rsMatrixLoadMultiply(rs_matrix4x4 *ret, const rs_matrix4x4 *lhs, const rs_matrix
 }
 
 extern void __attribute__((overloadable))
-rsMatrixLoadMultiply(rs_matrix4x4 *lhs, const rs_matrix4x4 *rhs) {
+rsMatrixMultiply(rs_matrix4x4 *lhs, const rs_matrix4x4 *rhs) {
     rs_matrix4x4 r;
     rsMatrixLoadMultiply(&r, lhs, rhs);
     rsMatrixLoad(lhs, &r);
@@ -284,7 +284,7 @@ rsMatrixLoadMultiply(rs_matrix3x3 *ret, const rs_matrix3x3 *lhs, const rs_matrix
 }
 
 extern void __attribute__((overloadable))
-rsMatrixLoadMultiply(rs_matrix3x3 *lhs, const rs_matrix3x3 *rhs) {
+rsMatrixMultiply(rs_matrix3x3 *lhs, const rs_matrix3x3 *rhs) {
     rs_matrix3x3 r;
     rsMatrixLoadMultiply(&r, lhs, rhs);
     rsMatrixLoad(lhs, &r);
@@ -306,7 +306,7 @@ rsMatrixLoadMultiply(rs_matrix2x2 *ret, const rs_matrix2x2 *lhs, const rs_matrix
 }
 
 extern void __attribute__((overloadable))
-rsMatrixLoadMultiply(rs_matrix2x2 *lhs, const rs_matrix2x2 *rhs) {
+rsMatrixMultiply(rs_matrix2x2 *lhs, const rs_matrix2x2 *rhs) {
     rs_matrix2x2 r;
     rsMatrixLoadMultiply(&r, lhs, rhs);
     rsMatrixLoad(lhs, &r);
