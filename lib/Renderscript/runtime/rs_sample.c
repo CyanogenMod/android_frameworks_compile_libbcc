@@ -2,6 +2,7 @@
 #include "rs_graphics.rsh"
 #include "rs_structs.h"
 
+#if 0
 /**
 * Allocation sampling
 */
@@ -378,23 +379,51 @@ static float4 __attribute__((overloadable))
     location.y = wrapI(wrapT, iPixel.y, sourceH);
     return getNearestSample(a, location, vecSize, dt, lod);
 }
+#endif
+
+
+typedef float4 (*fnSample1D) (rs_allocation a, rs_sampler s,
+                              float uv, float lod);
+typedef float4 (*fnSample2D) (rs_allocation a, rs_sampler s,
+                              float2 uv, float lod);
+typedef float4 (*fnSample3D) (rs_allocation a, rs_sampler s,
+                              float3 uv, float lod);
+
+
+
+
+extern const float4 __attribute__((overloadable))
+        rsSample(rs_allocation a, rs_sampler s, float location, float lod) {
+    rs_element elem = rsAllocationGetElement(a);
+    rs_data_kind dk = rsElementGetDataKind(elem);
+    rs_data_type dt = rsElementGetDataType(elem);
+
+    Sampler_t *prog = (Sampler_t *)s.p;
+    fnSample1D *tbl = (fnSample1D*)prog->mHal.drv;
+    return tbl[dk - 7](a, s, location, lod);
+}
 
 extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float location) {
-    return rsSample(a, s, location, 0);
-}
-
-extern const float4 __attribute__((overloadable))
-        rsSample(rs_allocation a, rs_sampler s, float uv, float lod) {
-    SAMPLE_FUNC_BODY()
-}
-
-extern const float4 __attribute__((overloadable))
-        rsSample(rs_allocation a, rs_sampler s, float2 location) {
-    return rsSample(a, s, location, 0.0f);
+    return rsSample(a, s, location, 0.f);
 }
 
 extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float2 uv, float lod) {
-    SAMPLE_FUNC_BODY()
+
+    rs_element elem = rsAllocationGetElement(a);
+    rs_data_kind dk = rsElementGetDataKind(elem);
+    rs_data_type dt = rsElementGetDataType(elem);
+
+    Sampler_t *prog = (Sampler_t *)s.p;
+    fnSample2D *tbl = (fnSample2D*)prog->mHal.drv;
+    return tbl[dk](a, s, uv, lod);
 }
+
+extern const float4 __attribute__((overloadable))
+        rsSample(rs_allocation a, rs_sampler s, float2 uv) {
+
+    return rsSample(a, s, uv, 0.f);
+}
+
+

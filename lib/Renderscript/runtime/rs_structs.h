@@ -137,8 +137,10 @@ typedef struct ProgramRaster {
  *
  *****************************************************************************/
 typedef struct Sampler {
-    char __pad[32];
+    char __pad[28];
+
     struct {
+        void *drv;
         struct {
             rs_sampler_value magFilter;
             rs_sampler_value minFilter;
