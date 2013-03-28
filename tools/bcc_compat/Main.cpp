@@ -176,6 +176,15 @@ bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
     return false;
   }
 
+  // Explicitly set ARM feature vector
+  if (config->getTriple().find("arm") != std::string::npos) {
+    std::vector<std::string> fv;
+    fv.push_back("+vfp3");
+    fv.push_back("+d16");
+    fv.push_back("-neon");
+    fv.push_back("-neonfp");
+    config->setFeatureString(fv);
+  }
   // Compatibility mode on x86 requires atom code generation.
   if (config->getTriple().find("i686") != std::string::npos) {
     config->setCPU("atom");
