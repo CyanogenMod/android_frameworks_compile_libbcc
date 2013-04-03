@@ -25,7 +25,7 @@ typedef enum {
 } rs_allocation_mipmap_control;
 
 typedef struct Allocation {
-    char __pad[28];
+    char __pad[32];
     struct {
         void * drv;
         struct {
@@ -76,7 +76,7 @@ typedef struct Allocation {
  *
  *****************************************************************************/
 typedef struct ProgramStore {
-    char __pad[36];
+    char __pad[40];
     struct {
         struct {
             bool ditherEnable;
@@ -112,6 +112,7 @@ typedef struct ProgramStore {
 typedef struct ProgramRaster {
     char __pad[36];
     struct {
+        void * drv;
         struct {
             bool pointSprite;
             rs_cull_mode cull;
@@ -139,6 +140,7 @@ typedef struct ProgramRaster {
 typedef struct Sampler {
     char __pad[32];
     struct {
+        void *drv;
         struct {
             rs_sampler_value magFilter;
             rs_sampler_value minFilter;
@@ -168,7 +170,7 @@ typedef struct Sampler {
  *
  *****************************************************************************/
 typedef struct Element {
-    char __pad[28];
+    char __pad[32];
     struct {
         void *drv;
         struct {
@@ -206,7 +208,7 @@ typedef struct Element {
  *
  *****************************************************************************/
 typedef struct Type {
-    char __pad[28];
+    char __pad[32];
     struct {
         void *drv;
         struct {
@@ -242,7 +244,7 @@ typedef struct Type {
  *
  *****************************************************************************/
 typedef struct Mesh {
-    char __pad[28];
+    char __pad[32];
     struct {
         void *drv;
         struct {
