@@ -2,6 +2,8 @@
 #include "rs_graphics.rsh"
 #include "rs_structs.h"
 
+#define RS_DEBUG_RUNTIME 0
+
 // Opaque Allocation type operations
 extern uint32_t __attribute__((overloadable))
     rsAllocationGetDimX(rs_allocation a) {
@@ -33,32 +35,6 @@ extern uint32_t __attribute__((overloadable))
     return alloc->mHal.state.hasFaces;
 }
 
-extern const void * __attribute__((overloadable))
-        rsGetElementAt(rs_allocation a, uint32_t x) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    return &p[eSize * x];
-}
-
-extern const void * __attribute__((overloadable))
-        rsGetElementAt(rs_allocation a, uint32_t x, uint32_t y) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
-    return &p[(eSize * x) + (y * stride)];
-}
-
-extern const void * __attribute__((overloadable))
-        rsGetElementAt(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
-    const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;
-    return &p[(eSize * x) + (y * stride) + (z * stride * dimY)];
-}
 
 extern rs_element __attribute__((overloadable))
         rsAllocationGetElement(rs_allocation a) {
@@ -80,33 +56,53 @@ static void memcpy(void* dst, void* src, size_t size) {
     }
 }
 
-extern void __attribute__((overloadable))
-        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    memcpy((void*)&p[eSize * x], ptr, eSize);
-}
+#if RS_DEBUG_RUNTIME
+#define ELEMENT_AT(T)                                                   \
+    extern void __attribute__((overloadable))                           \
+        rsSetElementAt_##T(rs_allocation a, const T *val, uint32_t x);  \
+    extern void __attribute__((overloadable))                           \
+        rsSetElementAt_##T(rs_allocation a, const T *val, uint32_t x, uint32_t y); \
+    extern void __attribute__((overloadable))                           \
+        rsSetElementAt_##T(rs_allocation a, const T *val, uint32_t x, uint32_t y, uint32_t z); \
+    extern void __attribute__((overloadable))                           \
+        rsGetElementAt_##T(rs_allocation a, T *val, uint32_t x);  \
+    extern void __attribute__((overloadable))                           \
+        rsGetElementAt_##T(rs_allocation a, T *val, uint32_t x, uint32_t y); \
+    extern void __attribute__((overloadable))                           \
+        rsGetElementAt_##T(rs_allocation a, T *val, uint32_t x, uint32_t y, uint32_t z); \
+                                                                        \
+    extern void __attribute__((overloadable))                           \
+    rsSetElementAt_##T(rs_allocation a, T val, uint32_t x) {            \
+        rsSetElementAt_##T(a, &val, x);                                 \
+    }                                                                   \
+    extern void __attribute__((overloadable))                           \
+    rsSetElementAt_##T(rs_allocation a, T val, uint32_t x, uint32_t y) { \
+        rsSetElementAt_##T(a, &val, x, y);                              \
+    }                                                                   \
+    extern void __attribute__((overloadable))                           \
+    rsSetElementAt(rs_allocation a, T val, uint32_t x, uint32_t y, uint32_t z) { \
+        rsSetElementAt_##T(a, &val, x, y, z);                           \
+    }                                                                   \
+    extern T __attribute__((overloadable))                              \
+    rsGetElementAt_##T(rs_allocation a, uint32_t x) {                   \
+        T tmp;                                                          \
+        rsGetElementAt_##T(a, &tmp, x);                                 \
+        return tmp;                                                     \
+    }                                                                   \
+    extern T __attribute__((overloadable))                              \
+    rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y) {       \
+        T tmp;                                                          \
+        rsGetElementAt_##T(a, &tmp, x, y);                              \
+        return tmp;                                                     \
+    }                                                                   \
+    extern T __attribute__((overloadable))                              \
+            rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) { \
+        T tmp;                                                          \
+        rsGetElementAt_##T(a, &tmp, x, y, z);                           \
+        return tmp;                                                     \
+    }
 
-extern void __attribute__((overloadable))
-        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x, uint32_t y) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
-    memcpy((void*)&p[(eSize * x) + (y * stride)], ptr, eSize);
-}
-
-extern void __attribute__((overloadable))
-        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x, uint32_t y, uint32_t z) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
-    const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;
-    memcpy((void*)&p[(eSize * x) + (y * stride) + (z * stride * dimY)], ptr, eSize);
-}
-
+#else
 #define ELEMENT_AT(T)                                                   \
     extern void __attribute__((overloadable))                           \
     rsSetElementAt_##T(rs_allocation a, T val, uint32_t x) {            \
@@ -154,6 +150,62 @@ extern void __attribute__((overloadable))
         const uint8_t *dp = &p[(sizeof(T) * x) + (y * stride) + (z * stride * dimY)]; \
         return ((const T*)dp)[0];                                       \
     }
+
+
+
+extern const void * __attribute__((overloadable))
+        rsGetElementAt(rs_allocation a, uint32_t x) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    return &p[eSize * x];
+}
+
+extern const void * __attribute__((overloadable))
+        rsGetElementAt(rs_allocation a, uint32_t x, uint32_t y) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
+    return &p[(eSize * x) + (y * stride)];
+}
+
+extern const void * __attribute__((overloadable))
+        rsGetElementAt(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
+    const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;
+    return &p[(eSize * x) + (y * stride) + (z * stride * dimY)];
+}
+extern void __attribute__((overloadable))
+        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    memcpy((void*)&p[eSize * x], ptr, eSize);
+}
+
+extern void __attribute__((overloadable))
+        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x, uint32_t y) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
+    memcpy((void*)&p[(eSize * x) + (y * stride)], ptr, eSize);
+}
+
+extern void __attribute__((overloadable))
+        rsSetElementAt(rs_allocation a, void* ptr, uint32_t x, uint32_t y, uint32_t z) {
+    Allocation_t *alloc = (Allocation_t *)a.p;
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr;
+    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
+    const uint32_t stride = alloc->mHal.drvState.lod[0].stride;
+    const uint32_t dimY = alloc->mHal.drvState.lod[0].dimY;
+    memcpy((void*)&p[(eSize * x) + (y * stride) + (z * stride * dimY)], ptr, eSize);
+}
+#endif
 
 ELEMENT_AT(char)
 ELEMENT_AT(char2)
