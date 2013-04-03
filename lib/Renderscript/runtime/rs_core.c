@@ -163,3 +163,42 @@ extern int __attribute__((overloadable)) rsRand(int min, int max) {
     return (int)rsRand((float)min, (float)max);
 }
 
+#define PRIM_DEBUG(T)                               \
+extern void __attribute__((overloadable)) rsDebug(const char *, const T *);     \
+void __attribute__((overloadable)) rsDebug(const char *txt, T val) {            \
+    rsDebug(txt, &val);                                                         \
+}
+
+PRIM_DEBUG(char2)
+PRIM_DEBUG(char3)
+PRIM_DEBUG(char4)
+PRIM_DEBUG(uchar2)
+PRIM_DEBUG(uchar3)
+PRIM_DEBUG(uchar4)
+PRIM_DEBUG(short2)
+PRIM_DEBUG(short3)
+PRIM_DEBUG(short4)
+PRIM_DEBUG(ushort2)
+PRIM_DEBUG(ushort3)
+PRIM_DEBUG(ushort4)
+PRIM_DEBUG(int2)
+PRIM_DEBUG(int3)
+PRIM_DEBUG(int4)
+PRIM_DEBUG(uint2)
+PRIM_DEBUG(uint3)
+PRIM_DEBUG(uint4)
+PRIM_DEBUG(long2)
+PRIM_DEBUG(long3)
+PRIM_DEBUG(long4)
+PRIM_DEBUG(ulong2)
+PRIM_DEBUG(ulong3)
+PRIM_DEBUG(ulong4)
+PRIM_DEBUG(float2)
+PRIM_DEBUG(float3)
+PRIM_DEBUG(float4)
+PRIM_DEBUG(double2)
+PRIM_DEBUG(double3)
+PRIM_DEBUG(double4)
+
+#undef PRIM_DEBUG
+
