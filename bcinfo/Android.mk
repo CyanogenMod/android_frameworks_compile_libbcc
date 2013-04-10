@@ -61,7 +61,7 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES)
-LOCAL_SHARED_LIBRARIES := libLLVM libcutils libstlport
+LOCAL_SHARED_LIBRARIES := libLLVM libcutils liblog libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
@@ -80,7 +80,7 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
-LOCAL_STATIC_LIBRARIES += libcutils
+LOCAL_STATIC_LIBRARIES += libcutils liblog
 LOCAL_SHARED_LIBRARIES += libLLVM
 
 LOCAL_LDLIBS := -ldl -lpthread
