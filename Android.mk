@@ -116,7 +116,7 @@ else
 endif
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
-LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils libstlport
+LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
@@ -163,7 +163,8 @@ LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 
 LOCAL_STATIC_LIBRARIES += \
   libutils \
-  libcutils
+  libcutils \
+  liblog
 
 LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM
 
