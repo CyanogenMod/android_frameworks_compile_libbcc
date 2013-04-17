@@ -33,7 +33,12 @@ bc_cflags := -MD \
              -emit-llvm \
              -target armv7-none-linux-gnueabi \
              -fsigned-char \
-	     $(bc_translated_clang_cc1_cflags)
+             $(bc_translated_clang_cc1_cflags)
+
+ifeq ($(rs_debug_runtime),1)
+bc_cflags += -DRS_DEBUG_RUNTIME
+endif
+rs_debug_runtime:=
 
 c_sources := $(filter %.c,$(LOCAL_SRC_FILES))
 ll_sources := $(filter %.ll,$(LOCAL_SRC_FILES))
@@ -47,10 +52,11 @@ ll_bc_files := $(patsubst %.ll,%.bc, \
 $(c_bc_files): PRIVATE_INCLUDES := \
     frameworks/rs/scriptc \
     external/clang/lib/Headers
+$(c_bc_files): PRIVATE_CFLAGS := $(bc_cflags)
 
 $(c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c  $(CLANG)
 	@mkdir -p $(dir $@)
-	$(hide) $(CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) $(bc_cflags) $< -o $@
+	$(hide) $(CLANG) $(addprefix -I, $(PRIVATE_INCLUDES)) $(PRIVATE_CFLAGS) $< -o $@
 
 $(ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(LLVM_AS)
 	@mkdir -p $(dir $@)

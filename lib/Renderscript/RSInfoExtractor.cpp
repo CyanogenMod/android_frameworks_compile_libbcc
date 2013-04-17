@@ -169,6 +169,7 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   string_pool_size += ::strlen(LibCompilerRTPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
+  string_pool_size += ::strlen(LibCLCoreDebugPath) + 1 + SHA1_DIGEST_LENGTH;
 #if defined(ARCH_ARM_HAVE_NEON)
   string_pool_size += ::strlen(LibCLCoreNEONPath) + 1 + SHA1_DIGEST_LENGTH;
 #endif
@@ -384,6 +385,12 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
     }
 
     if (!writeDependency(LibCLCorePath, LibCLCoreSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+
+    if (!writeDependency(LibCLCoreDebugPath, LibCLCoreDebugSHA1,
                          result->mStringPool, &cur_string_pool_offset,
                          result->mDependencyTable)) {
       goto bail;
