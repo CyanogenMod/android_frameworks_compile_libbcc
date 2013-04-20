@@ -78,6 +78,16 @@ LOCAL_SRC_FILES := $(clcore_files)
 
 include $(LOCAL_PATH)/build_bc_lib.mk
 
+# Build a debug version of the library
+include $(CLEAR_VARS)
+LOCAL_MODULE := libclcore_debug.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+rs_debug_runtime := 1
+LOCAL_SRC_FILES := $(clcore_files)
+
+include $(LOCAL_PATH)/build_bc_lib.mk
+
 # Build an optimized version of the library if the device is SSE2- or above
 # capable.
 ifeq ($(ARCH_X86_HAVE_SSE2),true)

@@ -2,8 +2,6 @@
 #include "rs_graphics.rsh"
 #include "rs_structs.h"
 
-#define RS_DEBUG_RUNTIME 0
-
 // Opaque Allocation type operations
 extern uint32_t __attribute__((overloadable))
     rsAllocationGetDimX(rs_allocation a) {
@@ -56,7 +54,7 @@ static void memcpy(void* dst, void* src, size_t size) {
     }
 }
 
-#if RS_DEBUG_RUNTIME
+#ifdef RS_DEBUG_RUNTIME
 #define ELEMENT_AT(T)                                                   \
     extern void __attribute__((overloadable))                           \
         rsSetElementAt_##T(rs_allocation a, const T *val, uint32_t x);  \
