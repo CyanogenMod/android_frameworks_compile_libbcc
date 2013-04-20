@@ -61,7 +61,7 @@ bool is_force_recompile() {
 } // end anonymous namespace
 
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
-    mConfig(NULL), mCompiler(), mCompilerRuntime(NULL) {
+    mConfig(NULL), mCompiler(), mCompilerRuntime(NULL), mDebugContext(false) {
   init::Initialize();
   // Chain the symbol resolvers for compiler_rt and RS runtimes.
   if (pUseCompilerRT) {
@@ -235,8 +235,12 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // Open the output file for write.
   //===--------------------------------------------------------------------===//
-  OutputFile *output_file =
-      new (std::nothrow) OutputFile(pOutputPath, FileBase::kTruncate);
+  unsigned flags = FileBase::kTruncate;
+  if (mDebugContext) {
+    // Delete the cache file when we finish up under a debug context.
+    flags |= FileBase::kDeleteOnClose;
+  }
+  OutputFile *output_file = new (std::nothrow) OutputFile(pOutputPath, flags);
 
   if ((output_file == NULL) || output_file->hasError()) {
     ALOGE("Unable to open the %s for write! (%s)", pOutputPath,
@@ -375,11 +379,16 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   // Load cache.
   //===--------------------------------------------------------------------===//
-  RSExecutable *result = loadScriptCache(output_path.c_str(), dep_info);
+  RSExecutable *result = NULL;
 
-  if (result != NULL) {
-    // Cache hit
-    return result;
+  // Skip loading from the cache if we are using a debug context.
+  if (!mDebugContext) {
+    result = loadScriptCache(output_path.c_str(), dep_info);
+
+    if (result != NULL) {
+      // Cache hit
+      return result;
+    }
   }
 
   //===--------------------------------------------------------------------===//

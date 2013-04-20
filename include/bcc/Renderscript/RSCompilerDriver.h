@@ -39,6 +39,9 @@ private:
   LookupFunctionSymbolResolver<void*> mRSRuntime;
   SymbolResolverProxy mResolver;
 
+  // Are we compiling under an RS debug context with additional checks?
+  bool mDebugContext;
+
   RSExecutable *loadScriptCache(const char *pOutputPath,
                                 const RSInfo::DependencyTableTy &pDeps);
 
@@ -69,6 +72,10 @@ public:
 
   void setConfig(CompilerConfig *config) {
     mConfig = config;
+  }
+
+  void setDebugContext(bool v) {
+    mDebugContext = v;
   }
 
   // FIXME: This method accompany with loadScriptCache and compileScript should
