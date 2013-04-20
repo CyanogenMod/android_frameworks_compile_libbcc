@@ -163,6 +163,7 @@ public:
   static const char LibCompilerRTPath[];
   static const char LibRSPath[];
   static const char LibCLCorePath[];
+  static const char LibCLCoreDebugPath[];
 #if defined(ARCH_X86_HAVE_SSE2)
   static const char LibCLCoreX86Path[];
 #endif
@@ -177,6 +178,7 @@ private:
   static const uint8_t *LibCompilerRTSHA1;
   static const uint8_t *LibRSSHA1;
   static const uint8_t *LibCLCoreSHA1;
+  static const uint8_t *LibCLCoreDebugSHA1;
 #if defined(ARCH_ARM_HAVE_NEON)
   static const uint8_t *LibCLCoreNEONSHA1;
 #endif
