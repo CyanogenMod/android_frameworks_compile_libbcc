@@ -78,7 +78,7 @@ static void memcpy(void* dst, void* src, size_t size) {
         rsSetElementAt_##T(a, &val, x, y);                              \
     }                                                                   \
     extern void __attribute__((overloadable))                           \
-    rsSetElementAt(rs_allocation a, T val, uint32_t x, uint32_t y, uint32_t z) { \
+    rsSetElementAt_##T(rs_allocation a, T val, uint32_t x, uint32_t y, uint32_t z) { \
         rsSetElementAt_##T(a, &val, x, y, z);                           \
     }                                                                   \
     extern T __attribute__((overloadable))                              \
@@ -94,7 +94,7 @@ static void memcpy(void* dst, void* src, size_t size) {
         return tmp;                                                     \
     }                                                                   \
     extern T __attribute__((overloadable))                              \
-            rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) { \
+    rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) { \
         T tmp;                                                          \
         rsGetElementAt_##T(a, &tmp, x, y, z);                           \
         return tmp;                                                     \
@@ -118,7 +118,7 @@ static void memcpy(void* dst, void* src, size_t size) {
         *((T*)&p[(eSize * x) + (y * stride)]) = val;                    \
     }                                                                   \
     extern void __attribute__((overloadable))                           \
-            rsSetElementAt(rs_allocation a, T val, uint32_t x, uint32_t y, uint32_t z) { \
+    rsSetElementAt_##T(rs_allocation a, T val, uint32_t x, uint32_t y, uint32_t z) { \
         Allocation_t *alloc = (Allocation_t *)a.p;                      \
         uint8_t *p = (uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
         const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
@@ -140,7 +140,7 @@ static void memcpy(void* dst, void* src, size_t size) {
         return *((T*)&p[(sizeof(T) * x) + (y * stride)]);               \
     }                                                                   \
     extern T __attribute__((overloadable))                              \
-            rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) { \
+    rsGetElementAt_##T(rs_allocation a, uint32_t x, uint32_t y, uint32_t z) { \
         Allocation_t *alloc = (Allocation_t *)a.p;                      \
         const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[0].mallocPtr; \
         const uint32_t stride = alloc->mHal.drvState.lod[0].stride;     \
