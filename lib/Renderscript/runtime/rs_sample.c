@@ -339,11 +339,9 @@ static float4 __attribute__((overloadable))
         return getSample_L(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
 
     default:
-        //__builtin_unreachable();
         break;
     }
 
-    //__builtin_unreachable();
     return 0.f;
 }
 
@@ -421,14 +419,13 @@ static float4  __attribute__((overloadable))
 }
 
 static float4 __attribute__((overloadable))
-        sample_LOD_LinearPixel(const Allocation_t *alloc, const Type_t *type,
+        sample_LOD_LinearPixel(const Allocation_t *alloc,
                                rs_data_kind dk, rs_data_type dt,
-                               rs_sampler s,
+                               rs_sampler_value wrapS,
                                float uv, uint32_t lod) {
 
     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
 
-    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
     int32_t sourceW = alloc->mHal.drvState.lod[lod].dimX;
     float pixelUV = uv * (float)(sourceW);
     int32_t iPixel = (int32_t)(pixelUV);
@@ -456,10 +453,9 @@ static float4 __attribute__((overloadable))
 static float4 __attribute__((overloadable))
         sample_LOD_NearestPixel(const Allocation_t *alloc,
                                 rs_data_kind dk, rs_data_type dt,
-                                rs_sampler s,
+                                rs_sampler_value wrapS,
                                 float uv, uint32_t lod) {
 
-    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
     int32_t sourceW = alloc->mHal.drvState.lod[lod].dimX;
     int32_t iPixel = (int32_t)(uv * (float)(sourceW));
     uint32_t location = wrapI(wrapS, iPixel, sourceW);
@@ -470,13 +466,11 @@ static float4 __attribute__((overloadable))
 static float4 __attribute__((overloadable))
         sample_LOD_LinearPixel(const Allocation_t *alloc,
                                rs_data_kind dk, rs_data_type dt,
-                               rs_sampler s,
+                               rs_sampler_value wrapS,
+                               rs_sampler_value wrapT,
                                float2 uv, uint32_t lod) {
 
     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
-
-    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
-    rs_sampler_value wrapT = rsSamplerGetWrapT(s);
 
     int sourceW = alloc->mHal.drvState.lod[lod].dimX;
     int sourceH = alloc->mHal.drvState.lod[lod].dimY;
@@ -520,11 +514,9 @@ static float4 __attribute__((overloadable))
 static float4 __attribute__((overloadable))
         sample_LOD_NearestPixel(const Allocation_t *alloc,
                                 rs_data_kind dk, rs_data_type dt,
-                                rs_sampler s,
+                                rs_sampler_value wrapS,
+                                rs_sampler_value wrapT,
                                 float2 uv, uint32_t lod) {
-    rs_sampler_value wrapS = rsSamplerGetWrapS(s);
-    rs_sampler_value wrapT = rsSamplerGetWrapT(s);
-
     int sourceW = alloc->mHal.drvState.lod[lod].dimX;
     int sourceH = alloc->mHal.drvState.lod[lod].dimY;
 
@@ -541,32 +533,33 @@ static float4 __attribute__((overloadable))
 
 extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float uv, float lod) {
-    rs_element elem = rsAllocationGetElement(a);
-    rs_data_kind dk = rsElementGetDataKind(elem);
-    rs_data_type dt = rsElementGetDataType(elem);
 
-    if (dk == RS_KIND_USER || (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5)) {
+    const Allocation_t *alloc = (const Allocation_t *)a.p;
+    const Sampler_t *prog = (Sampler_t *)s.p;
+    const Type_t *type = (Type_t *)alloc->mHal.state.type;
+    const Element_t *elem = type->mHal.state.element;
+    rs_data_kind dk = elem->mHal.state.dataKind;
+    rs_data_type dt = elem->mHal.state.dataType;
+    rs_sampler_value sampleMin = prog->mHal.state.minFilter;
+    rs_sampler_value sampleMag = prog->mHal.state.magFilter;
+    rs_sampler_value wrapS = prog->mHal.state.wrapS;
+
+    if (!(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
         return 0.f;
     }
 
-    const Allocation_t *alloc = (const Allocation_t *)a.p;
-    const Type_t *type = (const Type_t*)alloc->mHal.state.type;
-
-    rs_sampler_value sampleMin = rsSamplerGetMinification(s);
-    rs_sampler_value sampleMag = rsSamplerGetMagnification(s);
-
     if (lod <= 0.0f) {
         if (sampleMag == RS_SAMPLER_NEAREST) {
-            return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+            return sample_LOD_NearestPixel(alloc, dk, dt, wrapS, uv, 0);
         }
-        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, 0);
+        return sample_LOD_LinearPixel(alloc, dk, dt, wrapS, uv, 0);
     }
 
     if (sampleMin == RS_SAMPLER_LINEAR_MIP_NEAREST) {
         uint32_t maxLOD = type->mHal.state.lodCount - 1;
         lod = min(lod, (float)maxLOD);
         uint32_t nearestLOD = (uint32_t)round(lod);
-        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, nearestLOD);
+        return sample_LOD_LinearPixel(alloc, dk, dt, wrapS, uv, nearestLOD);
     }
 
     if (sampleMin == RS_SAMPLER_LINEAR_MIP_LINEAR) {
@@ -575,13 +568,13 @@ extern const float4 __attribute__((overloadable))
         uint32_t maxLOD = type->mHal.state.lodCount - 1;
         lod0 = min(lod0, maxLOD);
         lod1 = min(lod1, maxLOD);
-        float4 sample0 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod0);
-        float4 sample1 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod1);
+        float4 sample0 = sample_LOD_LinearPixel(alloc, dk, dt, wrapS, uv, lod0);
+        float4 sample1 = sample_LOD_LinearPixel(alloc, dk, dt, wrapS, uv, lod1);
         float frac = lod - (float)lod0;
         return sample0 * (1.0f - frac) + sample1 * frac;
     }
 
-    return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+    return sample_LOD_NearestPixel(alloc, dk, dt, wrapS, uv, 0);
 }
 
 extern const float4 __attribute__((overloadable))
@@ -594,69 +587,68 @@ extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float2 uv, float lod) {
 
     const Allocation_t *alloc = (const Allocation_t *)a.p;
+    const Sampler_t *prog = (Sampler_t *)s.p;
+    const Type_t *type = (Type_t *)alloc->mHal.state.type;
+    const Element_t *elem = type->mHal.state.element;
+    rs_data_kind dk = elem->mHal.state.dataKind;
+    rs_data_type dt = elem->mHal.state.dataType;
+    rs_sampler_value sampleMin = prog->mHal.state.minFilter;
+    rs_sampler_value sampleMag = prog->mHal.state.magFilter;
+    rs_sampler_value wrapS = prog->mHal.state.wrapS;
+    rs_sampler_value wrapT = prog->mHal.state.wrapT;
 
-    rs_element elem = rsAllocationGetElement(a);
-    rs_data_kind dk = rsElementGetDataKind(elem);
-    rs_data_type dt = rsElementGetDataType(elem);
-
-    if (dk == RS_KIND_USER ||
-        (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5) ||
-        !(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
+    if (!(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
         return 0.f;
     }
 
-    rs_sampler_value sampleMin = rsSamplerGetMinification(s);
-    rs_sampler_value sampleMag = rsSamplerGetMagnification(s);
-
     if (lod <= 0.0f) {
         if (sampleMag == RS_SAMPLER_NEAREST) {
-            return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+            return sample_LOD_NearestPixel(alloc, dk, dt, wrapS, wrapT, uv, 0);
         }
-        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, 0);
+        return sample_LOD_LinearPixel(alloc, dk, dt, wrapS, wrapT, uv, 0);
     }
 
     if (sampleMin == RS_SAMPLER_LINEAR_MIP_NEAREST) {
-        const Type_t *type = (const Type_t*)alloc->mHal.state.type;
         uint32_t maxLOD = type->mHal.state.lodCount - 1;
         lod = min(lod, (float)maxLOD);
         uint32_t nearestLOD = (uint32_t)round(lod);
-        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, nearestLOD);
+        return sample_LOD_LinearPixel(alloc, dk, dt, wrapS, wrapT, uv, nearestLOD);
     }
 
     if (sampleMin == RS_SAMPLER_LINEAR_MIP_LINEAR) {
-        const Type_t *type = (const Type_t*)alloc->mHal.state.type;
         uint32_t lod0 = (uint32_t)floor(lod);
         uint32_t lod1 = (uint32_t)ceil(lod);
         uint32_t maxLOD = type->mHal.state.lodCount - 1;
         lod0 = min(lod0, maxLOD);
         lod1 = min(lod1, maxLOD);
-        float4 sample0 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod0);
-        float4 sample1 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod1);
+        float4 sample0 = sample_LOD_LinearPixel(alloc, dk, dt, wrapS, wrapT, uv, lod0);
+        float4 sample1 = sample_LOD_LinearPixel(alloc, dk, dt, wrapS, wrapT, uv, lod1);
         float frac = lod - (float)lod0;
         return sample0 * (1.0f - frac) + sample1 * frac;
     }
 
-    return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+    return sample_LOD_NearestPixel(alloc, dk, dt, wrapS, wrapT, uv, 0);
 }
 
 extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float2 uv) {
 
     const Allocation_t *alloc = (const Allocation_t *)a.p;
+    const Sampler_t *prog = (Sampler_t *)s.p;
+    const Type_t *type = (Type_t *)alloc->mHal.state.type;
+    const Element_t *elem = type->mHal.state.element;
+    rs_data_kind dk = elem->mHal.state.dataKind;
+    rs_data_type dt = elem->mHal.state.dataType;
+    rs_sampler_value wrapS = prog->mHal.state.wrapS;
+    rs_sampler_value wrapT = prog->mHal.state.wrapT;
 
-    rs_element elem = rsAllocationGetElement(a);
-    rs_data_kind dk = rsElementGetDataKind(elem);
-    rs_data_type dt = rsElementGetDataType(elem);
-
-    if (dk == RS_KIND_USER ||
-        (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5) ||
-        !(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
+    if (!(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
         return 0.f;
     }
 
-    if (rsSamplerGetMagnification(s) == RS_SAMPLER_NEAREST) {
-        return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+    if (prog->mHal.state.magFilter == RS_SAMPLER_NEAREST) {
+        return sample_LOD_NearestPixel(alloc, dk, dt, wrapS, wrapT, uv, 0);
     }
-    return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, 0);
+    return sample_LOD_LinearPixel(alloc, dk, dt, wrapS, wrapT, uv, 0);
 }
 
