@@ -42,6 +42,13 @@ private:
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
 
+  // Do we merge global variables using LLVM's optimization pass?
+  // Disabling LLVM's global merge pass allows static globals to be correctly
+  // emitted to ELF. This can result in decreased performance due to increased
+  // register pressure, but it does make the resulting code easier to debug
+  // and work with.
+  bool mEnableGlobalMerge;
+
   // Setup the compiler config for the given script. Return true if mConfig has
   // been changed and false if it remains unchanged.
   bool setupConfig(const RSScript &pScript);
@@ -73,6 +80,14 @@ public:
 
   void setDebugContext(bool v) {
     mDebugContext = v;
+  }
+
+  void setEnableGlobalMerge(bool v) {
+    mEnableGlobalMerge = v;
+  }
+
+  bool getEnableGlobalMerge() const {
+    return mEnableGlobalMerge;
   }
 
   // FIXME: This method accompany with loadScript and compileScript should
