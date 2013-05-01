@@ -49,6 +49,7 @@ void bcc::init::Initialize() {
 
 #if defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMAsmPrinter();
+  LLVMInitializeARMAsmParser();
 # if USE_DISASSEMBLER
   LLVMInitializeARMDisassembler();
 # endif
@@ -63,6 +64,7 @@ void bcc::init::Initialize() {
 
 #if defined(PROVIDE_MIPS_CODEGEN)
   LLVMInitializeMipsAsmPrinter();
+  LLVMInitializeMipsAsmParser();
 # if USE_DISASSEMBLER
   LLVMInitializeMipsDisassembler();
 # endif
@@ -77,6 +79,7 @@ void bcc::init::Initialize() {
 
 #if defined(PROVIDE_X86_CODEGEN)
   LLVMInitializeX86AsmPrinter();
+  LLVMInitializeX86AsmParser();
 # if USE_DISASSEMBLER
   LLVMInitializeX86Disassembler();
 # endif
