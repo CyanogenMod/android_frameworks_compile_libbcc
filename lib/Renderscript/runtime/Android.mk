@@ -102,11 +102,14 @@ endif
 
 # Build a NEON-enabled version of the library (if possible)
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
-include $(CLEAR_VARS)
-LOCAL_MODULE := libclcore_neon.bc
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_SRC_FILES := $(clcore_neon_files)
+# Disable NEON on cortex-a15 temporarily
+ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
+  include $(CLEAR_VARS)
+  LOCAL_MODULE := libclcore_neon.bc
+  LOCAL_MODULE_TAGS := optional
+  LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+  LOCAL_SRC_FILES := $(clcore_neon_files)
 
-include $(LOCAL_PATH)/build_bc_lib.mk
+  include $(LOCAL_PATH)/build_bc_lib.mk
+endif
 endif
