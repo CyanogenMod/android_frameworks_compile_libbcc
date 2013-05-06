@@ -73,7 +73,7 @@ Linker::Linker()
     mOutputHandler(-1) {
 }
 
-Linker::Linker(const LinkerConfig& pConfig)
+Linker::Linker(LinkerConfig& pConfig)
   : mLDConfig(NULL), mModule(NULL), mLinker(NULL), mBuilder(NULL),
     mOutputHandler(-1) {
 
@@ -94,7 +94,7 @@ Linker::~Linker() {
   delete mBuilder;
 }
 
-enum Linker::ErrorCode Linker::extractFiles(const LinkerConfig& pConfig) {
+enum Linker::ErrorCode Linker::extractFiles(LinkerConfig& pConfig) {
   mLDConfig = pConfig.getLDConfig();
   if (mLDConfig == NULL) {
     return kDelegateLDInfo;
@@ -102,20 +102,20 @@ enum Linker::ErrorCode Linker::extractFiles(const LinkerConfig& pConfig) {
   return kSuccess;
 }
 
-enum Linker::ErrorCode Linker::config(const LinkerConfig& pConfig) {
+enum Linker::ErrorCode Linker::config(LinkerConfig& pConfig) {
   if (mLDConfig != NULL) {
     return kDoubleConfig;
   }
 
   extractFiles(pConfig);
 
-  mModule = new mcld::Module(mLDConfig->options().soname());
+  mModule = new mcld::Module(mLDConfig->options().soname(), *pConfig.getLDScript());
 
   mBuilder = new mcld::IRBuilder(*mModule, *mLDConfig);
 
   mLinker = new mcld::Linker();
 
-  mLinker->config(const_cast<mcld::LinkerConfig&>(*mLDConfig));
+  mLinker->emulate(*pConfig.getLDScript(), *mLDConfig);
 
   return kSuccess;
 }
