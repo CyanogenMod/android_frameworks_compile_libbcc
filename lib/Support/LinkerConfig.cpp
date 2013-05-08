@@ -20,6 +20,7 @@
 #include <llvm/Support/Signals.h>
 
 #include <mcld/LinkerConfig.h>
+#include <mcld/LinkerScript.h>
 #include <mcld/MC/MCLDDirectory.h>
 #include <mcld/MC/ZOption.h>
 #include <mcld/LD/TextDiagnosticPrinter.h>
@@ -34,6 +35,7 @@ LinkerConfig::LinkerConfig(const std::string &pTriple)
     mDiagLineInfo(NULL), mDiagPrinter(NULL) {
 
   initializeTarget();
+  initializeLDScript();
   initializeLDInfo();
   initializeDiagnostic();
 }
@@ -127,11 +129,14 @@ bool LinkerConfig::initializeLDInfo() {
     const unsigned int map_size =  (sizeof(map) / sizeof(map[0]) );
     for (unsigned int i = 0; i < map_size; ++i) {
       bool exist = false;
-      mLDConfig->scripts().sectionMap().append(map[i].from,
-                                               map[i].to,
-                                               exist);
+      mLDScript->sectionMap().append(map[i].from, map[i].to, exist);
     }
   }
+  return true;
+}
+
+bool LinkerConfig::initializeLDScript() {
+  mLDScript = new mcld::LinkerScript();
   return true;
 }
 
@@ -180,7 +185,7 @@ void LinkerConfig::setDyld(const std::string &pDyld) {
 }
 
 void LinkerConfig::setSysRoot(const std::string &pSysRoot) {
-  mLDConfig->options().setSysroot(mcld::sys::fs::Path(pSysRoot));
+  mLDScript->setSysroot(mcld::sys::fs::Path(pSysRoot));
   return;
 }
 
@@ -283,7 +288,7 @@ void LinkerConfig::addWrap(const std::string &pWrapSymbol) {
 
   // Add wname -> __wrap_wname.
   mcld::StringEntry<llvm::StringRef>* to_wrap =
-               mLDConfig->scripts().renameMap().insert(pWrapSymbol, exist);
+               mLDScript->renameMap().insert(pWrapSymbol, exist);
 
   std::string to_wrap_str = "__wrap_" + pWrapSymbol;
   to_wrap->setValue(to_wrap_str);
@@ -295,7 +300,7 @@ void LinkerConfig::addWrap(const std::string &pWrapSymbol) {
   // Add __real_wname -> wname.
   std::string from_real_str = "__real_" + pWrapSymbol;
   mcld::StringEntry<llvm::StringRef>* from_real =
-             mLDConfig->scripts().renameMap().insert(from_real_str, exist);
+             mLDScript->renameMap().insert(from_real_str, exist);
   from_real->setValue(pWrapSymbol);
 
   if (exist) {
@@ -310,7 +315,7 @@ void LinkerConfig::addPortable(const std::string &pPortableSymbol) {
 
   // Add pname -> pname_portable.
   mcld::StringEntry<llvm::StringRef>* to_port =
-                mLDConfig->scripts().renameMap().insert(pPortableSymbol, exist);
+                mLDScript->renameMap().insert(pPortableSymbol, exist);
 
   std::string to_port_str = pPortableSymbol + "_portable";
   to_port->setValue(to_port_str);
@@ -322,7 +327,7 @@ void LinkerConfig::addPortable(const std::string &pPortableSymbol) {
   // Add __real_pname -> pname.
   std::string from_real_str = "__real_" + pPortableSymbol;
   mcld::StringEntry<llvm::StringRef>* from_real =
-           mLDConfig->scripts().renameMap().insert(from_real_str, exist);
+           mLDScript->renameMap().insert(from_real_str, exist);
 
   from_real->setValue(pPortableSymbol);
 
@@ -335,7 +340,7 @@ void LinkerConfig::addPortable(const std::string &pPortableSymbol) {
 
 void LinkerConfig::addSearchDir(const std::string &pDirPath) {
   // SearchDirs will remove the created MCLDDirectory.
-  if (!mLDConfig->options().directories().insert(pDirPath)) {
+  if (!mLDScript->directories().insert(pDirPath)) {
     mcld::warning(mcld::diag::warn_cannot_open_search_dir) << pDirPath;
   }
 }

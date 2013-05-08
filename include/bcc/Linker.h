@@ -61,7 +61,7 @@ public:
   static const char *GetErrorString(enum ErrorCode pErrCode);
 
 private:
-  const mcld::LinkerConfig *mLDConfig;
+  mcld::LinkerConfig *mLDConfig;
   mcld::Module *mModule;
   mcld::Linker *mLinker;
   mcld::IRBuilder *mBuilder;
@@ -72,11 +72,11 @@ private:
 public:
   Linker();
 
-  Linker(const LinkerConfig& pConfig);
+  Linker(LinkerConfig& pConfig);
 
   ~Linker();
 
-  enum ErrorCode config(const LinkerConfig& pConfig);
+  enum ErrorCode config(LinkerConfig& pConfig);
 
   enum ErrorCode addNameSpec(const std::string &pNameSpec);
 
@@ -93,7 +93,7 @@ public:
   enum ErrorCode link();
 
 private:
-  enum ErrorCode extractFiles(const LinkerConfig& pConfig);
+  enum ErrorCode extractFiles(LinkerConfig& pConfig);
 };
 
 } // end namespace bcc

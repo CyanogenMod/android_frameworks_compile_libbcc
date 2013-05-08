@@ -52,8 +52,8 @@ ARMLinkerConfig::ARMLinkerConfig() : LinkerConfig(DEFAULT_ARM_TRIPLE_STRING) {
   getLDConfig()->attribute().predefined().setDynamic();
 
   // set up target dependent options
-  if (getLDConfig()->options().sysroot().empty()) {
-    getLDConfig()->options().setSysroot(gDefaultSysroot);
+  if (getLDScript()->sysroot().empty()) {
+    getLDScript()->setSysroot(gDefaultSysroot);
   }
 
   if (!getLDConfig()->options().hasDyld()) {
@@ -63,9 +63,9 @@ ARMLinkerConfig::ARMLinkerConfig() : LinkerConfig(DEFAULT_ARM_TRIPLE_STRING) {
   // set up section map
   if (getLDConfig()->codeGenType() != mcld::LinkerConfig::Object) {
     bool exist = false;
-    getLDConfig()->scripts().sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
-    getLDConfig()->scripts().sectionMap().append(".ARM.extab", ".ARM.extab", exist);
-    getLDConfig()->scripts().sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
+    getLDScript()->sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
+    getLDScript()->sectionMap().append(".ARM.extab", ".ARM.extab", exist);
+    getLDScript()->sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
   }
 
   // set up relocation factory
@@ -94,8 +94,8 @@ MipsLinkerConfig::MipsLinkerConfig()
   getLDConfig()->attribute().predefined().setDynamic();
 
   // set up target dependent options
-  if (getLDConfig()->options().sysroot().empty()) {
-    getLDConfig()->options().setSysroot(gDefaultSysroot);
+  if (getLDScript()->sysroot().empty()) {
+    getLDScript()->setSysroot(gDefaultSysroot);
   }
 
   if (!getLDConfig()->options().hasDyld()) {
@@ -127,8 +127,8 @@ X86FamilyLinkerConfigBase::X86FamilyLinkerConfigBase(const std::string& pTriple)
   getLDConfig()->attribute().predefined().setDynamic();
 
   // set up target dependent options
-  if (getLDConfig()->options().sysroot().empty()) {
-    getLDConfig()->options().setSysroot(gDefaultSysroot);
+  if (getLDScript()->sysroot().empty()) {
+    getLDScript()->setSysroot(gDefaultSysroot);
   }
 
   if (!getLDConfig()->options().hasDyld()) {
@@ -172,9 +172,9 @@ GeneralLinkerConfig::GeneralLinkerConfig(const std::string& pTriple)
   if (llvm::Triple::arm == getLDConfig()->targets().triple().getArch() &&
       getLDConfig()->codeGenType() != mcld::LinkerConfig::Object) {
     bool exist = false;
-    getLDConfig()->scripts().sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
-    getLDConfig()->scripts().sectionMap().append(".ARM.extab", ".ARM.extab", exist);
-    getLDConfig()->scripts().sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
+    getLDScript()->sectionMap().append(".ARM.exidx", ".ARM.exidx", exist);
+    getLDScript()->sectionMap().append(".ARM.extab", ".ARM.extab", exist);
+    getLDScript()->sectionMap().append(".ARM.attributes", ".ARM.attributes", exist);
   }
 
   // set up relocation factory
