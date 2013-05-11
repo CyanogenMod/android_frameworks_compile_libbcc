@@ -79,7 +79,7 @@ RSCompilerDriver::~RSCompilerDriver() {
 RSExecutable *
 RSCompilerDriver::loadScriptCache(const char *pOutputPath,
                                   const RSInfo::DependencyTableTy &pDeps) {
-  android::StopWatch load_time("bcc: RSCompilerDriver::loadScriptCache time");
+  //android::StopWatch load_time("bcc: RSCompilerDriver::loadScriptCache time");
   RSExecutable *result = NULL;
 
   if (is_force_recompile())
@@ -102,8 +102,8 @@ RSCompilerDriver::loadScriptCache(const char *pOutputPath,
   InputFile *output_file = new (std::nothrow) InputFile(pOutputPath);
 
   if ((output_file == NULL) || output_file->hasError()) {
-    ALOGE("Unable to open the %s for read! (%s)", pOutputPath,
-          output_file->getErrorMessage().c_str());
+      //      ALOGE("Unable to open the %s for read! (%s)", pOutputPath,
+      //            output_file->getErrorMessage().c_str());
     delete output_file;
     return NULL;
   }
@@ -192,7 +192,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
                                 const char *pRuntimePath,
                                 const RSInfo::DependencyTableTy &pDeps,
                                 bool pSkipLoad) {
-  android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
+  //android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
   RSExecutable *result = NULL;
   RSInfo *info = NULL;
 
@@ -243,8 +243,8 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   OutputFile *output_file = new (std::nothrow) OutputFile(pOutputPath, flags);
 
   if ((output_file == NULL) || output_file->hasError()) {
-    ALOGE("Unable to open the %s for write! (%s)", pOutputPath,
-          output_file->getErrorMessage().c_str());
+      ALOGE("Unable to open %s for write! (%s)", pOutputPath,
+            output_file->getErrorMessage().c_str());
     delete info;
     delete output_file;
     return NULL;
@@ -337,7 +337,7 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
                                       size_t pBitcodeSize,
                                       const char *pRuntimePath,
                                       RSLinkRuntimeCallback pLinkRuntimeCallback) {
-  android::StopWatch build_time("bcc: RSCompilerDriver::build time");
+    //  android::StopWatch build_time("bcc: RSCompilerDriver::build time");
   //===--------------------------------------------------------------------===//
   // Check parameters.
   //===--------------------------------------------------------------------===//
