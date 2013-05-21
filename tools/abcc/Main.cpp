@@ -26,8 +26,6 @@
 #include "bcc/Support/Log.h"
 #include "bcc/AndroidBitcode/ABCCompilerDriver.h"
 
-#include <cutils/process_name.h>
-
 using namespace bcc;
 
 static void usage() {
@@ -198,8 +196,6 @@ static int ProcessFromFile(const char *input, const char *output,
 int main(int argc, char **argv) {
   Mode mode = kUnknownMode;
   const char *input, *output, *triple = NULL, *sysroot = NULL;
-
-  set_process_name("abcc");
 
   setvbuf(stdout, NULL, _IONBF, 0);
 
