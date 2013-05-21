@@ -32,7 +32,9 @@
 #include "bcc/Support/Sha1Util.h"
 #include "bcc/Support/OutputFile.h"
 
+#ifdef HAVE_ANDROID_OS
 #include <cutils/properties.h>
+#endif
 #include <utils/String8.h>
 #include <utils/StopWatch.h>
 
@@ -41,6 +43,9 @@ using namespace bcc;
 namespace {
 
 bool is_force_recompile() {
+#ifndef HAVE_ANDROID_OS
+  return false;
+#else
   char buf[PROPERTY_VALUE_MAX];
 
   // Re-compile if floating point precision has been overridden.
@@ -56,6 +61,7 @@ bool is_force_recompile() {
   } else {
     return false;
   }
+#endif
 }
 
 } // end anonymous namespace
