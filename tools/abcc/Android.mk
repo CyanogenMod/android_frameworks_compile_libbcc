@@ -24,7 +24,7 @@ LOCAL_MODULE := abcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 
-LOCAL_STATIC_LIBRARIES := libcutils liblog
+LOCAL_STATIC_LIBRARIES := liblog
 LOCAL_SHARED_LIBRARIES := libbcc
 LOCAL_LDLIBS = -ldl
 LOCAL_SRC_FILES := Main.cpp
@@ -43,7 +43,7 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
 
-LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libutils libcutils liblog
+LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libutils liblog
 
 include external/stlport/libstlport.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
