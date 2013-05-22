@@ -20,7 +20,9 @@
 
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
+#ifdef HAVE_ANDROID_OS
 #include <cutils/properties.h>
+#endif
 
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -248,6 +250,7 @@ void MetadataExtractor::populatePragmaMetadata(
     mRSFloatPrecision = RS_FP_Relaxed;
   }
 
+#ifdef HAVE_ANDROID_OS
   // Provide an override for precsion via adb shell setprop
   // adb shell setprop debug.rs.precision rs_fp_full
   // adb shell setprop debug.rs.precision rs_fp_relaxed
@@ -267,6 +270,7 @@ void MetadataExtractor::populatePragmaMetadata(
       mRSFloatPrecision = RS_FP_Full;
     }
   }
+#endif
 
   return;
 }
