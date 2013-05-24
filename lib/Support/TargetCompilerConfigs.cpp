@@ -97,6 +97,9 @@ ARMBaseCompilerConfig::ARMBaseCompilerConfig(const std::string &pTriple,
   // Enable NEON by default.
   mEnableNEON = true;
 
+  if (!getProperty("debug.rs.arm-no-tune-for-cpu"))
+    setCPU(llvm::sys::getHostCPUName());
+
   std::vector<std::string> attributes;
   GetFeatureVector(attributes, mInThumbMode, mEnableNEON);
   setFeatureString(attributes);
