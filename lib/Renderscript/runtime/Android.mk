@@ -42,7 +42,8 @@ clcore_neon_files := \
     math.ll \
     arch/neon.ll \
     arch/sqrt.c \
-    arch/dot_length.c
+    arch/dot_length.c \
+    arch/clamp.c
 
 ifeq ($(ARCH_X86_HAVE_SSE2), true)
     clcore_x86_files := \
@@ -109,6 +110,7 @@ ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
   LOCAL_MODULE_TAGS := optional
   LOCAL_MODULE_CLASS := SHARED_LIBRARIES
   LOCAL_SRC_FILES := $(clcore_neon_files)
+  LOCAL_CFLAGS += -DARCH_ARM_HAVE_NEON
 
   include $(LOCAL_PATH)/build_bc_lib.mk
 endif

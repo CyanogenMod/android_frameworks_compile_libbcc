@@ -33,6 +33,7 @@ bc_cflags := -MD \
              -emit-llvm \
              -target armv7-none-linux-gnueabi \
              -fsigned-char \
+             $(LOCAL_CFLAGS) \
              $(bc_translated_clang_cc1_cflags)
 
 ifeq ($(rs_debug_runtime),1)

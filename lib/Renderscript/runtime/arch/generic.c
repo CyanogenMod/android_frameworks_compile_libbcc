@@ -18,7 +18,6 @@
 #include "rs_types.rsh"
 
 extern short __attribute__((overloadable, always_inline)) rsClamp(short amount, short low, short high);
-extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high);
 extern uchar4 __attribute__((overloadable)) convert_uchar4(short4);
 extern uchar4 __attribute__((overloadable)) convert_uchar4(float4);
 extern float4 __attribute__((overloadable)) convert_float4(uchar4);
@@ -27,58 +26,71 @@ extern float __attribute__((overloadable)) sqrt(float);
 /*
  * CLAMP
  */
-extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
-    return amount < low ? low : (amount > high ? high : amount);
+#define _CLAMP(T) \
+extern T __attribute__((overloadable)) clamp(T amount, T low, T high) {             \
+    return amount < low ? low : (amount > high ? high : amount);                    \
+}                                                                                   \
+                                                                                    \
+extern T##2 __attribute__((overloadable)) clamp(T##2 amount, T##2 low, T##2 high) { \
+    T##2 r;                                                                         \
+    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);       \
+    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);       \
+    return r;                                                                       \
+}                                                                                   \
+                                                                                    \
+extern T##3 __attribute__((overloadable)) clamp(T##3 amount, T##3 low, T##3 high) { \
+    T##3 r;                                                                         \
+    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);       \
+    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);       \
+    r.z = amount.z < low.z ? low.z : (amount.z > high.z ? high.z : amount.z);       \
+    return r;                                                                       \
+}                                                                                   \
+                                                                                    \
+extern T##4 __attribute__((overloadable)) clamp(T##4 amount, T##4 low, T##4 high) { \
+    T##4 r;                                                                         \
+    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);       \
+    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);       \
+    r.z = amount.z < low.z ? low.z : (amount.z > high.z ? high.z : amount.z);       \
+    r.w = amount.w < low.w ? low.w : (amount.w > high.w ? high.w : amount.w);       \
+    return r;                                                                       \
+}                                                                                   \
+                                                                                    \
+extern T##2 __attribute__((overloadable)) clamp(T##2 amount, T low, T high) {       \
+    T##2 r;                                                                         \
+    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);               \
+    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);               \
+    return r;                                                                       \
+}                                                                                   \
+                                                                                    \
+extern T##3 __attribute__((overloadable)) clamp(T##3 amount, T low, T high) {       \
+    T##3 r;                                                                         \
+    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);               \
+    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);               \
+    r.z = amount.z < low ? low : (amount.z > high ? high : amount.z);               \
+    return r;                                                                       \
+}                                                                                   \
+                                                                                    \
+extern T##4 __attribute__((overloadable)) clamp(T##4 amount, T low, T high) {       \
+    T##4 r;                                                                         \
+    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);               \
+    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);               \
+    r.z = amount.z < low ? low : (amount.z > high ? high : amount.z);               \
+    r.w = amount.w < low ? low : (amount.w > high ? high : amount.w);               \
+    return r;                                                                       \
 }
 
-extern float2 __attribute__((overloadable)) clamp(float2 amount, float2 low, float2 high) {
-    float2 r;
-    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);
-    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);
-    return r;
-}
+_CLAMP(float);
+_CLAMP(double);
+_CLAMP(char);
+_CLAMP(uchar);
+_CLAMP(short);
+_CLAMP(ushort);
+_CLAMP(int);
+_CLAMP(uint);
+_CLAMP(long);
+_CLAMP(ulong);
 
-extern float3 __attribute__((overloadable)) clamp(float3 amount, float3 low, float3 high) {
-    float3 r;
-    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);
-    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);
-    r.z = amount.z < low.z ? low.z : (amount.z > high.z ? high.z : amount.z);
-    return r;
-}
-
-extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high) {
-    float4 r;
-    r.x = amount.x < low.x ? low.x : (amount.x > high.x ? high.x : amount.x);
-    r.y = amount.y < low.y ? low.y : (amount.y > high.y ? high.y : amount.y);
-    r.z = amount.z < low.z ? low.z : (amount.z > high.z ? high.z : amount.z);
-    r.w = amount.w < low.w ? low.w : (amount.w > high.w ? high.w : amount.w);
-    return r;
-}
-
-extern float2 __attribute__((overloadable)) clamp(float2 amount, float low, float high) {
-    float2 r;
-    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);
-    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);
-    return r;
-}
-
-extern float3 __attribute__((overloadable)) clamp(float3 amount, float low, float high) {
-    float3 r;
-    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);
-    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);
-    r.z = amount.z < low ? low : (amount.z > high ? high : amount.z);
-    return r;
-}
-
-extern float4 __attribute__((overloadable)) clamp(float4 amount, float low, float high) {
-    float4 r;
-    r.x = amount.x < low ? low : (amount.x > high ? high : amount.x);
-    r.y = amount.y < low ? low : (amount.y > high ? high : amount.y);
-    r.z = amount.z < low ? low : (amount.z > high ? high : amount.z);
-    r.w = amount.w < low ? low : (amount.w > high ? high : amount.w);
-    return r;
-}
-
+#undef _CLAMP
 
 /*
  * FMAX

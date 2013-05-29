@@ -11,6 +11,8 @@ declare <2 x i32> @llvm.arm.neon.vmaxs.v2i32(<2 x i32>, <2 x i32>) nounwind read
 declare <4 x i32> @llvm.arm.neon.vmaxs.v4i32(<4 x i32>, <4 x i32>) nounwind readnone
 declare <2 x i32> @llvm.arm.neon.vmaxu.v2i32(<2 x i32>, <2 x i32>) nounwind readnone
 declare <4 x i32> @llvm.arm.neon.vmaxu.v4i32(<4 x i32>, <4 x i32>) nounwind readnone
+declare <4 x i16> @llvm.arm.neon.vmaxs.v4i16(<4 x i16>, <4 x i16>) nounwind readnone
+declare <4 x i16> @llvm.arm.neon.vmaxu.v4i16(<4 x i16>, <4 x i16>) nounwind readnone
 
 declare <2 x float> @llvm.arm.neon.vmins.v2f32(<2 x float>, <2 x float>) nounwind readnone
 declare <4 x float> @llvm.arm.neon.vmins.v4f32(<4 x float>, <4 x float>) nounwind readnone
@@ -18,6 +20,8 @@ declare <2 x i32> @llvm.arm.neon.vmins.v2i32(<2 x i32>, <2 x i32>) nounwind read
 declare <4 x i32> @llvm.arm.neon.vmins.v4i32(<4 x i32>, <4 x i32>) nounwind readnone
 declare <2 x i32> @llvm.arm.neon.vminu.v2i32(<2 x i32>, <2 x i32>) nounwind readnone
 declare <4 x i32> @llvm.arm.neon.vminu.v4i32(<4 x i32>, <4 x i32>) nounwind readnone
+declare <4 x i16> @llvm.arm.neon.vmins.v4i16(<4 x i16>, <4 x i16>) nounwind readnone
+declare <4 x i16> @llvm.arm.neon.vminu.v4i16(<4 x i16>, <4 x i16>) nounwind readnone
 
 declare <8 x i8>  @llvm.arm.neon.vqshiftns.v8i8(<8 x i16>, <8 x i16>) nounwind readnone
 declare <4 x i16> @llvm.arm.neon.vqshiftns.v4i16(<4 x i32>, <4 x i32>) nounwind readnone
@@ -49,11 +53,42 @@ define internal <4 x float> @smear_4f(float %in) nounwind readnone alwaysinline 
   ret <4 x float> %4
 }
 
+define internal <4 x i32> @smear_4i(i32 %in) nounwind readnone alwaysinline {
+  %1 = insertelement <4 x i32> undef, i32 %in, i32 0
+  %2 = insertelement <4 x i32> %1, i32 %in, i32 1
+  %3 = insertelement <4 x i32> %2, i32 %in, i32 2
+  %4 = insertelement <4 x i32> %3, i32 %in, i32 3
+  ret <4 x i32> %4
+}
+
+define internal <4 x i16> @smear_4s(i16 %in) nounwind readnone alwaysinline {
+  %1 = insertelement <4 x i16> undef, i16 %in, i32 0
+  %2 = insertelement <4 x i16> %1, i16 %in, i32 1
+  %3 = insertelement <4 x i16> %2, i16 %in, i32 2
+  %4 = insertelement <4 x i16> %3, i16 %in, i32 3
+  ret <4 x i16> %4
+}
+
+
+
 define internal <2 x float> @smear_2f(float %in) nounwind readnone alwaysinline {
   %1 = insertelement <2 x float> undef, float %in, i32 0
   %2 = insertelement <2 x float> %1, float %in, i32 1
   ret <2 x float> %2
 }
+
+define internal <2 x i32> @smear_2i(i32 %in) nounwind readnone alwaysinline {
+  %1 = insertelement <2 x i32> undef, i32 %in, i32 0
+  %2 = insertelement <2 x i32> %1, i32 %in, i32 1
+  ret <2 x i32> %2
+}
+
+define internal <2 x i16> @smear_2s(i16 %in) nounwind readnone alwaysinline {
+  %1 = insertelement <2 x i16> undef, i16 %in, i32 0
+  %2 = insertelement <2 x i16> %1, i16 %in, i32 1
+  ret <2 x i16> %2
+}
+
 
 define internal <4 x i32> @smear_4i32(i32 %in) nounwind readnone alwaysinline {
   %1 = insertelement <4 x i32> undef, i32 %in, i32 0
@@ -121,6 +156,106 @@ define float @_Z5clampfff(float %value, float %low, float %high) nounwind readon
   %3 = fcmp ogt float %2, %low
   %4 = select i1 %3, float %2, float %low
   ret float %4
+}
+
+
+
+define <4 x i32> @_Z5clampDv4_iS_S_(<4 x i32> %value, <4 x i32> %low, <4 x i32> %high) nounwind readonly {
+  %1 = tail call <4 x i32> @llvm.arm.neon.vmins.v4i32(<4 x i32> %value, <4 x i32> %high) nounwind readnone
+  %2 = tail call <4 x i32> @llvm.arm.neon.vmaxs.v4i32(<4 x i32> %1, <4 x i32> %low) nounwind readnone
+  ret <4 x i32> %2
+}
+
+define <4 x i32> @_Z5clampDv4_iii(<4 x i32> %value, i32 %low, i32 %high) nounwind readonly {
+  %_high = tail call <4 x i32> @smear_4i(i32 %high) nounwind readnone
+  %_low = tail call <4 x i32> @smear_4i(i32 %low) nounwind readnone
+  %1 = tail call <4 x i32> @llvm.arm.neon.vmins.v4i32(<4 x i32> %value, <4 x i32> %_high) nounwind readnone
+  %2 = tail call <4 x i32> @llvm.arm.neon.vmaxs.v4i32(<4 x i32> %1, <4 x i32> %_low) nounwind readnone
+  ret <4 x i32> %2
+}
+
+define <3 x i32> @_Z5clampDv3_iS_S_(<3 x i32> %value, <3 x i32> %low, <3 x i32> %high) nounwind readonly {
+  %_value = shufflevector <3 x i32> %value, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %_low = shufflevector <3 x i32> %low, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %_high = shufflevector <3 x i32> %high, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %a = tail call <4 x i32> @llvm.arm.neon.vmins.v4i32(<4 x i32> %_value, <4 x i32> %_high) nounwind readnone
+  %b = tail call <4 x i32> @llvm.arm.neon.vmaxs.v4i32(<4 x i32> %a, <4 x i32> %_low) nounwind readnone
+  %c = shufflevector <4 x i32> %b, <4 x i32> undef, <3 x i32> <i32 0, i32 1, i32 2>
+  ret <3 x i32> %c
+}
+
+define <3 x i32> @_Z5clampDv3_iii(<3 x i32> %value, i32 %low, i32 %high) nounwind readonly {
+  %_value = shufflevector <3 x i32> %value, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %_high = tail call <4 x i32> @smear_4i(i32 %high) nounwind readnone
+  %_low = tail call <4 x i32> @smear_4i(i32 %low) nounwind readnone
+  %a = tail call <4 x i32> @llvm.arm.neon.vmins.v4i32(<4 x i32> %_value, <4 x i32> %_high) nounwind readnone
+  %b = tail call <4 x i32> @llvm.arm.neon.vmaxs.v4i32(<4 x i32> %a, <4 x i32> %_low) nounwind readnone
+  %c = shufflevector <4 x i32> %b, <4 x i32> undef, <3 x i32> <i32 0, i32 1, i32 2>
+  ret <3 x i32> %c
+}
+
+define <2 x i32> @_Z5clampDv2_iS_S_(<2 x i32> %value, <2 x i32> %low, <2 x i32> %high) nounwind readonly {
+  %1 = tail call <2 x i32> @llvm.arm.neon.vmins.v2i32(<2 x i32> %value, <2 x i32> %high) nounwind readnone
+  %2 = tail call <2 x i32> @llvm.arm.neon.vmaxs.v2i32(<2 x i32> %1, <2 x i32> %low) nounwind readnone
+  ret <2 x i32> %2
+}
+
+define <2 x i32> @_Z5clampDv2_iii(<2 x i32> %value, i32 %low, i32 %high) nounwind readonly {
+  %_high = tail call <2 x i32> @smear_2i(i32 %high) nounwind readnone
+  %_low = tail call <2 x i32> @smear_2i(i32 %low) nounwind readnone
+  %a = tail call <2 x i32> @llvm.arm.neon.vmins.v2i32(<2 x i32> %value, <2 x i32> %_high) nounwind readnone
+  %b = tail call <2 x i32> @llvm.arm.neon.vmaxs.v2i32(<2 x i32> %a, <2 x i32> %_low) nounwind readnone
+  ret <2 x i32> %b
+}
+
+
+
+define <4 x i32> @_Z5clampDv4_jS_S_(<4 x i32> %value, <4 x i32> %low, <4 x i32> %high) nounwind readonly {
+  %1 = tail call <4 x i32> @llvm.arm.neon.vminu.v4i32(<4 x i32> %value, <4 x i32> %high) nounwind readnone
+  %2 = tail call <4 x i32> @llvm.arm.neon.vmaxu.v4i32(<4 x i32> %1, <4 x i32> %low) nounwind readnone
+  ret <4 x i32> %2
+}
+
+define <4 x i32> @_Z5clampDv4_jjj(<4 x i32> %value, i32 %low, i32 %high) nounwind readonly {
+  %_high = tail call <4 x i32> @smear_4i(i32 %high) nounwind readnone
+  %_low = tail call <4 x i32> @smear_4i(i32 %low) nounwind readnone
+  %1 = tail call <4 x i32> @llvm.arm.neon.vminu.v4i32(<4 x i32> %value, <4 x i32> %_high) nounwind readnone
+  %2 = tail call <4 x i32> @llvm.arm.neon.vmaxu.v4i32(<4 x i32> %1, <4 x i32> %_low) nounwind readnone
+  ret <4 x i32> %2
+}
+
+define <3 x i32> @_Z5clampDv3_jS_S_(<3 x i32> %value, <3 x i32> %low, <3 x i32> %high) nounwind readonly {
+  %_value = shufflevector <3 x i32> %value, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %_low = shufflevector <3 x i32> %low, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %_high = shufflevector <3 x i32> %high, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %a = tail call <4 x i32> @llvm.arm.neon.vminu.v4i32(<4 x i32> %_value, <4 x i32> %_high) nounwind readnone
+  %b = tail call <4 x i32> @llvm.arm.neon.vmaxu.v4i32(<4 x i32> %a, <4 x i32> %_low) nounwind readnone
+  %c = shufflevector <4 x i32> %b, <4 x i32> undef, <3 x i32> <i32 0, i32 1, i32 2>
+  ret <3 x i32> %c
+}
+
+define <3 x i32> @_Z5clampDv3_jjj(<3 x i32> %value, i32 %low, i32 %high) nounwind readonly {
+  %_value = shufflevector <3 x i32> %value, <3 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %_high = tail call <4 x i32> @smear_4i(i32 %high) nounwind readnone
+  %_low = tail call <4 x i32> @smear_4i(i32 %low) nounwind readnone
+  %a = tail call <4 x i32> @llvm.arm.neon.vminu.v4i32(<4 x i32> %_value, <4 x i32> %_high) nounwind readnone
+  %b = tail call <4 x i32> @llvm.arm.neon.vmaxu.v4i32(<4 x i32> %a, <4 x i32> %_low) nounwind readnone
+  %c = shufflevector <4 x i32> %b, <4 x i32> undef, <3 x i32> <i32 0, i32 1, i32 2>
+  ret <3 x i32> %c
+}
+
+define <2 x i32> @_Z5clampDv2_jS_S_(<2 x i32> %value, <2 x i32> %low, <2 x i32> %high) nounwind readonly {
+  %1 = tail call <2 x i32> @llvm.arm.neon.vminu.v2i32(<2 x i32> %value, <2 x i32> %high) nounwind readnone
+  %2 = tail call <2 x i32> @llvm.arm.neon.vmaxu.v2i32(<2 x i32> %1, <2 x i32> %low) nounwind readnone
+  ret <2 x i32> %2
+}
+
+define <2 x i32> @_Z5clampDv2_jjj(<2 x i32> %value, i32 %low, i32 %high) nounwind readonly {
+  %_high = tail call <2 x i32> @smear_2i(i32 %high) nounwind readnone
+  %_low = tail call <2 x i32> @smear_2i(i32 %low) nounwind readnone
+  %a = tail call <2 x i32> @llvm.arm.neon.vminu.v2i32(<2 x i32> %value, <2 x i32> %_high) nounwind readnone
+  %b = tail call <2 x i32> @llvm.arm.neon.vmaxu.v2i32(<2 x i32> %a, <2 x i32> %_low) nounwind readnone
+  ret <2 x i32> %b
 }
 
 
