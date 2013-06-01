@@ -18,6 +18,7 @@
 #define BCC_RS_SCRIPT_H
 
 #include "bcc/Script.h"
+#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Sha1Util.h"
 
 namespace llvm {
@@ -26,11 +27,8 @@ namespace llvm {
 
 namespace bcc {
 
-class RSInfo;
 class RSScript;
 class Source;
-
-typedef llvm::Module* (*RSLinkRuntimeCallback) (bcc::RSScript *, llvm::Module *, llvm::Module *);
 
 class RSScript : public Script {
 public:
@@ -63,6 +61,10 @@ public:
   static bool LinkRuntime(RSScript &pScript, const char *rt_path = NULL);
 
   RSScript(Source &pSource);
+
+  virtual ~RSScript() {
+    delete mInfo;
+  }
 
   // Set the associated RSInfo of the script.
   void setInfo(const RSInfo *pInfo) {

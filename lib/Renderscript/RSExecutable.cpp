@@ -129,7 +129,7 @@ bool RSExecutable::syncInfo(bool pForce) {
     return true;
   }
 
-  android::String8 info_path = RSInfo::GetPath(*mObjFile);
+  android::String8 info_path = RSInfo::GetPath(mObjFile->getName().c_str());
   OutputFile info_file(info_path.string(), FileBase::kTruncate);
 
   if (info_file.hasError()) {

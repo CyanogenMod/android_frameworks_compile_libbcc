@@ -86,8 +86,8 @@ bool RSInfo::LoadBuiltInSHA1Information() {
 #endif  // TARGET_BUILD
 }
 
-android::String8 RSInfo::GetPath(const FileBase &pFile) {
-  android::String8 result(pFile.getName().c_str());
+android::String8 RSInfo::GetPath(const char *pFilename) {
+  android::String8 result(pFilename);
   result.append(".info");
   return result;
 }
