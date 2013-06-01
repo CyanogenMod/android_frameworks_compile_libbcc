@@ -931,7 +931,7 @@ extern float4 __attribute__((overloadable)) normalize(float4 v) {
 extern float __attribute__((overloadable)) half_sqrt(float);
 
 extern float __attribute__((overloadable)) fast_length(float v) {
-    return v;
+    return fabs(v);
 }
 extern float __attribute__((overloadable)) fast_length(float2 v) {
     return half_sqrt(v.x*v.x + v.y*v.y);
