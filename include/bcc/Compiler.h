@@ -69,7 +69,9 @@ public:
     kErrHookBeforeExecuteCodeGenPasses,
     kErrHookAfterExecuteCodeGenPasses,
 
-    kMaxErrorCode,
+    kErrInvalidSource,
+
+    kMaxErrorCode
   };
 
   static const char *GetErrorString(enum ErrorCode pErrCode);
