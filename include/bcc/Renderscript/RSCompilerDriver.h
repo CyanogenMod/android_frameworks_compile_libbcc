@@ -22,13 +22,13 @@
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSCompiler.h"
+#include "bcc/Renderscript/RSScript.h"
 
 namespace bcc {
 
 class BCCContext;
 class CompilerConfig;
 class RSExecutable;
-class RSScript;
 
 class RSCompilerDriver {
 private:
@@ -42,7 +42,7 @@ private:
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
 
-  RSExecutable *loadScriptCache(const char *pOutputPath,
+  RSExecutable *loadScriptCache(const char *pObjectPath,
                                 const RSInfo::DependencyTableTy &pDeps);
 
   // Setup the compiler config for the given script. Return true if mConfig has

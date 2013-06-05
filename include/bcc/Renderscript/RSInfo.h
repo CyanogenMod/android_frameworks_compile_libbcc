@@ -21,12 +21,15 @@
 
 #include <utility>
 
-#include "bcc/Renderscript/RSScript.h"
 #include "bcc/Support/Log.h"
 #include "bcc/Support/Sha1Util.h"
 
 #include <utils/String8.h>
 #include <utils/Vector.h>
+
+namespace llvm {
+class Module;
+}
 
 namespace bcc {
 
@@ -35,6 +38,9 @@ class FileBase;
 class InputFile;
 class OutputFile;
 class Source;
+class RSScript;
+
+typedef llvm::Module* (*RSLinkRuntimeCallback) (bcc::RSScript *, llvm::Module *, llvm::Module *);
 
 namespace rsinfo {
 
@@ -157,7 +163,7 @@ public:
 
   // Return the path of the RS info file corresponded to the given output
   // executable file.
-  static android::String8 GetPath(const FileBase &pFile);
+  static android::String8 GetPath(const char *pFilename);
 
   static const char LibBCCPath[];
   static const char LibCompilerRTPath[];

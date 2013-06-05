@@ -83,21 +83,18 @@ RSCompilerDriver::~RSCompilerDriver() {
 }
 
 RSExecutable *
-RSCompilerDriver::loadScriptCache(const char *pOutputPath,
+RSCompilerDriver::loadScriptCache(const char *pObjectPath,
                                   const RSInfo::DependencyTableTy &pDeps) {
   //android::StopWatch load_time("bcc: RSCompilerDriver::loadScriptCache time");
   RSExecutable *result = NULL;
 
-  if (is_force_recompile())
-    return NULL;
-
   //===--------------------------------------------------------------------===//
-  // Acquire the read lock for reading output object file.
+  // Acquire the read lock for reading the Script object file.
   //===--------------------------------------------------------------------===//
-  FileMutex<FileBase::kReadLock> read_output_mutex(pOutputPath);
+  FileMutex<FileBase::kReadLock> read_output_mutex(pObjectPath);
 
   if (read_output_mutex.hasError() || !read_output_mutex.lock()) {
-    ALOGE("Unable to acquire the read lock for %s! (%s)", pOutputPath,
+    ALOGE("Unable to acquire the read lock for %s! (%s)", pObjectPath,
           read_output_mutex.getErrorMessage().c_str());
     return NULL;
   }
@@ -105,25 +102,25 @@ RSCompilerDriver::loadScriptCache(const char *pOutputPath,
   //===--------------------------------------------------------------------===//
   // Read the output object file.
   //===--------------------------------------------------------------------===//
-  InputFile *output_file = new (std::nothrow) InputFile(pOutputPath);
+  InputFile *object_file = new (std::nothrow) InputFile(pObjectPath);
 
-  if ((output_file == NULL) || output_file->hasError()) {
-      //      ALOGE("Unable to open the %s for read! (%s)", pOutputPath,
-      //            output_file->getErrorMessage().c_str());
-    delete output_file;
+  if ((object_file == NULL) || object_file->hasError()) {
+      //      ALOGE("Unable to open the %s for read! (%s)", pObjectPath,
+      //            object_file->getErrorMessage().c_str());
+    delete object_file;
     return NULL;
   }
 
   //===--------------------------------------------------------------------===//
-  // Acquire the read lock on output_file for reading its RS info file.
+  // Acquire the read lock on object_file for reading its RS info file.
   //===--------------------------------------------------------------------===//
-  android::String8 info_path = RSInfo::GetPath(*output_file);
+  android::String8 info_path = RSInfo::GetPath(pObjectPath);
 
-  if (!output_file->lock()) {
+  if (!object_file->lock()) {
     ALOGE("Unable to acquire the read lock on %s for reading %s! (%s)",
-          pOutputPath, info_path.string(),
-          output_file->getErrorMessage().c_str());
-    delete output_file;
+          pObjectPath, info_path.string(),
+          object_file->getErrorMessage().c_str());
+    delete object_file;
     return NULL;
   }
 
@@ -133,20 +130,20 @@ RSCompilerDriver::loadScriptCache(const char *pOutputPath,
   InputFile info_file(info_path.string());
   RSInfo *info = RSInfo::ReadFromFile(info_file, pDeps);
 
-  // Release the lock on output_file.
-  output_file->unlock();
+  // Release the lock on object_file.
+  object_file->unlock();
 
   if (info == NULL) {
-    delete output_file;
+    delete object_file;
     return NULL;
   }
 
   //===--------------------------------------------------------------------===//
   // Create the RSExecutable.
   //===--------------------------------------------------------------------===//
-  result = RSExecutable::Create(*info, *output_file, mResolver);
+  result = RSExecutable::Create(*info, *object_file, mResolver);
   if (result == NULL) {
-    delete output_file;
+    delete object_file;
     delete info;
     return NULL;
   }
@@ -199,7 +196,6 @@ RSCompilerDriver::compileScript(RSScript &pScript,
                                 const RSInfo::DependencyTableTy &pDeps,
                                 bool pSkipLoad) {
   //android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
-  RSExecutable *result = NULL;
   RSInfo *info = NULL;
 
   //===--------------------------------------------------------------------===//
@@ -227,70 +223,52 @@ RSCompilerDriver::compileScript(RSScript &pScript,
     return NULL;
   }
 
-  //===--------------------------------------------------------------------===//
-  // Acquire the write lock for writing output object file.
-  //===--------------------------------------------------------------------===//
-  FileMutex<FileBase::kWriteLock> write_output_mutex(pOutputPath);
+  {
+    // Acquire the write lock for writing output object file.
+    FileMutex<FileBase::kWriteLock> write_output_mutex(pOutputPath);
 
-  if (write_output_mutex.hasError() || !write_output_mutex.lock()) {
-    ALOGE("Unable to acquire the lock for writing %s! (%s)",
-          pOutputPath, write_output_mutex.getErrorMessage().c_str());
-    return NULL;
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Open the output file for write.
-  //===--------------------------------------------------------------------===//
-  unsigned flags = FileBase::kTruncate;
-  if (mDebugContext) {
-    // Delete the cache file when we finish up under a debug context.
-    flags |= FileBase::kDeleteOnClose;
-  }
-  OutputFile *output_file = new (std::nothrow) OutputFile(pOutputPath, flags);
-
-  if ((output_file == NULL) || output_file->hasError()) {
-      ALOGE("Unable to open %s for write! (%s)", pOutputPath,
-            output_file->getErrorMessage().c_str());
-    delete info;
-    delete output_file;
-    return NULL;
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Setup the config to the compiler.
-  //===--------------------------------------------------------------------===//
-  bool compiler_need_reconfigure = setupConfig(pScript);
-
-  if (mConfig == NULL) {
-    ALOGE("Failed to setup config for RS compiler to compile %s!", pOutputPath);
-    delete info;
-    delete output_file;
-    return NULL;
-  }
-
-  // Compiler need to re-config if it's haven't run the config() yet or the
-  // configuration it referenced is changed.
-  if (compiler_need_reconfigure) {
-    Compiler::ErrorCode err = mCompiler.config(*mConfig);
-    if (err != Compiler::kSuccess) {
-      ALOGE("Failed to config the RS compiler for %s! (%s)",pOutputPath,
-            Compiler::GetErrorString(err));
-      delete info;
-      delete output_file;
+    if (write_output_mutex.hasError() || !write_output_mutex.lock()) {
+      ALOGE("Unable to acquire the lock for writing %s! (%s)",
+            pOutputPath, write_output_mutex.getErrorMessage().c_str());
       return NULL;
     }
-  }
 
-  //===--------------------------------------------------------------------===//
-  // Run the compiler.
-  //===--------------------------------------------------------------------===//
-  Compiler::ErrorCode compile_result = mCompiler.compile(pScript, *output_file);
-  if (compile_result != Compiler::kSuccess) {
-    ALOGE("Unable to compile the source to file %s! (%s)", pOutputPath,
-          Compiler::GetErrorString(compile_result));
-    delete info;
-    delete output_file;
-    return NULL;
+    // Open the output file for write.
+    OutputFile output_file(pOutputPath, FileBase::kTruncate);
+
+    if (output_file.hasError()) {
+        ALOGE("Unable to open %s for write! (%s)", pOutputPath,
+              output_file.getErrorMessage().c_str());
+      return NULL;
+    }
+
+    // Setup the config to the compiler.
+    bool compiler_need_reconfigure = setupConfig(pScript);
+
+    if (mConfig == NULL) {
+      ALOGE("Failed to setup config for RS compiler to compile %s!",
+            pOutputPath);
+      return NULL;
+    }
+
+    if (compiler_need_reconfigure) {
+      Compiler::ErrorCode err = mCompiler.config(*mConfig);
+      if (err != Compiler::kSuccess) {
+        ALOGE("Failed to config the RS compiler for %s! (%s)",pOutputPath,
+              Compiler::GetErrorString(err));
+        return NULL;
+      }
+    }
+
+    // Run the compiler.
+    Compiler::ErrorCode compile_result =
+        mCompiler.compile(pScript, output_file);
+
+    if (compile_result != Compiler::kSuccess) {
+      ALOGE("Unable to compile the source to file %s! (%s)", pOutputPath,
+            Compiler::GetErrorString(compile_result));
+      return NULL;
+    }
   }
 
   // No need to produce an RSExecutable in this case.
@@ -299,41 +277,31 @@ RSCompilerDriver::compileScript(RSScript &pScript,
     return NULL;
   }
 
-  //===--------------------------------------------------------------------===//
-  // Create the RSExecutable.
-  //===--------------------------------------------------------------------===//
-  result = RSExecutable::Create(*info, *output_file, mResolver);
-  if (result == NULL) {
-    delete info;
-    delete output_file;
-    return NULL;
+  {
+    android::String8 info_path = RSInfo::GetPath(pOutputPath);
+    OutputFile info_file(info_path.string(), FileBase::kTruncate);
+
+    if (info_file.hasError()) {
+      ALOGE("Failed to open the info file %s for write! (%s)",
+            info_path.string(), info_file.getErrorMessage().c_str());
+      return NULL;
+    }
+
+    FileMutex<FileBase::kWriteLock> write_info_mutex(info_path.string());
+    if (write_info_mutex.hasError() || !write_info_mutex.lock()) {
+      ALOGE("Unable to acquire the lock for writing %s! (%s)",
+            info_path.string(), write_info_mutex.getErrorMessage().c_str());
+      return NULL;
+    }
+
+    // Perform the write.
+    if (!info->write(info_file)) {
+      ALOGE("Failed to sync the RS info file %s!", info_path.string());
+      return NULL;
+    }
   }
 
-  //===--------------------------------------------------------------------===//
-  // Dump the disassembly for debug when possible.
-  //===--------------------------------------------------------------------===//
-#if USE_DISASSEMBLER
-  OutputFile *disassembly_output =
-      new (std::nothrow) OutputFile(DEBUG_DISASSEMBLER_FILE,
-                                    FileBase::kAppend);
-
-  if (disassembly_output != NULL) {
-    result->dumpDisassembly(*disassembly_output);
-    delete disassembly_output;
-  }
-#endif
-
-  //===--------------------------------------------------------------------===//
-  // Write out the RS info file.
-  //===--------------------------------------------------------------------===//
-  // Note that write failure only results in a warning since the source is
-  // successfully compiled and loaded.
-  if (!result->syncInfo(/* pForce */true)) {
-    ALOGW("%s was successfully compiled and loaded but its RS info file failed "
-          "to write out!", pOutputPath);
-  }
-
-  return result;
+  return loadScriptCache(pOutputPath, pDeps);
 }
 
 RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
@@ -387,8 +355,8 @@ RSExecutable *RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   RSExecutable *result = NULL;
 
-  // Skip loading from the cache if we are using a debug context.
-  if (!mDebugContext) {
+  // Skip loading from the cache if we are using a debug context (or setprop).
+  if (!mDebugContext && !is_force_recompile()) {
     result = loadScriptCache(output_path.c_str(), dep_info);
 
     if (result != NULL) {
