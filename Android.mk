@@ -61,11 +61,8 @@ libbcc_SHA1_SRCS := \
   $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_debug.bc,,)/libclcore_debug.bc
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  # Disable NEON on cortex-a15 temporarily
-  ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
-    libbcc_SHA1_SRCS += \
-      $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,)/libclcore_neon.bc
-  endif
+  libbcc_SHA1_SRCS += \
+    $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,)/libclcore_neon.bc
 endif
 
 libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
@@ -130,10 +127,7 @@ LOCAL_REQUIRED_MODULES += libclcore_x86.bc
 endif
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  # Disable NEON on cortex-a15 temporarily
-  ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
-    LOCAL_REQUIRED_MODULES += libclcore_neon.bc
-  endif
+  LOCAL_REQUIRED_MODULES += libclcore_neon.bc
 endif
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
