@@ -42,19 +42,16 @@ private:
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
 
-  RSExecutable *loadScriptCache(const char *pObjectPath,
-                                const RSInfo::DependencyTableTy &pDeps);
-
   // Setup the compiler config for the given script. Return true if mConfig has
   // been changed and false if it remains unchanged.
   bool setupConfig(const RSScript &pScript);
 
-  RSExecutable *compileScript(RSScript &pScript,
-                              const char* pScriptName,
-                              const char *pOutputPath,
-                              const char *pRuntimePath,
-                              const RSInfo::DependencyTableTy &pDeps,
-                              bool pSkipLoad);
+  Compiler::ErrorCode compileScript(RSScript &pScript,
+                                    const char* pScriptName,
+                                    const char *pOutputPath,
+                                    const char *pRuntimePath,
+                                    const RSInfo::DependencyTableTy &pDeps,
+                                    bool pSkipLoad);
 
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
@@ -78,16 +75,20 @@ public:
     mDebugContext = v;
   }
 
-  // FIXME: This method accompany with loadScriptCache and compileScript should
+  // FIXME: This method accompany with loadScript and compileScript should
   //        all be const-methods. They're not now because the getAddress() in
   //        SymbolResolverInterface is not a const-method.
-  RSExecutable *build(BCCContext &pContext,
-                      const char *pCacheDir, const char *pResName,
-                      const char *pBitcode, size_t pBitcodeSize,
-                      const char *pRuntimePath,
-                      RSLinkRuntimeCallback pLinkRuntimeCallback = NULL);
-  RSExecutable *build(RSScript &pScript, const char *pOut,
-                      const char *pRuntimePath);
+  // Returns true if script is successfully compiled.
+  bool build(BCCContext &pContext, const char *pCacheDir, const char *pResName,
+             const char *pBitcode, size_t pBitcodeSize,
+             const char *pRuntimePath,
+             RSLinkRuntimeCallback pLinkRuntimeCallback = NULL);
+
+  // Returns true if script is successfully compiled.
+  bool build(RSScript &pScript, const char *pOut, const char *pRuntimePath);
+
+  RSExecutable *loadScript(const char *pCacheDir, const char *pResName,
+                           const char *pBitcode, size_t pBitcodeSize);
 };
 
 } // end namespace bcc
