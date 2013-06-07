@@ -331,7 +331,7 @@ bool MetadataExtractor::populateFuncNameMetadata(
 bool MetadataExtractor::populateForEachMetadata(
     const llvm::NamedMDNode *Names,
     const llvm::NamedMDNode *Signatures) {
-  if (!Names && !Signatures) {
+  if (!Names && !Signatures && mCompilerVersion == 0) {
     // Handle legacy case for pre-ICS bitcode that doesn't contain a metadata
     // section for ForEach. We generate a full signature for a "root" function
     // which means that we need to set the bottom 5 bits in the mask.
