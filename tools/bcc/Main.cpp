@@ -24,6 +24,7 @@
 #include <llvm/Config/config.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/PathV1.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/system_error.h>
@@ -284,123 +285,6 @@ bool CompileScript(Compiler &pCompiler, Script &pScript,
   return true;
 }
 
-static inline
-bool PrepareRuntimes(std::vector<SymbolResolverInterface *> &pRuntimes) {
-  llvm::SmallVector<const char *, 2> search_paths;
-
-#ifdef TARGET_BUILD
-  search_paths.push_back("/system/lib/");
-#else
-  search_paths.push_back("/lib/");
-  search_paths.push_back("/usr/lib/");
-#endif
-
-  // Most of the following lines comes from llvm/tools/llvm-ld.cpp.
-  for (unsigned i = 0; i < OptRuntimeLibs.size(); i++) {
-    const std::string &lib = OptRuntimeLibs[i];
-    llvm::sys::Path lib_path;
-    for (llvm::SmallVectorImpl<const char *>::const_iterator
-             search_path_iter = search_paths.begin(),
-             search_path_end = search_paths.end();
-         search_path_iter != search_path_end; search_path_iter++) {
-
-      lib_path = *search_path_iter;
-      lib_path.appendComponent("lib" + lib);
-      lib_path.appendSuffix(llvm::sys::Path::GetDLLSuffix());
-
-      if (lib_path.isEmpty()) {
-        if (!lib_path.isDynamicLibrary()) {
-          lib_path = llvm::sys::Path();
-        } else {
-          break;
-        }
-      }
-    } // for each search_paths
-    if (lib_path.isEmpty()) {
-      // FIXME: llvm::sys::Path::FindLibrary(...) is able to consume
-      //        'const std::string &' instead of 'std::string &'.
-      std::string lib_tmp = lib;
-      lib_path = llvm::sys::Path::FindLibrary(lib_tmp);
-    }
-    if (lib_path.isEmpty()) {
-      llvm::errs() << "Unable to find `lib" << lib << "' for execution!\n";
-      llvm::DeleteContainerPointers(pRuntimes);
-      return false;
-    } else {
-      DyldSymbolResolver *dyld_resolver =
-          new (std::nothrow) DyldSymbolResolver(lib_path.str().c_str());
-
-      if (dyld_resolver != NULL) {
-        pRuntimes.push_back(dyld_resolver);
-      } else {
-        llvm::errs() << "Out of memory when load `" << lib_path.str() << "'!\n";
-        llvm::DeleteContainerPointers(pRuntimes);
-        return false;
-      }
-    }
-  } // for each OptRuntimeLibs
-
-  return true;
-}
-
-static inline
-bool LoadAndRun(const std::string &pOutputExecutable) {
-  SymbolResolverProxy runtime_resolver;
-
-  // Include compiler runtime.
-  CompilerRTSymbolResolver compiler_runtimes;
-  runtime_resolver.chainResolver(compiler_runtimes);
-
-  // Open the output file for execution.
-  InputFile input_exec(pOutputExecutable);
-  if (input_exec.hasError()) {
-    llvm::errs() << "Failed to open the executable `" << pOutputExecutable
-                 << "'! (detail: " << input_exec.getErrorMessage() << ")\n";
-    return false;
-  }
-
-  // Load the runtime libraries given in command line.
-  std::vector<SymbolResolverInterface *> lib_runtimes;
-  if (!PrepareRuntimes(lib_runtimes)) {
-    return false;
-  }
-
-  for (std::vector<SymbolResolverInterface *>::const_iterator
-           librt_iter = lib_runtimes.begin(), librt_end = lib_runtimes.end();
-       librt_iter != librt_end; librt_iter++) {
-    runtime_resolver.chainResolver(*(*librt_iter));
-  }
-
-  // Load the output file.
-  ObjectLoader *loader = ObjectLoader::Load(input_exec, runtime_resolver,
-                                            OptEnableGDB);
-  if (loader == NULL) {
-    llvm::errs() << "Failed to load `" << pOutputExecutable << "'!\n";
-    llvm::DeleteContainerPointers(lib_runtimes);
-    return false;
-  }
-
-  // Retrieve the address of entry function.
-  void *entry = loader->getSymbolAddress(OptEntryFunction.c_str());
-  if (entry == NULL) {
-    llvm::errs() << "Couldn't find entry method `" << OptEntryFunction
-                 << "' in " << pOutputExecutable << "' for execution!\n";
-    delete loader;
-    llvm::DeleteContainerPointers(lib_runtimes);
-    return false;
-  }
-
-  // Execute the entry function.
-  int run_result = reinterpret_cast<int (*)()>(entry)();
-  llvm::errs() << "result: " << run_result << "\n";
-
-  // Clean up.
-  delete loader;
-  llvm::DeleteContainerPointers(lib_runtimes);
-
-  return true;
-}
-
 int main(int argc, char **argv) {
   llvm::cl::SetVersionPrinter(BCCVersionPrinter);
   llvm::cl::ParseCommandLineOptions(argc, argv);
@@ -424,10 +308,6 @@ int main(int argc, char **argv) {
   }
 
   if (!CompileScript(compiler, *script, OutputFilename)) {
-    return EXIT_FAILURE;
-  }
-
-  if (OptRunEntry && !LoadAndRun(OutputFilename)) {
     return EXIT_FAILURE;
   }
 

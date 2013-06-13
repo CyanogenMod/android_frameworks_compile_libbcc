@@ -16,7 +16,7 @@
 
 #include "bcc/Renderscript/RSCompilerDriver.h"
 
-#include <llvm/Support/Path.h>
+#include <llvm/Support/PathV1.h>
 
 #include "bcinfo/BitcodeWrapper.h"
 
