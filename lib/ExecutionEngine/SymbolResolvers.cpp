@@ -61,6 +61,9 @@ void *DyldSymbolResolver::getAddress(const char *pName) {
 }
 
 DyldSymbolResolver::~DyldSymbolResolver() {
-  ::dlclose(mHandle);
+  if (mHandle != NULL) {
+    ::dlclose(mHandle);
+    mHandle = NULL;
+  }
   delete [] mError;
 }
