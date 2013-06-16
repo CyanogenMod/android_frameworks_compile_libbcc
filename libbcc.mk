@@ -43,8 +43,3 @@ include $(LIBBCC_ROOT_PATH)/libbcc-config.mk
 # Related Makefile Paths of LLVM
 #=====================================================================
 include $(LLVM_ROOT_PATH)/llvm.mk
-
-#=====================================================================
-# Related Makefile Paths of MCLinker
-#=====================================================================
-include $(MCLD_ROOT_PATH)/mcld.mk
