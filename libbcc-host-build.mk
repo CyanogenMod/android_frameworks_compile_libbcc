@@ -29,6 +29,8 @@ endif
 
 LOCAL_C_INCLUDES := \
   $(LIBBCC_ROOT_PATH)/include \
+  $(LLVM_ROOT_PATH)/include \
+  $(LLVM_ROOT_PATH)/host/include \
   $(LOCAL_C_INCLUDES)
 
 LOCAL_IS_HOST_MODULE := true

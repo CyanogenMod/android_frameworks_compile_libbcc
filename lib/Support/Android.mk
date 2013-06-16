@@ -27,11 +27,9 @@ libbcc_support_SRC_FILES := \
   FileBase.cpp \
   Initialization.cpp \
   InputFile.cpp \
-  LinkerConfig.cpp \
   OutputFile.cpp \
   Sha1Util.cpp \
-  TargetCompilerConfigs.cpp \
-  TargetLinkerConfigs.cpp
+  TargetCompilerConfigs.cpp
 
 #=====================================================================
 # Device Static Library: libbccSupport
@@ -48,8 +46,7 @@ LOCAL_SRC_FILES := $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
-include $(MCLD_DEVICE_BUILD_MK)
-#include $(LLVM_DEVICE_BUILD_MK)
+include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 
@@ -69,6 +66,5 @@ LOCAL_SRC_FILES := \
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
-include $(MCLD_HOST_BUILD_MK)
-#include $(LLVM_HOST_BUILD_MK)
+include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_STATIC_LIBRARY)

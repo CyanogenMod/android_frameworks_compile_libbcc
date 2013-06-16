@@ -64,5 +64,9 @@ else
 endif
 
 LOCAL_C_INCLUDES := \
+  bionic \
+  external/stlport/stlport \
   $(LIBBCC_ROOT_PATH)/include \
+  $(LLVM_ROOT_PATH)/include \
+  $(LLVM_ROOT_PATH)/device/include \
   $(LOCAL_C_INCLUDES)
