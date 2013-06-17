@@ -94,7 +94,7 @@ def print_asm_data(data, size):
 
 def print_asm_symbol_data(sym, h):
     sys.stdout.write("""
-.align 5
+.align 8
 #ifdef __APPLE_CC__
 _%s:\n\
 #else\n\
