@@ -24,6 +24,7 @@
 #include <llvm/Config/config.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/PathV1.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
@@ -37,6 +38,7 @@
 #include <bcc/ExecutionEngine/ObjectLoader.h>
 #include <bcc/ExecutionEngine/SymbolResolverProxy.h>
 #include <bcc/ExecutionEngine/SymbolResolvers.h>
+#include <bcc/Renderscript/RSCompilerDriver.h>
 #include <bcc/Script.h>
 #include <bcc/Source.h>
 #include <bcc/Support/CompilerConfig.h>
@@ -52,13 +54,23 @@ using namespace bcc;
 //===----------------------------------------------------------------------===//
 namespace {
 
-llvm::cl::list<std::string>
-OptInputFilenames(llvm::cl::Positional, llvm::cl::OneOrMore,
-                  llvm::cl::desc("<input bitcode files>"));
+llvm::cl::opt<std::string>
+OptInputFilename(llvm::cl::Positional, llvm::cl::ValueRequired,
+                 llvm::cl::desc("<input bitcode file>"));
 
 llvm::cl::opt<std::string>
 OptOutputFilename("o", llvm::cl::desc("Specify the output filename"),
-                  llvm::cl::value_desc("filename"));
+                  llvm::cl::value_desc("filename"),
+                  llvm::cl::init("bcc_output"));
+
+llvm::cl::opt<std::string>
+OptBCLibFilename("bclib", llvm::cl::desc("Specify the bclib filename"),
+                 llvm::cl::value_desc("bclib"));
+
+llvm::cl::opt<std::string>
+OptOutputPath("output_path", llvm::cl::desc("Specify the output path"),
+              llvm::cl::value_desc("output path"),
+              llvm::cl::init("."));
 
 #ifdef TARGET_BUILD
 const std::string OptTargetTriple(DEFAULT_TARGET_TRIPLE_STRING);
@@ -78,56 +90,11 @@ llvm::cl::alias OptTargetTripleC("C", llvm::cl::NotHidden,
 //===----------------------------------------------------------------------===//
 // Compiler Options
 //===----------------------------------------------------------------------===//
-llvm::cl::opt<bool>
-OptPIC("fPIC", llvm::cl::desc("Generate fully relocatable, position independent"
-                              " code"));
 
 llvm::cl::opt<char>
 OptOptLevel("O", llvm::cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
                                 "(default: -O2)"),
             llvm::cl::Prefix, llvm::cl::ZeroOrMore, llvm::cl::init('2'));
-
-llvm::cl::opt<bool>
-OptC("c", llvm::cl::desc("Compile and assemble, but do not link."));
-
-//===----------------------------------------------------------------------===//
-// Linker Options
-//===----------------------------------------------------------------------===//
-// FIXME: this option will be removed in the future when MCLinker is capable
-//        of generating shared library directly from given bitcode. It only
-//        takes effect when -shared is supplied.
-llvm::cl::opt<std::string>
-OptImmObjectOutput("or", llvm::cl::desc("Specify the filename for output the "
-                                        "intermediate relocatable when linking "
-                                        "the input bitcode to the shared "
-                                        "library"), llvm::cl::ValueRequired);
-
-llvm::cl::opt<bool>
-OptShared("shared", llvm::cl::desc("Create a shared library from input bitcode "
-                                   "files"));
-
-
-//===----------------------------------------------------------------------===//
-// Loader Options
-//===----------------------------------------------------------------------===//
-llvm::cl::opt<bool>
-OptRunEntry("R", llvm::cl::desc("Run the entry method after successfully load "
-                                "and compile."));
-
-llvm::cl::opt<std::string>
-OptEntryFunction("entry-function", llvm::cl::desc("Specify the entry function "
-                                                  "for -R (default: main)"),
-                 llvm::cl::value_desc("function"), llvm::cl::init("main"));
-
-llvm::cl::opt<bool>
-OptEnableGDB("enable-gdb", llvm::cl::desc("Enable GDB JIT debugging when "
-                                          "runs the entry method"));
-
-llvm::cl::list<std::string>
-OptRuntimeLibs("load", llvm::cl::desc("Specify the shared libraries for "
-                                      "execution (e.g., -load=c will search "
-                                      "and load libc.so for execution)"),
-               llvm::cl::ZeroOrMore, llvm::cl::value_desc("namespec"));
 
 // Override "bcc -version" since the LLVM version information is not correct on
 // Android build.
@@ -149,41 +116,6 @@ void BCCVersionPrinter() {
 } // end anonymous namespace
 
 static inline
-Script *PrepareScript(BCCContext &pContext,
-                      const llvm::cl::list<std::string> &pBitcodeFiles) {
-  Script *result = NULL;
-
-  for (unsigned i = 0; i < pBitcodeFiles.size(); i++) {
-    const std::string &input_bitcode = pBitcodeFiles[i];
-    Source *source = Source::CreateFromFile(pContext, input_bitcode);
-    if (source == NULL) {
-      llvm::errs() << "Failed to load llvm module from file `" << input_bitcode
-                   << "'!\n";
-      return NULL;
-    }
-
-    if (result != NULL) {
-      if (!result->mergeSource(*source, /* pPreserveSource */false)) {
-        llvm::errs() << "Failed to merge the llvm module `" << input_bitcode
-                     << "' to compile!\n";
-        delete source;
-        return NULL;
-      }
-    } else {
-      result = new (std::nothrow) Script(*source);
-      if (result == NULL) {
-        llvm::errs() << "Out of memory when create script for file `"
-                     << input_bitcode << "'!\n";
-        delete source;
-        return NULL;
-      }
-    }
-  }
-
-  return result;
-}
-
-static inline
 bool ConfigCompiler(Compiler &pCompiler) {
   CompilerConfig *config = NULL;
 
@@ -197,10 +129,6 @@ bool ConfigCompiler(Compiler &pCompiler) {
     return false;
   }
 
-  // Setup the config according to the valud of command line option.
-  if (OptPIC) {
-    config->setRelocationModel(llvm::Reloc::PIC_);
-  }
   switch (OptOptLevel) {
     case '0': config->setOptimizationLevel(llvm::CodeGenOpt::None); break;
     case '1': config->setOptimizationLevel(llvm::CodeGenOpt::Less); break;
@@ -223,43 +151,6 @@ bool ConfigCompiler(Compiler &pCompiler) {
   }
 
   return true;
-}
-
-#define DEFAULT_OUTPUT_PATH   "/sdcard/a.out"
-static inline
-std::string DetermineOutputFilename(const std::string &pOutputPath) {
-  if (!pOutputPath.empty()) {
-    return pOutputPath;
-  }
-
-  // User doesn't specify the value to -o.
-  if (OptInputFilenames.size() > 1) {
-    llvm::errs() << "Use " DEFAULT_OUTPUT_PATH " for output file!\n";
-    return DEFAULT_OUTPUT_PATH;
-  }
-
-  // There's only one input bitcode file.
-  const std::string &input_path = OptInputFilenames[0];
-  llvm::SmallString<200> output_path(input_path);
-
-  llvm::error_code err = llvm::sys::fs::make_absolute(output_path);
-  if (err != llvm::errc::success) {
-    llvm::errs() << "Failed to determine the absolute path of `" << input_path
-                 << "'! (detail: " << err.message() << ")\n";
-    return "";
-  }
-
-  if (OptC) {
-    // -c was specified. Replace the extension to .o.
-    llvm::sys::path::replace_extension(output_path, "o");
-  } else {
-    // Use a.out under current working directory when compile executable or
-    // shared library.
-    llvm::sys::path::remove_filename(output_path);
-    llvm::sys::path::append(output_path, "a.out");
-  }
-
-  return output_path.c_str();
 }
 
 static inline
@@ -291,23 +182,28 @@ int main(int argc, char **argv) {
   init::Initialize();
 
   BCCContext context;
-  Compiler compiler;
+  RSCompilerDriver RSCD;
 
-  Script *script = PrepareScript(context, OptInputFilenames);
-  if (script == NULL) {
+  llvm::OwningPtr<llvm::MemoryBuffer> input_data;
+
+  llvm::error_code ec =
+      llvm::MemoryBuffer::getFile(OptInputFilename.c_str(), input_data);
+  if (ec != llvm::error_code::success()) {
+    ALOGE("Failed to load bitcode from path %s! (%s)",
+          OptInputFilename.c_str(), ec.message().c_str());
     return EXIT_FAILURE;
   }
 
-  if (!ConfigCompiler(compiler)) {
-    return EXIT_FAILURE;
-  }
+  llvm::MemoryBuffer *input_memory = input_data.take();
 
-  std::string OutputFilename = DetermineOutputFilename(OptOutputFilename);
-  if (OutputFilename.empty()) {
-    return EXIT_FAILURE;
-  }
+  const char *bitcode = input_memory->getBufferStart();
+  size_t bitcodeSize = input_memory->getBufferSize();
 
-  if (!CompileScript(compiler, *script, OutputFilename)) {
+  bool built = RSCD.build(context, OptOutputPath.c_str(),
+      OptOutputFilename.c_str(), bitcode, bitcodeSize,
+      OptBCLibFilename.c_str(), NULL);
+
+  if (!built) {
     return EXIT_FAILURE;
   }
 
