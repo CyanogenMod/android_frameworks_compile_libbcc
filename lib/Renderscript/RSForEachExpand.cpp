@@ -147,36 +147,15 @@ private:
     return Signature & 0x20;
   }
 
-
-public:
-  RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
-                      bool pEnableStepOpt)
-      : ModulePass(ID), M(NULL), C(NULL), mFuncs(pForeachFuncs),
-        mEnableStepOpt(pEnableStepOpt) {
-  }
-
-  /* Performs the actual optimization on a selected function. On success, the
-   * Module will contain a new function of the name "<NAME>.expand" that
-   * invokes <NAME>() in a loop with the appropriate parameters.
-   */
-  bool ExpandFunction(llvm::Function *F, uint32_t Signature) {
-    ALOGV("Expanding ForEach-able Function %s", F->getName().str().c_str());
-
-    if (!Signature) {
-      Signature = getRootSignature(F);
-      if (!Signature) {
-        // We couldn't determine how to expand this function based on its
-        // function signature.
-        return false;
-      }
-    }
-
-    llvm::DataLayout DL(M);
-
+  /// @brief Returns the type of the ForEach stub parameter structure.
+  ///
+  /// Renderscript uses a single structure in which all parameters are passed
+  /// to keep the signature of the expanded function independent of the
+  /// parameters passed to it.
+  llvm::Type *getForeachStubTy() {
     llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
     llvm::Type *SizeTy = Int32Ty;
-
     /* Defined in frameworks/base/libs/rs/rs_hal.h:
      *
      * struct RsForEachStubParamStruct {
@@ -204,8 +183,36 @@ public:
     StructTys.push_back(Int32Ty);    // enum RsAllocationCubemapFace
     StructTys.push_back(llvm::ArrayType::get(Int32Ty, 16));  // uint32_t ar[16]
 
-    llvm::Type *ForEachStubPtrTy = llvm::StructType::create(
-        StructTys, "RsForEachStubParamStruct")->getPointerTo();
+    return llvm::StructType::create(StructTys, "RsForEachStubParamStruct");
+  }
+
+public:
+  RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
+                      bool pEnableStepOpt)
+      : ModulePass(ID), M(NULL), C(NULL), mFuncs(pForeachFuncs),
+        mEnableStepOpt(pEnableStepOpt) {
+  }
+
+  /* Performs the actual optimization on a selected function. On success, the
+   * Module will contain a new function of the name "<NAME>.expand" that
+   * invokes <NAME>() in a loop with the appropriate parameters.
+   */
+  bool ExpandFunction(llvm::Function *F, uint32_t Signature) {
+    ALOGV("Expanding ForEach-able Function %s", F->getName().str().c_str());
+
+    if (!Signature) {
+      Signature = getRootSignature(F);
+      if (!Signature) {
+        // We couldn't determine how to expand this function based on its
+        // function signature.
+        return false;
+      }
+    }
+
+    llvm::DataLayout DL(M);
+
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
+    llvm::Type *ForEachStubPtrTy = getForeachStubTy()->getPointerTo();
 
     /* Create the function signature for our expanded function.
      * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
@@ -393,39 +400,8 @@ public:
     // TODO: Refactor this to share functionality with ExpandFunction.
     llvm::DataLayout DL(M);
 
-    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
-    llvm::Type *SizeTy = Int32Ty;
-
-    /* Defined in frameworks/base/libs/rs/rs_hal.h:
-     *
-     * struct RsForEachStubParamStruct {
-     *   const void *in;
-     *   void *out;
-     *   const void *usr;
-     *   size_t usr_len;
-     *   uint32_t x;
-     *   uint32_t y;
-     *   uint32_t z;
-     *   uint32_t lod;
-     *   enum RsAllocationCubemapFace face;
-     *   uint32_t ar[16];
-     * };
-     */
-    llvm::SmallVector<llvm::Type*, 9> StructTys;
-    StructTys.push_back(VoidPtrTy);  // const void *in
-    StructTys.push_back(VoidPtrTy);  // void *out
-    StructTys.push_back(VoidPtrTy);  // const void *usr
-    StructTys.push_back(SizeTy);     // size_t usr_len
-    StructTys.push_back(Int32Ty);    // uint32_t x
-    StructTys.push_back(Int32Ty);    // uint32_t y
-    StructTys.push_back(Int32Ty);    // uint32_t z
-    StructTys.push_back(Int32Ty);    // uint32_t lod
-    StructTys.push_back(Int32Ty);    // enum RsAllocationCubemapFace
-    StructTys.push_back(llvm::ArrayType::get(Int32Ty, 16));  // uint32_t ar[16]
-
-    llvm::Type *ForEachStubPtrTy = llvm::StructType::create(
-        StructTys, "RsForEachStubParamStruct")->getPointerTo();
+    llvm::Type *ForEachStubPtrTy = getForeachStubTy()->getPointerTo();
 
     /* Create the function signature for our expanded function.
      * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
