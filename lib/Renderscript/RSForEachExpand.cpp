@@ -186,6 +186,30 @@ private:
     return llvm::StructType::create(StructTys, "RsForEachStubParamStruct");
   }
 
+  /// @brief Create skeleton of the expanded function.
+  ///
+  /// This creates a function with the following signature:
+  ///
+  ///   void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
+  ///         uint32_t instep, uint32_t outstep)
+  ///
+  llvm::Function *createEmptyExpandedFunction(llvm::StringRef OldName) {
+    llvm::Type *ForEachStubPtrTy = getForeachStubTy()->getPointerTo();
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
+
+    llvm::SmallVector<llvm::Type*, 8> ParamTys;
+    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
+    ParamTys.push_back(Int32Ty);           // uint32_t x1
+    ParamTys.push_back(Int32Ty);           // uint32_t x2
+    ParamTys.push_back(Int32Ty);           // uint32_t instep
+    ParamTys.push_back(Int32Ty);           // uint32_t outstep
+
+    llvm::FunctionType *FT =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
+    return llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage,
+                                  OldName + ".expand", M);
+  }
+
 public:
   RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
                       bool pEnableStepOpt)
@@ -212,25 +236,7 @@ public:
     llvm::DataLayout DL(M);
 
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
-    llvm::Type *ForEachStubPtrTy = getForeachStubTy()->getPointerTo();
-
-    /* Create the function signature for our expanded function.
-     * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
-     *       uint32_t instep, uint32_t outstep)
-     */
-    llvm::SmallVector<llvm::Type*, 8> ParamTys;
-    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
-    ParamTys.push_back(Int32Ty);           // uint32_t x1
-    ParamTys.push_back(Int32Ty);           // uint32_t x2
-    ParamTys.push_back(Int32Ty);           // uint32_t instep
-    ParamTys.push_back(Int32Ty);           // uint32_t outstep
-
-    llvm::FunctionType *FT =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
-    llvm::Function *ExpandedFunc =
-        llvm::Function::Create(FT,
-                               llvm::GlobalValue::ExternalLinkage,
-                               F->getName() + ".expand", M);
+    llvm::Function *ExpandedFunc = createEmptyExpandedFunction(F->getName());
 
     // Create and name the actual arguments to this expanded function.
     llvm::SmallVector<llvm::Argument*, 8> ArgVec;
@@ -401,25 +407,7 @@ public:
     llvm::DataLayout DL(M);
 
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
-    llvm::Type *ForEachStubPtrTy = getForeachStubTy()->getPointerTo();
-
-    /* Create the function signature for our expanded function.
-     * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
-     *       uint32_t instep, uint32_t outstep)
-     */
-    llvm::SmallVector<llvm::Type*, 8> ParamTys;
-    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
-    ParamTys.push_back(Int32Ty);           // uint32_t x1
-    ParamTys.push_back(Int32Ty);           // uint32_t x2
-    ParamTys.push_back(Int32Ty);           // uint32_t instep
-    ParamTys.push_back(Int32Ty);           // uint32_t outstep
-
-    llvm::FunctionType *FT =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
-    llvm::Function *ExpandedFunc =
-        llvm::Function::Create(FT,
-                               llvm::GlobalValue::ExternalLinkage,
-                               F->getName() + ".expand", M);
+    llvm::Function *ExpandedFunc = createEmptyExpandedFunction(F->getName());
 
     // Create and name the actual arguments to this expanded function.
     llvm::SmallVector<llvm::Argument*, 8> ArgVec;
