@@ -77,7 +77,6 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
   RSInfo::DependencyTableTy dep_info;
   uint8_t bitcode_sha1[20];
   Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
-  dep_info.push(std::make_pair(pResName, bitcode_sha1));
 
   llvm::sys::Path output_path(pCacheDir);
 
@@ -89,6 +88,8 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
 
   // {pCacheDir}/{pResName}.o
   output_path.appendSuffix("o");
+
+  dep_info.push(std::make_pair(output_path.c_str(), bitcode_sha1));
 
   //===--------------------------------------------------------------------===//
   // Acquire the read lock for reading the Script object file.
@@ -346,7 +347,6 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   RSInfo::DependencyTableTy dep_info;
   uint8_t bitcode_sha1[20];
   Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
-  dep_info.push(std::make_pair(pResName, bitcode_sha1));
 
   //===--------------------------------------------------------------------===//
   // Construct output path.
@@ -361,6 +361,8 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 
   // {pCacheDir}/{pResName}.o
   output_path.appendSuffix("o");
+
+  dep_info.push(std::make_pair(output_path.c_str(), bitcode_sha1));
 
   //===--------------------------------------------------------------------===//
   // Load the bitcode and create script.
