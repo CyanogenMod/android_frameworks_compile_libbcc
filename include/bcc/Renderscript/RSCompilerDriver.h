@@ -51,7 +51,7 @@ private:
                                     const char *pOutputPath,
                                     const char *pRuntimePath,
                                     const RSInfo::DependencyTableTy &pDeps,
-                                    bool pSkipLoad);
+                                    bool pSkipLoad, bool pDumpIR = false);
 
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
@@ -82,7 +82,8 @@ public:
   bool build(BCCContext &pContext, const char *pCacheDir, const char *pResName,
              const char *pBitcode, size_t pBitcodeSize,
              const char *pRuntimePath,
-             RSLinkRuntimeCallback pLinkRuntimeCallback = NULL);
+             RSLinkRuntimeCallback pLinkRuntimeCallback = NULL,
+             bool pDumpIR = false);
 
   // Returns true if script is successfully compiled.
   bool build(RSScript &pScript, const char *pOut, const char *pRuntimePath);

@@ -16,7 +16,9 @@
 
 #include "bcc/Renderscript/RSCompilerDriver.h"
 
+#include <llvm/IR/Module.h>
 #include <llvm/Support/PathV1.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "bcinfo/BitcodeWrapper.h"
 
@@ -194,7 +196,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
                                 const char *pOutputPath,
                                 const char *pRuntimePath,
                                 const RSInfo::DependencyTableTy &pDeps,
-                                bool pSkipLoad) {
+                                bool pSkipLoad, bool pDumpIR) {
   //android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
   RSInfo *info = NULL;
 
@@ -300,6 +302,16 @@ RSCompilerDriver::compileScript(RSScript &pScript,
     }
   }
 
+  if (pDumpIR) {
+    android::String8 path(pOutputPath);
+    path.append(".ll");
+    OutputFile ir_file(path.string(), FileBase::kTruncate);
+    llvm::Module &module = pScript.getSource().getModule();
+    llvm::raw_fd_ostream &out = *ir_file.dup();
+    out << module;
+    ir_file.close();
+  }
+
   return Compiler::kSuccess;
 }
 
@@ -309,7 +321,8 @@ bool RSCompilerDriver::build(BCCContext &pContext,
                              const char *pBitcode,
                              size_t pBitcodeSize,
                              const char *pRuntimePath,
-                             RSLinkRuntimeCallback pLinkRuntimeCallback) {
+                             RSLinkRuntimeCallback pLinkRuntimeCallback,
+                             bool pDumpIR) {
     //  android::StopWatch build_time("bcc: RSCompilerDriver::build time");
   //===--------------------------------------------------------------------===//
   // Check parameters.
@@ -379,7 +392,8 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   Compiler::ErrorCode status = compileScript(*script, pResName,
                                              output_path.c_str(),
-                                             pRuntimePath, dep_info, false);
+                                             pRuntimePath, dep_info, false,
+                                             pDumpIR);
 
   // Script is no longer used. Free it to get more memory.
   delete script;

@@ -72,6 +72,10 @@ OptOutputPath("output_path", llvm::cl::desc("Specify the output path"),
               llvm::cl::value_desc("output path"),
               llvm::cl::init("."));
 
+llvm::cl::opt<bool>
+OptEmitLLVM("emit-llvm",
+            llvm::cl::desc("Emit an LLVM-IR version of the generated program"));
+
 #ifdef TARGET_BUILD
 const std::string OptTargetTriple(DEFAULT_TARGET_TRIPLE_STRING);
 #else
@@ -201,7 +205,7 @@ int main(int argc, char **argv) {
 
   bool built = RSCD.build(context, OptOutputPath.c_str(),
       OptOutputFilename.c_str(), bitcode, bitcodeSize,
-      OptBCLibFilename.c_str(), NULL);
+      OptBCLibFilename.c_str(), NULL, OptEmitLLVM);
 
   if (!built) {
     return EXIT_FAILURE;
