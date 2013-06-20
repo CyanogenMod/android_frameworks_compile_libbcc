@@ -206,8 +206,26 @@ private:
 
     llvm::FunctionType *FT =
         llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
-    return llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage,
-                                  OldName + ".expand", M);
+    llvm::Function *F =
+        llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage,
+                               OldName + ".expand", M);
+
+    llvm::Function::arg_iterator AI = F->arg_begin();
+
+    AI->setName("p");
+    AI++;
+    AI->setName("x1");
+    AI++;
+    AI->setName("x2");
+    AI++;
+    AI->setName("arg_instep");
+    AI++;
+    AI->setName("arg_outstep");
+    AI++;
+
+    assert(AI == F->arg_end());
+
+    return F;
   }
 
 public:
@@ -257,12 +275,6 @@ public:
     llvm::Value *Arg_x2 = ArgVec[2];
     llvm::Value *Arg_instep = ArgVec[3];
     llvm::Value *Arg_outstep = ArgVec[4];
-
-    Arg_p->setName("p");
-    Arg_x1->setName("x1");
-    Arg_x2->setName("x2");
-    Arg_instep->setName("arg_instep");
-    Arg_outstep->setName("arg_outstep");
 
     llvm::Value *InStep = NULL;
     llvm::Value *OutStep = NULL;
@@ -428,12 +440,6 @@ public:
     llvm::Value *Arg_x2 = ArgVec[2];
     llvm::Value *Arg_instep = ArgVec[3];
     llvm::Value *Arg_outstep = ArgVec[4];
-
-    Arg_p->setName("p");
-    Arg_x1->setName("x1");
-    Arg_x2->setName("x2");
-    Arg_instep->setName("arg_instep");
-    Arg_outstep->setName("arg_outstep");
 
     llvm::Value *InStep = NULL;
     llvm::Value *OutStep = NULL;
