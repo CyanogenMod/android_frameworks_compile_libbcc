@@ -233,6 +233,65 @@ private:
     return F;
   }
 
+  /// @brief Create an empty loop
+  ///
+  /// Create a loop of the form:
+  ///
+  /// for (i = LowerBound; i < UpperBound; i++)
+  ///   ;
+  ///
+  /// After the loop has been created, the builder is set such that
+  /// instructions can be added to the loop body.
+  ///
+  /// @param Builder The builder to use to build this loop. The current
+  ///                position of the builder is the position the loop
+  ///                will be inserted.
+  /// @param LowerBound The first value of the loop iterator
+  /// @param UpperBound The maximal value of the loop iterator
+  /// @param LoopIV A reference that will be set to the loop iterator.
+  /// @return The BasicBlock that will be executed after the loop.
+  llvm::BasicBlock *createLoop(llvm::IRBuilder<> &Builder,
+                               llvm::Value *LowerBound,
+                               llvm::Value *UpperBound,
+                               llvm::PHINode **LoopIV) {
+    assert(LowerBound->getType() == UpperBound->getType());
+
+    llvm::BasicBlock *CondBB, *AfterBB, *HeaderBB;
+    llvm::Value *Cond, *IVNext;
+    llvm::PHINode *IV;
+
+    CondBB = Builder.GetInsertBlock();
+    AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), this);
+    HeaderBB = llvm::BasicBlock::Create(*C, "Loop", CondBB->getParent());
+
+    // if (LowerBound < Upperbound)
+    //   goto LoopHeader
+    // else
+    //   goto AfterBB
+    CondBB->getTerminator()->eraseFromParent();
+    Builder.SetInsertPoint(CondBB);
+    Cond = Builder.CreateICmpSLT(LowerBound, UpperBound);
+    Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
+
+    // iv = PHI [CondBB -> LowerBound], [LoopHeader -> NextIV ]
+    // iv.next = iv + 1
+    // if (iv.next < Upperbound)
+    //   goto LoopHeader
+    // else
+    //   goto AfterBB
+    Builder.SetInsertPoint(HeaderBB);
+    IV = Builder.CreatePHI(LowerBound->getType(), 2, "X");
+    IV->addIncoming(LowerBound, CondBB);
+    IVNext = Builder.CreateNUWAdd(IV, Builder.getInt32(1));
+    IV->addIncoming(IVNext, HeaderBB);
+    Cond = Builder.CreateICmpSLT(IVNext, UpperBound);
+    Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
+    AfterBB->setName("Exit");
+    Builder.SetInsertPoint(HeaderBB->getFirstNonPHI());
+    *LoopIV = IV;
+    return AfterBB;
+  }
+
 public:
   RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
                       bool pEnableStepOpt)
@@ -285,12 +344,7 @@ public:
     llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
-    llvm::BasicBlock *Begin = &ExpandedFunc->getEntryBlock();
-    llvm::IRBuilder<> Builder(Begin->begin());
-
-    // uint32_t X = x1;
-    llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
-    Builder.CreateStore(Arg_x1, AX);
+    llvm::IRBuilder<> Builder(ExpandedFunc->getEntryBlock().begin());
 
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
@@ -341,20 +395,8 @@ public:
 
     bccAssert(Args == F->arg_end());
 
-    llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
-
-    // if (x1 < x2) goto Loop; else goto Exit;
-    llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
-
-    llvm::BasicBlock *Exit = llvm::SplitBlock(Builder.GetInsertBlock(),
-                                              Builder.GetInsertPoint(), this);
-    Exit->setName("Exit");
-    Begin->getTerminator()->eraseFromParent();
-    Builder.SetInsertPoint(Begin);
-    Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Loop:
-    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *IV;
+    createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
@@ -376,8 +418,7 @@ public:
       RootArgs.push_back(UsrData);
     }
 
-    // We always have to load X, since it is used to iterate through the loop.
-    llvm::Value *X = Builder.CreateLoad(AX, "X");
+    llvm::Value *X = IV;
     if (hasX(Signature)) {
       RootArgs.push_back(X);
     }
@@ -401,15 +442,6 @@ public:
           Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
       Builder.CreateStore(NewOut, AOut);
     }
-
-    // X++;
-    llvm::Value *XPlusOne =
-        Builder.CreateNUWAdd(X, llvm::ConstantInt::get(Int32Ty, 1));
-    Builder.CreateStore(XPlusOne, AX);
-
-    // If (X < x2) goto Loop; else goto Exit;
-    Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
-    Builder.CreateCondBr(Cond, Loop, Exit);
 
     return true;
   }
@@ -450,12 +482,7 @@ public:
     llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
-    llvm::BasicBlock *Begin = &ExpandedFunc->getEntryBlock();
-    llvm::IRBuilder<> Builder(Begin->begin());
-
-    // uint32_t X = x1;
-    llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
-    Builder.CreateStore(Arg_x1, AX);
+    llvm::IRBuilder<> Builder(ExpandedFunc->getEntryBlock().begin());
 
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
@@ -510,20 +537,8 @@ public:
 
     bccAssert(Args == F->arg_end());
 
-    llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
-
-    // if (x1 < x2) goto Loop; else goto Exit;
-    llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
-
-    llvm::BasicBlock *Exit = llvm::SplitBlock(Builder.GetInsertBlock(),
-                                              Builder.GetInsertPoint(), this);
-    Exit->setName("Exit");
-    Begin->getTerminator()->eraseFromParent();
-    Builder.SetInsertPoint(Begin);
-    Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Loop:
-    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *IV;
+    createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
@@ -543,8 +558,7 @@ public:
       RootArgs.push_back(In);
     }
 
-    // We always have to load X, since it is used to iterate through the loop.
-    llvm::Value *X = Builder.CreateLoad(AX, "X");
+    llvm::Value *X = IV;
     if (hasX(Signature)) {
       RootArgs.push_back(X);
     }
@@ -573,15 +587,6 @@ public:
           Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
       Builder.CreateStore(NewOut, AOut);
     }
-
-    // X++;
-    llvm::Value *XPlusOne =
-        Builder.CreateNUWAdd(X, llvm::ConstantInt::get(Int32Ty, 1));
-    Builder.CreateStore(XPlusOne, AX);
-
-    // If (X < x2) goto Loop; else goto Exit;
-    Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
-    Builder.CreateCondBr(Cond, Loop, Exit);
 
     return true;
   }
