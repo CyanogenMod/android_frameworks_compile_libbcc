@@ -28,6 +28,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Type.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSInfo.h"
@@ -225,6 +226,10 @@ private:
 
     assert(AI == F->arg_end());
 
+    llvm::BasicBlock *Begin = llvm::BasicBlock::Create(*C, "Begin", F);
+    llvm::IRBuilder<> Builder(Begin);
+    Builder.CreateRetVoid();
+
     return F;
   }
 
@@ -280,9 +285,8 @@ public:
     llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
-    llvm::BasicBlock *Begin =
-        llvm::BasicBlock::Create(*C, "Begin", ExpandedFunc);
-    llvm::IRBuilder<> Builder(Begin);
+    llvm::BasicBlock *Begin = &ExpandedFunc->getEntryBlock();
+    llvm::IRBuilder<> Builder(Begin->begin());
 
     // uint32_t X = x1;
     llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
@@ -338,10 +342,15 @@ public:
     bccAssert(Args == F->arg_end());
 
     llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
-    llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
 
     // if (x1 < x2) goto Loop; else goto Exit;
     llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
+
+    llvm::BasicBlock *Exit = llvm::SplitBlock(Builder.GetInsertBlock(),
+                                              Builder.GetInsertPoint(), this);
+    Exit->setName("Exit");
+    Begin->getTerminator()->eraseFromParent();
+    Builder.SetInsertPoint(Begin);
     Builder.CreateCondBr(Cond, Loop, Exit);
 
     // Loop:
@@ -402,10 +411,6 @@ public:
     Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
     Builder.CreateCondBr(Cond, Loop, Exit);
 
-    // Exit:
-    Builder.SetInsertPoint(Exit);
-    Builder.CreateRetVoid();
-
     return true;
   }
 
@@ -445,9 +450,8 @@ public:
     llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
-    llvm::BasicBlock *Begin =
-        llvm::BasicBlock::Create(*C, "Begin", ExpandedFunc);
-    llvm::IRBuilder<> Builder(Begin);
+    llvm::BasicBlock *Begin = &ExpandedFunc->getEntryBlock();
+    llvm::IRBuilder<> Builder(Begin->begin());
 
     // uint32_t X = x1;
     llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
@@ -507,10 +511,15 @@ public:
     bccAssert(Args == F->arg_end());
 
     llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
-    llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
 
     // if (x1 < x2) goto Loop; else goto Exit;
     llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
+
+    llvm::BasicBlock *Exit = llvm::SplitBlock(Builder.GetInsertBlock(),
+                                              Builder.GetInsertPoint(), this);
+    Exit->setName("Exit");
+    Begin->getTerminator()->eraseFromParent();
+    Builder.SetInsertPoint(Begin);
     Builder.CreateCondBr(Cond, Loop, Exit);
 
     // Loop:
@@ -573,10 +582,6 @@ public:
     // If (X < x2) goto Loop; else goto Exit;
     Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
     Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Exit:
-    Builder.SetInsertPoint(Exit);
-    Builder.CreateRetVoid();
 
     return true;
   }
