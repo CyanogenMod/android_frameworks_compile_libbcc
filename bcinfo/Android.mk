@@ -39,11 +39,15 @@ libbcinfo_SRC_FILES := \
   BitcodeWrapper.cpp \
   MetadataExtractor.cpp
 
-libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
+libbcinfo_C_INCLUDES := \
+  $(LOCAL_PATH)/../include \
+  $(LOCAL_PATH)/../../slang
+
 libbcinfo_STATIC_LIBRARIES := \
   libLLVMWrap \
   libLLVMBitReader_2_7 \
-  libLLVMBitReader_3_0
+  libLLVMBitReader_3_0 \
+  libLLVMBitWriter_3_2
 
 LLVM_ROOT_PATH := external/llvm
 
