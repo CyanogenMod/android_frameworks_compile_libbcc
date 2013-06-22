@@ -104,6 +104,12 @@ private:
   }
 
   // Get the actual value we should use to step through an allocation.
+  //
+  // Normally the value we use to step through an allocation is given to us by
+  // the driver. However, for certain primitive data types, we can derive an
+  // integer constant for the step value. We use this integer constant whenever
+  // possible to allow further compiler optimizations to take place.
+  //
   // DL - Target Data size/layout information.
   // T - Type of allocation (should be a pointer).
   // OrigStep - Original step increment (root.expand() input from driver).
@@ -489,8 +495,8 @@ public:
     llvm::Function::arg_iterator Args = F->arg_begin();
 
     llvm::Type *OutTy = NULL;
-    llvm::AllocaInst *AOut = NULL;
     bool PassOutByReference = false;
+    llvm::Value *OutBasePtr = NULL;
     if (hasOut(Signature)) {
       llvm::Type *OutBaseTy = F->getReturnType();
       if (OutBaseTy->isVoidTy()) {
@@ -501,11 +507,9 @@ public:
         OutTy = OutBaseTy->getPointerTo();
         // We don't increment Args, since we are using the actual return type.
       }
-      AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
+      OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
     }
 
     llvm::Type *InBaseTy = NULL;
@@ -547,8 +551,22 @@ public:
     llvm::Value *In = NULL;
     llvm::Value *OutPtr = NULL;
 
+    // Calculate the current output pointer
+    //
+    // We always calculate the output pointer with an GEP operating on i8
+    // values and only cast at the very end to OutTy. This is because the step
+    // between two values is given in bytes.
+    //
+    // TODO: We could further optimize the output by using a GEP operation of
+    // type 'OutTy' in cases where the element type of the allocation allows.
+    if (OutBasePtr) {
+      llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
+      OutOffset = Builder.CreateMul(OutOffset, OutStep);
+      OutPtr = Builder.CreateGEP(OutBasePtr, OutOffset);
+      OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
+    }
+
     if (PassOutByReference) {
-      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
       RootArgs.push_back(OutPtr);
     }
 
@@ -569,8 +587,7 @@ public:
 
     llvm::Value *RetVal = Builder.CreateCall(F, RootArgs);
 
-    if (AOut && !PassOutByReference) {
-      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
+    if (OutPtr && !PassOutByReference) {
       Builder.CreateStore(RetVal, OutPtr);
     }
 
@@ -579,13 +596,6 @@ public:
       llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
           Builder.CreatePtrToInt(InPtr, Int32Ty), InStep), InTy);
       Builder.CreateStore(NewIn, AIn);
-    }
-
-    if (OutPtr) {
-      // OutPtr += outstep
-      llvm::Value *NewOut = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
-      Builder.CreateStore(NewOut, AOut);
     }
 
     return true;
