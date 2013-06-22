@@ -327,7 +327,8 @@ enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
 }
 
 enum Compiler::ErrorCode Compiler::compile(Script &pScript,
-                                           llvm::raw_ostream &pResult) {
+                                           llvm::raw_ostream &pResult,
+                                           llvm::raw_ostream *IRStream) {
   llvm::Module &module = pScript.getSource().getModule();
   enum ErrorCode err;
 
@@ -352,6 +353,9 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
     return err;
   }
 
+  if (IRStream)
+    *IRStream << module;
+
   if ((err = runCodeGen(pScript, pResult)) != kSuccess) {
     return err;
   }
@@ -360,7 +364,8 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
 }
 
 enum Compiler::ErrorCode Compiler::compile(Script &pScript,
-                                           OutputFile &pResult) {
+                                           OutputFile &pResult,
+                                           llvm::raw_ostream *IRStream) {
   // Check the state of the specified output file.
   if (pResult.hasError()) {
     return kErrInvalidOutputFileState;
@@ -373,7 +378,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   // Delegate the request.
-  enum Compiler::ErrorCode err = compile(pScript, *out);
+  enum Compiler::ErrorCode err = compile(pScript, *out, IRStream);
 
   // Close the output before return.
   delete out;

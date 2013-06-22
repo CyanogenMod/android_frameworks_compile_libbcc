@@ -91,10 +91,15 @@ public:
   enum ErrorCode config(const CompilerConfig &pConfig);
 
   // Compile a script and output the result to a LLVM stream.
-  enum ErrorCode compile(Script &pScript, llvm::raw_ostream &pResult);
+  //
+  // @param IRStream If not NULL, the LLVM-IR that is fed to code generation
+  //                 will be written to IRStream.
+  enum ErrorCode compile(Script &pScript, llvm::raw_ostream &pResult,
+                         llvm::raw_ostream *IRStream);
 
   // Compile a script and output the result to a file.
-  enum ErrorCode compile(Script &pScript, OutputFile &pResult);
+  enum ErrorCode compile(Script &pScript, OutputFile &pResult,
+                         llvm::raw_ostream *IRStream = 0);
 
   const llvm::TargetMachine& getTargetMachine() const
   { return *mTarget; }

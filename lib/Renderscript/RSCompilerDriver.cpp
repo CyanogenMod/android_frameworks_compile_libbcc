@@ -263,8 +263,23 @@ RSCompilerDriver::compileScript(RSScript &pScript,
       }
     }
 
+    OutputFile *ir_file = NULL;
+    llvm::raw_fd_ostream *IRStream = NULL;
+    if (pDumpIR) {
+      android::String8 path(pOutputPath);
+      path.append(".ll");
+      ir_file = new OutputFile(path.string(), FileBase::kTruncate);
+      IRStream = ir_file->dup();
+    }
+
     // Run the compiler.
-    Compiler::ErrorCode compile_result = mCompiler.compile(pScript, output_file);
+    Compiler::ErrorCode compile_result = mCompiler.compile(pScript,
+                                                           output_file, IRStream);
+
+    if (ir_file) {
+      ir_file->close();
+      delete ir_file;
+    }
 
     if (compile_result != Compiler::kSuccess) {
       ALOGE("Unable to compile the source to file %s! (%s)", pOutputPath,
@@ -301,16 +316,6 @@ RSCompilerDriver::compileScript(RSScript &pScript,
       ALOGE("Failed to sync the RS info file %s!", info_path.string());
       return Compiler::kErrInvalidSource;
     }
-  }
-
-  if (pDumpIR) {
-    android::String8 path(pOutputPath);
-    path.append(".ll");
-    OutputFile ir_file(path.string(), FileBase::kTruncate);
-    llvm::Module &module = pScript.getSource().getModule();
-    llvm::raw_fd_ostream &out = *ir_file.dup();
-    out << module;
-    ir_file.close();
   }
 
   return Compiler::kSuccess;
