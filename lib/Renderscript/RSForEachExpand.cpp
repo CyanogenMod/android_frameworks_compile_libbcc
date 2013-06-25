@@ -270,7 +270,7 @@ private:
     //   goto AfterBB
     CondBB->getTerminator()->eraseFromParent();
     Builder.SetInsertPoint(CondBB);
-    Cond = Builder.CreateICmpSLT(LowerBound, UpperBound);
+    Cond = Builder.CreateICmpULT(LowerBound, UpperBound);
     Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
 
     // iv = PHI [CondBB -> LowerBound], [LoopHeader -> NextIV ]
@@ -284,7 +284,7 @@ private:
     IV->addIncoming(LowerBound, CondBB);
     IVNext = Builder.CreateNUWAdd(IV, Builder.getInt32(1));
     IV->addIncoming(IVNext, HeaderBB);
-    Cond = Builder.CreateICmpSLT(IVNext, UpperBound);
+    Cond = Builder.CreateICmpULT(IVNext, UpperBound);
     Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
     AfterBB->setName("Exit");
     Builder.SetInsertPoint(HeaderBB->getFirstNonPHI());
