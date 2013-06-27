@@ -461,7 +461,6 @@ public:
     // TODO: Refactor this to share functionality with ExpandFunction.
     llvm::DataLayout DL(M);
 
-    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
     llvm::Function *ExpandedFunc = createEmptyExpandedFunction(F->getName());
 
     // Create and name the actual arguments to this expanded function.
@@ -514,15 +513,13 @@ public:
 
     llvm::Type *InBaseTy = NULL;
     llvm::Type *InTy = NULL;
-    llvm::AllocaInst *AIn = NULL;
+    llvm::Value *InBasePtr = NULL;
     if (hasIn(Signature)) {
       InBaseTy = Args->getType();
       InTy =InBaseTy->getPointerTo();
-      AIn = Builder.CreateAlloca(InTy, 0, "AIn");
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
+      InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
       Args++;
     }
 
@@ -548,12 +545,11 @@ public:
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
     llvm::Value *InPtr = NULL;
-    llvm::Value *In = NULL;
     llvm::Value *OutPtr = NULL;
 
-    // Calculate the current output pointer
+    // Calculate the current input and output pointers
     //
-    // We always calculate the output pointer with an GEP operating on i8
+    // We always calculate the input/output pointers with a GEP operating on i8
     // values and only cast at the very end to OutTy. This is because the step
     // between two values is given in bytes.
     //
@@ -565,14 +561,19 @@ public:
       OutPtr = Builder.CreateGEP(OutBasePtr, OutOffset);
       OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
     }
+    if (InBasePtr) {
+      llvm::Value *InOffset = Builder.CreateSub(IV, Arg_x1);
+      InOffset = Builder.CreateMul(InOffset, InStep);
+      InPtr = Builder.CreateGEP(InBasePtr, InOffset);
+      InPtr = Builder.CreatePointerCast(InPtr, InTy);
+    }
 
     if (PassOutByReference) {
       RootArgs.push_back(OutPtr);
     }
 
-    if (AIn) {
-      InPtr = Builder.CreateLoad(AIn, "InPtr");
-      In = Builder.CreateLoad(InPtr, "In");
+    if (InPtr) {
+      llvm::Value *In = Builder.CreateLoad(InPtr, "In");
       RootArgs.push_back(In);
     }
 
@@ -589,13 +590,6 @@ public:
 
     if (OutPtr && !PassOutByReference) {
       Builder.CreateStore(RetVal, OutPtr);
-    }
-
-    if (InPtr) {
-      // InPtr += instep
-      llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(InPtr, Int32Ty), InStep), InTy);
-      Builder.CreateStore(NewIn, AIn);
     }
 
     return true;
