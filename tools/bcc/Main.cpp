@@ -95,10 +95,11 @@ llvm::cl::alias OptTargetTripleC("C", llvm::cl::NotHidden,
 // Compiler Options
 //===----------------------------------------------------------------------===//
 
+// RenderScript uses -O3 by default
 llvm::cl::opt<char>
 OptOptLevel("O", llvm::cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
-                                "(default: -O2)"),
-            llvm::cl::Prefix, llvm::cl::ZeroOrMore, llvm::cl::init('2'));
+                                "(default: -O3)"),
+            llvm::cl::Prefix, llvm::cl::ZeroOrMore, llvm::cl::init('3'));
 
 // Override "bcc -version" since the LLVM version information is not correct on
 // Android build.
@@ -120,7 +121,8 @@ void BCCVersionPrinter() {
 } // end anonymous namespace
 
 static inline
-bool ConfigCompiler(Compiler &pCompiler) {
+bool ConfigCompiler(RSCompilerDriver &pRSCD) {
+  RSCompiler *RSC = pRSCD.getCompiler();
   CompilerConfig *config = NULL;
 
 #ifdef TARGET_BUILD
@@ -136,17 +138,16 @@ bool ConfigCompiler(Compiler &pCompiler) {
   switch (OptOptLevel) {
     case '0': config->setOptimizationLevel(llvm::CodeGenOpt::None); break;
     case '1': config->setOptimizationLevel(llvm::CodeGenOpt::Less); break;
-    case '3': config->setOptimizationLevel(llvm::CodeGenOpt::Aggressive); break;
-    case '2':
+    case '2': config->setOptimizationLevel(llvm::CodeGenOpt::Default); break;
+    case '3':
     default: {
-      config->setOptimizationLevel(llvm::CodeGenOpt::Default);
+      config->setOptimizationLevel(llvm::CodeGenOpt::Aggressive);
       break;
     }
   }
 
-  Compiler::ErrorCode result = pCompiler.config(*config);
-
-  delete config;
+  pRSCD.setConfig(config);
+  Compiler::ErrorCode result = RSC->config(*config);
 
   if (result != Compiler::kSuccess) {
     llvm::errs() << "Failed to configure the compiler! (detail: "
@@ -203,6 +204,10 @@ int main(int argc, char **argv) {
   const char *bitcode = input_memory->getBufferStart();
   size_t bitcodeSize = input_memory->getBufferSize();
 
+  if (!ConfigCompiler(RSCD)) {
+    ALOGE("Failed to configure compiler");
+    return EXIT_FAILURE;
+  }
   bool built = RSCD.build(context, OptOutputPath.c_str(),
       OptOutputFilename.c_str(), bitcode, bitcodeSize,
       OptBCLibFilename.c_str(), NULL, OptEmitLLVM);
