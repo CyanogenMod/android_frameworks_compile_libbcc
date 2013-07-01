@@ -25,6 +25,7 @@
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/Scalar.h>
 
 #include "bcc/Script.h"
@@ -172,87 +173,14 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
     return kErrHookBeforeAddLTOPasses;
   }
 
-  // We now create passes list performing LTO. These are copied from
-  // (including comments) llvm::PassManagerBuilder::populateLTOPassManager().
-  // Only a subset of these LTO passes are enabled in optimization level 0 as
-  // they interfere with interactive debugging.
-  //
-  // FIXME: Figure out which passes (if any) makes sense for levels 1 and 2.
-  //if ( != llvm::CodeGenOpt::None) {
   if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
     lto_passes.add(llvm::createGlobalOptimizerPass());
     lto_passes.add(llvm::createConstantMergePass());
   } else {
-    // Propagate constants at call sites into the functions they call. This
-    // opens opportunities for globalopt (and inlining) by substituting
-    // function pointers passed as arguments to direct uses of functions.
-    lto_passes.add(llvm::createIPSCCPPass());
-
-    // Now that we internalized some globals, see if we can hack on them!
-    lto_passes.add(llvm::createGlobalOptimizerPass());
-
-    // Linking modules together can lead to duplicated global constants, only
-    // keep one copy of each constant...
-    lto_passes.add(llvm::createConstantMergePass());
-
-    // Remove unused arguments from functions...
-    lto_passes.add(llvm::createDeadArgEliminationPass());
-
-    // Reduce the code after globalopt and ipsccp. Both can open up
-    // significant simplification opportunities, and both can propagate
-    // functions through function pointers. When this happens, we often have
-    // to resolve varargs calls, etc, so let instcombine do this.
-    lto_passes.add(llvm::createInstructionCombiningPass());
-
-    // Inline small functions
-    lto_passes.add(llvm::createFunctionInliningPass());
-
-    // Remove dead EH info.
-    lto_passes.add(llvm::createPruneEHPass());
-
-    // Internalize the globals again after inlining
-    lto_passes.add(llvm::createGlobalOptimizerPass());
-
-    // Remove dead functions.
-    lto_passes.add(llvm::createGlobalDCEPass());
-
-    // If we didn't decide to inline a function, check to see if we can
-    // transform it to pass arguments by value instead of by reference.
-    lto_passes.add(llvm::createArgumentPromotionPass());
-
-    // The IPO passes may leave cruft around.  Clean up after them.
-    lto_passes.add(llvm::createInstructionCombiningPass());
-    lto_passes.add(llvm::createJumpThreadingPass());
-
-    // Break up allocas
-    lto_passes.add(llvm::createScalarReplAggregatesPass());
-
-    // Run a few AA driven optimizations here and now, to cleanup the code.
-    lto_passes.add(llvm::createFunctionAttrsPass());  // Add nocapture.
-    lto_passes.add(llvm::createGlobalsModRefPass());  // IP alias analysis.
-
-    // Hoist loop invariants.
-    lto_passes.add(llvm::createLICMPass());
-
-    // Remove redundancies.
-    lto_passes.add(llvm::createGVNPass());
-
-    // Remove dead memcpys.
-    lto_passes.add(llvm::createMemCpyOptPass());
-
-    // Nuke dead stores.
-    lto_passes.add(llvm::createDeadStoreEliminationPass());
-
-    // Cleanup and simplify the code after the scalar optimizations.
-    lto_passes.add(llvm::createInstructionCombiningPass());
-
-    lto_passes.add(llvm::createJumpThreadingPass());
-
-    // Delete basic blocks, which optimization passes may have killed.
-    lto_passes.add(llvm::createCFGSimplificationPass());
-
-    // Now that we have optimized the program, discard unreachable functions.
-    lto_passes.add(llvm::createGlobalDCEPass());
+    // FIXME: Figure out which passes should be executed.
+    llvm::PassManagerBuilder Builder;
+    Builder.populateLTOPassManager(lto_passes, /*Internalize*/false,
+                                   /*RunInliner*/true);
   }
 
   // Invokde "afterAddLTOPasses" after pass manager finished its
