@@ -27,6 +27,7 @@
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
@@ -606,11 +607,15 @@ public:
       const char *name = func_iter->first;
       uint32_t signature = func_iter->second;
       llvm::Function *kernel = M.getFunction(name);
-      if (kernel && isKernel(signature)) {
-        Changed |= ExpandKernel(kernel, signature);
-      }
-      else if (kernel && kernel->getReturnType()->isVoidTy()) {
-        Changed |= ExpandFunction(kernel, signature);
+      if (kernel) {
+        if (isKernel(signature))
+          Changed |= ExpandKernel(kernel, signature);
+        else if (kernel->getReturnType()->isVoidTy())
+          Changed |= ExpandFunction(kernel, signature);
+        else
+          llvm_unreachable("Unknown kernel type");
+
+        kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
       }
     }
 
