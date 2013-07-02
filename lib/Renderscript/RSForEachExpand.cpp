@@ -608,14 +608,17 @@ public:
       uint32_t signature = func_iter->second;
       llvm::Function *kernel = M.getFunction(name);
       if (kernel) {
-        if (isKernel(signature))
+        if (isKernel(signature)) {
           Changed |= ExpandKernel(kernel, signature);
-        else if (kernel->getReturnType()->isVoidTy())
+          kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
+        } else if (kernel->getReturnType()->isVoidTy()) {
           Changed |= ExpandFunction(kernel, signature);
-        else
-          llvm_unreachable("Unknown kernel type");
-
-        kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
+          kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
+        } else {
+          // There are some graphics root functions that are not
+          // expanded, but that will be called directly. For those
+          // functions, we can not set the linkage to internal.
+        }
       }
     }
 
