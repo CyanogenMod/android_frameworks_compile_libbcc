@@ -45,7 +45,7 @@ private:
   RSExecutable *loadScriptCache(const char *pOutputPath,
                                 const RSInfo::DependencyTableTy &pDeps);
 
-  // Do we merge global variables using LLVM's optimization pass?
+  // Do we merge global variables on ARM using LLVM's optimization pass?
   // Disabling LLVM's global merge pass allows static globals to be correctly
   // emitted to ELF. This can result in decreased performance due to increased
   // register pressure, but it does make the resulting code easier to debug
@@ -85,6 +85,9 @@ public:
     mDebugContext = v;
   }
 
+  // This function enables/disables merging of global static variables.
+  // Note that it only takes effect on ARM architectures (other architectures
+  // do not offer this option).
   void setEnableGlobalMerge(bool v) {
     mEnableGlobalMerge = v;
   }
