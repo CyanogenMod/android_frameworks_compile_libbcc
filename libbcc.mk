@@ -24,7 +24,7 @@ endif
 
 LLVM_ROOT_PATH          := external/llvm
 MCLD_ROOT_PATH          := frameworks/compile/mclinker
-RSLOADER_ROOT_PATH      := frameworks/rs/driver/linkloader
+RSLOADER_ROOT_PATH      := frameworks/rs/cpu_ref/linkloader
 
 #=====================================================================
 # Related Makefile Paths of libbcc
