@@ -37,57 +37,53 @@
 using namespace bcc;
 
 const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
-  static const char *ErrorString[] = {
-    /* kSuccess */
-    "Successfully compiled.",
-    /* kInvalidConfigNoTarget */
-    "Invalid compiler config supplied (getTarget() returns NULL.) "
-    "(missing call to CompilerConfig::initialize()?)",
-    /* kErrCreateTargetMachine */
-    "Failed to create llvm::TargetMachine.",
-    /* kErrSwitchTargetMachine */
-    "Failed to switch llvm::TargetMachine.",
-    /* kErrNoTargetMachine */
-    "Failed to compile the script since there's no available TargetMachine."
-    " (missing call to Compiler::config()?)",
-    /* kErrDataLayoutNoMemory */
-    "Out of memory when create DataLayout during compilation.",
-    /* kErrMaterialization */
-    "Failed to materialize the module.",
-    /* kErrInvalidOutputFileState */
-    "Supplied output file was invalid (in the error state.)",
-    /* kErrPrepareOutput */
-    "Failed to prepare file for output.",
-    /* kPrepareCodeGenPass */
-    "Failed to construct pass list for code-generation.",
-
-    /* kErrHookBeforeAddLTOPasses */
-    "Error occurred during beforeAddLTOPasses() in subclass.",
-    /* kErrHookAfterAddLTOPasses */
-    "Error occurred during afterAddLTOPasses() in subclass.",
-    /* kErrHookBeforeExecuteLTOPasses */
-    "Error occurred during beforeExecuteLTOPasses() in subclass.",
-    /* kErrHookAfterExecuteLTOPasses */
-    "Error occurred during afterExecuteLTOPasses() in subclass.",
-
-    /* kErrHookBeforeAddCodeGenPasses */
-    "Error occurred during beforeAddCodeGenPasses() in subclass.",
-    /* kErrHookAfterAddCodeGenPasses */
-    "Error occurred during afterAddCodeGenPasses() in subclass.",
-    /* kErrHookBeforeExecuteCodeGenPasses */
-    "Error occurred during beforeExecuteCodeGenPasses() in subclass.",
-    /* kErrHookAfterExecuteCodeGenPasses */
-    "Error occurred during afterExecuteCodeGenPasses() in subclass.",
-
-    /* kMaxErrorCode */
-    "(Unknown error code)"
-  };
-
-  if (pErrCode > kMaxErrorCode) {
-    pErrCode = kMaxErrorCode;
+  switch (pErrCode) {
+  case kSuccess:
+    return "Successfully compiled.";
+  case kInvalidConfigNoTarget:
+    return "Invalid compiler config supplied (getTarget() returns NULL.) "
+           "(missing call to CompilerConfig::initialize()?)";
+  case kErrCreateTargetMachine:
+    return "Failed to create llvm::TargetMachine.";
+  case kErrSwitchTargetMachine:
+    return  "Failed to switch llvm::TargetMachine.";
+  case kErrNoTargetMachine:
+    return "Failed to compile the script since there's no available "
+           "TargetMachine. (missing call to Compiler::config()?)";
+  case kErrDataLayoutNoMemory:
+    return "Out of memory when create DataLayout during compilation.";
+  case kErrMaterialization:
+    return "Failed to materialize the module.";
+  case kErrInvalidOutputFileState:
+    return "Supplied output file was invalid (in the error state.)";
+  case kErrPrepareOutput:
+    return "Failed to prepare file for output.";
+  case kPrepareCodeGenPass:
+    return "Failed to construct pass list for code-generation.";
+  case kErrHookBeforeAddLTOPasses:
+    return "Error occurred during beforeAddLTOPasses() in subclass.";
+  case kErrHookAfterAddLTOPasses:
+    return "Error occurred during afterAddLTOPasses() in subclass.";
+  case kErrHookBeforeExecuteLTOPasses:
+    return "Error occurred during beforeExecuteLTOPasses() in subclass.";
+  case kErrHookAfterExecuteLTOPasses:
+    return "Error occurred during afterExecuteLTOPasses() in subclass.";
+  case kErrHookBeforeAddCodeGenPasses:
+    return "Error occurred during beforeAddCodeGenPasses() in subclass.";
+  case kErrHookAfterAddCodeGenPasses:
+    return "Error occurred during afterAddCodeGenPasses() in subclass.";
+  case kErrHookBeforeExecuteCodeGenPasses:
+    return "Error occurred during beforeExecuteCodeGenPasses() in subclass.";
+  case kErrHookAfterExecuteCodeGenPasses:
+    return "Error occurred during afterExecuteCodeGenPasses() in subclass.";
+  case kErrInvalidSource:
+    return "Error loading input bitcode";
   }
 
-  return ErrorString[ static_cast<size_t>(pErrCode) ];
+  // This assert should never be reached as the compiler verifies that the
+  // above switch coveres all enum values.
+  assert(false && "Unknown error code encountered");
+  return  "";
 }
 
 //===----------------------------------------------------------------------===//
