@@ -64,8 +64,6 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
     return "Error occurred during beforeAddLTOPasses() in subclass.";
   case kErrHookAfterAddLTOPasses:
     return "Error occurred during afterAddLTOPasses() in subclass.";
-  case kErrHookBeforeExecuteLTOPasses:
-    return "Error occurred during beforeExecuteLTOPasses() in subclass.";
   case kErrHookAfterExecuteLTOPasses:
     return "Error occurred during afterExecuteLTOPasses() in subclass.";
   case kErrHookBeforeAddCodeGenPasses:
@@ -164,7 +162,7 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
   // Add DataLayout to the pass manager.
   lto_passes.add(data_layout);
 
-  // Invokde "beforeAddLTOPasses" before adding the first pass.
+  // Invoke "beforeAddLTOPasses" before adding the first pass.
   if (!beforeAddLTOPasses(pScript, lto_passes)) {
     return kErrHookBeforeAddLTOPasses;
   }
@@ -179,20 +177,15 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
                                    /*RunInliner*/true);
   }
 
-  // Invokde "afterAddLTOPasses" after pass manager finished its
+  // Invoke "afterAddLTOPasses" after pass manager finished its
   // construction.
   if (!afterAddLTOPasses(pScript, lto_passes)) {
     return kErrHookAfterAddLTOPasses;
   }
 
-  // Invokde "beforeExecuteLTOPasses" before executing the passes.
-  if (!beforeExecuteLTOPasses(pScript, lto_passes)) {
-    return kErrHookBeforeExecuteLTOPasses;
-  }
-
   lto_passes.run(pScript.getSource().getModule());
 
-  // Invokde "afterExecuteLTOPasses" before returning.
+  // Invoke "afterExecuteLTOPasses" before returning.
   if (!afterExecuteLTOPasses(pScript)) {
     return kErrHookAfterExecuteLTOPasses;
   }

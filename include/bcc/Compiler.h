@@ -61,7 +61,6 @@ public:
 
     kErrHookBeforeAddLTOPasses,
     kErrHookAfterAddLTOPasses,
-    kErrHookBeforeExecuteLTOPasses,
     kErrHookAfterExecuteLTOPasses,
 
     kErrHookBeforeAddCodeGenPasses,
