@@ -25,7 +25,7 @@ class TargetLDBackend;
 class MCLDDriver;
 class MemoryFactory;
 class MCLDInfo;
-struct TreeIteratorBase;
+class TreeIteratorBase;
 class Input;
 
 namespace sys { namespace fs {
