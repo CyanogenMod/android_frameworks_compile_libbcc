@@ -38,15 +38,10 @@ public:
   };
 
   enum FlagEnum {
-    // The openning file is a binary file.
     kBinary = 1 << 0,
-
-    // The openning file will be truncated to length 0.
     kTruncate = 1 << 1,
-
-    // The openning file will put its file pointer to the end of the file before
-    // each write.
     kAppend = 1 << 2,
+    kDeleteOnClose = 1 << 3
   };
 
   enum LockModeEnum {
@@ -81,6 +76,9 @@ private:
 
   // True true if we should call unlock() in destructor.
   bool mShouldUnlock;
+
+  // True if file should be deleted in destructor.
+  bool mShouldDelete;
 
   // Open mName with flag mOpenFlags (using POSIX open().)
   bool open();

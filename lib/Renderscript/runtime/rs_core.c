@@ -47,124 +47,158 @@ extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float4 color)
 
 extern float4 rsUnpackColor8888(uchar4 c)
 {
-    float4 ret = (float4)0.003921569f;
-    ret *= convert_float4(c);
-    return ret;
+    return convert_float4(c) * 0.003921569f;
 }
 
-/////////////////////////////////////////////////////
-// Matrix ops
-/////////////////////////////////////////////////////
 
-extern void __attribute__((overloadable))
-rsMatrixSet(rs_matrix4x4 *m, uint32_t row, uint32_t col, float v) {
-    m->m[row * 4 + col] = v;
+extern int32_t __attribute__((overloadable)) rsAtomicCas(volatile int32_t *ptr, int32_t expectedValue, int32_t newValue) {
+    return __sync_val_compare_and_swap(ptr, expectedValue, newValue);
 }
 
-extern float __attribute__((overloadable))
-rsMatrixGet(const rs_matrix4x4 *m, uint32_t row, uint32_t col) {
-    return m->m[row * 4 + col];
+extern uint32_t __attribute__((overloadable)) rsAtomicCas(volatile uint32_t *ptr, uint32_t expectedValue, uint32_t newValue) {
+    return __sync_val_compare_and_swap((volatile int32_t *)ptr, (int32_t)expectedValue, (int32_t)newValue);
 }
 
-extern void __attribute__((overloadable))
-rsMatrixSet(rs_matrix3x3 *m, uint32_t row, uint32_t col, float v) {
-    m->m[row * 3 + col] = v;
+extern int32_t __attribute__((overloadable)) rsAtomicInc(volatile int32_t *ptr) {
+    return __sync_fetch_and_add(ptr, 1);
 }
 
-extern float __attribute__((overloadable))
-rsMatrixGet(const rs_matrix3x3 *m, uint32_t row, uint32_t col) {
-    return m->m[row * 3 + col];
+extern int32_t __attribute__((overloadable)) rsAtomicDec(volatile int32_t *ptr) {
+    return __sync_fetch_and_sub(ptr, 1);
 }
 
-extern void __attribute__((overloadable))
-rsMatrixSet(rs_matrix2x2 *m, uint32_t row, uint32_t col, float v) {
-    m->m[row * 2 + col] = v;
+extern int32_t __attribute__((overloadable)) rsAtomicAdd(volatile int32_t *ptr, int32_t value) {
+    return __sync_fetch_and_add(ptr, value);
 }
 
-extern float __attribute__((overloadable))
-rsMatrixGet(const rs_matrix2x2 *m, uint32_t row, uint32_t col) {
-    return m->m[row * 2 + col];
+extern int32_t __attribute__((overloadable)) rsAtomicSub(volatile int32_t *ptr, int32_t value) {
+    return __sync_fetch_and_sub(ptr, value);
 }
 
-/*
-extern float4 __attribute__((overloadable))
-rsMatrixMultiply(const rs_matrix4x4 *m, float4 in) {
-    float4 ret;
-    ret.x = (m->m[0] * in.x) + (m->m[4] * in.y) + (m->m[8] * in.z) + (m->m[12] * in.w);
-    ret.y = (m->m[1] * in.x) + (m->m[5] * in.y) + (m->m[9] * in.z) + (m->m[13] * in.w);
-    ret.z = (m->m[2] * in.x) + (m->m[6] * in.y) + (m->m[10] * in.z) + (m->m[14] * in.w);
-    ret.w = (m->m[3] * in.x) + (m->m[7] * in.y) + (m->m[11] * in.z) + (m->m[15] * in.w);
-    return ret;
-}
-extern float4 __attribute__((overloadable))
-rsMatrixMultiply(rs_matrix4x4 *m, float4 in) {
-    return rsMatrixMultiply((const rs_matrix4x4 *)m, in);
+extern int32_t __attribute__((overloadable)) rsAtomicAnd(volatile int32_t *ptr, int32_t value) {
+    return __sync_fetch_and_and(ptr, value);
 }
 
-extern float4 __attribute__((overloadable))
-rsMatrixMultiply(const rs_matrix4x4 *m, float3 in) {
-    float4 ret;
-    ret.x = (m->m[0] * in.x) + (m->m[4] * in.y) + (m->m[8] * in.z) + m->m[12];
-    ret.y = (m->m[1] * in.x) + (m->m[5] * in.y) + (m->m[9] * in.z) + m->m[13];
-    ret.z = (m->m[2] * in.x) + (m->m[6] * in.y) + (m->m[10] * in.z) + m->m[14];
-    ret.w = (m->m[3] * in.x) + (m->m[7] * in.y) + (m->m[11] * in.z) + m->m[15];
-    return ret;
-}
-extern float4 __attribute__((overloadable))
-rsMatrixMultiply(rs_matrix4x4 *m, float3 in) {
-    return rsMatrixMultiply((const rs_matrix4x4 *)m, in);
+extern int32_t __attribute__((overloadable)) rsAtomicOr(volatile int32_t *ptr, int32_t value) {
+    return __sync_fetch_and_or(ptr, value);
 }
 
-extern float4 __attribute__((overloadable))
-rsMatrixMultiply(const rs_matrix4x4 *m, float2 in) {
-    float4 ret;
-    ret.x = (m->m[0] * in.x) + (m->m[4] * in.y) + m->m[12];
-    ret.y = (m->m[1] * in.x) + (m->m[5] * in.y) + m->m[13];
-    ret.z = (m->m[2] * in.x) + (m->m[6] * in.y) + m->m[14];
-    ret.w = (m->m[3] * in.x) + (m->m[7] * in.y) + m->m[15];
-    return ret;
-}
-extern float4 __attribute__((overloadable))
-rsMatrixMultiply(rs_matrix4x4 *m, float2 in) {
-    return rsMatrixMultiply((const rs_matrix4x4 *)m, in);
+extern int32_t __attribute__((overloadable)) rsAtomicXor(volatile int32_t *ptr, int32_t value) {
+    return __sync_fetch_and_xor(ptr, value);
 }
 
-extern float3 __attribute__((overloadable))
-rsMatrixMultiply(const rs_matrix3x3 *m, float3 in) {
-    float3 ret;
-    ret.x = (m->m[0] * in.x) + (m->m[3] * in.y) + (m->m[6] * in.z);
-    ret.y = (m->m[1] * in.x) + (m->m[4] * in.y) + (m->m[7] * in.z);
-    ret.z = (m->m[2] * in.x) + (m->m[5] * in.y) + (m->m[8] * in.z);
-    return ret;
-}
-extern float3 __attribute__((overloadable))
-rsMatrixMultiply(rs_matrix3x3 *m, float3 in) {
-    return rsMatrixMultiply((const rs_matrix3x3 *)m, in);
+extern uint32_t __attribute__((overloadable)) min(uint32_t, uint32_t);
+extern int32_t __attribute__((overloadable)) min(int32_t, int32_t);
+extern uint32_t __attribute__((overloadable)) max(uint32_t, uint32_t);
+extern int32_t __attribute__((overloadable)) max(int32_t, int32_t);
+
+extern uint32_t __attribute__((overloadable)) rsAtomicMin(volatile uint32_t *ptr, uint32_t value) {
+    uint32_t prev, status;
+    do {
+        prev = *ptr;
+        uint32_t n = min(value, prev);
+        status = rsAtomicCas((volatile int32_t*) ptr, (int32_t) prev, (int32_t)n);
+    } while (status != prev);
+    return prev;
 }
 
-extern float3 __attribute__((overloadable))
-rsMatrixMultiply(const rs_matrix3x3 *m, float2 in) {
-    float3 ret;
-    ret.x = (m->m[0] * in.x) + (m->m[3] * in.y);
-    ret.y = (m->m[1] * in.x) + (m->m[4] * in.y);
-    ret.z = (m->m[2] * in.x) + (m->m[5] * in.y);
-    return ret;
+extern int32_t __attribute__((overloadable)) rsAtomicMin(volatile int32_t *ptr, int32_t value) {
+    int32_t prev, status;
+    do {
+        prev = *ptr;
+        int32_t n = min(value, prev);
+        status = rsAtomicCas(ptr, prev, n);
+    } while (status != prev);
+    return prev;
 }
-extern float3 __attribute__((overloadable))
-rsMatrixMultiply(rs_matrix3x3 *m, float2 in) {
-    return rsMatrixMultiply((const rs_matrix3x3 *)m, in);
+
+extern uint32_t __attribute__((overloadable)) rsAtomicMax(volatile uint32_t *ptr, uint32_t value) {
+    uint32_t prev, status;
+    do {
+        prev = *ptr;
+        uint32_t n = max(value, prev);
+        status = rsAtomicCas((volatile int32_t*) ptr, (int32_t) prev, (int32_t) n);
+    } while (status != prev);
+    return prev;
+}
+
+extern int32_t __attribute__((overloadable)) rsAtomicMax(volatile int32_t *ptr, int32_t value) {
+    int32_t prev, status;
+    do {
+        prev = *ptr;
+        int32_t n = max(value, prev);
+        status = rsAtomicCas(ptr, prev, n);
+    } while (status != prev);
+    return prev;
+}
+
+
+
+extern int32_t rand();
+#define RAND_MAX 0x7fffffff
+
+
+
+extern float __attribute__((overloadable)) rsRand(float min, float max);/* {
+    float r = (float)rand();
+    r /= RAND_MAX;
+    r = r * (max - min) + min;
+    return r;
 }
 */
 
-extern float2 __attribute__((overloadable))
-rsMatrixMultiply(const rs_matrix2x2 *m, float2 in) {
-    float2 ret;
-    ret.x = (m->m[0] * in.x) + (m->m[2] * in.y);
-    ret.y = (m->m[1] * in.x) + (m->m[3] * in.y);
-    return ret;
+extern float __attribute__((overloadable)) rsRand(float max) {
+    return rsRand(0.f, max);
+    //float r = (float)rand();
+    //r *= max;
+    //r /= RAND_MAX;
+    //return r;
 }
-extern float2 __attribute__((overloadable))
-rsMatrixMultiply(rs_matrix2x2 *m, float2 in) {
-    return rsMatrixMultiply((const rs_matrix2x2 *)m, in);
+
+extern int __attribute__((overloadable)) rsRand(int max) {
+    return (int)rsRand((float)max);
 }
+
+extern int __attribute__((overloadable)) rsRand(int min, int max) {
+    return (int)rsRand((float)min, (float)max);
+}
+
+#define PRIM_DEBUG(T)                               \
+extern void __attribute__((overloadable)) rsDebug(const char *, const T *);     \
+void __attribute__((overloadable)) rsDebug(const char *txt, T val) {            \
+    rsDebug(txt, &val);                                                         \
+}
+
+PRIM_DEBUG(char2)
+PRIM_DEBUG(char3)
+PRIM_DEBUG(char4)
+PRIM_DEBUG(uchar2)
+PRIM_DEBUG(uchar3)
+PRIM_DEBUG(uchar4)
+PRIM_DEBUG(short2)
+PRIM_DEBUG(short3)
+PRIM_DEBUG(short4)
+PRIM_DEBUG(ushort2)
+PRIM_DEBUG(ushort3)
+PRIM_DEBUG(ushort4)
+PRIM_DEBUG(int2)
+PRIM_DEBUG(int3)
+PRIM_DEBUG(int4)
+PRIM_DEBUG(uint2)
+PRIM_DEBUG(uint3)
+PRIM_DEBUG(uint4)
+PRIM_DEBUG(long2)
+PRIM_DEBUG(long3)
+PRIM_DEBUG(long4)
+PRIM_DEBUG(ulong2)
+PRIM_DEBUG(ulong3)
+PRIM_DEBUG(ulong4)
+PRIM_DEBUG(float2)
+PRIM_DEBUG(float3)
+PRIM_DEBUG(float4)
+PRIM_DEBUG(double2)
+PRIM_DEBUG(double3)
+PRIM_DEBUG(double4)
+
+#undef PRIM_DEBUG
 

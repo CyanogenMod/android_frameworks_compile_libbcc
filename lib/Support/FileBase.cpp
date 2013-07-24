@@ -16,11 +16,14 @@
 
 #include "bcc/Support/FileBase.h"
 
+#include "bcc/Support/Log.h"
+
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
+#include <cstring>
 #include <new>
 
 #include <utils/FileMap.h>
@@ -33,7 +36,8 @@ FileBase::FileBase(const std::string &pFilename,
   : mFD(-1),
     mError(),
     mName(pFilename), mOpenFlags(pOpenFlags),
-    mShouldUnlock(false) {
+    mShouldUnlock(false),
+    mShouldDelete(false) {
   // Process pFlags
 #ifdef O_BINARY
   if (pFlags & kBinary) {
@@ -46,6 +50,10 @@ FileBase::FileBase(const std::string &pFilename,
 
   if (pFlags & kAppend) {
     mOpenFlags |= O_APPEND;
+  }
+
+  if (pFlags & kDeleteOnClose) {
+    mShouldDelete = true;
   }
 
   // Open the file.
@@ -281,6 +289,12 @@ void FileBase::close() {
   if (mFD > 0) {
     ::close(mFD);
     mFD = -1;
+  }
+  if (mShouldDelete) {
+    int res = ::remove(mName.c_str());
+    if (res != 0) {
+      ALOGE("Failed to remove file: %s - %s", mName.c_str(), ::strerror(res));
+    }
   }
   return;
 }

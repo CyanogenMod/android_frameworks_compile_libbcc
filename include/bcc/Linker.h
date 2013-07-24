@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2012, The Android Open Source Project
+ * Copyright 2012, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@
 
 namespace mcld {
 
-class TargetLDBackend;
-class MCLDDriver;
-class MemoryFactory;
-class MCLDInfo;
-class TreeIteratorBase;
+class Module;
+class IRBuilder;
+class LinkerConfig;
+class Linker;
 class Input;
+class MemoryArea;
 
 namespace sys { namespace fs {
 
@@ -38,7 +38,6 @@ class Path;
 
 namespace bcc {
 
-class MemoryFactory;
 class LinkerConfig;
 
 class Linker {
@@ -46,30 +45,29 @@ public:
   enum ErrorCode {
     kSuccess,
     kDoubleConfig,
-    kCreateBackend,
     kDelegateLDInfo,
     kFindNameSpec,
-    kOpenNameSpec,
     kOpenObjectFile,
+    kOpenMemory,
     kNotConfig,
     kNotSetUpOutput,
     kOpenOutput,
     kReadSections,
     kReadSymbols,
     kAddAdditionalSymbols,
-    kMaxErrorCode,
+    kMaxErrorCode
   };
 
   static const char *GetErrorString(enum ErrorCode pErrCode);
 
 private:
-  mcld::TargetLDBackend *mBackend;
-  mcld::MCLDDriver *mDriver;
-  MemoryFactory *mMemAreaFactory;
-  mcld::MCLDInfo *mLDInfo;
-  mcld::TreeIteratorBase *mRoot;
-  bool mShared;
+  const mcld::LinkerConfig *mLDConfig;
+  mcld::Module *mModule;
+  mcld::Linker *mLinker;
+  mcld::IRBuilder *mBuilder;
   std::string mSOName;
+  std::string mOutputPath;
+  int mOutputHandler;
 
 public:
   Linker();
@@ -96,12 +94,6 @@ public:
 
 private:
   enum ErrorCode extractFiles(const LinkerConfig& pConfig);
-
-  enum ErrorCode openFile(const mcld::sys::fs::Path& pPath,
-                          enum ErrorCode pCode,
-                          mcld::Input& pInput);
-
-  void advanceRoot();
 };
 
 } // end namespace bcc

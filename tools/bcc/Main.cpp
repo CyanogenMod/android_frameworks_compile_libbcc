@@ -32,7 +32,7 @@
 #include <bcc/Compiler.h>
 #include <bcc/Config/BuildInfo.h>
 #include <bcc/Config/Config.h>
-#include <bcc/ExecutionEngine/BCCRuntimeSymbolResolver.h>
+#include <bcc/ExecutionEngine/CompilerRTSymbolResolver.h>
 #include <bcc/ExecutionEngine/ObjectLoader.h>
 #include <bcc/ExecutionEngine/SymbolResolverProxy.h>
 #include <bcc/ExecutionEngine/SymbolResolvers.h>
@@ -348,8 +348,8 @@ bool LoadAndRun(const std::string &pOutputExecutable) {
   SymbolResolverProxy runtime_resolver;
 
   // Include compiler runtime.
-  BCCRuntimeSymbolResolver bcc_runtimes;
-  runtime_resolver.chainResolver(bcc_runtimes);
+  CompilerRTSymbolResolver compiler_runtimes;
+  runtime_resolver.chainResolver(compiler_runtimes);
 
   // Open the output file for execution.
   InputFile input_exec(pOutputExecutable);

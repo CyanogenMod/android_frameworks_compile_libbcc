@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include <llvm/LLVMContext.h>
+#include <llvm/IR/LLVMContext.h>
 
 #include <llvm/MC/MCAsmInfo.h>
 #include <llvm/MC/MCDisassembler.h>

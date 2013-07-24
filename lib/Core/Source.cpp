@@ -19,9 +19,9 @@
 #include <new>
 
 #include <llvm/Bitcode/ReaderWriter.h>
-#include <llvm/LLVMContext.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/Linker.h>
-#include <llvm/Module.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/system_error.h>
 
@@ -52,6 +52,11 @@ static inline llvm::Module *helper_load_bitcode(llvm::LLVMContext &pContext,
 } // end anonymous namespace
 
 namespace bcc {
+
+void Source::setModule(llvm::Module *pModule) {
+  if (!mNoDelete && (mModule != pModule)) delete mModule;
+  mModule = pModule;
+}
 
 Source *Source::CreateFromBuffer(BCCContext &pContext,
                                  const char *pName,

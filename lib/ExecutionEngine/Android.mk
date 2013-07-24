@@ -22,8 +22,6 @@ LOCAL_PATH := $(call my-dir)
 #=====================================================================
 
 libbcc_executionengine_SRC_FILES := \
-  BCCRuntimeStub.c \
-  BCCRuntimeSymbolResolver.cpp \
   ELFObjectLoaderImpl.cpp \
   GDBJIT.cpp \
   GDBJITRegistrar.cpp \
@@ -47,6 +45,10 @@ LOCAL_C_INCLUDES := \
   $(RSLOADER_ROOT_PATH)/include
 
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
+
+ifeq ($(strip $(TARGET_CPU_VARIANT)),cortex-a15)
+LOCAL_CFLAGS += -DHAS_HW_DIV
+endif
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)

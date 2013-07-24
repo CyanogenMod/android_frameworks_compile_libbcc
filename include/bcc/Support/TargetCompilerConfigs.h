@@ -26,18 +26,39 @@ namespace bcc {
 // ARM
 //===----------------------------------------------------------------------===//
 #if defined(PROVIDE_ARM_CODEGEN)
-class ARMCompilerConfig : public CompilerConfig {
+class ARMBaseCompilerConfig : public CompilerConfig {
 private:
   bool mEnableNEON;
+  bool mInThumbMode;
+
+  static bool HasThumb2();
 
   static void GetFeatureVector(std::vector<std::string> &pAttributes,
-                               bool pEnableNEON);
+                               bool pInThumbMode, bool pEnableNEON);
+
+protected:
+  ARMBaseCompilerConfig(const std::string &pTriple, bool pInThumbMode);
 
 public:
-  ARMCompilerConfig();
-
   // Return true if config has been changed after returning from this function.
   bool enableNEON(bool pEnable = true);
+
+  bool isInThumbMode() const
+  { return mInThumbMode; }
+};
+
+class ARMCompilerConfig : public ARMBaseCompilerConfig {
+public:
+  ARMCompilerConfig()
+    : ARMBaseCompilerConfig(DEFAULT_ARM_TRIPLE_STRING,
+                            /* pInThumbMode */false) { }
+};
+
+class ThumbCompilerConfig : public ARMBaseCompilerConfig {
+public:
+  ThumbCompilerConfig()
+    : ARMBaseCompilerConfig(DEFAULT_THUMB_TRIPLE_STRING,
+                            /* pInThumbMode */true) { }
 };
 #endif // defined(PROVIDE_ARM_CODEGEN)
 
@@ -47,7 +68,9 @@ public:
 #if defined(PROVIDE_MIPS_CODEGEN)
 class MipsCompilerConfig : public CompilerConfig {
 public:
-  MipsCompilerConfig() : CompilerConfig(DEFAULT_MIPS_TRIPLE_STRING) {}
+  MipsCompilerConfig() : CompilerConfig(DEFAULT_MIPS_TRIPLE_STRING) {
+    setRelocationModel(llvm::Reloc::Static);
+  }
 };
 #endif // defined(PROVIDE_MIPS_CODEGEN)
 

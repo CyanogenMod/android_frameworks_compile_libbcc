@@ -29,6 +29,8 @@ llvm::ModulePass *
 createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
                           bool pEnableStepOpt);
 
+llvm::ModulePass * createRSEmbedInfoPass(const RSInfo *info);
+
 } // end namespace bcc
 
 #endif // BCC_RS_TRANSFORMS_H

@@ -2,53 +2,6 @@
 #include "rs_graphics.rsh"
 #include "rs_structs.h"
 
-/**
-* Allocation sampling
-*/
-static const void * __attribute__((overloadable))
-        getElementAt(rs_allocation a, uint32_t x, uint32_t lod) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const Type_t *type = (const Type_t*)alloc->mHal.state.type;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
-
-    const uint32_t offset = type->mHal.state.lodOffset[lod];
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-
-    return &p[offset + eSize * x];
-}
-
-static const void * __attribute__((overloadable))
-        getElementAt(rs_allocation a, uint32_t x, uint32_t y, uint32_t lod) {
-    Allocation_t *alloc = (Allocation_t *)a.p;
-    const Type_t *type = (const Type_t*)alloc->mHal.state.type;
-    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.mallocPtr;
-
-    const uint32_t eSize = alloc->mHal.state.elementSizeBytes;
-    const uint32_t offset = type->mHal.state.lodOffset[lod];
-    uint32_t stride;
-    if(lod == 0) {
-        stride = alloc->mHal.drvState.stride;
-    } else {
-        stride = type->mHal.state.lodDimX[lod] * eSize;
-    }
-
-    return &p[offset + (eSize * x) + (y * stride)];
-}
-
-static const void * __attribute__((overloadable))
-        getElementAt(rs_allocation a, uint2 uv, uint32_t lod) {
-    return getElementAt(a, uv.x, uv.y, lod);
-}
-
-static uint32_t wrapI(rs_sampler_value wrap, int32_t coord, int32_t size) {
-    if (wrap == RS_SAMPLER_WRAP) {
-        coord = coord % size;
-        if (coord < 0) {
-            coord += size;
-        }
-    }
-    return (uint32_t)max(0, min(coord, size - 1));
-}
 
 // 565 Conversion bits taken from SkBitmap
 #define SK_R16_BITS     5
@@ -91,178 +44,392 @@ static float3 getFrom565(uint16_t color) {
     return result;
 }
 
-#define SAMPLE_1D_FUNC(vecsize, intype, outtype, convert)                                       \
-        static outtype __attribute__((overloadable))                                            \
-                getSample##vecsize(rs_allocation a, float2 weights,                             \
-                                   uint32_t iPixel, uint32_t next, uint32_t lod) {              \
-            intype *p0c = (intype*)getElementAt(a, iPixel, lod);                                \
-            intype *p1c = (intype*)getElementAt(a, next, lod);                                  \
-            outtype p0 = convert(*p0c);                                                         \
-            outtype p1 = convert(*p1c);                                                         \
-            return p0 * weights.x + p1 * weights.y;                                             \
-        }
-#define SAMPLE_2D_FUNC(vecsize, intype, outtype, convert)                                       \
-        static outtype __attribute__((overloadable))                                            \
-                    getSample##vecsize(rs_allocation a, float4 weights,                         \
-                                       uint2 iPixel, uint2 next, uint32_t lod) {                \
-            intype *p0c = (intype*)getElementAt(a, iPixel.x, iPixel.y, lod);                    \
-            intype *p1c = (intype*)getElementAt(a, next.x, iPixel.y, lod);                      \
-            intype *p2c = (intype*)getElementAt(a, iPixel.x, next.y, lod);                      \
-            intype *p3c = (intype*)getElementAt(a, next.x, next.y, lod);                        \
-            outtype p0 = convert(*p0c);                                                         \
-            outtype p1 = convert(*p1c);                                                         \
-            outtype p2 = convert(*p2c);                                                         \
-            outtype p3 = convert(*p3c);                                                         \
-            return p0 * weights.x + p1 * weights.y + p2 * weights.z + p3 * weights.w;           \
-        }
+/**
+* Allocation sampling
+*/
+static inline float __attribute__((overloadable))
+        getElementAt1(const uint8_t *p, int32_t x) {
+    float r = p[x];
+    return r;
+}
 
-SAMPLE_1D_FUNC(1, uchar, float, (float))
-SAMPLE_1D_FUNC(2, uchar2, float2, convert_float2)
-SAMPLE_1D_FUNC(3, uchar3, float3, convert_float3)
-SAMPLE_1D_FUNC(4, uchar4, float4, convert_float4)
-SAMPLE_1D_FUNC(565, uint16_t, float3, getFrom565)
+static inline float2 __attribute__((overloadable))
+        getElementAt2(const uint8_t *p, int32_t x) {
+    x *= 2;
+    float2 r = {p[x], p[x+1]};
+    return r;
+}
 
-SAMPLE_2D_FUNC(1, uchar, float, (float))
-SAMPLE_2D_FUNC(2, uchar2, float2, convert_float2)
-SAMPLE_2D_FUNC(3, uchar3, float3, convert_float3)
-SAMPLE_2D_FUNC(4, uchar4, float4, convert_float4)
-SAMPLE_2D_FUNC(565, uint16_t, float3, getFrom565)
+static inline float3 __attribute__((overloadable))
+        getElementAt3(const uint8_t *p, int32_t x) {
+    x *= 4;
+    float3 r = {p[x], p[x+1], p[x+2]};
+    return r;
+}
 
-// Sampler function body is the same for all dimensions
-#define SAMPLE_FUNC_BODY()                                                                      \
-{                                                                                               \
-    rs_element elem = rsAllocationGetElement(a);                                                \
-    rs_data_kind dk = rsElementGetDataKind(elem);                                               \
-    rs_data_type dt = rsElementGetDataType(elem);                                               \
-                                                                                                \
-    if (dk == RS_KIND_USER || (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5)) {     \
-        float4 zero = {0.0f, 0.0f, 0.0f, 0.0f};                                                 \
-        return zero;                                                                            \
-    }                                                                                           \
-                                                                                                \
-    uint32_t vecSize = rsElementGetVectorSize(elem);                                            \
-    Allocation_t *alloc = (Allocation_t *)a.p;                                                  \
-    const Type_t *type = (const Type_t*)alloc->mHal.state.type;                                 \
-                                                                                                \
-    rs_sampler_value sampleMin = rsSamplerGetMinification(s);                                  \
-    rs_sampler_value sampleMag = rsSamplerGetMagnification(s);                                 \
-                                                                                                \
-    if (lod <= 0.0f) {                                                                          \
-        if (sampleMag == RS_SAMPLER_NEAREST) {                                                  \
-            return sample_LOD_NearestPixel(a, type, vecSize, dt, s, uv, 0);                     \
-        }                                                                                       \
-        return sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, 0);                          \
-    }                                                                                           \
-                                                                                                \
-    if (sampleMin == RS_SAMPLER_LINEAR_MIP_NEAREST) {                                           \
-        uint32_t maxLOD = type->mHal.state.lodCount - 1;                                        \
-        lod = min(lod, (float)maxLOD);                                                          \
-        uint32_t nearestLOD = (uint32_t)round(lod);                                             \
-        return sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, nearestLOD);                 \
-    }                                                                                           \
-                                                                                                \
-    if (sampleMin == RS_SAMPLER_LINEAR_MIP_LINEAR) {                                            \
-        uint32_t lod0 = (uint32_t)floor(lod);                                                   \
-        uint32_t lod1 = (uint32_t)ceil(lod);                                                    \
-        uint32_t maxLOD = type->mHal.state.lodCount - 1;                                        \
-        lod0 = min(lod0, maxLOD);                                                               \
-        lod1 = min(lod1, maxLOD);                                                               \
-        float4 sample0 = sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, lod0);             \
-        float4 sample1 = sample_LOD_LinearPixel(a, type, vecSize, dt, s, uv, lod1);             \
-        float frac = lod - (float)lod0;                                                         \
-        return sample0 * (1.0f - frac) + sample1 * frac;                                        \
-    }                                                                                           \
-                                                                                                \
-    return sample_LOD_NearestPixel(a, type, vecSize, dt, s, uv, 0);                             \
-} // End of sampler function body is the same for all dimensions
+static inline float4 __attribute__((overloadable))
+        getElementAt4(const uint8_t *p, int32_t x) {
+    x *= 4;
+    const uchar4 *p2 = (const uchar4 *)&p[x];
+    return convert_float4(p2[0]);
+}
 
-// Body of the bilinear sampling function
-#define BILINEAR_SAMPLE_BODY()                                                                  \
-{                                                                                               \
-    float4 result;                                                                              \
-    if (dt == RS_TYPE_UNSIGNED_5_6_5) {                                                         \
-        result.xyz = getSample565(a, weights, iPixel, next, lod);                               \
-        return result;                                                                          \
-    }                                                                                           \
-                                                                                                \
-    switch(vecSize) {                                                                           \
-    case 1:                                                                                     \
-        result.x = getSample1(a, weights, iPixel, next, lod);                                   \
-        break;                                                                                  \
-    case 2:                                                                                     \
-        result.xy = getSample2(a, weights, iPixel, next, lod);                                  \
-        break;                                                                                  \
-    case 3:                                                                                     \
-        result.xyz = getSample3(a, weights, iPixel, next, lod);                                 \
-        break;                                                                                  \
-    case 4:                                                                                     \
-        result = getSample4(a, weights, iPixel, next, lod);                                     \
-        break;                                                                                  \
-    }                                                                                           \
-                                                                                                \
-    return result * 0.003921569f;                                                                              \
-} // End of body of the bilinear sampling function
+static inline float3 __attribute__((overloadable))
+        getElementAt565(const uint8_t *p, int32_t x) {
+    x *= 2;
+    float3 r = getFrom565(((const uint16_t *)p)[0]);
+    return r;
+}
 
-// Body of the nearest sampling function
-#define NEAREST_SAMPLE_BODY()                                                                   \
-{                                                                                               \
-    float4 result;                                                                              \
-    if (dt == RS_TYPE_UNSIGNED_5_6_5) {                                                         \
-        result.xyz = getFrom565(*(uint16_t*)getElementAt(a, iPixel, lod));                      \
-       return result;                                                                           \
-    }                                                                                           \
-                                                                                                \
-    switch(vecSize) {                                                                           \
-    case 1:                                                                                     \
-        result.x = (float)(*((uchar*)getElementAt(a, iPixel, lod)));                            \
-        break;                                                                                  \
-    case 2:                                                                                     \
-        result.xy = convert_float2(*((uchar2*)getElementAt(a, iPixel, lod)));                   \
-        break;                                                                                  \
-    case 3:                                                                                     \
-        result.xyz = convert_float3(*((uchar3*)getElementAt(a, iPixel, lod)));                  \
-        break;                                                                                  \
-    case 4:                                                                                     \
-        result = convert_float4(*((uchar4*)getElementAt(a, iPixel, lod)));                      \
-        break;                                                                                  \
-    }                                                                                           \
-                                                                                                \
-    return result * 0.003921569f;                                                                              \
-} // End of body of the nearest sampling function
+static inline float __attribute__((overloadable))
+        getElementAt1(const uint8_t *p, size_t stride, int32_t x, int32_t y) {
+    p += y * stride;
+    float r = p[x];
+    return r;
+}
+
+static inline float2 __attribute__((overloadable))
+        getElementAt2(const uint8_t *p, size_t stride, int32_t x, int32_t y) {
+    p += y * stride;
+    x *= 2;
+    float2 r = {p[x], p[x+1]};
+    return r;
+}
+
+static inline float3 __attribute__((overloadable))
+        getElementAt3(const uint8_t *p, size_t stride, int32_t x, int32_t y) {
+    p += y * stride;
+    x *= 4;
+    float3 r = {p[x], p[x+1], p[x+2]};
+    return r;
+}
+
+static inline float4 __attribute__((overloadable))
+        getElementAt4(const uint8_t *p, size_t stride, int32_t x, int32_t y) {
+    p += y * stride;
+    x *= 4;
+    float4 r = {p[x], p[x+1], p[x+2], p[x+3]};
+    return r;
+}
+
+static inline float3 __attribute__((overloadable))
+        getElementAt565(const uint8_t *p, size_t stride, int32_t x, int32_t y) {
+    p += y * stride;
+    x *= 2;
+    float3 r = getFrom565(((const uint16_t *)p)[0]);
+    return r;
+}
+
+
+
+
 
 static float4 __attribute__((overloadable))
-        getBilinearSample(rs_allocation a, float2 weights,
+            getSample_A(const uint8_t *p, int32_t iPixel,
+                          int32_t next, float w0, float w1) {
+    float p0 = getElementAt1(p, iPixel);
+    float p1 = getElementAt1(p, next);
+    float r = p0 * w0 + p1 * w1;
+    r *= (1.f / 255.f);
+    float4 ret = {0.f, 0.f, 0.f, r};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_L(const uint8_t *p, int32_t iPixel,
+                          int32_t next, float w0, float w1) {
+    float p0 = getElementAt1(p, iPixel);
+    float p1 = getElementAt1(p, next);
+    float r = p0 * w0 + p1 * w1;
+    r *= (1.f / 255.f);
+    float4 ret = {r, r, r, 1.f};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_LA(const uint8_t *p, int32_t iPixel,
+                           int32_t next, float w0, float w1) {
+    float2 p0 = getElementAt2(p, iPixel);
+    float2 p1 = getElementAt2(p, next);
+    float2 r = p0 * w0 + p1 * w1;
+    r *= (1.f / 255.f);
+    float4 ret = {r.x, r.x, r.x, r.y};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_RGB(const uint8_t *p, int32_t iPixel,
+                            int32_t next, float w0, float w1) {
+    float3 p0 = getElementAt3(p, iPixel);
+    float3 p1 = getElementAt3(p, next);
+    float3 r = p0 * w0 + p1 * w1;
+    r *= (1.f / 255.f);
+    float4 ret = {r.x, r.x, r.z, 1.f};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_565(const uint8_t *p, int32_t iPixel,
+                           int32_t next, float w0, float w1) {
+    float3 p0 = getElementAt565(p, iPixel);
+    float3 p1 = getElementAt565(p, next);
+    float3 r = p0 * w0 + p1 * w1;
+    r *= (1.f / 255.f);
+    float4 ret = {r.x, r.x, r.z, 1.f};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_RGBA(const uint8_t *p, int32_t iPixel,
+                             int32_t next, float w0, float w1) {
+    float4 p0 = getElementAt4(p, iPixel);
+    float4 p1 = getElementAt4(p, next);
+    float4 r = p0 * w0 + p1 * w1;
+    r *= (1.f / 255.f);
+    return r;
+}
+
+
+static float4 __attribute__((overloadable))
+            getSample_A(const uint8_t *p, size_t stride,
+                          int locX, int locY, int nextX, int nextY,
+                          float w0, float w1, float w2, float w3) {
+    float p0 = getElementAt1(p, stride, locX, locY);
+    float p1 = getElementAt1(p, stride, nextX, locY);
+    float p2 = getElementAt1(p, stride, locX, nextY);
+    float p3 = getElementAt1(p, stride, nextX, nextY);
+    float r = p0 * w0 + p1 * w1 + p2 * w2 + p3 * w3;
+    r *= (1.f / 255.f);
+    float4 ret = {0.f, 0.f, 0.f, r};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_L(const uint8_t *p, size_t stride,
+                         int locX, int locY, int nextX, int nextY,
+                         float w0, float w1, float w2, float w3) {
+    float p0 = getElementAt1(p, stride, locX, locY);
+    float p1 = getElementAt1(p, stride, nextX, locY);
+    float p2 = getElementAt1(p, stride, locX, nextY);
+    float p3 = getElementAt1(p, stride, nextX, nextY);
+    float r = p0 * w0 + p1 * w1 + p2 * w2 + p3 * w3;
+    r *= (1.f / 255.f);
+    float4 ret = {r, r, r, 1.f};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_LA(const uint8_t *p, size_t stride,
+                         int locX, int locY, int nextX, int nextY,
+                         float w0, float w1, float w2, float w3) {
+    float2 p0 = getElementAt2(p, stride, locX, locY);
+    float2 p1 = getElementAt2(p, stride, nextX, locY);
+    float2 p2 = getElementAt2(p, stride, locX, nextY);
+    float2 p3 = getElementAt2(p, stride, nextX, nextY);
+    float2 r = p0 * w0 + p1 * w1 + p2 * w2 + p3 * w3;
+    r *= (1.f / 255.f);
+    float4 ret = {r.x, r.x, r.x, r.y};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_RGB(const uint8_t *p, size_t stride,
+                         int locX, int locY, int nextX, int nextY,
+                         float w0, float w1, float w2, float w3) {
+    float4 p0 = getElementAt4(p, stride, locX, locY);
+    float4 p1 = getElementAt4(p, stride, nextX, locY);
+    float4 p2 = getElementAt4(p, stride, locX, nextY);
+    float4 p3 = getElementAt4(p, stride, nextX, nextY);
+    float4 r = p0 * w0 + p1 * w1 + p2 * w2 + p3 * w3;
+    r *= (1.f / 255.f);
+    float4 ret = {r.x, r.y, r.z, 1.f};
+    return ret;
+}
+static float4 __attribute__((overloadable))
+            getSample_RGBA(const uint8_t *p, size_t stride,
+                         int locX, int locY, int nextX, int nextY,
+                         float w0, float w1, float w2, float w3) {
+    float4 p0 = getElementAt4(p, stride, locX, locY);
+    float4 p1 = getElementAt4(p, stride, nextX, locY);
+    float4 p2 = getElementAt4(p, stride, locX, nextY);
+    float4 p3 = getElementAt4(p, stride, nextX, nextY);
+    float4 r = p0 * w0 + p1 * w1 + p2 * w2 + p3 * w3;
+    r *= (1.f / 255.f);
+    return r;
+}
+static float4 __attribute__((overloadable))
+            getSample_565(const uint8_t *p, size_t stride,
+                         int locX, int locY, int nextX, int nextY,
+                         float w0, float w1, float w2, float w3) {
+    float3 p0 = getElementAt565(p, stride, locX, locY);
+    float3 p1 = getElementAt565(p, stride, nextX, locY);
+    float3 p2 = getElementAt565(p, stride, locX, nextY);
+    float3 p3 = getElementAt565(p, stride, nextX, nextY);
+    float3 r = p0 * w0 + p1 * w1 + p2 * w2 + p3 * w3;
+    r *= (1.f / 255.f);
+    float4 ret;
+    ret.rgb = r;
+    ret.w = 1.f;
+    return ret;
+}
+
+static float4 __attribute__((overloadable))
+        getBilinearSample1D(const Allocation_t *alloc, float2 weights,
                           uint32_t iPixel, uint32_t next,
-                          uint32_t vecSize, rs_data_type dt, uint32_t lod) {
-    BILINEAR_SAMPLE_BODY()
+                          rs_data_kind dk, rs_data_type dt, uint32_t lod) {
+
+     const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
+
+     switch(dk) {
+     case RS_KIND_PIXEL_RGBA:
+         return getSample_RGBA(p, iPixel, next, weights.x, weights.y);
+     case RS_KIND_PIXEL_A:
+         return getSample_A(p, iPixel, next, weights.x, weights.y);
+     case RS_KIND_PIXEL_RGB:
+         if (dt == RS_TYPE_UNSIGNED_5_6_5) {
+             return getSample_565(p, iPixel, next, weights.x, weights.y);
+         }
+         return getSample_RGB(p, iPixel, next, weights.x, weights.y);
+     case RS_KIND_PIXEL_L:
+         return getSample_L(p, iPixel, next, weights.x, weights.y);
+     case RS_KIND_PIXEL_LA:
+         return getSample_LA(p, iPixel, next, weights.x, weights.y);
+
+     default:
+         //__builtin_unreachable();
+         break;
+     }
+
+     //__builtin_unreachable();
+     return 0.f;
+}
+
+static uint32_t wrapI(rs_sampler_value wrap, int32_t coord, int32_t size) {
+    if (wrap == RS_SAMPLER_WRAP) {
+        coord = coord % size;
+        if (coord < 0) {
+            coord += size;
+        }
+    }
+    if (wrap == RS_SAMPLER_MIRRORED_REPEAT) {
+        coord = coord % (size * 2);
+        if (coord < 0) {
+            coord = (size * 2) + coord;
+        }
+        if (coord >= size) {
+            coord = (size * 2) - coord;
+        }
+    }
+    return (uint32_t)max(0, min(coord, size - 1));
 }
 
 static float4 __attribute__((overloadable))
-        getBilinearSample(rs_allocation a, float4 weights,
-                          uint2 iPixel, uint2 next,
-                          uint32_t vecSize, rs_data_type dt, uint32_t lod) {
-    BILINEAR_SAMPLE_BODY()
+        getBilinearSample2D(const Allocation_t *alloc, float w0, float w1, float w2, float w3,
+                          int lx, int ly, int nx, int ny,
+                          rs_data_kind dk, rs_data_type dt, uint32_t lod) {
+
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
+    size_t stride = alloc->mHal.drvState.lod[lod].stride;
+
+    switch(dk) {
+    case RS_KIND_PIXEL_RGBA:
+        return getSample_RGBA(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
+    case RS_KIND_PIXEL_A:
+        return getSample_A(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
+    case RS_KIND_PIXEL_LA:
+        return getSample_LA(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
+    case RS_KIND_PIXEL_RGB:
+        if (dt == RS_TYPE_UNSIGNED_5_6_5) {
+            return getSample_565(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
+        }
+        return getSample_RGB(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
+    case RS_KIND_PIXEL_L:
+        return getSample_L(p, stride, lx, ly, nx, ny, w0, w1, w2, w3);
+
+    default:
+        //__builtin_unreachable();
+        break;
+    }
+
+    //__builtin_unreachable();
+    return 0.f;
 }
 
 static float4  __attribute__((overloadable))
-        getNearestSample(rs_allocation a, uint32_t iPixel, uint32_t vecSize,
+        getNearestSample(const Allocation_t *alloc, uint32_t iPixel, rs_data_kind dk,
                          rs_data_type dt, uint32_t lod) {
-    NEAREST_SAMPLE_BODY()
+
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
+
+    float4 result = {0.f, 0.f, 0.f, 255.f};
+
+    switch(dk) {
+    case RS_KIND_PIXEL_RGBA:
+        result = getElementAt4(p, iPixel);
+        break;
+    case RS_KIND_PIXEL_A:
+        result.w = getElementAt1(p, iPixel);
+        break;
+    case RS_KIND_PIXEL_LA:
+        result.zw = getElementAt2(p, iPixel);
+        result.xy = result.z;
+        break;
+    case RS_KIND_PIXEL_RGB:
+        if (dt == RS_TYPE_UNSIGNED_5_6_5) {
+            result.xyz = getElementAt565(p, iPixel);
+        } else {
+            result.xyz = getElementAt3(p, iPixel);
+        }
+        break;
+    case RS_KIND_PIXEL_L:
+        result.xyz = getElementAt1(p, iPixel);
+
+    default:
+        //__builtin_unreachable();
+        break;
+    }
+
+    return result * 0.003921569f;
 }
 
 static float4  __attribute__((overloadable))
-        getNearestSample(rs_allocation a, uint2 iPixel, uint32_t vecSize,
+        getNearestSample(const Allocation_t *alloc, uint2 iPixel, rs_data_kind dk,
                          rs_data_type dt, uint32_t lod) {
-    NEAREST_SAMPLE_BODY()
+
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
+    size_t stride = alloc->mHal.drvState.lod[lod].stride;
+
+    float4 result = {0.f, 0.f, 0.f, 255.f};
+
+    switch(dk) {
+    case RS_KIND_PIXEL_RGBA:
+        result = getElementAt4(p, stride, iPixel.x, iPixel.y);
+        break;
+    case RS_KIND_PIXEL_A:
+        result.w = getElementAt1(p, stride, iPixel.x, iPixel.y);
+        break;
+    case RS_KIND_PIXEL_LA:
+        result.zw = getElementAt2(p, stride, iPixel.x, iPixel.y);
+        result.xy = result.z;
+        break;
+    case RS_KIND_PIXEL_RGB:
+        if (dt == RS_TYPE_UNSIGNED_5_6_5) {
+            result.xyz = getElementAt565(p, stride, iPixel.x, iPixel.y);
+        } else {
+            result.xyz = getElementAt3(p, stride, iPixel.x, iPixel.y);
+        }
+        break;
+
+    default:
+        //__builtin_unreachable();
+        break;
+    }
+
+    return result * 0.003921569f;
 }
 
 static float4 __attribute__((overloadable))
-        sample_LOD_LinearPixel(rs_allocation a, const Type_t *type,
-                               uint32_t vecSize, rs_data_type dt,
+        sample_LOD_LinearPixel(const Allocation_t *alloc, const Type_t *type,
+                               rs_data_kind dk, rs_data_type dt,
                                rs_sampler s,
                                float uv, uint32_t lod) {
+
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
+
     rs_sampler_value wrapS = rsSamplerGetWrapS(s);
-    int32_t sourceW = type->mHal.state.lodDimX[lod];
+    int32_t sourceW = alloc->mHal.drvState.lod[lod].dimX;
     float pixelUV = uv * (float)(sourceW);
     int32_t iPixel = (int32_t)(pixelUV);
     float frac = pixelUV - (float)iPixel;
@@ -283,81 +450,83 @@ static float4 __attribute__((overloadable))
     uint32_t next = wrapI(wrapS, iPixel + 1, sourceW);
     uint32_t location = wrapI(wrapS, iPixel, sourceW);
 
-    return getBilinearSample(a, weights, location, next, vecSize, dt, lod);
+    return getBilinearSample1D(alloc, weights, location, next, dk, dt, lod);
 }
 
 static float4 __attribute__((overloadable))
-        sample_LOD_NearestPixel(rs_allocation a, const Type_t *type,
-                                uint32_t vecSize, rs_data_type dt,
+        sample_LOD_NearestPixel(const Allocation_t *alloc,
+                                rs_data_kind dk, rs_data_type dt,
                                 rs_sampler s,
                                 float uv, uint32_t lod) {
+
     rs_sampler_value wrapS = rsSamplerGetWrapS(s);
-    int32_t sourceW = type->mHal.state.lodDimX[lod];
+    int32_t sourceW = alloc->mHal.drvState.lod[lod].dimX;
     int32_t iPixel = (int32_t)(uv * (float)(sourceW));
     uint32_t location = wrapI(wrapS, iPixel, sourceW);
 
-    return getNearestSample(a, location, vecSize, dt, lod);
+    return getNearestSample(alloc, location, dk, dt, lod);
 }
 
 static float4 __attribute__((overloadable))
-        sample_LOD_LinearPixel(rs_allocation a, const Type_t *type,
-                               uint32_t vecSize, rs_data_type dt,
+        sample_LOD_LinearPixel(const Allocation_t *alloc,
+                               rs_data_kind dk, rs_data_type dt,
                                rs_sampler s,
                                float2 uv, uint32_t lod) {
+
+    const uint8_t *p = (const uint8_t *)alloc->mHal.drvState.lod[lod].mallocPtr;
+
     rs_sampler_value wrapS = rsSamplerGetWrapS(s);
     rs_sampler_value wrapT = rsSamplerGetWrapT(s);
 
-    int32_t sourceW = type->mHal.state.lodDimX[lod];
-    int32_t sourceH = type->mHal.state.lodDimY[lod];
+    int sourceW = alloc->mHal.drvState.lod[lod].dimX;
+    int sourceH = alloc->mHal.drvState.lod[lod].dimY;
 
-    float2 dimF;
-    dimF.x = (float)(sourceW);
-    dimF.y = (float)(sourceH);
-    float2 pixelUV = uv * dimF;
-    int2 iPixel = convert_int2(pixelUV);
+    float pixelU = uv.x * sourceW;
+    float pixelV = uv.y * sourceH;
+    int iPixelU = pixelU;
+    int iPixelV = pixelV;
+    float fracU = pixelU - iPixelU;
+    float fracV = pixelV - iPixelV;
 
-    float2 frac = pixelUV - convert_float2(iPixel);
-
-    if (frac.x < 0.5f) {
-        iPixel.x -= 1;
-        frac.x += 0.5f;
+    if (fracU < 0.5f) {
+        iPixelU -= 1;
+        fracU += 0.5f;
     } else {
-        frac.x -= 0.5f;
+        fracU -= 0.5f;
     }
-    if (frac.y < 0.5f) {
-        iPixel.y -= 1;
-        frac.y += 0.5f;
+    if (fracV < 0.5f) {
+        iPixelV -= 1;
+        fracV += 0.5f;
     } else {
-        frac.y -= 0.5f;
+        fracV -= 0.5f;
     }
-    float2 oneMinusFrac = 1.0f - frac;
+    float oneMinusFracU = 1.0f - fracU;
+    float oneMinusFracV = 1.0f - fracV;
 
-    float4 weights;
-    weights.x = oneMinusFrac.x * oneMinusFrac.y;
-    weights.y = frac.x * oneMinusFrac.y;
-    weights.z = oneMinusFrac.x * frac.y;
-    weights.w = frac.x * frac.y;
+    float w0 = oneMinusFracU * oneMinusFracV;
+    float w1 = fracU * oneMinusFracV;
+    float w2 = oneMinusFracU * fracV;
+    float w3 = fracU * fracV;
 
-    uint2 next;
-    next.x = wrapI(wrapS, iPixel.x + 1, sourceW);
-    next.y = wrapI(wrapT, iPixel.y + 1, sourceH);
-    uint2 location;
-    location.x = wrapI(wrapS, iPixel.x, sourceW);
-    location.y = wrapI(wrapT, iPixel.y, sourceH);
+    int nx = wrapI(wrapS, iPixelU + 1, sourceW);
+    int ny = wrapI(wrapT, iPixelV + 1, sourceH);
+    int lx = wrapI(wrapS, iPixelU, sourceW);
+    int ly = wrapI(wrapT, iPixelV, sourceH);
 
-    return getBilinearSample(a, weights, location, next, vecSize, dt, lod);
+    return getBilinearSample2D(alloc, w0, w1, w2, w3, lx, ly, nx, ny, dk, dt, lod);
+
 }
 
 static float4 __attribute__((overloadable))
-        sample_LOD_NearestPixel(rs_allocation a, const Type_t *type,
-                                uint32_t vecSize, rs_data_type dt,
+        sample_LOD_NearestPixel(const Allocation_t *alloc,
+                                rs_data_kind dk, rs_data_type dt,
                                 rs_sampler s,
                                 float2 uv, uint32_t lod) {
     rs_sampler_value wrapS = rsSamplerGetWrapS(s);
     rs_sampler_value wrapT = rsSamplerGetWrapT(s);
 
-    int32_t sourceW = type->mHal.state.lodDimX[lod];
-    int32_t sourceH = type->mHal.state.lodDimY[lod];
+    int sourceW = alloc->mHal.drvState.lod[lod].dimX;
+    int sourceH = alloc->mHal.drvState.lod[lod].dimY;
 
     float2 dimF;
     dimF.x = (float)(sourceW);
@@ -367,7 +536,52 @@ static float4 __attribute__((overloadable))
     uint2 location;
     location.x = wrapI(wrapS, iPixel.x, sourceW);
     location.y = wrapI(wrapT, iPixel.y, sourceH);
-    return getNearestSample(a, location, vecSize, dt, lod);
+    return getNearestSample(alloc, location, dk, dt, lod);
+}
+
+extern const float4 __attribute__((overloadable))
+        rsSample(rs_allocation a, rs_sampler s, float uv, float lod) {
+    rs_element elem = rsAllocationGetElement(a);
+    rs_data_kind dk = rsElementGetDataKind(elem);
+    rs_data_type dt = rsElementGetDataType(elem);
+
+    if (dk == RS_KIND_USER || (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5)) {
+        return 0.f;
+    }
+
+    const Allocation_t *alloc = (const Allocation_t *)a.p;
+    const Type_t *type = (const Type_t*)alloc->mHal.state.type;
+
+    rs_sampler_value sampleMin = rsSamplerGetMinification(s);
+    rs_sampler_value sampleMag = rsSamplerGetMagnification(s);
+
+    if (lod <= 0.0f) {
+        if (sampleMag == RS_SAMPLER_NEAREST) {
+            return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+        }
+        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, 0);
+    }
+
+    if (sampleMin == RS_SAMPLER_LINEAR_MIP_NEAREST) {
+        uint32_t maxLOD = type->mHal.state.lodCount - 1;
+        lod = min(lod, (float)maxLOD);
+        uint32_t nearestLOD = (uint32_t)round(lod);
+        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, nearestLOD);
+    }
+
+    if (sampleMin == RS_SAMPLER_LINEAR_MIP_LINEAR) {
+        uint32_t lod0 = (uint32_t)floor(lod);
+        uint32_t lod1 = (uint32_t)ceil(lod);
+        uint32_t maxLOD = type->mHal.state.lodCount - 1;
+        lod0 = min(lod0, maxLOD);
+        lod1 = min(lod1, maxLOD);
+        float4 sample0 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod0);
+        float4 sample1 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod1);
+        float frac = lod - (float)lod0;
+        return sample0 * (1.0f - frac) + sample1 * frac;
+    }
+
+    return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
 }
 
 extern const float4 __attribute__((overloadable))
@@ -375,17 +589,74 @@ extern const float4 __attribute__((overloadable))
     return rsSample(a, s, location, 0);
 }
 
-extern const float4 __attribute__((overloadable))
-        rsSample(rs_allocation a, rs_sampler s, float uv, float lod) {
-    SAMPLE_FUNC_BODY()
-}
-
-extern const float4 __attribute__((overloadable))
-        rsSample(rs_allocation a, rs_sampler s, float2 location) {
-    return rsSample(a, s, location, 0.0f);
-}
 
 extern const float4 __attribute__((overloadable))
         rsSample(rs_allocation a, rs_sampler s, float2 uv, float lod) {
-    SAMPLE_FUNC_BODY()
+
+    const Allocation_t *alloc = (const Allocation_t *)a.p;
+
+    rs_element elem = rsAllocationGetElement(a);
+    rs_data_kind dk = rsElementGetDataKind(elem);
+    rs_data_type dt = rsElementGetDataType(elem);
+
+    if (dk == RS_KIND_USER ||
+        (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5) ||
+        !(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
+        return 0.f;
+    }
+
+    rs_sampler_value sampleMin = rsSamplerGetMinification(s);
+    rs_sampler_value sampleMag = rsSamplerGetMagnification(s);
+
+    if (lod <= 0.0f) {
+        if (sampleMag == RS_SAMPLER_NEAREST) {
+            return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+        }
+        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, 0);
+    }
+
+    if (sampleMin == RS_SAMPLER_LINEAR_MIP_NEAREST) {
+        const Type_t *type = (const Type_t*)alloc->mHal.state.type;
+        uint32_t maxLOD = type->mHal.state.lodCount - 1;
+        lod = min(lod, (float)maxLOD);
+        uint32_t nearestLOD = (uint32_t)round(lod);
+        return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, nearestLOD);
+    }
+
+    if (sampleMin == RS_SAMPLER_LINEAR_MIP_LINEAR) {
+        const Type_t *type = (const Type_t*)alloc->mHal.state.type;
+        uint32_t lod0 = (uint32_t)floor(lod);
+        uint32_t lod1 = (uint32_t)ceil(lod);
+        uint32_t maxLOD = type->mHal.state.lodCount - 1;
+        lod0 = min(lod0, maxLOD);
+        lod1 = min(lod1, maxLOD);
+        float4 sample0 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod0);
+        float4 sample1 = sample_LOD_LinearPixel(alloc, dk, dt, s, uv, lod1);
+        float frac = lod - (float)lod0;
+        return sample0 * (1.0f - frac) + sample1 * frac;
+    }
+
+    return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
 }
+
+extern const float4 __attribute__((overloadable))
+        rsSample(rs_allocation a, rs_sampler s, float2 uv) {
+
+    const Allocation_t *alloc = (const Allocation_t *)a.p;
+
+    rs_element elem = rsAllocationGetElement(a);
+    rs_data_kind dk = rsElementGetDataKind(elem);
+    rs_data_type dt = rsElementGetDataType(elem);
+
+    if (dk == RS_KIND_USER ||
+        (dt != RS_TYPE_UNSIGNED_8 && dt != RS_TYPE_UNSIGNED_5_6_5) ||
+        !(alloc->mHal.state.usageFlags & RS_ALLOCATION_USAGE_GRAPHICS_TEXTURE)) {
+        return 0.f;
+    }
+
+    if (rsSamplerGetMagnification(s) == RS_SAMPLER_NEAREST) {
+        return sample_LOD_NearestPixel(alloc, dk, dt, s, uv, 0);
+    }
+    return sample_LOD_LinearPixel(alloc, dk, dt, s, uv, 0);
+}
+

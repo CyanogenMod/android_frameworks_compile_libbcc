@@ -19,9 +19,9 @@
 //===----------------------------------------------------------------------===//
 #include "bcc/Renderscript/RSInfo.h"
 
-#include <llvm/Constants.h>
-#include <llvm/Metadata.h>
-#include <llvm/Module.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/Module.h>
 
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
@@ -166,8 +166,10 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   // Don't forget to reserve the space for the dependency informationin string
   // pool.
   string_pool_size += ::strlen(LibBCCPath) + 1 + SHA1_DIGEST_LENGTH;
+  string_pool_size += ::strlen(LibCompilerRTPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
   string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
+  string_pool_size += ::strlen(LibCLCoreDebugPath) + 1 + SHA1_DIGEST_LENGTH;
 #if defined(ARCH_ARM_HAVE_NEON)
   string_pool_size += ::strlen(LibCLCoreNEONPath) + 1 + SHA1_DIGEST_LENGTH;
 #endif
@@ -360,45 +362,57 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   }
 #undef FOR_EACH_NODE_IN
 
-  //===--------------------------------------------------------------------===//
-  // Record built-in dependency information.
-  //===--------------------------------------------------------------------===//
-  LoadBuiltInSHA1Information();
-
-  if (!writeDependency(LibBCCPath, LibBCCSHA1,
-                       result->mStringPool, &cur_string_pool_offset,
-                       result->mDependencyTable)) {
-    goto bail;
-  }
-
-  if (!writeDependency(LibRSPath, LibRSSHA1,
-                       result->mStringPool, &cur_string_pool_offset,
-                       result->mDependencyTable)) {
-    goto bail;
-  }
-
-  if (!writeDependency(LibCLCorePath, LibCLCoreSHA1,
-                       result->mStringPool, &cur_string_pool_offset,
-                       result->mDependencyTable)) {
-    goto bail;
-  }
-
-#if defined(ARCH_ARM_HAVE_NEON)
-  if (!writeDependency(LibCLCoreNEONPath, LibCLCoreNEONSHA1,
-                       result->mStringPool, &cur_string_pool_offset,
-                       result->mDependencyTable)) {
-    goto bail;
-  }
-#endif
-
-  //===--------------------------------------------------------------------===//
-  // Record dependency information.
-  //===--------------------------------------------------------------------===//
-  for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
-    if (!writeDependency(/* name */pDeps[i].first, /* SHA-1 */pDeps[i].second,
+  if (LoadBuiltInSHA1Information()) {
+    //===------------------------------------------------------------------===//
+    // Record built-in dependency information.
+    //===------------------------------------------------------------------===//
+    if (!writeDependency(LibBCCPath, LibBCCSHA1,
                          result->mStringPool, &cur_string_pool_offset,
                          result->mDependencyTable)) {
       goto bail;
+    }
+
+    if (!writeDependency(LibCompilerRTPath, LibCompilerRTSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+
+    if (!writeDependency(LibRSPath, LibRSSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+
+    if (!writeDependency(LibCLCorePath, LibCLCoreSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+
+    if (!writeDependency(LibCLCoreDebugPath, LibCLCoreDebugSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+
+#if defined(ARCH_ARM_HAVE_NEON)
+    if (!writeDependency(LibCLCoreNEONPath, LibCLCoreNEONSHA1,
+                         result->mStringPool, &cur_string_pool_offset,
+                         result->mDependencyTable)) {
+      goto bail;
+    }
+#endif
+
+    //===------------------------------------------------------------------===//
+    // Record dependency information.
+    //===------------------------------------------------------------------===//
+    for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
+      if (!writeDependency(/* name */pDeps[i].first, /* SHA-1 */pDeps[i].second,
+                           result->mStringPool, &cur_string_pool_offset,
+                           result->mDependencyTable)) {
+        goto bail;
+      }
     }
   }
 

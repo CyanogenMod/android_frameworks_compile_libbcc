@@ -21,6 +21,7 @@
 
 #include <cstring>
 #include <new>
+#include <string>
 
 #include "bcc/Support/FileBase.h"
 #include "bcc/Support/Log.h"
@@ -30,42 +31,57 @@
 using namespace bcc;
 
 const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
+const char RSInfo::LibCompilerRTPath[] = "/system/lib/libcompiler_rt.so";
 const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
 const char RSInfo::LibCLCorePath[] = "/system/lib/libclcore.bc";
+const char RSInfo::LibCLCoreDebugPath[] = "/system/lib/libclcore_debug.bc";
+#if defined(ARCH_X86_HAVE_SSE2)
+const char RSInfo::LibCLCoreX86Path[] = "/system/lib/libclcore_x86.bc";
+#endif
 #if defined(ARCH_ARM_HAVE_NEON)
 const char RSInfo::LibCLCoreNEONPath[] = "/system/lib/libclcore_neon.bc";
 #endif
 
 const uint8_t *RSInfo::LibBCCSHA1 = NULL;
+const uint8_t *RSInfo::LibCompilerRTSHA1 = NULL;
 const uint8_t *RSInfo::LibRSSHA1 = NULL;
 const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
+const uint8_t *RSInfo::LibCLCoreDebugSHA1 = NULL;
 #if defined(ARCH_ARM_HAVE_NEON)
 const uint8_t *RSInfo::LibCLCoreNEONSHA1 = NULL;
 #endif
 
-void RSInfo::LoadBuiltInSHA1Information() {
+bool RSInfo::LoadBuiltInSHA1Information() {
+#ifdef TARGET_BUILD
   if (LibBCCSHA1 != NULL) {
     // Loaded before.
-    return;
+    return true;
   }
 
   void *h = ::dlopen("/system/lib/libbcc.sha1.so", RTLD_LAZY | RTLD_NOW);
   if (h == NULL) {
     ALOGE("Failed to load SHA-1 information from shared library '"
           "/system/lib/libbcc.sha1.so'! (%s)", ::dlerror());
-    return;
+    return false;
   }
 
   LibBCCSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libbcc_so_SHA1"));
+  LibCompilerRTSHA1 =
+      reinterpret_cast<const uint8_t *>(::dlsym(h, "libcompiler_rt_so_SHA1"));
   LibRSSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libRS_so_SHA1"));
   LibCLCoreSHA1 =
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_bc_SHA1"));
+  LibCLCoreDebugSHA1 =
+      reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_debug_bc_SHA1"));
 #if defined(ARCH_ARM_HAVE_NEON)
   LibCLCoreNEONSHA1 =
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_neon_bc_SHA1"));
 #endif
 
-  return;
+  return true;
+#else  // TARGET_BUILD
+  return false;
+#endif  // TARGET_BUILD
 }
 
 android::String8 RSInfo::GetPath(const FileBase &pFile) {
@@ -89,9 +105,9 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
   // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc plus
   // libclcore_neon.bc if NEON is available on the target device.
 #if !defined(ARCH_ARM_HAVE_NEON)
-  static const unsigned NumBuiltInDependencies = 3;
+  static const unsigned NumBuiltInDependencies = 5;
 #else
-  static const unsigned NumBuiltInDependencies = 4;
+  static const unsigned NumBuiltInDependencies = 6;
 #endif
 
   LoadBuiltInSHA1Information();
@@ -105,13 +121,17 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
     // Built-in dependencies always go first.
     const std::pair<const char *, const uint8_t *> &cache_libbcc_dep =
         pInfo.mDependencyTable[0];
-    const std::pair<const char *, const uint8_t *> &cache_libRS_dep =
+    const std::pair<const char *, const uint8_t *> &cache_libcompiler_rt_dep =
         pInfo.mDependencyTable[1];
-    const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
+    const std::pair<const char *, const uint8_t *> &cache_libRS_dep =
         pInfo.mDependencyTable[2];
+    const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
+        pInfo.mDependencyTable[3];
+    const std::pair<const char *, const uint8_t *> &cache_libclcore_debug_dep =
+        pInfo.mDependencyTable[4];
 #if defined(ARCH_ARM_HAVE_NEON)
     const std::pair<const char *, const uint8_t *> &cache_libclcore_neon_dep =
-        pInfo.mDependencyTable[3];
+        pInfo.mDependencyTable[5];
 #endif
 
     // Check libbcc.so.
@@ -121,6 +141,17 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         PRINT_DEPENDENCY("current - ", LibBCCPath, LibBCCSHA1);
         PRINT_DEPENDENCY("cache - ", cache_libbcc_dep.first,
                                      cache_libbcc_dep.second);
+        return false;
+    }
+
+    // Check libcompiler_rt.so.
+    if (::memcmp(cache_libcompiler_rt_dep.second, LibCompilerRTSHA1,
+                 SHA1_DIGEST_LENGTH) != 0) {
+        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
+              LibCompilerRTPath);
+        PRINT_DEPENDENCY("current - ", LibCompilerRTPath, LibCompilerRTSHA1);
+        PRINT_DEPENDENCY("cache - ", cache_libcompiler_rt_dep.first,
+                                     cache_libcompiler_rt_dep.second);
         return false;
     }
 
@@ -138,10 +169,21 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
     if (::memcmp(cache_libclcore_dep.second, LibCLCoreSHA1,
                  SHA1_DIGEST_LENGTH) != 0) {
         ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibRSPath);
+              LibCLCorePath);
         PRINT_DEPENDENCY("current - ", LibCLCorePath, LibCLCoreSHA1);
         PRINT_DEPENDENCY("cache - ", cache_libclcore_dep.first,
                                      cache_libclcore_dep.second);
+        return false;
+    }
+
+    // Check libclcore_debug.bc.
+    if (::memcmp(cache_libclcore_debug_dep.second, LibCLCoreDebugSHA1,
+                 SHA1_DIGEST_LENGTH) != 0) {
+        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
+              LibCLCoreDebugPath);
+        PRINT_DEPENDENCY("current - ", LibCLCoreDebugPath, LibCLCoreDebugSHA1);
+        PRINT_DEPENDENCY("cache - ", cache_libclcore_debug_dep.first,
+                                     cache_libclcore_debug_dep.second);
         return false;
     }
 
@@ -150,7 +192,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
     if (::memcmp(cache_libclcore_neon_dep.second, LibCLCoreNEONSHA1,
                  SHA1_DIGEST_LENGTH) != 0) {
         ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibRSPath);
+              LibCLCoreNEONPath);
         PRINT_DEPENDENCY("current - ", LibCLCoreNEONPath, LibCLCoreNEONSHA1);
         PRINT_DEPENDENCY("cache - ", cache_libclcore_neon_dep.first,
                                      cache_libclcore_neon_dep.second);
@@ -315,33 +357,36 @@ rsinfo::StringIndexTy RSInfo::getStringIdxInPool(const char *pStr) const {
 
 RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
   // Check to see if we have any FP precision-related pragmas.
-  static const char relaxed_pragma[] = "rs_fp_relaxed";
-  static const char imprecise_pragma[] = "rs_fp_imprecise";
-  static const char full_pragma[] = "rs_fp_full";
+  std::string relaxed_pragma("rs_fp_relaxed");
+  std::string imprecise_pragma("rs_fp_imprecise");
+  std::string full_pragma("rs_fp_full");
   bool relaxed_pragma_seen = false;
-  RSInfo::FloatPrecision result;
+  bool imprecise_pragma_seen = false;
+  RSInfo::FloatPrecision result = FP_Full;
 
   for (PragmaListTy::const_iterator pragma_iter = mPragmas.begin(),
            pragma_end = mPragmas.end(); pragma_iter != pragma_end;
        pragma_iter++) {
     const char *pragma_key = pragma_iter->first;
-    if (::strcmp(pragma_key, relaxed_pragma) == 0) {
-      relaxed_pragma_seen = true;
-    } else if (::strcmp(pragma_key, imprecise_pragma) == 0) {
-      if (relaxed_pragma_seen) {
-        ALOGW("Multiple float precision pragmas specified!");
+    if (!relaxed_pragma.compare(pragma_key)) {
+      if (relaxed_pragma_seen || imprecise_pragma_seen) {
+        ALOGE("Multiple float precision pragmas specified!");
       }
-      // Fast return when there's rs_fp_imprecise specified.
-      result = FP_Imprecise;
+      relaxed_pragma_seen = true;
+    } else if (!imprecise_pragma.compare(pragma_key)) {
+      if (relaxed_pragma_seen || imprecise_pragma_seen) {
+        ALOGE("Multiple float precision pragmas specified!");
+      }
+      imprecise_pragma_seen = true;
     }
   }
 
   // Imprecise is selected over Relaxed precision.
   // In the absence of both, we stick to the default Full precision.
-  if (relaxed_pragma_seen) {
+  if (imprecise_pragma_seen) {
+    result = FP_Imprecise;
+  } else if (relaxed_pragma_seen) {
     result = FP_Relaxed;
-  } else {
-    result = FP_Full;
   }
 
   // Provide an override for precsion via adb shell setprop
@@ -352,13 +397,13 @@ RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
   property_get("debug.rs.precision", precision_prop_buf, "");
 
   if (precision_prop_buf[0]) {
-    if (::strcmp(precision_prop_buf, relaxed_pragma) == 0) {
+    if (!relaxed_pragma.compare(precision_prop_buf)) {
       ALOGI("Switching to RS FP relaxed mode via setprop");
       result = FP_Relaxed;
-    } else if (::strcmp(precision_prop_buf, imprecise_pragma) == 0) {
+    } else if (!imprecise_pragma.compare(precision_prop_buf)) {
       ALOGI("Switching to RS FP imprecise mode via setprop");
       result = FP_Imprecise;
-    } else if (::strcmp(precision_prop_buf, full_pragma) == 0) {
+    } else if (!full_pragma.compare(precision_prop_buf)) {
       ALOGI("Switching to RS FP full mode via setprop");
       result = FP_Full;
     }

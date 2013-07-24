@@ -22,13 +22,24 @@
 namespace bcc {
 
 class ARMABCCompilerDriver : public ABCCompilerDriver {
+private:
+  bool mInThumbMode;
+
 public:
-  ARMABCCompilerDriver(const std::string &pTriple)
-      : ABCCompilerDriver(pTriple) { }
+  ARMABCCompilerDriver(bool pInThumbMode)
+    : ABCCompilerDriver(), mInThumbMode(pInThumbMode) { }
 
   virtual ~ARMABCCompilerDriver() { }
 
+public:
+  inline bool IsInThumbMode() const {
+    return mInThumbMode;
+  }
+
 private:
+  virtual CompilerConfig *createCompilerConfig() const;
+  virtual LinkerConfig *createLinkerConfig() const;
+
   virtual ABCExpandVAArgPass *createExpandVAArgPass() const;
 };
 

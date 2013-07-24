@@ -1,5 +1,5 @@
-#ifndef _RS_CORE_H_
-#define _RS_CORE_H_
+#ifndef _RS_STRUCTS_H_
+#define _RS_STRUCTS_H_
 
 /*****************************************************************************
  * CAUTION
@@ -25,16 +25,14 @@ typedef enum {
 } rs_allocation_mipmap_control;
 
 typedef struct Allocation {
-    char __pad[28];
+    char __pad[32];
     struct {
         void * drv;
         struct {
             const void *type;
             uint32_t usageFlags;
             rs_allocation_mipmap_control mipmapControl;
-            uint32_t dimensionX;
-            uint32_t dimensionY;
-            uint32_t dimensionZ;
+            uint32_t yuv;
             uint32_t elementSizeBytes;
             bool hasMipmaps;
             bool hasFaces;
@@ -43,12 +41,19 @@ typedef struct Allocation {
             int32_t surfaceTextureID;
             void * wndSurface;
             void * surfaceTexture;
-            rs_data_type eType;
         } state;
 
         struct DrvState {
-            void * mallocPtr;
-            uint32_t stride;
+            struct LodState {
+                void * mallocPtr;
+                size_t stride;
+                uint32_t dimX;
+                uint32_t dimY;
+                uint32_t dimZ;
+            } lod[16/*android::renderscript::Allocation::MAX_LOD*/];
+            size_t faceOffset;
+            uint32_t lodCount;
+            uint32_t faceCount;
         } drvState;
     } mHal;
 } Allocation_t;
@@ -71,7 +76,7 @@ typedef struct Allocation {
  *
  *****************************************************************************/
 typedef struct ProgramStore {
-    char __pad[36];
+    char __pad[40];
     struct {
         struct {
             bool ditherEnable;
@@ -107,6 +112,7 @@ typedef struct ProgramStore {
 typedef struct ProgramRaster {
     char __pad[36];
     struct {
+        void * drv;
         struct {
             bool pointSprite;
             rs_cull_mode cull;
@@ -134,6 +140,7 @@ typedef struct ProgramRaster {
 typedef struct Sampler {
     char __pad[32];
     struct {
+        void *drv;
         struct {
             rs_sampler_value magFilter;
             rs_sampler_value minFilter;
@@ -163,7 +170,7 @@ typedef struct Sampler {
  *
  *****************************************************************************/
 typedef struct Element {
-    char __pad[28];
+    char __pad[32];
     struct {
         void *drv;
         struct {
@@ -201,7 +208,7 @@ typedef struct Element {
  *
  *****************************************************************************/
 typedef struct Type {
-    char __pad[28];
+    char __pad[32];
     struct {
         void *drv;
         struct {
@@ -237,7 +244,7 @@ typedef struct Type {
  *
  *****************************************************************************/
 typedef struct Mesh {
-    char __pad[28];
+    char __pad[32];
     struct {
         void *drv;
         struct {

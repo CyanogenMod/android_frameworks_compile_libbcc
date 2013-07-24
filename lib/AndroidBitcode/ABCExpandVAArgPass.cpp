@@ -19,7 +19,8 @@
 
 #include "bcc/AndroidBitcode/ABCExpandVAArgPass.h"
 
-#include <llvm/Instructions.h>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
 
 namespace bcc {
@@ -33,7 +34,8 @@ bool ABCExpandVAArgPass::runOnFunction(llvm::Function &pFunc) {
 
   // process va_arg inst
   for (llvm::inst_iterator inst = llvm::inst_begin(pFunc),
-          inst_end = llvm::inst_end(pFunc); inst != inst_end; inst++) {
+          inst_end = llvm::inst_end(pFunc), next_inst = llvm::next(inst);
+       inst != inst_end; inst = next_inst++) {
     if (inst->getOpcode() == llvm::Instruction::VAArg) {
       llvm::Value *v = expandVAArg(&*inst);
       inst->replaceAllUsesWith(v);

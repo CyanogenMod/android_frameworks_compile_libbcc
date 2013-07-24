@@ -16,6 +16,9 @@
 
 #include "Mips/MipsABCCompilerDriver.h"
 
+#include "bcc/Support/TargetCompilerConfigs.h"
+#include "bcc/Support/TargetLinkerConfigs.h"
+
 namespace {
 
 static const char *MipsNonPortableList[] = {
@@ -36,6 +39,14 @@ static const char *MipsNonPortableList[] = {
 } // end anonymous namespace
 
 namespace bcc {
+
+CompilerConfig *MipsABCCompilerDriver::createCompilerConfig() const {
+  return new (std::nothrow) MipsCompilerConfig();
+}
+
+LinkerConfig *MipsABCCompilerDriver::createLinkerConfig() const {
+  return new (std::nothrow) MipsLinkerConfig();
+}
 
 const char **MipsABCCompilerDriver::getNonPortableList() const {
   return MipsNonPortableList;

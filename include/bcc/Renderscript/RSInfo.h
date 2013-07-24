@@ -42,7 +42,7 @@ namespace rsinfo {
 #define RSINFO_MAGIC      "\0rsinfo\n"
 
 /* RS info file version, encoded in 4 bytes of ASCII */
-#define RSINFO_VERSION    "003\0"
+#define RSINFO_VERSION    "004\0"
 
 struct __attribute__((packed)) ListHeader {
   // The offset from the beginning of the file of data
@@ -153,15 +153,20 @@ public:
 
 public:
   // Calculate or load the SHA-1 information of the built-in dependencies.
-  static void LoadBuiltInSHA1Information();
+  static bool LoadBuiltInSHA1Information();
 
   // Return the path of the RS info file corresponded to the given output
   // executable file.
   static android::String8 GetPath(const FileBase &pFile);
 
   static const char LibBCCPath[];
+  static const char LibCompilerRTPath[];
   static const char LibRSPath[];
   static const char LibCLCorePath[];
+  static const char LibCLCoreDebugPath[];
+#if defined(ARCH_X86_HAVE_SSE2)
+  static const char LibCLCoreX86Path[];
+#endif
 #if defined(ARCH_ARM_HAVE_NEON)
   static const char LibCLCoreNEONPath[];
 #endif
@@ -170,8 +175,10 @@ private:
   // SHA-1 of the built-in dependencies. Will be initialized in
   // LoadBuiltInSHA1Information().
   static const uint8_t *LibBCCSHA1;
+  static const uint8_t *LibCompilerRTSHA1;
   static const uint8_t *LibRSSHA1;
   static const uint8_t *LibCLCoreSHA1;
+  static const uint8_t *LibCLCoreDebugSHA1;
 #if defined(ARCH_ARM_HAVE_NEON)
   static const uint8_t *LibCLCoreNEONSHA1;
 #endif

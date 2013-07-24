@@ -22,10 +22,15 @@
 
 using namespace bcc;
 
-bool RSScript::LinkRuntime(RSScript &pScript) {
+bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
   // Using the same context with the source in pScript.
   BCCContext &context = pScript.getSource().getContext();
   const char* core_lib = RSInfo::LibCLCorePath;
+
+  // SSE2- or above capable devices will use an optimized library.
+#if defined(ARCH_X86_HAVE_SSE2)
+  core_lib = RSInfo::LibCLCoreX86Path;
+#endif
 
   // NEON-capable devices can use an accelerated math library for all
   // reduced precision scripts.
@@ -37,10 +42,19 @@ bool RSScript::LinkRuntime(RSScript &pScript) {
   }
 #endif
 
+  if (rt_path != NULL) {
+    core_lib = rt_path;
+  }
+
   Source *libclcore_source = Source::CreateFromFile(context, core_lib);
   if (libclcore_source == NULL) {
     ALOGE("Failed to load Renderscript library '%s' to link!", core_lib);
     return false;
+  }
+
+  if (NULL != pScript.mLinkRuntimeCallback) {
+    pScript.mLinkRuntimeCallback(&pScript,
+        &pScript.getSource().getModule(), &libclcore_source->getModule());
   }
 
   if (!pScript.getSource().merge(*libclcore_source,
@@ -55,7 +69,8 @@ bool RSScript::LinkRuntime(RSScript &pScript) {
 
 RSScript::RSScript(Source &pSource)
   : Script(pSource), mInfo(NULL), mCompilerVersion(0),
-    mOptimizationLevel(kOptLvl3) { }
+    mOptimizationLevel(kOptLvl3), mLinkRuntimeCallback(NULL),
+    mEmbedInfo(false) { }
 
 bool RSScript::doReset() {
   mInfo = NULL;

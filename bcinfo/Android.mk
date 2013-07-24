@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
+
 local_cflags_for_libbcinfo := -Wall -Wno-unused-parameter -Werror
 ifneq ($(TARGET_BUILD_VARIANT),eng)
 local_cflags_for_libbcinfo += -D__DISABLE_ASSERTS
@@ -39,10 +42,6 @@ libbcinfo_SRC_FILES := \
 libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
 libbcinfo_STATIC_LIBRARIES := \
   libLLVMWrap \
-  libLLVMBitReader \
-  libLLVMBitWriter \
-  libLLVMCore \
-  libLLVMSupport \
   libLLVMBitReader_2_7 \
   libLLVMBitReader_3_0
 
@@ -62,7 +61,7 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES)
-LOCAL_SHARED_LIBRARIES := libcutils libstlport
+LOCAL_SHARED_LIBRARIES := libLLVM libcutils liblog libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
@@ -81,12 +80,15 @@ LOCAL_CFLAGS += $(local_cflags_for_libbcinfo)
 LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
-LOCAL_STATIC_LIBRARIES += libcutils
+LOCAL_STATIC_LIBRARIES += libcutils liblog
+LOCAL_SHARED_LIBRARIES += libLLVM
 
 LOCAL_LDLIBS := -ldl -lpthread
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_SHARED_LIBRARY)
+
+endif # don't build for unbundled branches
 
 #=====================================================================
 # Include Subdirectories

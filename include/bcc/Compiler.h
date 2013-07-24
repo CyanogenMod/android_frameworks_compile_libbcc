@@ -21,7 +21,7 @@ namespace llvm {
 
 class raw_ostream;
 class PassManager;
-class TargetData;
+class DataLayout;
 class TargetMachine;
 
 } // end namespace llvm
@@ -53,7 +53,7 @@ public:
     kErrCreateTargetMachine,
     kErrSwitchTargetMachine,
     kErrNoTargetMachine,
-    kErrTargetDataNoMemory,
+    kErrDataLayoutNoMemory,
     kErrMaterialization,
     kErrInvalidOutputFileState,
     kErrPrepareOutput,

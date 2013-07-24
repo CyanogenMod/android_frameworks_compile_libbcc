@@ -39,7 +39,6 @@ private:
   CompilerConfig *mCompilerConfig;
   LinkerConfig *mLinkerConfig;
 
-  std::string mTriple;
   std::string mAndroidSysroot;
 
 private:
@@ -52,6 +51,10 @@ private:
   bool link(const Script &pScript, const std::string &input_relocatable,
             int pOutputFd);
 
+private:
+  virtual CompilerConfig *createCompilerConfig() const = 0;
+  virtual LinkerConfig *createLinkerConfig() const = 0;
+
 protected:
   virtual const char **getNonPortableList() const {
     return NULL;
@@ -61,7 +64,7 @@ public:
   virtual ABCExpandVAArgPass *createExpandVAArgPass() const = 0;
 
 protected:
-  ABCCompilerDriver(const std::string &pTriple);
+  ABCCompilerDriver();
 
 public:
   static ABCCompilerDriver *Create(const std::string &pTriple);
@@ -74,10 +77,6 @@ public:
 
   inline void setAndroidSysroot(const std::string &pAndroidSysroot) {
     mAndroidSysroot = pAndroidSysroot;
-  }
-
-  inline const std::string &getTriple() const {
-    return mTriple;
   }
 
   // Compile the bitcode and link the shared object

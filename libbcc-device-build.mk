@@ -43,10 +43,10 @@ ifeq ($(TARGET_ARCH),arm)
     endif
   endif
   ifeq ($(ARCH_ARM_HAVE_NEON),true)
-    LOCAL_CFLAGS += -DARCH_ARM_HAVE_NEON
-  endif
-  ifeq ($(ARCH_ARM_HAVE_THUMB_SUPPORT),true)
-    LOCAL_CFLAGS += -DARCH_ARM_HAVE_THUMB_SUPPORT
+    # Disable NEON on cortex-a15 temporarily
+    ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
+      LOCAL_CFLAGS += -DARCH_ARM_HAVE_NEON
+    endif
   endif
 else
   ifeq ($(TARGET_ARCH),mips)
@@ -54,6 +54,9 @@ else
   else
     ifeq ($(TARGET_ARCH),x86)
       LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
+      ifeq ($(ARCH_X86_HAVE_SSE2), true)
+        LOCAL_CFLAGS += -DARCH_X86_HAVE_SSE2
+      endif
     else
       $(error Unsupported architecture $(TARGET_ARCH))
     endif

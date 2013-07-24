@@ -23,22 +23,42 @@ clcore_base_files := \
     rs_core.c \
     rs_element.c \
     rs_mesh.c \
+    rs_matrix.c \
     rs_program.c \
     rs_sample.c \
     rs_sampler.c \
     convert.ll \
-    matrix.ll \
-    pixel_packing.ll \
-    math.ll \
     rsClamp.ll
 
 clcore_files := \
     $(clcore_base_files) \
-    arch/generic.c
+    math.ll \
+    arch/generic.c \
+    arch/sqrt.c \
+    arch/dot_length.c
 
 clcore_neon_files := \
     $(clcore_base_files) \
-    arch/neon.ll
+    math.ll \
+    arch/neon.ll \
+    arch/sqrt.c \
+    arch/dot_length.c
+
+ifeq ($(ARCH_X86_HAVE_SSE2), true)
+    clcore_x86_files := \
+    $(clcore_base_files) \
+    arch/x86_generic.c \
+    arch/x86_clamp.ll \
+    arch/x86_math.ll
+
+    ifeq ($(ARCH_X86_HAVE_SSE3), true)
+        clcore_x86_files += arch/x86_dot_length.ll
+    else
+        # FIXME: without SSE3, it is still able to get better code through PSHUFD. But,
+        # so far, there is no such device with SSE2 only.
+        clcore_x86_files += arch/dot_length.c
+    endif
+endif
 
 ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
   RS_VERSION := $(PLATFORM_SDK_VERSION)
@@ -58,13 +78,38 @@ LOCAL_SRC_FILES := $(clcore_files)
 
 include $(LOCAL_PATH)/build_bc_lib.mk
 
-# Build a NEON-enabled version of the library (if possible)
-ifeq ($(ARCH_ARM_HAVE_NEON),true)
+# Build a debug version of the library
 include $(CLEAR_VARS)
-LOCAL_MODULE := libclcore_neon.bc
+LOCAL_MODULE := libclcore_debug.bc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_SRC_FILES := $(clcore_neon_files)
+rs_debug_runtime := 1
+LOCAL_SRC_FILES := $(clcore_files)
 
 include $(LOCAL_PATH)/build_bc_lib.mk
+
+# Build an optimized version of the library if the device is SSE2- or above
+# capable.
+ifeq ($(ARCH_X86_HAVE_SSE2),true)
+include $(CLEAR_VARS)
+LOCAL_MODULE := libclcore_x86.bc
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_SRC_FILES := $(clcore_x86_files)
+
+include $(LOCAL_PATH)/build_bc_lib.mk
+endif
+
+# Build a NEON-enabled version of the library (if possible)
+ifeq ($(ARCH_ARM_HAVE_NEON),true)
+# Disable NEON on cortex-a15 temporarily
+ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
+  include $(CLEAR_VARS)
+  LOCAL_MODULE := libclcore_neon.bc
+  LOCAL_MODULE_TAGS := optional
+  LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+  LOCAL_SRC_FILES := $(clcore_neon_files)
+
+  include $(LOCAL_PATH)/build_bc_lib.mk
+endif
 endif

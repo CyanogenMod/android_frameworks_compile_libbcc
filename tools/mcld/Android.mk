@@ -21,12 +21,15 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := mcld
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
 
-LOCAL_SHARED_LIBRARIES := libbcc
+LOCAL_SHARED_LIBRARIES := \
+  libbcc \
+  libbcinfo \
+  libLLVM
+
 LOCAL_LDLIBS = -ldl
 
 include $(LIBBCC_HOST_BUILD_MK)
@@ -40,12 +43,11 @@ include $(BUILD_HOST_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := mcld
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
 
-LOCAL_SHARED_LIBRARIES := libdl libstlport libbcc
+LOCAL_SHARED_LIBRARIES := libdl libstlport libbcc libbcinfo libLLVM
 
 include external/stlport/libstlport.mk
 include $(LIBBCC_DEVICE_BUILD_MK)

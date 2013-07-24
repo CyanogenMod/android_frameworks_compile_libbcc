@@ -20,13 +20,13 @@
 extern short __attribute__((overloadable, always_inline)) rsClamp(short amount, short low, short high);
 extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high);
 extern uchar4 __attribute__((overloadable)) convert_uchar4(short4);
+extern uchar4 __attribute__((overloadable)) convert_uchar4(float4);
+extern float4 __attribute__((overloadable)) convert_float4(uchar4);
 extern float __attribute__((overloadable)) sqrt(float);
-
 
 /*
  * CLAMP
  */
-
 extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
     return amount < low ? low : (amount > high ? high : amount);
 }
@@ -706,7 +706,6 @@ extern float4 __attribute__((overloadable)) min(float4 v1, float v2) {
     return fmin(v1, v2);
 }
 
-
 /*
  * YUV
  */
@@ -840,5 +839,98 @@ extern float4 __attribute__((overloadable)) half_rsqrt(float4 v) {
     r.z = half_rsqrt(v.z);
     r.w = half_rsqrt(v.w);
     return r;
+}
+
+/**
+ * matrix ops
+ */
+
+extern float4 __attribute__((overloadable))
+rsMatrixMultiply(const rs_matrix4x4 *m, float4 in) {
+    float4 ret;
+    ret.x = (m->m[0] * in.x) + (m->m[4] * in.y) + (m->m[8] * in.z) + (m->m[12] * in.w);
+    ret.y = (m->m[1] * in.x) + (m->m[5] * in.y) + (m->m[9] * in.z) + (m->m[13] * in.w);
+    ret.z = (m->m[2] * in.x) + (m->m[6] * in.y) + (m->m[10] * in.z) + (m->m[14] * in.w);
+    ret.w = (m->m[3] * in.x) + (m->m[7] * in.y) + (m->m[11] * in.z) + (m->m[15] * in.w);
+    return ret;
+}
+
+extern float4 __attribute__((overloadable))
+rsMatrixMultiply(const rs_matrix4x4 *m, float3 in) {
+    float4 ret;
+    ret.x = (m->m[0] * in.x) + (m->m[4] * in.y) + (m->m[8] * in.z) + m->m[12];
+    ret.y = (m->m[1] * in.x) + (m->m[5] * in.y) + (m->m[9] * in.z) + m->m[13];
+    ret.z = (m->m[2] * in.x) + (m->m[6] * in.y) + (m->m[10] * in.z) + m->m[14];
+    ret.w = (m->m[3] * in.x) + (m->m[7] * in.y) + (m->m[11] * in.z) + m->m[15];
+    return ret;
+}
+
+extern float4 __attribute__((overloadable))
+rsMatrixMultiply(const rs_matrix4x4 *m, float2 in) {
+    float4 ret;
+    ret.x = (m->m[0] * in.x) + (m->m[4] * in.y) + m->m[12];
+    ret.y = (m->m[1] * in.x) + (m->m[5] * in.y) + m->m[13];
+    ret.z = (m->m[2] * in.x) + (m->m[6] * in.y) + m->m[14];
+    ret.w = (m->m[3] * in.x) + (m->m[7] * in.y) + m->m[15];
+    return ret;
+}
+
+extern float3 __attribute__((overloadable))
+rsMatrixMultiply(const rs_matrix3x3 *m, float3 in) {
+    float3 ret;
+    ret.x = (m->m[0] * in.x) + (m->m[3] * in.y) + (m->m[6] * in.z);
+    ret.y = (m->m[1] * in.x) + (m->m[4] * in.y) + (m->m[7] * in.z);
+    ret.z = (m->m[2] * in.x) + (m->m[5] * in.y) + (m->m[8] * in.z);
+    return ret;
+}
+
+extern float3 __attribute__((overloadable))
+rsMatrixMultiply(const rs_matrix3x3 *m, float2 in) {
+    float3 ret;
+    ret.x = (m->m[0] * in.x) + (m->m[3] * in.y);
+    ret.y = (m->m[1] * in.x) + (m->m[4] * in.y);
+    ret.z = (m->m[2] * in.x) + (m->m[5] * in.y);
+    return ret;
+}
+
+/**
+ * Pixel Ops
+ */
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float r, float g, float b)
+{
+    uchar4 c;
+    c.x = (uchar)clamp((r * 255.f + 0.5f), 0.f, 255.f);
+    c.y = (uchar)clamp((g * 255.f + 0.5f), 0.f, 255.f);
+    c.z = (uchar)clamp((b * 255.f + 0.5f), 0.f, 255.f);
+    c.w = 255;
+    return c;
+}
+
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float r, float g, float b, float a)
+{
+    uchar4 c;
+    c.x = (uchar)clamp((r * 255.f + 0.5f), 0.f, 255.f);
+    c.y = (uchar)clamp((g * 255.f + 0.5f), 0.f, 255.f);
+    c.z = (uchar)clamp((b * 255.f + 0.5f), 0.f, 255.f);
+    c.w = (uchar)clamp((a * 255.f + 0.5f), 0.f, 255.f);
+    return c;
+}
+
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float3 color)
+{
+    color *= 255.f;
+    color += 0.5f;
+    color = clamp(color, 0.f, 255.f);
+    uchar4 c = {color.x, color.y, color.z, 255};
+    return c;
+}
+
+extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float4 color)
+{
+    color *= 255.f;
+    color += 0.5f;
+    color = clamp(color, 0.f, 255.f);
+    uchar4 c = {color.x, color.y, color.z, color.w};
+    return c;
 }
 

@@ -16,6 +16,11 @@
 
 #include "bcc/Support/TargetCompilerConfigs.h"
 
+// Get ARM version number (i.e., __ARM_ARCH__)
+#ifdef __arm__
+#include <machine/cpu-features.h>
+#endif
+
 using namespace bcc;
 
 //===----------------------------------------------------------------------===//
@@ -23,8 +28,23 @@ using namespace bcc;
 //===----------------------------------------------------------------------===//
 #if defined(PROVIDE_ARM_CODEGEN)
 
-void ARMCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
-                                         bool pEnableNEON) {
+bool ARMBaseCompilerConfig::HasThumb2() {
+#if !defined(TARGET_BUILD)
+  // Cross-compiler can always generate Thumb-2 instructions.
+  return true;
+#else // defined(TARGET_BUILD)
+#  if (__ARM_ARCH__ >= 7) || defined(__ARM_ARCH_6T2__)
+  return true;
+#  else
+  // ARM prior to V6T2 doesn't support Thumb-2.
+  return false;
+#  endif
+#endif
+}
+
+void
+ARMBaseCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
+                                        bool pInThumbMode, bool pEnableNEON) {
 #if defined(ARCH_ARM_HAVE_VFP)
   pAttributes.push_back("+vfp3");
 #  if !defined(ARCH_ARM_HAVE_VFP_D32)
@@ -32,10 +52,17 @@ void ARMCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
 #  endif
 #endif
 
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
+  if (pInThumbMode) {
+    if (HasThumb2()) {
+      pAttributes.push_back("+thumb2");
+    } else {
+      pAttributes.push_back("-thumb2");
+    }
+  }
+
+#if defined(ARCH_ARM_HAVE_NEON)
   if (pEnableNEON) {
     pAttributes.push_back("+neon");
-    pAttributes.push_back("+neonfp");
   } else {
     pAttributes.push_back("-neon");
     pAttributes.push_back("-neonfp");
@@ -48,24 +75,25 @@ void ARMCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
   return;
 }
 
-ARMCompilerConfig::ARMCompilerConfig()
-  : CompilerConfig(DEFAULT_ARM_TRIPLE_STRING) {
+ARMBaseCompilerConfig::ARMBaseCompilerConfig(const std::string &pTriple,
+                                             bool pInThumbMode)
+  : CompilerConfig(pTriple), mInThumbMode(pInThumbMode) {
 
   // Enable NEON by default.
   mEnableNEON = true;
 
   std::vector<std::string> attributes;
-  GetFeatureVector(attributes, /* pEnableNEON */mEnableNEON);
+  GetFeatureVector(attributes, mInThumbMode, mEnableNEON);
   setFeatureString(attributes);
 
   return;
 }
 
-bool ARMCompilerConfig::enableNEON(bool pEnable) {
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_ARCH_ARM_HAVE_NEON)
+bool ARMBaseCompilerConfig::enableNEON(bool pEnable) {
+#if defined(ARCH_ARM_HAVE_NEON)
   if (mEnableNEON != pEnable) {
     std::vector<std::string> attributes;
-    GetFeatureVector(attributes, pEnable);
+    GetFeatureVector(attributes, mInThumbMode, pEnable);
     setFeatureString(attributes);
     mEnableNEON = pEnable;
     return true;

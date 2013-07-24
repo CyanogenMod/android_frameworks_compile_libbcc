@@ -23,12 +23,14 @@ namespace bcc {
 
 class X86ABCCompilerDriver : public ABCCompilerDriver {
 public:
-  X86ABCCompilerDriver(const std::string &pTriple)
-      : ABCCompilerDriver(pTriple) { }
+  X86ABCCompilerDriver() : ABCCompilerDriver() { }
 
   virtual ~X86ABCCompilerDriver() { }
 
 private:
+  virtual CompilerConfig *createCompilerConfig() const;
+  virtual LinkerConfig *createLinkerConfig() const;
+
   virtual const char **getNonPortableList() const;
 
   virtual ABCExpandVAArgPass *createExpandVAArgPass() const;

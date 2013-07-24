@@ -23,12 +23,14 @@ namespace bcc {
 
 class MipsABCCompilerDriver : public ABCCompilerDriver {
 public:
-  MipsABCCompilerDriver(const std::string &pTriple)
-      : ABCCompilerDriver(pTriple) { }
+  MipsABCCompilerDriver() : ABCCompilerDriver() { }
 
   virtual ~MipsABCCompilerDriver() { }
 
 private:
+  virtual CompilerConfig *createCompilerConfig() const;
+  virtual LinkerConfig *createLinkerConfig() const;
+
   virtual const char **getNonPortableList() const;
 
   virtual ABCExpandVAArgPass *createExpandVAArgPass() const;

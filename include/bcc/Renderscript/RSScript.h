@@ -20,10 +20,17 @@
 #include "bcc/Script.h"
 #include "bcc/Support/Sha1Util.h"
 
+namespace llvm {
+  class Module;
+}  // end namespace llvm
+
 namespace bcc {
 
 class RSInfo;
+class RSScript;
 class Source;
+
+typedef llvm::Module* (*RSLinkRuntimeCallback) (bcc::RSScript *, llvm::Module *, llvm::Module *);
 
 class RSScript : public Script {
 public:
@@ -44,33 +51,55 @@ private:
 
   OptimizationLevel mOptimizationLevel;
 
+  RSLinkRuntimeCallback mLinkRuntimeCallback;
+
+  bool mEmbedInfo;
+
 private:
   // This will be invoked when the containing source has been reset.
   virtual bool doReset();
 
 public:
-  static bool LinkRuntime(RSScript &pScript);
+  static bool LinkRuntime(RSScript &pScript, const char *rt_path = NULL);
 
   RSScript(Source &pSource);
 
   // Set the associated RSInfo of the script.
-  void setInfo(const RSInfo *pInfo)
-  { mInfo = pInfo; }
+  void setInfo(const RSInfo *pInfo) {
+    mInfo = pInfo;
+  }
 
-  const RSInfo *getInfo() const
-  { return mInfo; }
+  const RSInfo *getInfo() const {
+    return mInfo;
+  }
 
-  void setCompilerVersion(unsigned pCompilerVersion)
-  {  mCompilerVersion = pCompilerVersion; }
+  void setCompilerVersion(unsigned pCompilerVersion) {
+    mCompilerVersion = pCompilerVersion;
+  }
 
-  unsigned getCompilerVersion() const
-  {  return mCompilerVersion; }
+  unsigned getCompilerVersion() const {
+    return mCompilerVersion;
+  }
 
-  void setOptimizationLevel(OptimizationLevel pOptimizationLevel)
-  {  mOptimizationLevel = pOptimizationLevel; }
+  void setOptimizationLevel(OptimizationLevel pOptimizationLevel) {
+    mOptimizationLevel = pOptimizationLevel;
+  }
 
-  OptimizationLevel getOptimizationLevel() const
-  {  return mOptimizationLevel; }
+  OptimizationLevel getOptimizationLevel() const {
+    return mOptimizationLevel;
+  }
+
+  void setLinkRuntimeCallback(RSLinkRuntimeCallback fn){
+    mLinkRuntimeCallback = fn;
+  }
+
+  void setEmbedInfo(bool pEnable) {
+    mEmbedInfo = pEnable;
+  }
+
+  bool getEmbedInfo() const {
+    return mEmbedInfo;
+  }
 };
 
 } // end namespace bcc
