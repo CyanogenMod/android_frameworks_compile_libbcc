@@ -23,6 +23,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/MDBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
@@ -490,13 +491,21 @@ public:
     // Construct the actual function body.
     llvm::IRBuilder<> Builder(ExpandedFunc->getEntryBlock().begin());
 
+    // Create TBAA meta-data.
+    llvm::MDNode *TBAARenderScript, *TBAAAllocation, *TBAAPointer;
+
+    llvm::MDBuilder MDHelper(*C);
+    TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
+    TBAAAllocation = MDHelper.createTBAANode("allocation", TBAARenderScript);
+    TBAAPointer = MDHelper.createTBAANode("pointer", TBAARenderScript);
+
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator Args = F->arg_begin();
 
     llvm::Type *OutTy = NULL;
     bool PassOutByReference = false;
-    llvm::Value *OutBasePtr = NULL;
+    llvm::LoadInst *OutBasePtr = NULL;
     if (hasOut(Signature)) {
       llvm::Type *OutBaseTy = F->getReturnType();
       if (OutBaseTy->isVoidTy()) {
@@ -510,17 +519,19 @@ public:
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
+      OutBasePtr->setMetadata("tbaa", TBAAPointer);
     }
 
     llvm::Type *InBaseTy = NULL;
     llvm::Type *InTy = NULL;
-    llvm::Value *InBasePtr = NULL;
+    llvm::LoadInst *InBasePtr = NULL;
     if (hasIn(Signature)) {
       InBaseTy = Args->getType();
       InTy =InBaseTy->getPointerTo();
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
       InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
+      InBasePtr->setMetadata("tbaa", TBAAPointer);
       Args++;
     }
 
@@ -574,7 +585,8 @@ public:
     }
 
     if (InPtr) {
-      llvm::Value *In = Builder.CreateLoad(InPtr, "In");
+      llvm::LoadInst *In = Builder.CreateLoad(InPtr, "In");
+      In->setMetadata("tbaa", TBAAAllocation);
       RootArgs.push_back(In);
     }
 
@@ -590,16 +602,99 @@ public:
     llvm::Value *RetVal = Builder.CreateCall(F, RootArgs);
 
     if (OutPtr && !PassOutByReference) {
-      Builder.CreateStore(RetVal, OutPtr);
+      llvm::StoreInst *Store = Builder.CreateStore(RetVal, OutPtr);
+      Store->setMetadata("tbaa", TBAAAllocation);
     }
 
     return true;
+  }
+
+  /// @brief Checks if pointers to allocation internals are exposed
+  ///
+  /// This function verifies if through the parameters passed to the kernel
+  /// or through calls to the runtime library the script gains access to
+  /// pointers pointing to data within a RenderScript Allocation.
+  /// If we know we control all loads from and stores to data within
+  /// RenderScript allocations and if we know the run-time internal accesses
+  /// are all annotated with RenderScript TBAA metadata, only then we
+  /// can safely use TBAA to distinguish between generic and from-allocation
+  /// pointers.
+  bool allocPointersExposed(llvm::Module &M) {
+    // Old style kernel function can expose pointers to elements within
+    // allocations.
+    // TODO: Extend analysis to allow simple cases of old-style kernels.
+    for (RSInfo::ExportForeachFuncListTy::const_iterator
+             func_iter = mFuncs.begin(), func_end = mFuncs.end();
+         func_iter != func_end; func_iter++) {
+      const char *Name = func_iter->first;
+      uint32_t Signature = func_iter->second;
+      if (M.getFunction(Name) && !isKernel(Signature)) {
+        return true;
+      }
+    }
+
+    // Check for library functions that expose a pointer to an Allocation or
+    // that are not yet annotated with RenderScript-specific tbaa information.
+    static std::vector<std::string> Funcs;
+
+    // rsGetElementAt(...)
+    Funcs.push_back("_Z14rsGetElementAt13rs_allocationj");
+    Funcs.push_back("_Z14rsGetElementAt13rs_allocationjj");
+    Funcs.push_back("_Z14rsGetElementAt13rs_allocationjjj");
+    // rsSetElementAt()
+    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvj");
+    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvjj");
+    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvjjj");
+    // rsGetElementAtYuv_uchar_Y()
+    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_Y13rs_allocationjj");
+    // rsGetElementAtYuv_uchar_U()
+    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_U13rs_allocationjj");
+    // rsGetElementAtYuv_uchar_V()
+    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_V13rs_allocationjj");
+
+    for (std::vector<std::string>::iterator FI = Funcs.begin(),
+                                            FE = Funcs.end();
+         FI != FE; ++FI) {
+      llvm::Function *F = M.getFunction(*FI);
+
+      if (!F) {
+        ALOGE("Missing run-time function '%s'", FI->c_str());
+        return true;
+      }
+
+      if (F->getNumUses() > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// @brief Connect RenderScript TBAA metadata to C/C++ metadata
+  ///
+  /// The TBAA metadata used to annotate loads/stores from RenderScript
+  /// Allocations is generated in a separate TBAA tree with a "RenderScript TBAA"
+  /// root node. LLVM does assume may-alias for all nodes in unrelated alias
+  /// analysis trees. This function makes the RenderScript TBAA a subtree of the
+  /// normal C/C++ TBAA tree aside of normal C/C++ types. With the connected trees
+  /// every access to an Allocation is resolved to must-alias if compared to
+  /// a normal C/C++ access.
+  void connectRenderScriptTBAAMetadata(llvm::Module &M) {
+    llvm::MDBuilder MDHelper(*C);
+    llvm::MDNode *TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
+
+    llvm::MDNode *TBAARoot = MDHelper.createTBAARoot("Simple C/C++ TBAA");
+    llvm::MDNode *TBAAMergedRS = MDHelper.createTBAANode("RenderScript", TBAARoot);
+
+    TBAARenderScript->replaceAllUsesWith(TBAAMergedRS);
   }
 
   virtual bool runOnModule(llvm::Module &M) {
     bool Changed = false;
     this->M = &M;
     C = &M.getContext();
+
+    bool AllocsExposed = allocPointersExposed(M);
 
     for (RSInfo::ExportForeachFuncListTy::const_iterator
              func_iter = mFuncs.begin(), func_end = mFuncs.end();
@@ -620,6 +715,10 @@ public:
           // functions, we can not set the linkage to internal.
         }
       }
+    }
+
+    if (!AllocsExposed) {
+      connectRenderScriptTBAAMetadata(M);
     }
 
     return Changed;
