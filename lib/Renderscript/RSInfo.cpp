@@ -17,7 +17,9 @@
 //#define LOG_NDEBUG 0
 #include "bcc/Renderscript/RSInfo.h"
 
+#if !defined(_WIN32)  /* TODO create a HAVE_DLFCN_H */
 #include <dlfcn.h>
+#endif
 
 #include <cstring>
 #include <new>
