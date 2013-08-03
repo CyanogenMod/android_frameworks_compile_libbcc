@@ -36,6 +36,8 @@
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Log.h"
 
+#include "bcinfo/MetadataExtractor.h"
+
 using namespace bcc;
 
 namespace {
@@ -130,30 +132,6 @@ private:
     } else {
       return OrigStep;
     }
-  }
-
-  static bool hasIn(uint32_t Signature) {
-    return Signature & 0x01;
-  }
-
-  static bool hasOut(uint32_t Signature) {
-    return Signature & 0x02;
-  }
-
-  static bool hasUsrData(uint32_t Signature) {
-    return Signature & 0x04;
-  }
-
-  static bool hasX(uint32_t Signature) {
-    return Signature & 0x08;
-  }
-
-  static bool hasY(uint32_t Signature) {
-    return Signature & 0x10;
-  }
-
-  static bool isKernel(uint32_t Signature) {
-    return Signature & 0x20;
   }
 
   /// @brief Returns the type of the ForEach stub parameter structure.
@@ -359,7 +337,7 @@ public:
 
     llvm::Type *InTy = NULL;
     llvm::Value *InBasePtr = NULL;
-    if (hasIn(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
       InTy = Args->getType();
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
@@ -369,7 +347,7 @@ public:
 
     llvm::Type *OutTy = NULL;
     llvm::Value *OutBasePtr = NULL;
-    if (hasOut(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       OutTy = Args->getType();
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
@@ -378,7 +356,7 @@ public:
     }
 
     llvm::Value *UsrData = NULL;
-    if (hasUsrData(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = Args->getType();
       UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 2)), UsrDataTy);
@@ -386,12 +364,12 @@ public:
       Args++;
     }
 
-    if (hasX(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       Args++;
     }
 
     llvm::Value *Y = NULL;
-    if (hasY(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
       Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
       Args++;
     }
@@ -441,7 +419,7 @@ public:
     }
 
     llvm::Value *X = IV;
-    if (hasX(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       RootArgs.push_back(X);
     }
 
@@ -457,7 +435,7 @@ public:
   /* Expand a pass-by-value kernel.
    */
   bool ExpandKernel(llvm::Function *F, uint32_t Signature) {
-    bccAssert(isKernel(Signature));
+    bccAssert(bcinfo::MetadataExtractor::hasForEachSignatureKernel(Signature));
     ALOGV("Expanding kernel Function %s", F->getName().str().c_str());
 
     // TODO: Refactor this to share functionality with ExpandFunction.
@@ -506,7 +484,7 @@ public:
     llvm::Type *OutTy = NULL;
     bool PassOutByReference = false;
     llvm::LoadInst *OutBasePtr = NULL;
-    if (hasOut(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       llvm::Type *OutBaseTy = F->getReturnType();
       if (OutBaseTy->isVoidTy()) {
         PassOutByReference = true;
@@ -525,7 +503,7 @@ public:
     llvm::Type *InBaseTy = NULL;
     llvm::Type *InTy = NULL;
     llvm::LoadInst *InBasePtr = NULL;
-    if (hasIn(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
       InBaseTy = Args->getType();
       InTy =InBaseTy->getPointerTo();
       InStep = getStepValue(&DL, InTy, Arg_instep);
@@ -536,14 +514,15 @@ public:
     }
 
     // No usrData parameter on kernels.
-    bccAssert(!hasUsrData(Signature));
+    bccAssert(
+        !bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature));
 
-    if (hasX(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       Args++;
     }
 
     llvm::Value *Y = NULL;
-    if (hasY(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
       Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
       Args++;
     }
@@ -591,7 +570,7 @@ public:
     }
 
     llvm::Value *X = IV;
-    if (hasX(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       RootArgs.push_back(X);
     }
 
@@ -628,7 +607,8 @@ public:
          func_iter != func_end; func_iter++) {
       const char *Name = func_iter->first;
       uint32_t Signature = func_iter->second;
-      if (M.getFunction(Name) && !isKernel(Signature)) {
+      if (M.getFunction(Name) &&
+          !bcinfo::MetadataExtractor::hasForEachSignatureKernel(Signature)) {
         return true;
       }
     }
@@ -703,7 +683,7 @@ public:
       uint32_t signature = func_iter->second;
       llvm::Function *kernel = M.getFunction(name);
       if (kernel) {
-        if (isKernel(signature)) {
+        if (bcinfo::MetadataExtractor::hasForEachSignatureKernel(signature)) {
           Changed |= ExpandKernel(kernel, signature);
           kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
         } else if (kernel->getReturnType()->isVoidTy()) {
