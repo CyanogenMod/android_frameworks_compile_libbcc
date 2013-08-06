@@ -26,7 +26,6 @@ include $(LIBBCC_ROOT_PATH)/libbcc.mk
 #=====================================================================
 
 libbcc_WHOLE_STATIC_LIBRARIES += \
-  libbccAndroidBitcode \
   libbccRenderscript \
   libbccExecutionEngine \
   libbccCore \
