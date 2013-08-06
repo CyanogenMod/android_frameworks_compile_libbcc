@@ -21,9 +21,6 @@
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/Support/TargetSelect.h>
 
-#include <mcld/Support/TargetSelect.h>
-#include <mcld/Support/TargetRegistry.h>
-
 #include "bcc/Config/Config.h"
 #include "bcc/Support/Log.h"
 
@@ -55,10 +52,6 @@ void bcc::init::Initialize() {
   LLVMInitializeARMTargetMC();
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
-  MCLDInitializeARMLDTargetInfo();
-  MCLDInitializeARMLDTarget();
-  MCLDInitializeARMLDBackend();
-  MCLDInitializeARMDiagnosticLineInfo();
 #endif
 
 #if defined(PROVIDE_MIPS_CODEGEN)
@@ -69,10 +62,6 @@ void bcc::init::Initialize() {
   LLVMInitializeMipsTargetMC();
   LLVMInitializeMipsTargetInfo();
   LLVMInitializeMipsTarget();
-  MCLDInitializeMipsLDTargetInfo();
-  MCLDInitializeMipsLDTarget();
-  MCLDInitializeMipsLDBackend();
-  MCLDInitializeMipsDiagnosticLineInfo();
 #endif
 
 #if defined(PROVIDE_X86_CODEGEN)
@@ -83,10 +72,6 @@ void bcc::init::Initialize() {
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
-  MCLDInitializeX86LDTargetInfo();
-  MCLDInitializeX86LDTarget();
-  MCLDInitializeX86LDBackend();
-  MCLDInitializeX86DiagnosticLineInfo();
 #endif
 
   is_initialized = true;

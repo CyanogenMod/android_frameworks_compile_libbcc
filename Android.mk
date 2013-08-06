@@ -31,18 +31,6 @@ libbcc_WHOLE_STATIC_LIBRARIES += \
   libbccCore \
   libbccSupport
 
-libmcld_STATIC_LIBRARIES += \
-  libmcldCodeGen \
-  libmcldTarget \
-  libmcldLDVariant \
-  libmcldMC \
-  libmcldObject \
-  libmcldFragment \
-  libmcldCore \
-  libmcldSupport \
-  libmcldADT \
-  libmcldLD
-
 #=====================================================================
 # Calculate SHA1 checksum for libbcc.so, libRS.so and libclcore.bc
 #=====================================================================
@@ -98,27 +86,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
-ifeq ($(TARGET_ARCH),arm)
-  LOCAL_WHOLE_STATIC_LIBRARIES += \
-    libmcldARMTarget \
-    libmcldARMInfo
-else
-  ifeq ($(TARGET_ARCH), mips)
-    LOCAL_WHOLE_STATIC_LIBRARIES += \
-      libmcldMipsTarget \
-      libmcldMipsInfo
-  else
-    ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
-      LOCAL_WHOLE_STATIC_LIBRARIES += \
-        libmcldX86Target \
-        libmcldX86Info
-    else
-      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
-    endif
-  endif
-endif
-
-LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
@@ -156,16 +123,6 @@ LOCAL_IS_HOST_MODULE := true
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
-
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libmcldARMTarget \
-  libmcldARMInfo \
-  libmcldMipsTarget \
-  libmcldMipsInfo \
-  libmcldX86Target \
-  libmcldX86Info
-
-LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 
 LOCAL_STATIC_LIBRARIES += \
   libutils \
