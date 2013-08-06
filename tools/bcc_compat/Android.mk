@@ -34,7 +34,10 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
+ifndef USE_MINGW
 LOCAL_LDLIBS = -ldl
+endif
+
 LOCAL_SRC_FILES := Main.cpp
 
 include $(LIBBCC_HOST_BUILD_MK)

@@ -24,59 +24,6 @@
 
 using namespace bcc;
 
-OutputFile *OutputFile::CreateTemporary(const std::string &pFileTemplate,
-                                        unsigned pFlags) {
-  char *tmp_filename = NULL;
-  int tmp_fd;
-  OutputFile *result = NULL;
-
-  // Allocate memory to hold the generated unique temporary filename.
-  tmp_filename =
-      new (std::nothrow) char [ pFileTemplate.length() + /* .XXXXXX */7 + 1 ];
-  if (tmp_filename == NULL) {
-    ALOGE("Out of memory when allocates memory for filename %s in "
-          "OutputFile::CreateTemporary()!", pFileTemplate.c_str());
-    return NULL;
-  }
-
-  // Construct filename template for mkstemp().
-  if (pFileTemplate.length() > 0)
-    ::memcpy(tmp_filename, pFileTemplate.c_str(), pFileTemplate.length());
-  ::strncpy(tmp_filename + pFileTemplate.length(), ".XXXXXX", 7);
-
-  // POSIX mkstemp() never returns EINTR.
-  tmp_fd = ::mkstemp(tmp_filename);
-  if (tmp_fd < 0) {
-    llvm::error_code err(errno, llvm::posix_category());
-    ALOGE("Failed to create temporary file using mkstemp() for %s! (%s)",
-          tmp_filename, err.message().c_str());
-    delete [] tmp_filename;
-    return NULL;
-  }
-
-  // Create result OutputFile. Temporary file is always truncated.
-  result = new (std::nothrow) OutputFile(tmp_filename,
-                                         pFlags | FileBase::kTruncate);
-  if (result == NULL) {
-    ALOGE("Out of memory when creates OutputFile for %s!", tmp_filename);
-    // Fall through to the clean-up codes.
-  } else {
-    if (result->hasError()) {
-      ALOGE("Failed to open temporary output file %s! (%s)",
-            result->getName().c_str(), result->getErrorMessage().c_str());
-      delete result;
-      result = NULL;
-      // Fall through to the clean-up codes.
-    }
-  }
-
-  // Clean up.
-  delete [] tmp_filename;
-  ::close(tmp_fd);
-
-  return result;
-}
-
 OutputFile::OutputFile(const std::string &pFilename, unsigned pFlags)
   : super(pFilename, pFlags) { }
 

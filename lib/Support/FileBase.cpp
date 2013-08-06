@@ -30,6 +30,18 @@
 
 using namespace bcc;
 
+#ifdef _WIN32
+// TODO: Fix flock usage under windows
+#define LOCK_SH 0
+#define LOCK_EX 0
+#define LOCK_NB 0
+#define LOCK_UN 0
+
+int flock(int fd, int operation) {
+  return 0;
+}
+#endif  // _WIN32
+
 FileBase::FileBase(const std::string &pFilename,
                    unsigned pOpenFlags,
                    unsigned pFlags)
