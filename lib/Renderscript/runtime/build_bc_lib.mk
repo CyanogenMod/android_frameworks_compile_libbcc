@@ -16,7 +16,7 @@
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
-BCC_STRIP_ATTR := $(HOST_OUT_EXECUTABLES)/bcc_strip_attr$(HOST_EXECUTABLE_SUFFIX)
+BCC_STRIP_ATTR := $(BUILD_OUT_EXECUTABLES)/bcc_strip_attr$(BUILD_EXECUTABLE_SUFFIX)
 
 # We need to pass the +long64 flag to the underlying version of Clang, since
 # we are generating a library for use with Renderscript (64-bit long type,
