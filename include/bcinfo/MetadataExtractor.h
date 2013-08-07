@@ -197,6 +197,66 @@ class MetadataExtractor {
   enum RSFloatPrecision getRSFloatPrecision() const {
     return mRSFloatPrecision;
   }
+
+  /**
+   * \return whether or not this ForEach function signature has an "In"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureIn(uint32_t sig) {
+    return sig & 0x01;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature has an "Out"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureOut(uint32_t sig) {
+    return sig & 0x02;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature has a "UsrData"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureUsrData(uint32_t sig) {
+    return sig & 0x04;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature has an "X"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureX(uint32_t sig) {
+    return sig & 0x08;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature has a "Y"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureY(uint32_t sig) {
+    return sig & 0x10;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature is a
+   * pass-by-value "Kernel".
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureKernel(uint32_t sig) {
+    return sig & 0x20;
+  }
 };
 
 }  // namespace bcinfo
