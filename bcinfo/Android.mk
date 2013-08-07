@@ -87,7 +87,9 @@ LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_STATIC_LIBRARIES += libcutils liblog
 LOCAL_SHARED_LIBRARIES += libLLVM
 
+ifndef USE_MINGW
 LOCAL_LDLIBS := -ldl -lpthread
+endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_SHARED_LIBRARY)

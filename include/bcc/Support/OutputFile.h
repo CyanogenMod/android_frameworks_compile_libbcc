@@ -29,12 +29,6 @@ namespace bcc {
 class OutputFile : public File<FileBase::kWriteMode> {
   typedef File<FileBase::kWriteMode> super;
 public:
-  // Generate a unique temporary filename from pFileTemplate and open it in
-  // an OutputFile returned. The filename will be pFileTemplate with
-  // a dot ('.') plus six random characters appended. Return NULL on error.
-  static OutputFile *CreateTemporary(const std::string &pFileTemplate,
-                                     unsigned pFlags);
-
   OutputFile(const std::string &pFilename, unsigned pFlags = 0);
 
   ssize_t write(const void *pBuf, size_t count);

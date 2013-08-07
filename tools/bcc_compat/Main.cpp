@@ -32,7 +32,6 @@
 #include <bcc/Compiler.h>
 #include <bcc/Config/BuildInfo.h>
 #include <bcc/Config/Config.h>
-#include <bcc/ExecutionEngine/ObjectLoader.h>
 #include <bcc/ExecutionEngine/SymbolResolverProxy.h>
 #include <bcc/ExecutionEngine/SymbolResolvers.h>
 #include <bcc/Renderscript/RSCompilerDriver.h>
