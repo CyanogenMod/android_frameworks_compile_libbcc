@@ -221,6 +221,9 @@ RSCompilerDriver::compileScript(RSScript &pScript,
     return NULL;
   }
 
+  // FIXME(srhines): Windows compilation can't use locking like this, but
+  // we also don't need to worry about concurrent writers of the same file.
+#ifndef USE_MINGW
   //===--------------------------------------------------------------------===//
   // Acquire the write lock for writing output object file.
   //===--------------------------------------------------------------------===//
@@ -231,6 +234,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
           pOutputPath, write_output_mutex.getErrorMessage().c_str());
     return NULL;
   }
+#endif
 
   //===--------------------------------------------------------------------===//
   // Open the output file for write.
