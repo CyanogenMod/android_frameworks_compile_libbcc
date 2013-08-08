@@ -112,34 +112,6 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
   return result;
 }
 
-Source *Source::CreateFromFd(BCCContext &pContext, int pFd) {
-  llvm::OwningPtr<llvm::MemoryBuffer> input_data;
-
-  llvm::error_code ec =
-      llvm::MemoryBuffer::getOpenFile(pFd, /* Filename */"", input_data);
-
-  if (ec != llvm::error_code::success()) {
-    ALOGE("Failed to load bitcode from file descriptor %d! (%s)",
-          pFd, ec.message().c_str());
-    return NULL;
-  }
-
-  llvm::MemoryBuffer *input_memory = input_data.take();
-  llvm::Module *module = helper_load_bitcode(pContext.mImpl->mLLVMContext,
-                                             input_memory);
-  if (module == NULL) {
-    delete input_memory;
-    return NULL;
-  }
-
-  Source *result = CreateFromModule(pContext, *module, /* pNoDelete */false);
-  if (result == NULL) {
-    delete module;
-  }
-
-  return result;
-}
-
 Source *Source::CreateFromModule(BCCContext &pContext, llvm::Module &pModule,
                                  bool pNoDelete) {
   Source *result = new (std::nothrow) Source(pContext, pModule, pNoDelete);

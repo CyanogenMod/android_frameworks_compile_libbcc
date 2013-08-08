@@ -18,7 +18,7 @@
 
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
-#include <llvm/Support/PathV1.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "bcinfo/BitcodeWrapper.h"
@@ -80,16 +80,10 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
   uint8_t bitcode_sha1[20];
   Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
 
-  llvm::sys::Path output_path(pCacheDir);
-
-  // {pCacheDir}/{pResName}
-  if (!output_path.appendComponent(pResName)) {
-    ALOGE("Failed to construct output path %s/%s!", pCacheDir, pResName);
-    return NULL;
-  }
-
   // {pCacheDir}/{pResName}.o
-  output_path.appendSuffix("o");
+  llvm::SmallString<80> output_path(pCacheDir);
+  llvm::sys::path::append(output_path, pResName);
+  llvm::sys::path::replace_extension(output_path, ".o");
 
   dep_info.push(std::make_pair(output_path.c_str(), bitcode_sha1));
 
@@ -364,17 +358,11 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 
   //===--------------------------------------------------------------------===//
   // Construct output path.
-  //===--------------------------------------------------------------------===//
-  llvm::sys::Path output_path(pCacheDir);
-
-  // {pCacheDir}/{pResName}
-  if (!output_path.appendComponent(pResName)) {
-    ALOGE("Failed to construct output path %s/%s!", pCacheDir, pResName);
-    return false;
-  }
-
   // {pCacheDir}/{pResName}.o
-  output_path.appendSuffix("o");
+  //===--------------------------------------------------------------------===//
+  llvm::SmallString<80> output_path(pCacheDir);
+  llvm::sys::path::append(output_path, pResName);
+  llvm::sys::path::replace_extension(output_path, ".o");
 
   dep_info.push(std::make_pair(output_path.c_str(), bitcode_sha1));
 

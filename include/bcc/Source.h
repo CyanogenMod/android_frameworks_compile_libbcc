@@ -47,8 +47,6 @@ public:
   static Source *CreateFromFile(BCCContext &pContext,
                                 const std::string &pPath);
 
-  static Source *CreateFromFd(BCCContext &pContext, int pFd);
-
   // Create a Source object from an existing module. If pNoDelete
   // is true, destructor won't call delete on the given module.
   static Source *CreateFromModule(BCCContext &pContext,
