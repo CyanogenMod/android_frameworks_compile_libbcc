@@ -230,7 +230,12 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   }
 
   {
+    // FIXME(srhines): Windows compilation can't use locking like this, but
+    // we also don't need to worry about concurrent writers of the same file.
+#ifndef USE_MINGW
+    //===------------------------------------------------------------------===//
     // Acquire the write lock for writing output object file.
+    //===------------------------------------------------------------------===//
     FileMutex<FileBase::kWriteLock> write_output_mutex(pOutputPath);
 
     if (write_output_mutex.hasError() || !write_output_mutex.lock()) {
@@ -238,6 +243,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
             pOutputPath, write_output_mutex.getErrorMessage().c_str());
       return Compiler::kErrInvalidSource;
     }
+#endif
 
     // Open the output file for write.
     OutputFile output_file(pOutputPath, FileBase::kTruncate);
