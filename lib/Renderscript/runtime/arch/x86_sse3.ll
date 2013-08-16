@@ -72,4 +72,3 @@ define float @_Z6lengthDv2_f(<2 x float> %in) nounwind readnone alwaysinline {
 define float @_Z6lengthf(float %in) nounwind readnone alwaysinline {
   ret float %in
 }
-

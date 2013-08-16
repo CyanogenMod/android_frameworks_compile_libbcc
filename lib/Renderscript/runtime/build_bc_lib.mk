@@ -36,9 +36,16 @@ bc_cflags := -MD \
              $(bc_translated_clang_cc1_cflags)
 
 ifeq ($(rs_debug_runtime),1)
-bc_cflags += -DRS_DEBUG_RUNTIME
+    bc_cflags += -DRS_DEBUG_RUNTIME
 endif
 rs_debug_runtime:=
+
+ifeq ($(ARCH_X86_HAVE_SSE2), true)
+    bc_cflags += -DARCH_X86_HAVE_SSE2
+endif
+ifeq ($(ARCH_X86_HAVE_SSE3), true)
+    bc_cflags += -DARCH_X86_HAVE_SSE3
+endif
 
 c_sources := $(filter %.c,$(LOCAL_SRC_FILES))
 ll_sources := $(filter %.ll,$(LOCAL_SRC_FILES))

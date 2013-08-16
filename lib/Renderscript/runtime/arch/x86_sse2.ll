@@ -6,6 +6,14 @@ declare <4 x float> @llvm.x86.sse.max.ps(<4 x float>, <4 x float>)
 declare <4 x float> @llvm.x86.sse.min.ss(<4 x float>, <4 x float>)
 declare <4 x float> @llvm.x86.sse.max.ss(<4 x float>, <4 x float>)
 
+declare float @llvm.sqrt.f32(float) nounwind readnone
+declare <2 x float> @llvm.sqrt.v2f32(<2 x float>) nounwind readnone
+declare <3 x float> @llvm.sqrt.v3f32(<3 x float>) nounwind readnone
+declare <4 x float> @llvm.sqrt.v4f32(<4 x float>) nounwind readnone
+
+declare float @llvm.exp.f32(float) nounwind readonly
+declare float @llvm.pow.f32(float, float) nounwind readonly
+
 define <4 x float> @_Z5clampDv4_fS_S_(<4 x float> %in, <4 x float> %low, <4 x float> %high) nounwind readnone alwaysinline {
   %1 = tail call <4 x float> @llvm.x86.sse.min.ps(<4 x float> %in, <4 x float> %high) nounwind readnone
   %2 = tail call <4 x float> @llvm.x86.sse.max.ps(<4 x float> %1, <4 x float> %low) nounwind readnone
@@ -71,4 +79,24 @@ define <2 x float> @_Z5clampDv2_fff(<2 x float> %in, float %low, float %high) no
   %4 = insertelement <2 x float> %3, float %high, i32 1
   %5 = tail call <2 x float> @_Z5clampDv2_fS_S_(<2 x float> %in, <2 x float> %2, <2 x float> %4) nounwind readnone
   ret <2 x float> %5
+}
+
+define float @_Z4sqrtf(float %in) nounwind readnone alwaysinline {
+  %1 = tail call float @llvm.sqrt.f32(float %in) nounwind readnone
+  ret float %1
+}
+
+define <2 x float> @_Z4sqrtDv2_f(<2 x float> %in) nounwind readnone alwaysinline {
+  %1 = tail call <2 x float> @llvm.sqrt.v2f32(<2 x float> %in) nounwind readnone
+  ret <2 x float> %1
+}
+
+define <3 x float> @_Z4sqrtDv3_f(<3 x float> %in) nounwind readnone alwaysinline {
+  %1 = tail call <3 x float> @llvm.sqrt.v3f32(<3 x float> %in) nounwind readnone
+  ret <3 x float> %1
+}
+
+define <4 x float> @_Z4sqrtDv4_f(<4 x float> %in) nounwind readnone alwaysinline {
+  %1 = tail call <4 x float> @llvm.sqrt.v4f32(<4 x float> %in) nounwind readnone
+  ret <4 x float> %1
 }
