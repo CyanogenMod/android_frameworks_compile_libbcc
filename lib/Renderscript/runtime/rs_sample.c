@@ -421,7 +421,7 @@ static float4  __attribute__((overloadable))
 }
 
 static float4 __attribute__((overloadable))
-        sample_LOD_LinearPixel(const Allocation_t *alloc, const Type_t *type,
+        sample_LOD_LinearPixel(const Allocation_t *alloc,
                                rs_data_kind dk, rs_data_type dt,
                                rs_sampler s,
                                float uv, uint32_t lod) {

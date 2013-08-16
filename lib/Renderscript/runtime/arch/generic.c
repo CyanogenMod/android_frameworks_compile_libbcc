@@ -27,6 +27,8 @@ extern float __attribute__((overloadable)) sqrt(float);
 /*
  * CLAMP
  */
+#if !defined(ARCH_X86_HAVE_SSE2) && !defined(ARCH_X86_HAVE_SSE3)
+
 extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
     return amount < low ? low : (amount > high ? high : amount);
 }
@@ -79,6 +81,17 @@ extern float4 __attribute__((overloadable)) clamp(float4 amount, float low, floa
     return r;
 }
 
+#else
+
+extern float __attribute__((overloadable)) clamp(float amount, float low, float high);
+extern float2 __attribute__((overloadable)) clamp(float2 amount, float2 low, float2 high);
+extern float3 __attribute__((overloadable)) clamp(float3 amount, float3 low, float3 high);
+extern float4 __attribute__((overloadable)) clamp(float4 amount, float4 low, float4 high);
+extern float2 __attribute__((overloadable)) clamp(float2 amount, float low, float high);
+extern float3 __attribute__((overloadable)) clamp(float3 amount, float low, float high);
+extern float4 __attribute__((overloadable)) clamp(float4 amount, float low, float high);
+
+#endif // !defined(ARCH_X86_HAVE_SSE2) && !defined(ARCH_X86_HAVE_SSE3)
 
 /*
  * FMAX
@@ -933,4 +946,3 @@ extern uchar4 __attribute__((overloadable)) rsPackColorTo8888(float4 color)
     uchar4 c = {color.x, color.y, color.z, color.w};
     return c;
 }
-

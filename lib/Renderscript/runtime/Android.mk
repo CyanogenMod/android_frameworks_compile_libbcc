@@ -33,30 +33,23 @@ clcore_base_files := \
 clcore_files := \
     $(clcore_base_files) \
     math.ll \
-    arch/generic.c \
-    arch/sqrt.c \
-    arch/dot_length.c
+    arch/generic.c
 
 clcore_neon_files := \
     $(clcore_base_files) \
     math.ll \
-    arch/neon.ll \
-    arch/sqrt.c \
-    arch/dot_length.c
+    arch/neon.ll
 
 ifeq ($(ARCH_X86_HAVE_SSE2), true)
     clcore_x86_files := \
     $(clcore_base_files) \
-    arch/x86_generic.c \
-    arch/x86_clamp.ll \
-    arch/x86_math.ll
+    arch/generic.c \
+    arch/x86_sse2.ll
 
+    # FIXME: without SSE3, it is still able to get better code through PSHUFD. But,
+    # so far, there is no such device with SSE2 only.
     ifeq ($(ARCH_X86_HAVE_SSE3), true)
-        clcore_x86_files += arch/x86_dot_length.ll
-    else
-        # FIXME: without SSE3, it is still able to get better code through PSHUFD. But,
-        # so far, there is no such device with SSE2 only.
-        clcore_x86_files += arch/dot_length.c
+        clcore_x86_files += arch/x86_sse3.ll
     endif
 endif
 
