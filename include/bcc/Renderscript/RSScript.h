@@ -21,10 +21,6 @@
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Sha1Util.h"
 
-namespace llvm {
-  class Module;
-}  // end namespace llvm
-
 namespace bcc {
 
 class RSScript;
