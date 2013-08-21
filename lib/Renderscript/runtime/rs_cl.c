@@ -591,6 +591,11 @@ extern float __attribute__((overloadable)) sqrt(float);
 extern float __attribute__((overloadable)) rsqrt(float v) {
     return 1.f / sqrt(v);
 }
+
+#if !defined(ARCH_X86_HAVE_SSE2) && !defined(ARCH_X86_HAVE_SSE3)
+FN_FUNC_FN(sqrt)
+#endif // !defined(ARCH_X86_HAVE_SSE2) && !defined(ARCH_X86_HAVE_SSE3)
+
 FN_FUNC_FN(rsqrt)
 
 extern float __attribute__((overloadable)) sin(float);
@@ -897,10 +902,42 @@ extern float4 __attribute__((overloadable)) cross(float4 lhs, float4 rhs) {
     return r;
 }
 
+#if !defined(ARCH_X86_HAVE_SSE3)
+
+extern float __attribute__((overloadable)) dot(float lhs, float rhs) {
+    return lhs * rhs;
+}
+extern float __attribute__((overloadable)) dot(float2 lhs, float2 rhs) {
+    return lhs.x*rhs.x + lhs.y*rhs.y;
+}
+extern float __attribute__((overloadable)) dot(float3 lhs, float3 rhs) {
+    return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z;
+}
+extern float __attribute__((overloadable)) dot(float4 lhs, float4 rhs) {
+    return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z + lhs.w*rhs.w;
+}
+
+extern float __attribute__((overloadable)) length(float v) {
+    return fabs(v);
+}
+extern float __attribute__((overloadable)) length(float2 v) {
+    return sqrt(v.x*v.x + v.y*v.y);
+}
+extern float __attribute__((overloadable)) length(float3 v) {
+    return sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+}
+extern float __attribute__((overloadable)) length(float4 v) {
+    return sqrt(v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w);
+}
+
+#else
+
 extern float __attribute__((overloadable)) length(float v);
 extern float __attribute__((overloadable)) length(float2 v);
 extern float __attribute__((overloadable)) length(float3 v);
 extern float __attribute__((overloadable)) length(float4 v);
+
+#endif
 
 extern float __attribute__((overloadable)) distance(float lhs, float rhs) {
     return length(lhs - rhs);
