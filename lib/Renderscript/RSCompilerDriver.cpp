@@ -16,7 +16,10 @@
 
 #include "bcc/Renderscript/RSCompilerDriver.h"
 
-#include <llvm/Support/Path.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/PathV1.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "bcinfo/BitcodeWrapper.h"
 
@@ -61,7 +64,8 @@ bool is_force_recompile() {
 } // end anonymous namespace
 
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
-    mConfig(NULL), mCompiler(), mCompilerRuntime(NULL), mDebugContext(false) {
+    mConfig(NULL), mCompiler(), mCompilerRuntime(NULL), mDebugContext(false),
+    mEnableGlobalMerge(true) {
   init::Initialize();
   // Chain the symbol resolvers for compiler_rt and RS runtimes.
   if (pUseCompilerRT) {
@@ -148,6 +152,7 @@ RSCompilerDriver::loadScriptCache(const char *pOutputPath,
   return result;
 }
 
+extern llvm::cl::opt<bool> EnableGlobalMerge;
 bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   bool changed = false;
 
@@ -169,6 +174,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
       return false;
     }
     mConfig->setOptimizationLevel(script_opt_level);
+    EnableGlobalMerge = mEnableGlobalMerge;
     changed = true;
   }
 
