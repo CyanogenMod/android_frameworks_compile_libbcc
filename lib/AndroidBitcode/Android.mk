@@ -56,7 +56,7 @@ else
   ifeq ($(TARGET_ARCH),mips)
     LOCAL_SRC_FILES += $(libbcc_mips_androidbitcode_SRC_FILES)
   else
-    ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
+    ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64 x32))
       LOCAL_SRC_FILES += $(libbcc_x86_androidbitcode_SRC_FILES)
     else
       $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
