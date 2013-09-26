@@ -239,7 +239,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // Open the output file for write.
   //===--------------------------------------------------------------------===//
-  unsigned flags = FileBase::kTruncate;
+  unsigned flags = FileBase::kTruncate | FileBase::kBinary;
   if (mDebugContext) {
     // Delete the cache file when we finish up under a debug context.
     flags |= FileBase::kDeleteOnClose;
