@@ -246,7 +246,8 @@ RSCompilerDriver::compileScript(RSScript &pScript,
 #endif
 
     // Open the output file for write.
-    OutputFile output_file(pOutputPath, FileBase::kTruncate);
+    OutputFile output_file(pOutputPath,
+                           FileBase::kTruncate | FileBase::kBinary);
 
     if (output_file.hasError()) {
         ALOGE("Unable to open %s for write! (%s)", pOutputPath,
