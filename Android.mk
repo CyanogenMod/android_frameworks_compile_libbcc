@@ -89,7 +89,7 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libs
 # installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libclcore_debug.bc libbcc.sha1 libcompiler_rt
 
-ifeq ($(ARCH_X86_HAVE_SSE2),true)
+ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64))
 LOCAL_REQUIRED_MODULES += libclcore_x86.bc
 endif
 

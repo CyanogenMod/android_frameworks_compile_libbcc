@@ -27,8 +27,8 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
   BCCContext &context = pScript.getSource().getContext();
   const char* core_lib = RSInfo::LibCLCorePath;
 
-  // SSE2- or above capable devices will use an optimized library.
-#if defined(ARCH_X86_HAVE_SSE2)
+  // x86 devices will use an optimized library.
+#if defined(__i386__)
   core_lib = RSInfo::LibCLCoreX86Path;
 #endif
 
