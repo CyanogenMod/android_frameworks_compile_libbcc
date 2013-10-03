@@ -51,9 +51,6 @@ else
   else
     ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64 x32))
       LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
-      ifeq ($(ARCH_X86_HAVE_SSE2), true)
-        LOCAL_CFLAGS += -DARCH_X86_HAVE_SSE2
-      endif
     else
       $(error Unsupported architecture $(TARGET_ARCH))
     endif
