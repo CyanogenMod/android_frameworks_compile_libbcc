@@ -27,7 +27,7 @@ extern float __attribute__((overloadable)) sqrt(float);
 /*
  * CLAMP
  */
-#if !defined(ARCH_X86_HAVE_SSE2) && !defined(ARCH_X86_HAVE_SSE3)
+#if !defined(__i386__)
 
 extern float __attribute__((overloadable)) clamp(float amount, float low, float high) {
     return amount < low ? low : (amount > high ? high : amount);
@@ -91,7 +91,7 @@ extern float2 __attribute__((overloadable)) clamp(float2 amount, float low, floa
 extern float3 __attribute__((overloadable)) clamp(float3 amount, float low, float high);
 extern float4 __attribute__((overloadable)) clamp(float4 amount, float low, float high);
 
-#endif // !defined(ARCH_X86_HAVE_SSE2) && !defined(ARCH_X86_HAVE_SSE3)
+#endif // !defined(__i386__)
 
 /*
  * FMAX

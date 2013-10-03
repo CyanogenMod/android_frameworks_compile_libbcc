@@ -18,10 +18,13 @@ include $(BUILD_SYSTEM)/base_rules.mk
 
 BCC_STRIP_ATTR := $(HOST_OUT_EXECUTABLES)/bcc_strip_attr$(HOST_EXECUTABLE_SUFFIX)
 
+bc_clang_cc1_cflags :=
+ifeq ($(TARGET_ARCH),arm)
 # We need to pass the +long64 flag to the underlying version of Clang, since
 # we are generating a library for use with Renderscript (64-bit long type,
 # not 32-bit).
-bc_clang_cc1_cflags := -target-feature +long64
+bc_clang_cc1_cflags += -target-feature +long64
+endif
 bc_translated_clang_cc1_cflags := $(addprefix -Xclang , $(bc_clang_cc1_cflags))
 
 bc_cflags := -MD \
@@ -31,7 +34,7 @@ bc_cflags := -MD \
              -O3 \
              -fno-builtin \
              -emit-llvm \
-             -target armv7-none-linux-gnueabi \
+             -target $(RS_TRIPLE) \
              -fsigned-char \
              $(bc_translated_clang_cc1_cflags)
 
@@ -39,13 +42,6 @@ ifeq ($(rs_debug_runtime),1)
     bc_cflags += -DRS_DEBUG_RUNTIME
 endif
 rs_debug_runtime:=
-
-ifeq ($(ARCH_X86_HAVE_SSE2), true)
-    bc_cflags += -DARCH_X86_HAVE_SSE2
-endif
-ifeq ($(ARCH_X86_HAVE_SSE3), true)
-    bc_cflags += -DARCH_X86_HAVE_SSE3
-endif
 
 c_sources := $(filter %.c,$(LOCAL_SRC_FILES))
 ll_sources := $(filter %.ll,$(LOCAL_SRC_FILES))
