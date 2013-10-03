@@ -40,17 +40,12 @@ clcore_neon_files := \
     math.ll \
     arch/neon.ll
 
-ifeq ($(ARCH_X86_HAVE_SSE2), true)
+ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64))
     clcore_x86_files := \
     $(clcore_base_files) \
     arch/generic.c \
-    arch/x86_sse2.ll
-
-    # FIXME: without SSE3, it is still able to get better code through PSHUFD. But,
-    # so far, there is no such device with SSE2 only.
-    ifeq ($(ARCH_X86_HAVE_SSE3), true)
-        clcore_x86_files += arch/x86_sse3.ll
-    endif
+    arch/x86_sse2.ll \
+    arch/x86_sse3.ll
 endif
 
 ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
@@ -81,9 +76,8 @@ LOCAL_SRC_FILES := $(clcore_files)
 
 include $(LOCAL_PATH)/build_bc_lib.mk
 
-# Build an optimized version of the library if the device is SSE2- or above
-# capable.
-ifeq ($(ARCH_X86_HAVE_SSE2),true)
+# Build an optimized version of the library for x86 platforms (all have SSE2/3).
+ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64))
 include $(CLEAR_VARS)
 LOCAL_MODULE := libclcore_x86.bc
 LOCAL_MODULE_TAGS := optional
