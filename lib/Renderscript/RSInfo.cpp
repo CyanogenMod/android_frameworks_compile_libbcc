@@ -17,7 +17,9 @@
 //#define LOG_NDEBUG 0
 #include "bcc/Renderscript/RSInfo.h"
 
+#if !defined(_WIN32)  /* TODO create a HAVE_DLFCN_H */
 #include <dlfcn.h>
+#endif
 
 #include <cstring>
 #include <new>
@@ -26,7 +28,9 @@
 #include "bcc/Support/FileBase.h"
 #include "bcc/Support/Log.h"
 
+#ifdef HAVE_ANDROID_OS
 #include <cutils/properties.h>
+#endif
 
 using namespace bcc;
 
@@ -84,8 +88,8 @@ bool RSInfo::LoadBuiltInSHA1Information() {
 #endif  // TARGET_BUILD
 }
 
-android::String8 RSInfo::GetPath(const FileBase &pFile) {
-  android::String8 result(pFile.getName().c_str());
+android::String8 RSInfo::GetPath(const char *pFilename) {
+  android::String8 result(pFilename);
   result.append(".info");
   return result;
 }
@@ -389,6 +393,7 @@ RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
     result = FP_Relaxed;
   }
 
+#ifdef HAVE_ANDROID_OS
   // Provide an override for precsion via adb shell setprop
   // adb shell setprop debug.rs.precision rs_fp_full
   // adb shell setprop debug.rs.precision rs_fp_relaxed
@@ -408,6 +413,7 @@ RSInfo::FloatPrecision RSInfo::getFloatPrecisionRequirement() const {
       result = FP_Full;
     }
   }
+#endif
 
   return result;
 }

@@ -16,7 +16,33 @@
 
 #include "bcc/ExecutionEngine/SymbolResolvers.h"
 
+#if !defined(_WIN32)  /* TODO create a HAVE_DLFCN_H */
 #include <dlfcn.h>
+#else
+/* TODO hack: definitions from bionic/libc/include/dlfcn.h */
+void* dlopen(const char*  filename, int flag) {
+  return NULL;
+}
+
+int dlclose(void*  handle) {
+  return -1;
+}
+
+const char* dlerror(void) {
+  return "Unspecified error!";
+}
+
+void* dlsym(void*  handle, const char*  symbol) {
+  return NULL;
+}
+
+#define RTLD_NOW    0
+#define RTLD_LAZY   1
+#define RTLD_LOCAL  0
+#define RTLD_GLOBAL 2
+#define RTLD_DEFAULT  ((void*) 0xffffffff)
+#define RTLD_NEXT     ((void*) 0xfffffffe)
+#endif
 
 #include <cassert>
 #include <cstdio>
@@ -61,6 +87,9 @@ void *DyldSymbolResolver::getAddress(const char *pName) {
 }
 
 DyldSymbolResolver::~DyldSymbolResolver() {
-  ::dlclose(mHandle);
+  if (mHandle != NULL) {
+    ::dlclose(mHandle);
+    mHandle = NULL;
+  }
   delete [] mError;
 }

@@ -25,6 +25,7 @@
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/Scalar.h>
 
 #include "bcc/Script.h"
@@ -36,57 +37,51 @@
 using namespace bcc;
 
 const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
-  static const char *ErrorString[] = {
-    /* kSuccess */
-    "Successfully compiled.",
-    /* kInvalidConfigNoTarget */
-    "Invalid compiler config supplied (getTarget() returns NULL.) "
-    "(missing call to CompilerConfig::initialize()?)",
-    /* kErrCreateTargetMachine */
-    "Failed to create llvm::TargetMachine.",
-    /* kErrSwitchTargetMachine */
-    "Failed to switch llvm::TargetMachine.",
-    /* kErrNoTargetMachine */
-    "Failed to compile the script since there's no available TargetMachine."
-    " (missing call to Compiler::config()?)",
-    /* kErrDataLayoutNoMemory */
-    "Out of memory when create DataLayout during compilation.",
-    /* kErrMaterialization */
-    "Failed to materialize the module.",
-    /* kErrInvalidOutputFileState */
-    "Supplied output file was invalid (in the error state.)",
-    /* kErrPrepareOutput */
-    "Failed to prepare file for output.",
-    /* kPrepareCodeGenPass */
-    "Failed to construct pass list for code-generation.",
-
-    /* kErrHookBeforeAddLTOPasses */
-    "Error occurred during beforeAddLTOPasses() in subclass.",
-    /* kErrHookAfterAddLTOPasses */
-    "Error occurred during afterAddLTOPasses() in subclass.",
-    /* kErrHookBeforeExecuteLTOPasses */
-    "Error occurred during beforeExecuteLTOPasses() in subclass.",
-    /* kErrHookAfterExecuteLTOPasses */
-    "Error occurred during afterExecuteLTOPasses() in subclass.",
-
-    /* kErrHookBeforeAddCodeGenPasses */
-    "Error occurred during beforeAddCodeGenPasses() in subclass.",
-    /* kErrHookAfterAddCodeGenPasses */
-    "Error occurred during afterAddCodeGenPasses() in subclass.",
-    /* kErrHookBeforeExecuteCodeGenPasses */
-    "Error occurred during beforeExecuteCodeGenPasses() in subclass.",
-    /* kErrHookAfterExecuteCodeGenPasses */
-    "Error occurred during afterExecuteCodeGenPasses() in subclass.",
-
-    /* kMaxErrorCode */
-    "(Unknown error code)"
-  };
-
-  if (pErrCode > kMaxErrorCode) {
-    pErrCode = kMaxErrorCode;
+  switch (pErrCode) {
+  case kSuccess:
+    return "Successfully compiled.";
+  case kInvalidConfigNoTarget:
+    return "Invalid compiler config supplied (getTarget() returns NULL.) "
+           "(missing call to CompilerConfig::initialize()?)";
+  case kErrCreateTargetMachine:
+    return "Failed to create llvm::TargetMachine.";
+  case kErrSwitchTargetMachine:
+    return  "Failed to switch llvm::TargetMachine.";
+  case kErrNoTargetMachine:
+    return "Failed to compile the script since there's no available "
+           "TargetMachine. (missing call to Compiler::config()?)";
+  case kErrDataLayoutNoMemory:
+    return "Out of memory when create DataLayout during compilation.";
+  case kErrMaterialization:
+    return "Failed to materialize the module.";
+  case kErrInvalidOutputFileState:
+    return "Supplied output file was invalid (in the error state.)";
+  case kErrPrepareOutput:
+    return "Failed to prepare file for output.";
+  case kPrepareCodeGenPass:
+    return "Failed to construct pass list for code-generation.";
+  case kErrHookBeforeAddLTOPasses:
+    return "Error occurred during beforeAddLTOPasses() in subclass.";
+  case kErrHookAfterAddLTOPasses:
+    return "Error occurred during afterAddLTOPasses() in subclass.";
+  case kErrHookAfterExecuteLTOPasses:
+    return "Error occurred during afterExecuteLTOPasses() in subclass.";
+  case kErrHookBeforeAddCodeGenPasses:
+    return "Error occurred during beforeAddCodeGenPasses() in subclass.";
+  case kErrHookAfterAddCodeGenPasses:
+    return "Error occurred during afterAddCodeGenPasses() in subclass.";
+  case kErrHookBeforeExecuteCodeGenPasses:
+    return "Error occurred during beforeExecuteCodeGenPasses() in subclass.";
+  case kErrHookAfterExecuteCodeGenPasses:
+    return "Error occurred during afterExecuteCodeGenPasses() in subclass.";
+  case kErrInvalidSource:
+    return "Error loading input bitcode";
   }
 
-  return ErrorString[ static_cast<size_t>(pErrCode) ];
+  // This assert should never be reached as the compiler verifies that the
+  // above switch coveres all enum values.
+  assert(false && "Unknown error code encountered");
+  return  "";
 }
 
 //===----------------------------------------------------------------------===//
@@ -167,108 +162,30 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
   // Add DataLayout to the pass manager.
   lto_passes.add(data_layout);
 
-  // Invokde "beforeAddLTOPasses" before adding the first pass.
+  // Invoke "beforeAddLTOPasses" before adding the first pass.
   if (!beforeAddLTOPasses(pScript, lto_passes)) {
     return kErrHookBeforeAddLTOPasses;
   }
 
-  // We now create passes list performing LTO. These are copied from
-  // (including comments) llvm::PassManagerBuilder::populateLTOPassManager().
-  // Only a subset of these LTO passes are enabled in optimization level 0 as
-  // they interfere with interactive debugging.
-  //
-  // FIXME: Figure out which passes (if any) makes sense for levels 1 and 2.
-  //if ( != llvm::CodeGenOpt::None) {
   if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
     lto_passes.add(llvm::createGlobalOptimizerPass());
     lto_passes.add(llvm::createConstantMergePass());
   } else {
-    // Propagate constants at call sites into the functions they call. This
-    // opens opportunities for globalopt (and inlining) by substituting
-    // function pointers passed as arguments to direct uses of functions.
-    lto_passes.add(llvm::createIPSCCPPass());
-
-    // Now that we internalized some globals, see if we can hack on them!
-    lto_passes.add(llvm::createGlobalOptimizerPass());
-
-    // Linking modules together can lead to duplicated global constants, only
-    // keep one copy of each constant...
-    lto_passes.add(llvm::createConstantMergePass());
-
-    // Remove unused arguments from functions...
-    lto_passes.add(llvm::createDeadArgEliminationPass());
-
-    // Reduce the code after globalopt and ipsccp. Both can open up
-    // significant simplification opportunities, and both can propagate
-    // functions through function pointers. When this happens, we often have
-    // to resolve varargs calls, etc, so let instcombine do this.
-    lto_passes.add(llvm::createInstructionCombiningPass());
-
-    // Inline small functions
-    lto_passes.add(llvm::createFunctionInliningPass());
-
-    // Remove dead EH info.
-    lto_passes.add(llvm::createPruneEHPass());
-
-    // Internalize the globals again after inlining
-    lto_passes.add(llvm::createGlobalOptimizerPass());
-
-    // Remove dead functions.
-    lto_passes.add(llvm::createGlobalDCEPass());
-
-    // If we didn't decide to inline a function, check to see if we can
-    // transform it to pass arguments by value instead of by reference.
-    lto_passes.add(llvm::createArgumentPromotionPass());
-
-    // The IPO passes may leave cruft around.  Clean up after them.
-    lto_passes.add(llvm::createInstructionCombiningPass());
-    lto_passes.add(llvm::createJumpThreadingPass());
-
-    // Break up allocas
-    lto_passes.add(llvm::createScalarReplAggregatesPass());
-
-    // Run a few AA driven optimizations here and now, to cleanup the code.
-    lto_passes.add(llvm::createFunctionAttrsPass());  // Add nocapture.
-    lto_passes.add(llvm::createGlobalsModRefPass());  // IP alias analysis.
-
-    // Hoist loop invariants.
-    lto_passes.add(llvm::createLICMPass());
-
-    // Remove redundancies.
-    lto_passes.add(llvm::createGVNPass());
-
-    // Remove dead memcpys.
-    lto_passes.add(llvm::createMemCpyOptPass());
-
-    // Nuke dead stores.
-    lto_passes.add(llvm::createDeadStoreEliminationPass());
-
-    // Cleanup and simplify the code after the scalar optimizations.
-    lto_passes.add(llvm::createInstructionCombiningPass());
-
-    lto_passes.add(llvm::createJumpThreadingPass());
-
-    // Delete basic blocks, which optimization passes may have killed.
-    lto_passes.add(llvm::createCFGSimplificationPass());
-
-    // Now that we have optimized the program, discard unreachable functions.
-    lto_passes.add(llvm::createGlobalDCEPass());
+    // FIXME: Figure out which passes should be executed.
+    llvm::PassManagerBuilder Builder;
+    Builder.populateLTOPassManager(lto_passes, /*Internalize*/false,
+                                   /*RunInliner*/true);
   }
 
-  // Invokde "afterAddLTOPasses" after pass manager finished its
+  // Invoke "afterAddLTOPasses" after pass manager finished its
   // construction.
   if (!afterAddLTOPasses(pScript, lto_passes)) {
     return kErrHookAfterAddLTOPasses;
   }
 
-  // Invokde "beforeExecuteLTOPasses" before executing the passes.
-  if (!beforeExecuteLTOPasses(pScript, lto_passes)) {
-    return kErrHookBeforeExecuteLTOPasses;
-  }
-
   lto_passes.run(pScript.getSource().getModule());
 
-  // Invokde "afterExecuteLTOPasses" before returning.
+  // Invoke "afterExecuteLTOPasses" before returning.
   if (!afterExecuteLTOPasses(pScript)) {
     return kErrHookAfterExecuteLTOPasses;
   }
@@ -327,7 +244,8 @@ enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
 }
 
 enum Compiler::ErrorCode Compiler::compile(Script &pScript,
-                                           llvm::raw_ostream &pResult) {
+                                           llvm::raw_ostream &pResult,
+                                           llvm::raw_ostream *IRStream) {
   llvm::Module &module = pScript.getSource().getModule();
   enum ErrorCode err;
 
@@ -352,6 +270,9 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
     return err;
   }
 
+  if (IRStream)
+    *IRStream << module;
+
   if ((err = runCodeGen(pScript, pResult)) != kSuccess) {
     return err;
   }
@@ -360,7 +281,8 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
 }
 
 enum Compiler::ErrorCode Compiler::compile(Script &pScript,
-                                           OutputFile &pResult) {
+                                           OutputFile &pResult,
+                                           llvm::raw_ostream *IRStream) {
   // Check the state of the specified output file.
   if (pResult.hasError()) {
     return kErrInvalidOutputFileState;
@@ -373,7 +295,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   // Delegate the request.
-  enum Compiler::ErrorCode err = compile(pScript, *out);
+  enum Compiler::ErrorCode err = compile(pScript, *out, IRStream);
 
   // Close the output before return.
   delete out;

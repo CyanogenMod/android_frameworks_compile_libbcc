@@ -39,11 +39,15 @@ libbcinfo_SRC_FILES := \
   BitcodeWrapper.cpp \
   MetadataExtractor.cpp
 
-libbcinfo_C_INCLUDES := $(LOCAL_PATH)/../include
+libbcinfo_C_INCLUDES := \
+  $(LOCAL_PATH)/../include \
+  $(LOCAL_PATH)/../../slang
+
 libbcinfo_STATIC_LIBRARIES := \
   libLLVMWrap \
   libLLVMBitReader_2_7 \
-  libLLVMBitReader_3_0
+  libLLVMBitReader_3_0 \
+  libLLVMBitWriter_3_2
 
 LLVM_ROOT_PATH := external/llvm
 
@@ -83,7 +87,9 @@ LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_STATIC_LIBRARIES += libcutils liblog
 LOCAL_SHARED_LIBRARIES += libLLVM
 
+ifndef USE_MINGW
 LOCAL_LDLIBS := -ldl -lpthread
+endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_SHARED_LIBRARY)

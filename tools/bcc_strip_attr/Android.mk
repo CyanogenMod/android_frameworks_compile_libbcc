@@ -31,7 +31,10 @@ LOCAL_SHARED_LIBRARIES := libLLVM
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
-LOCAL_LDLIBS += -lpthread -lm -ldl
+LOCAL_LDLIBS += -lm
+ifndef USE_MINGW
+LOCAL_LDLIBS += -lpthread -ldl
+endif
 LOCAL_SRC_FILES := bcc_strip_attr.cpp
 
 include $(LIBBCC_HOST_BUILD_MK)

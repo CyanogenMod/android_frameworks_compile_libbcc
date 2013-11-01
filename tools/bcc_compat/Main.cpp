@@ -32,7 +32,6 @@
 #include <bcc/Compiler.h>
 #include <bcc/Config/BuildInfo.h>
 #include <bcc/Config/Config.h>
-#include <bcc/ExecutionEngine/ObjectLoader.h>
 #include <bcc/ExecutionEngine/SymbolResolverProxy.h>
 #include <bcc/ExecutionEngine/SymbolResolvers.h>
 #include <bcc/Renderscript/RSCompilerDriver.h>
@@ -280,7 +279,10 @@ int main(int argc, char **argv) {
 
   RSScript *s = NULL;
   s = PrepareRSScript(context, OptInputFilenames);
-  rscd.build(*s, OutputFilename.c_str(), OptRuntimePath.c_str());
+  if (!rscd.build(*s, OutputFilename.c_str(), OptRuntimePath.c_str())) {
+    fprintf(stderr, "Failed to compile script!");
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }

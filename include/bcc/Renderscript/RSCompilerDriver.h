@@ -22,13 +22,13 @@
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSCompiler.h"
+#include "bcc/Renderscript/RSScript.h"
 
 namespace bcc {
 
 class BCCContext;
 class CompilerConfig;
 class RSExecutable;
-class RSScript;
 
 class RSCompilerDriver {
 private:
@@ -42,19 +42,23 @@ private:
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
 
-  RSExecutable *loadScriptCache(const char *pOutputPath,
-                                const RSInfo::DependencyTableTy &pDeps);
+  // Do we merge global variables on ARM using LLVM's optimization pass?
+  // Disabling LLVM's global merge pass allows static globals to be correctly
+  // emitted to ELF. This can result in decreased performance due to increased
+  // register pressure, but it does make the resulting code easier to debug
+  // and work with.
+  bool mEnableGlobalMerge;
 
   // Setup the compiler config for the given script. Return true if mConfig has
   // been changed and false if it remains unchanged.
   bool setupConfig(const RSScript &pScript);
 
-  RSExecutable *compileScript(RSScript &pScript,
-                              const char* pScriptName,
-                              const char *pOutputPath,
-                              const char *pRuntimePath,
-                              const RSInfo::DependencyTableTy &pDeps,
-                              bool pSkipLoad);
+  Compiler::ErrorCode compileScript(RSScript &pScript,
+                                    const char* pScriptName,
+                                    const char *pOutputPath,
+                                    const char *pRuntimePath,
+                                    const RSInfo::DependencyTableTy &pDeps,
+                                    bool pSkipLoad, bool pDumpIR = false);
 
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
@@ -78,16 +82,32 @@ public:
     mDebugContext = v;
   }
 
-  // FIXME: This method accompany with loadScriptCache and compileScript should
+  // This function enables/disables merging of global static variables.
+  // Note that it only takes effect on ARM architectures (other architectures
+  // do not offer this option).
+  void setEnableGlobalMerge(bool v) {
+    mEnableGlobalMerge = v;
+  }
+
+  bool getEnableGlobalMerge() const {
+    return mEnableGlobalMerge;
+  }
+
+  // FIXME: This method accompany with loadScript and compileScript should
   //        all be const-methods. They're not now because the getAddress() in
   //        SymbolResolverInterface is not a const-method.
-  RSExecutable *build(BCCContext &pContext,
-                      const char *pCacheDir, const char *pResName,
-                      const char *pBitcode, size_t pBitcodeSize,
-                      const char *pRuntimePath,
-                      RSLinkRuntimeCallback pLinkRuntimeCallback = NULL);
-  RSExecutable *build(RSScript &pScript, const char *pOut,
-                      const char *pRuntimePath);
+  // Returns true if script is successfully compiled.
+  bool build(BCCContext &pContext, const char *pCacheDir, const char *pResName,
+             const char *pBitcode, size_t pBitcodeSize,
+             const char *pRuntimePath,
+             RSLinkRuntimeCallback pLinkRuntimeCallback = NULL,
+             bool pDumpIR = false);
+
+  // Returns true if script is successfully compiled.
+  bool build(RSScript &pScript, const char *pOut, const char *pRuntimePath);
+
+  RSExecutable *loadScript(const char *pCacheDir, const char *pResName,
+                           const char *pBitcode, size_t pBitcodeSize);
 };
 
 } // end namespace bcc

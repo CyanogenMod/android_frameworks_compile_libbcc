@@ -26,23 +26,10 @@ include $(LIBBCC_ROOT_PATH)/libbcc.mk
 #=====================================================================
 
 libbcc_WHOLE_STATIC_LIBRARIES += \
-  libbccAndroidBitcode \
   libbccRenderscript \
   libbccExecutionEngine \
   libbccCore \
   libbccSupport
-
-libmcld_STATIC_LIBRARIES += \
-  libmcldCodeGen \
-  libmcldTarget \
-  libmcldLDVariant \
-  libmcldMC \
-  libmcldObject \
-  libmcldFragment \
-  libmcldCore \
-  libmcldSupport \
-  libmcldADT \
-  libmcldLD
 
 #=====================================================================
 # Calculate SHA1 checksum for libbcc.so, libRS.so and libclcore.bc
@@ -62,11 +49,8 @@ libbcc_SHA1_SRCS := \
   $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_debug.bc,,)/libclcore_debug.bc
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  # Disable NEON on cortex-a15 temporarily
-  ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
-    libbcc_SHA1_SRCS += \
-      $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,)/libclcore_neon.bc
-  endif
+  libbcc_SHA1_SRCS += \
+    $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,)/libclcore_neon.bc
 endif
 
 libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
@@ -99,27 +83,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
-ifeq ($(TARGET_ARCH),arm)
-  LOCAL_WHOLE_STATIC_LIBRARIES += \
-    libmcldARMTarget \
-    libmcldARMInfo
-else
-  ifeq ($(TARGET_ARCH), mips)
-    LOCAL_WHOLE_STATIC_LIBRARIES += \
-      libmcldMipsTarget \
-      libmcldMipsInfo
-  else
-    ifeq ($(TARGET_ARCH),x86) # We don't support x86-64 right now
-      LOCAL_WHOLE_STATIC_LIBRARIES += \
-        libmcldX86Target \
-        libmcldX86Info
-    else
-      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
-    endif
-  endif
-endif
-
-LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
 LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libstlport
 
 # Modules that need get installed if and only if the target libbcc.so is
@@ -131,10 +94,7 @@ LOCAL_REQUIRED_MODULES += libclcore_x86.bc
 endif
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  # Disable NEON on cortex-a15 temporarily
-  ifneq ($(strip $(TARGET_CPU_VARIANT)), cortex-a15)
-    LOCAL_REQUIRED_MODULES += libclcore_neon.bc
-  endif
+  LOCAL_REQUIRED_MODULES += libclcore_neon.bc
 endif
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
@@ -158,16 +118,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-  libmcldARMTarget \
-  libmcldARMInfo \
-  libmcldMipsTarget \
-  libmcldMipsInfo \
-  libmcldX86Target \
-  libmcldX86Info
-
-LOCAL_WHOLE_STATIC_LIBRARIES += $(libmcld_STATIC_LIBRARIES)
-
 LOCAL_STATIC_LIBRARIES += \
   libutils \
   libcutils \
@@ -175,7 +125,9 @@ LOCAL_STATIC_LIBRARIES += \
 
 LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM
 
+ifndef USE_MINGW
 LOCAL_LDLIBS := -ldl -lpthread
+endif
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk

@@ -23,8 +23,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := bcc
 LOCAL_MODULE_CLASS := EXECUTABLES
 
-LOCAL_SRC_FILES := \
-  main.cpp
+LOCAL_SRC_FILES := Main.cpp
 
 LOCAL_SHARED_LIBRARIES := \
   libbcc \
@@ -35,7 +34,6 @@ LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
 LOCAL_LDLIBS = -ldl
-LOCAL_SRC_FILES := Main.cpp
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)

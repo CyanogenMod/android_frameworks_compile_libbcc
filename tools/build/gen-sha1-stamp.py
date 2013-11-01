@@ -76,7 +76,6 @@ def print_asm_header(symbols):
 
 def print_asm_data(data, size):
     col = 0
-    sys.stdout.write(".align 8\n")
     for i in xrange(size):
         c = data[i]
         if col == 0:
@@ -95,6 +94,7 @@ def print_asm_data(data, size):
 
 def print_asm_symbol_data(sym, h):
     sys.stdout.write("""
+.align 8
 #ifdef __APPLE_CC__
 _%s:\n\
 #else\n\

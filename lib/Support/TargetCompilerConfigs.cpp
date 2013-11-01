@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
+#include "bcc/Support/Properties.h"
 #include "bcc/Support/TargetCompilerConfigs.h"
+
+#include "llvm/ADT/StringMap.h"
+#include "llvm/Support/Host.h"
 
 // Get ARM version number (i.e., __ARM_ARCH__)
 #ifdef __arm__
@@ -45,6 +49,9 @@ bool ARMBaseCompilerConfig::HasThumb2() {
 void
 ARMBaseCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
                                         bool pInThumbMode, bool pEnableNEON) {
+  llvm::StringMap<bool> Features;
+  llvm::sys::getHostCPUFeatures(Features);
+
 #if defined(ARCH_ARM_HAVE_VFP)
   pAttributes.push_back("+vfp3");
 #  if !defined(ARCH_ARM_HAVE_VFP_D32)
@@ -60,17 +67,20 @@ ARMBaseCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
     }
   }
 
-#if defined(ARCH_ARM_HAVE_NEON)
-  if (pEnableNEON) {
+  if (pEnableNEON && Features.count("neon") && Features["neon"]) {
     pAttributes.push_back("+neon");
   } else {
     pAttributes.push_back("-neon");
     pAttributes.push_back("-neonfp");
   }
-#else
-  pAttributes.push_back("-neon");
-  pAttributes.push_back("-neonfp");
-#endif
+
+  if (!getProperty("debug.rs.arm-no-hwdiv")) {
+    if (Features.count("hwdiv-arm") && Features["hwdiv-arm"])
+      pAttributes.push_back("+hwdiv-arm");
+
+    if (Features.count("hwdiv") && Features["hwdiv"])
+      pAttributes.push_back("+hwdiv");
+  }
 
   return;
 }
@@ -81,6 +91,9 @@ ARMBaseCompilerConfig::ARMBaseCompilerConfig(const std::string &pTriple,
 
   // Enable NEON by default.
   mEnableNEON = true;
+
+  if (!getProperty("debug.rs.arm-no-tune-for-cpu"))
+    setCPU(llvm::sys::getHostCPUName());
 
   std::vector<std::string> attributes;
   GetFeatureVector(attributes, mInThumbMode, mEnableNEON);

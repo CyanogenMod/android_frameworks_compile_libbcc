@@ -29,7 +29,7 @@
 
 using namespace bcc;
 
-bool RSCompiler::beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM) {
+bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM) {
   // Add a pass to internalize the symbols that don't need to have global
   // visibility.
   RSScript &script = static_cast<RSScript &>(pScript);
@@ -87,11 +87,7 @@ bool RSCompiler::beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM) {
   return true;
 }
 
-bool RSCompiler::beforeExecuteLTOPasses(Script &pScript,
-                                        llvm::PassManager &pPM) {
-  // Execute a pass to expand foreach-able functions
-  llvm::PassManager rs_passes;
-
+bool RSCompiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   // Script passed to RSCompiler must be a RSScript.
   RSScript &script = static_cast<RSScript &>(pScript);
   const RSInfo *info = script.getInfo();
@@ -104,14 +100,21 @@ bool RSCompiler::beforeExecuteLTOPasses(Script &pScript,
   }
 
   // Expand ForEach on CPU path to reduce launch overhead.
-  rs_passes.add(createRSForEachExpandPass(info->getExportForeachFuncs(),
-                                          /* pEnableStepOpt */ true));
-  if (script.getEmbedInfo()) {
-    rs_passes.add(createRSEmbedInfoPass(info));
-  }
+  bool pEnableStepOpt = true;
+  pPM.add(createRSForEachExpandPass(info->getExportForeachFuncs(),
+                                    pEnableStepOpt));
+  if (script.getEmbedInfo())
+    pPM.add(createRSEmbedInfoPass(info));
 
-  // Execute the pass.
-  rs_passes.run(module);
+  return true;
+}
+
+bool RSCompiler::beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM) {
+  if (!addExpandForEachPass(pScript, pPM))
+    return false;
+
+  if (!addInternalizeSymbolsPass(pScript, pPM))
+    return false;
 
   return true;
 }

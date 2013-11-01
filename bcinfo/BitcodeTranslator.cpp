@@ -21,6 +21,8 @@
 #include "BitReader_2_7/BitReader_2_7.h"
 #include "BitReader_3_0/BitReader_3_0.h"
 
+#include "BitWriter_3_2/ReaderWriter_3_2.h"
+
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
 
@@ -141,7 +143,8 @@ bool BitcodeTranslator::translate() {
   std::string Buffer;
 
   llvm::raw_string_ostream OS(Buffer);
-  llvm::WriteBitcodeToFile(module, OS);
+  // Use the LLVM 3.2 bitcode writer, instead of the top-of-tree version.
+  llvm_3_2::WriteBitcodeToFile(module, OS);
   OS.flush();
 
   AndroidBitcodeWrapper wrapper;

@@ -68,6 +68,3 @@ include $(LIBBCC_HOST_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_STATIC_LIBRARY)
-
-# Build Renderscript runtime (libclcore.bc)
-include $(LOCAL_PATH)/runtime/Android.mk

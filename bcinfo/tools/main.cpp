@@ -336,7 +336,7 @@ int main(int argc, char** argv) {
 
     llvm::OwningPtr<llvm::tool_output_file> tof(
         new llvm::tool_output_file(outFile.c_str(), errmsg,
-                                   llvm::raw_fd_ostream::F_Binary));
+                                   llvm::sys::fs::F_Binary));
     llvm::OwningPtr<llvm::AssemblyAnnotationWriter> ann;
     module->print(tof->os(), ann.get());
 

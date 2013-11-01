@@ -1,5 +1,5 @@
 /*
- * Copyright 2012, The Android Open Source Project
+ * Copyright 2013, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,24 @@
  * limitations under the License.
  */
 
-#ifndef BCC_ABC_COMPILER_H
-#define BCC_ABC_COMPILER_H
+#ifndef BCC_SUPPORT_PROPERTIES_H
+#define BCC_SUPPORT_PROPERTIES_H
 
-#include "bcc/Compiler.h"
+#include <stdint.h>
+#include <stdlib.h>
 
-namespace bcc {
+#if !defined(RS_SERVER) && defined(HAVE_ANDROID_OS)
+#include <cutils/properties.h>
+#endif
 
-class ABCCompilerDriver;
+static inline uint32_t getProperty(const char *str) {
+#if !defined(RS_SERVER) && defined(HAVE_ANDROID_OS)
+    char buf[PROPERTY_VALUE_MAX];
+    property_get(str, buf, "0");
+    return atoi(buf);
+#else
+    return 0;
+#endif
+}
 
-class ABCCompiler : public Compiler {
-private:
-  const ABCCompilerDriver &mDriver;
-
-public:
-  ABCCompiler(const ABCCompilerDriver &pDriver) : mDriver(pDriver) {
-    // Disable LTO
-    enableLTO(false);
-  }
-
-  virtual ~ABCCompiler() { }
-
-private:
-  virtual bool beforeAddCodeGenPasses(Script &pScript, llvm::PassManager &pPM);
-};
-
-} // end namespace bcc
-
-#endif // BCC_ABC_COMPILER_H
+#endif // BCC_SUPPORT_PROPERTIES_H

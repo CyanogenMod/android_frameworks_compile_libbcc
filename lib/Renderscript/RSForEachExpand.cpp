@@ -23,15 +23,20 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/MDBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Log.h"
+
+#include "bcinfo/MetadataExtractor.h"
 
 using namespace bcc;
 
@@ -103,6 +108,12 @@ private:
   }
 
   // Get the actual value we should use to step through an allocation.
+  //
+  // Normally the value we use to step through an allocation is given to us by
+  // the driver. However, for certain primitive data types, we can derive an
+  // integer constant for the step value. We use this integer constant whenever
+  // possible to allow further compiler optimizations to take place.
+  //
   // DL - Target Data size/layout information.
   // T - Type of allocation (should be a pointer).
   // OrigStep - Original step increment (root.expand() input from driver).
@@ -123,30 +134,149 @@ private:
     }
   }
 
-  static bool hasIn(uint32_t Signature) {
-    return Signature & 0x01;
+  /// @brief Returns the type of the ForEach stub parameter structure.
+  ///
+  /// Renderscript uses a single structure in which all parameters are passed
+  /// to keep the signature of the expanded function independent of the
+  /// parameters passed to it.
+  llvm::Type *getForeachStubTy() {
+    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
+    llvm::Type *SizeTy = Int32Ty;
+    /* Defined in frameworks/base/libs/rs/rs_hal.h:
+     *
+     * struct RsForEachStubParamStruct {
+     *   const void *in;
+     *   void *out;
+     *   const void *usr;
+     *   size_t usr_len;
+     *   uint32_t x;
+     *   uint32_t y;
+     *   uint32_t z;
+     *   uint32_t lod;
+     *   enum RsAllocationCubemapFace face;
+     *   uint32_t ar[16];
+     * };
+     */
+    llvm::SmallVector<llvm::Type*, 9> StructTys;
+    StructTys.push_back(VoidPtrTy);  // const void *in
+    StructTys.push_back(VoidPtrTy);  // void *out
+    StructTys.push_back(VoidPtrTy);  // const void *usr
+    StructTys.push_back(SizeTy);     // size_t usr_len
+    StructTys.push_back(Int32Ty);    // uint32_t x
+    StructTys.push_back(Int32Ty);    // uint32_t y
+    StructTys.push_back(Int32Ty);    // uint32_t z
+    StructTys.push_back(Int32Ty);    // uint32_t lod
+    StructTys.push_back(Int32Ty);    // enum RsAllocationCubemapFace
+    StructTys.push_back(llvm::ArrayType::get(Int32Ty, 16));  // uint32_t ar[16]
+
+    return llvm::StructType::create(StructTys, "RsForEachStubParamStruct");
   }
 
-  static bool hasOut(uint32_t Signature) {
-    return Signature & 0x02;
+  /// @brief Create skeleton of the expanded function.
+  ///
+  /// This creates a function with the following signature:
+  ///
+  ///   void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
+  ///         uint32_t instep, uint32_t outstep)
+  ///
+  llvm::Function *createEmptyExpandedFunction(llvm::StringRef OldName) {
+    llvm::Type *ForEachStubPtrTy = getForeachStubTy()->getPointerTo();
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
+
+    llvm::SmallVector<llvm::Type*, 8> ParamTys;
+    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
+    ParamTys.push_back(Int32Ty);           // uint32_t x1
+    ParamTys.push_back(Int32Ty);           // uint32_t x2
+    ParamTys.push_back(Int32Ty);           // uint32_t instep
+    ParamTys.push_back(Int32Ty);           // uint32_t outstep
+
+    llvm::FunctionType *FT =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
+    llvm::Function *F =
+        llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage,
+                               OldName + ".expand", M);
+
+    llvm::Function::arg_iterator AI = F->arg_begin();
+
+    AI->setName("p");
+    AI++;
+    AI->setName("x1");
+    AI++;
+    AI->setName("x2");
+    AI++;
+    AI->setName("arg_instep");
+    AI++;
+    AI->setName("arg_outstep");
+    AI++;
+
+    assert(AI == F->arg_end());
+
+    llvm::BasicBlock *Begin = llvm::BasicBlock::Create(*C, "Begin", F);
+    llvm::IRBuilder<> Builder(Begin);
+    Builder.CreateRetVoid();
+
+    return F;
   }
 
-  static bool hasUsrData(uint32_t Signature) {
-    return Signature & 0x04;
-  }
+  /// @brief Create an empty loop
+  ///
+  /// Create a loop of the form:
+  ///
+  /// for (i = LowerBound; i < UpperBound; i++)
+  ///   ;
+  ///
+  /// After the loop has been created, the builder is set such that
+  /// instructions can be added to the loop body.
+  ///
+  /// @param Builder The builder to use to build this loop. The current
+  ///                position of the builder is the position the loop
+  ///                will be inserted.
+  /// @param LowerBound The first value of the loop iterator
+  /// @param UpperBound The maximal value of the loop iterator
+  /// @param LoopIV A reference that will be set to the loop iterator.
+  /// @return The BasicBlock that will be executed after the loop.
+  llvm::BasicBlock *createLoop(llvm::IRBuilder<> &Builder,
+                               llvm::Value *LowerBound,
+                               llvm::Value *UpperBound,
+                               llvm::PHINode **LoopIV) {
+    assert(LowerBound->getType() == UpperBound->getType());
 
-  static bool hasX(uint32_t Signature) {
-    return Signature & 0x08;
-  }
+    llvm::BasicBlock *CondBB, *AfterBB, *HeaderBB;
+    llvm::Value *Cond, *IVNext;
+    llvm::PHINode *IV;
 
-  static bool hasY(uint32_t Signature) {
-    return Signature & 0x10;
-  }
+    CondBB = Builder.GetInsertBlock();
+    AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), this);
+    HeaderBB = llvm::BasicBlock::Create(*C, "Loop", CondBB->getParent());
 
-  static bool isKernel(uint32_t Signature) {
-    return Signature & 0x20;
-  }
+    // if (LowerBound < Upperbound)
+    //   goto LoopHeader
+    // else
+    //   goto AfterBB
+    CondBB->getTerminator()->eraseFromParent();
+    Builder.SetInsertPoint(CondBB);
+    Cond = Builder.CreateICmpULT(LowerBound, UpperBound);
+    Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
 
+    // iv = PHI [CondBB -> LowerBound], [LoopHeader -> NextIV ]
+    // iv.next = iv + 1
+    // if (iv.next < Upperbound)
+    //   goto LoopHeader
+    // else
+    //   goto AfterBB
+    Builder.SetInsertPoint(HeaderBB);
+    IV = Builder.CreatePHI(LowerBound->getType(), 2, "X");
+    IV->addIncoming(LowerBound, CondBB);
+    IVNext = Builder.CreateNUWAdd(IV, Builder.getInt32(1));
+    IV->addIncoming(IVNext, HeaderBB);
+    Cond = Builder.CreateICmpULT(IVNext, UpperBound);
+    Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
+    AfterBB->setName("Exit");
+    Builder.SetInsertPoint(HeaderBB->getFirstNonPHI());
+    *LoopIV = IV;
+    return AfterBB;
+  }
 
 public:
   RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
@@ -173,57 +303,7 @@ public:
 
     llvm::DataLayout DL(M);
 
-    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
-    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
-    llvm::Type *SizeTy = Int32Ty;
-
-    /* Defined in frameworks/base/libs/rs/rs_hal.h:
-     *
-     * struct RsForEachStubParamStruct {
-     *   const void *in;
-     *   void *out;
-     *   const void *usr;
-     *   size_t usr_len;
-     *   uint32_t x;
-     *   uint32_t y;
-     *   uint32_t z;
-     *   uint32_t lod;
-     *   enum RsAllocationCubemapFace face;
-     *   uint32_t ar[16];
-     * };
-     */
-    llvm::SmallVector<llvm::Type*, 9> StructTys;
-    StructTys.push_back(VoidPtrTy);  // const void *in
-    StructTys.push_back(VoidPtrTy);  // void *out
-    StructTys.push_back(VoidPtrTy);  // const void *usr
-    StructTys.push_back(SizeTy);     // size_t usr_len
-    StructTys.push_back(Int32Ty);    // uint32_t x
-    StructTys.push_back(Int32Ty);    // uint32_t y
-    StructTys.push_back(Int32Ty);    // uint32_t z
-    StructTys.push_back(Int32Ty);    // uint32_t lod
-    StructTys.push_back(Int32Ty);    // enum RsAllocationCubemapFace
-    StructTys.push_back(llvm::ArrayType::get(Int32Ty, 16));  // uint32_t ar[16]
-
-    llvm::Type *ForEachStubPtrTy = llvm::StructType::create(
-        StructTys, "RsForEachStubParamStruct")->getPointerTo();
-
-    /* Create the function signature for our expanded function.
-     * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
-     *       uint32_t instep, uint32_t outstep)
-     */
-    llvm::SmallVector<llvm::Type*, 8> ParamTys;
-    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
-    ParamTys.push_back(Int32Ty);           // uint32_t x1
-    ParamTys.push_back(Int32Ty);           // uint32_t x2
-    ParamTys.push_back(Int32Ty);           // uint32_t instep
-    ParamTys.push_back(Int32Ty);           // uint32_t outstep
-
-    llvm::FunctionType *FT =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
-    llvm::Function *ExpandedFunc =
-        llvm::Function::Create(FT,
-                               llvm::GlobalValue::ExternalLinkage,
-                               F->getName() + ".expand", M);
+    llvm::Function *ExpandedFunc = createEmptyExpandedFunction(F->getName());
 
     // Create and name the actual arguments to this expanded function.
     llvm::SmallVector<llvm::Argument*, 8> ArgVec;
@@ -245,54 +325,38 @@ public:
     llvm::Value *Arg_instep = ArgVec[3];
     llvm::Value *Arg_outstep = ArgVec[4];
 
-    Arg_p->setName("p");
-    Arg_x1->setName("x1");
-    Arg_x2->setName("x2");
-    Arg_instep->setName("arg_instep");
-    Arg_outstep->setName("arg_outstep");
-
     llvm::Value *InStep = NULL;
     llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
-    llvm::BasicBlock *Begin =
-        llvm::BasicBlock::Create(*C, "Begin", ExpandedFunc);
-    llvm::IRBuilder<> Builder(Begin);
-
-    // uint32_t X = x1;
-    llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
-    Builder.CreateStore(Arg_x1, AX);
+    llvm::IRBuilder<> Builder(ExpandedFunc->getEntryBlock().begin());
 
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator Args = F->arg_begin();
 
     llvm::Type *InTy = NULL;
-    llvm::AllocaInst *AIn = NULL;
-    if (hasIn(Signature)) {
+    llvm::Value *InBasePtr = NULL;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
       InTy = Args->getType();
-      AIn = Builder.CreateAlloca(InTy, 0, "AIn");
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
+      InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
       Args++;
     }
 
     llvm::Type *OutTy = NULL;
-    llvm::AllocaInst *AOut = NULL;
-    if (hasOut(Signature)) {
+    llvm::Value *OutBasePtr = NULL;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       OutTy = Args->getType();
-      AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
+      OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
       Args++;
     }
 
     llvm::Value *UsrData = NULL;
-    if (hasUsrData(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = Args->getType();
       UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
           Builder.CreateStructGEP(Arg_p, 2)), UsrDataTy);
@@ -300,27 +364,20 @@ public:
       Args++;
     }
 
-    if (hasX(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       Args++;
     }
 
     llvm::Value *Y = NULL;
-    if (hasY(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
       Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
       Args++;
     }
 
     bccAssert(Args == F->arg_end());
 
-    llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
-    llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
-
-    // if (x1 < x2) goto Loop; else goto Exit;
-    llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
-    Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Loop:
-    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *IV;
+    createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
@@ -328,13 +385,32 @@ public:
     llvm::Value *InPtr = NULL;
     llvm::Value *OutPtr = NULL;
 
-    if (AIn) {
-      InPtr = Builder.CreateLoad(AIn, "InPtr");
+    // Calculate the current input and output pointers
+    //
+    // We always calculate the input/output pointers with a GEP operating on i8
+    // values and only cast at the very end to OutTy. This is because the step
+    // between two values is given in bytes.
+    //
+    // TODO: We could further optimize the output by using a GEP operation of
+    // type 'OutTy' in cases where the element type of the allocation allows.
+    if (OutBasePtr) {
+      llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
+      OutOffset = Builder.CreateMul(OutOffset, OutStep);
+      OutPtr = Builder.CreateGEP(OutBasePtr, OutOffset);
+      OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
+    }
+    if (InBasePtr) {
+      llvm::Value *InOffset = Builder.CreateSub(IV, Arg_x1);
+      InOffset = Builder.CreateMul(InOffset, InStep);
+      InPtr = Builder.CreateGEP(InBasePtr, InOffset);
+      InPtr = Builder.CreatePointerCast(InPtr, InTy);
+    }
+
+    if (InPtr) {
       RootArgs.push_back(InPtr);
     }
 
-    if (AOut) {
-      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
+    if (OutPtr) {
       RootArgs.push_back(OutPtr);
     }
 
@@ -342,9 +418,8 @@ public:
       RootArgs.push_back(UsrData);
     }
 
-    // We always have to load X, since it is used to iterate through the loop.
-    llvm::Value *X = Builder.CreateLoad(AX, "X");
-    if (hasX(Signature)) {
+    llvm::Value *X = IV;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       RootArgs.push_back(X);
     }
 
@@ -354,96 +429,19 @@ public:
 
     Builder.CreateCall(F, RootArgs);
 
-    if (InPtr) {
-      // InPtr += instep
-      llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(InPtr, Int32Ty), InStep), InTy);
-      Builder.CreateStore(NewIn, AIn);
-    }
-
-    if (OutPtr) {
-      // OutPtr += outstep
-      llvm::Value *NewOut = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
-      Builder.CreateStore(NewOut, AOut);
-    }
-
-    // X++;
-    llvm::Value *XPlusOne =
-        Builder.CreateNUWAdd(X, llvm::ConstantInt::get(Int32Ty, 1));
-    Builder.CreateStore(XPlusOne, AX);
-
-    // If (X < x2) goto Loop; else goto Exit;
-    Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
-    Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Exit:
-    Builder.SetInsertPoint(Exit);
-    Builder.CreateRetVoid();
-
     return true;
   }
 
   /* Expand a pass-by-value kernel.
    */
   bool ExpandKernel(llvm::Function *F, uint32_t Signature) {
-    bccAssert(isKernel(Signature));
+    bccAssert(bcinfo::MetadataExtractor::hasForEachSignatureKernel(Signature));
     ALOGV("Expanding kernel Function %s", F->getName().str().c_str());
 
     // TODO: Refactor this to share functionality with ExpandFunction.
     llvm::DataLayout DL(M);
 
-    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*C);
-    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
-    llvm::Type *SizeTy = Int32Ty;
-
-    /* Defined in frameworks/base/libs/rs/rs_hal.h:
-     *
-     * struct RsForEachStubParamStruct {
-     *   const void *in;
-     *   void *out;
-     *   const void *usr;
-     *   size_t usr_len;
-     *   uint32_t x;
-     *   uint32_t y;
-     *   uint32_t z;
-     *   uint32_t lod;
-     *   enum RsAllocationCubemapFace face;
-     *   uint32_t ar[16];
-     * };
-     */
-    llvm::SmallVector<llvm::Type*, 9> StructTys;
-    StructTys.push_back(VoidPtrTy);  // const void *in
-    StructTys.push_back(VoidPtrTy);  // void *out
-    StructTys.push_back(VoidPtrTy);  // const void *usr
-    StructTys.push_back(SizeTy);     // size_t usr_len
-    StructTys.push_back(Int32Ty);    // uint32_t x
-    StructTys.push_back(Int32Ty);    // uint32_t y
-    StructTys.push_back(Int32Ty);    // uint32_t z
-    StructTys.push_back(Int32Ty);    // uint32_t lod
-    StructTys.push_back(Int32Ty);    // enum RsAllocationCubemapFace
-    StructTys.push_back(llvm::ArrayType::get(Int32Ty, 16));  // uint32_t ar[16]
-
-    llvm::Type *ForEachStubPtrTy = llvm::StructType::create(
-        StructTys, "RsForEachStubParamStruct")->getPointerTo();
-
-    /* Create the function signature for our expanded function.
-     * void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
-     *       uint32_t instep, uint32_t outstep)
-     */
-    llvm::SmallVector<llvm::Type*, 8> ParamTys;
-    ParamTys.push_back(ForEachStubPtrTy);  // const RsForEachStubParamStruct *p
-    ParamTys.push_back(Int32Ty);           // uint32_t x1
-    ParamTys.push_back(Int32Ty);           // uint32_t x2
-    ParamTys.push_back(Int32Ty);           // uint32_t instep
-    ParamTys.push_back(Int32Ty);           // uint32_t outstep
-
-    llvm::FunctionType *FT =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(*C), ParamTys, false);
-    llvm::Function *ExpandedFunc =
-        llvm::Function::Create(FT,
-                               llvm::GlobalValue::ExternalLinkage,
-                               F->getName() + ".expand", M);
+    llvm::Function *ExpandedFunc = createEmptyExpandedFunction(F->getName());
 
     // Create and name the actual arguments to this expanded function.
     llvm::SmallVector<llvm::Argument*, 8> ArgVec;
@@ -465,32 +463,28 @@ public:
     llvm::Value *Arg_instep = ArgVec[3];
     llvm::Value *Arg_outstep = ArgVec[4];
 
-    Arg_p->setName("p");
-    Arg_x1->setName("x1");
-    Arg_x2->setName("x2");
-    Arg_instep->setName("arg_instep");
-    Arg_outstep->setName("arg_outstep");
-
     llvm::Value *InStep = NULL;
     llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
-    llvm::BasicBlock *Begin =
-        llvm::BasicBlock::Create(*C, "Begin", ExpandedFunc);
-    llvm::IRBuilder<> Builder(Begin);
+    llvm::IRBuilder<> Builder(ExpandedFunc->getEntryBlock().begin());
 
-    // uint32_t X = x1;
-    llvm::AllocaInst *AX = Builder.CreateAlloca(Int32Ty, 0, "AX");
-    Builder.CreateStore(Arg_x1, AX);
+    // Create TBAA meta-data.
+    llvm::MDNode *TBAARenderScript, *TBAAAllocation, *TBAAPointer;
+
+    llvm::MDBuilder MDHelper(*C);
+    TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
+    TBAAAllocation = MDHelper.createTBAANode("allocation", TBAARenderScript);
+    TBAAPointer = MDHelper.createTBAANode("pointer", TBAARenderScript);
 
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator Args = F->arg_begin();
 
     llvm::Type *OutTy = NULL;
-    llvm::AllocaInst *AOut = NULL;
     bool PassOutByReference = false;
-    if (hasOut(Signature)) {
+    llvm::LoadInst *OutBasePtr = NULL;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       llvm::Type *OutBaseTy = F->getReturnType();
       if (OutBaseTy->isVoidTy()) {
         PassOutByReference = true;
@@ -500,73 +494,83 @@ public:
         OutTy = OutBaseTy->getPointerTo();
         // We don't increment Args, since we are using the actual return type.
       }
-      AOut = Builder.CreateAlloca(OutTy, 0, "AOut");
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 1)), OutTy), AOut);
+      OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
+      OutBasePtr->setMetadata("tbaa", TBAAPointer);
     }
 
     llvm::Type *InBaseTy = NULL;
     llvm::Type *InTy = NULL;
-    llvm::AllocaInst *AIn = NULL;
-    if (hasIn(Signature)) {
+    llvm::LoadInst *InBasePtr = NULL;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
       InBaseTy = Args->getType();
       InTy =InBaseTy->getPointerTo();
-      AIn = Builder.CreateAlloca(InTy, 0, "AIn");
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
-      Builder.CreateStore(Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 0)), InTy), AIn);
+      InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
+      InBasePtr->setMetadata("tbaa", TBAAPointer);
       Args++;
     }
 
     // No usrData parameter on kernels.
-    bccAssert(!hasUsrData(Signature));
+    bccAssert(
+        !bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature));
 
-    if (hasX(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       Args++;
     }
 
     llvm::Value *Y = NULL;
-    if (hasY(Signature)) {
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
       Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
       Args++;
     }
 
     bccAssert(Args == F->arg_end());
 
-    llvm::BasicBlock *Loop = llvm::BasicBlock::Create(*C, "Loop", ExpandedFunc);
-    llvm::BasicBlock *Exit = llvm::BasicBlock::Create(*C, "Exit", ExpandedFunc);
-
-    // if (x1 < x2) goto Loop; else goto Exit;
-    llvm::Value *Cond = Builder.CreateICmpSLT(Arg_x1, Arg_x2);
-    Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Loop:
-    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *IV;
+    createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
     llvm::Value *InPtr = NULL;
-    llvm::Value *In = NULL;
     llvm::Value *OutPtr = NULL;
 
+    // Calculate the current input and output pointers
+    //
+    // We always calculate the input/output pointers with a GEP operating on i8
+    // values and only cast at the very end to OutTy. This is because the step
+    // between two values is given in bytes.
+    //
+    // TODO: We could further optimize the output by using a GEP operation of
+    // type 'OutTy' in cases where the element type of the allocation allows.
+    if (OutBasePtr) {
+      llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
+      OutOffset = Builder.CreateMul(OutOffset, OutStep);
+      OutPtr = Builder.CreateGEP(OutBasePtr, OutOffset);
+      OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
+    }
+    if (InBasePtr) {
+      llvm::Value *InOffset = Builder.CreateSub(IV, Arg_x1);
+      InOffset = Builder.CreateMul(InOffset, InStep);
+      InPtr = Builder.CreateGEP(InBasePtr, InOffset);
+      InPtr = Builder.CreatePointerCast(InPtr, InTy);
+    }
+
     if (PassOutByReference) {
-      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
       RootArgs.push_back(OutPtr);
     }
 
-    if (AIn) {
-      InPtr = Builder.CreateLoad(AIn, "InPtr");
-      In = Builder.CreateLoad(InPtr, "In");
+    if (InPtr) {
+      llvm::LoadInst *In = Builder.CreateLoad(InPtr, "In");
+      In->setMetadata("tbaa", TBAAAllocation);
       RootArgs.push_back(In);
     }
 
-    // We always have to load X, since it is used to iterate through the loop.
-    llvm::Value *X = Builder.CreateLoad(AX, "X");
-    if (hasX(Signature)) {
+    llvm::Value *X = IV;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
       RootArgs.push_back(X);
     }
 
@@ -576,39 +580,93 @@ public:
 
     llvm::Value *RetVal = Builder.CreateCall(F, RootArgs);
 
-    if (AOut && !PassOutByReference) {
-      OutPtr = Builder.CreateLoad(AOut, "OutPtr");
-      Builder.CreateStore(RetVal, OutPtr);
+    if (OutPtr && !PassOutByReference) {
+      llvm::StoreInst *Store = Builder.CreateStore(RetVal, OutPtr);
+      Store->setMetadata("tbaa", TBAAAllocation);
     }
-
-    if (InPtr) {
-      // InPtr += instep
-      llvm::Value *NewIn = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(InPtr, Int32Ty), InStep), InTy);
-      Builder.CreateStore(NewIn, AIn);
-    }
-
-    if (OutPtr) {
-      // OutPtr += outstep
-      llvm::Value *NewOut = Builder.CreateIntToPtr(Builder.CreateNUWAdd(
-          Builder.CreatePtrToInt(OutPtr, Int32Ty), OutStep), OutTy);
-      Builder.CreateStore(NewOut, AOut);
-    }
-
-    // X++;
-    llvm::Value *XPlusOne =
-        Builder.CreateNUWAdd(X, llvm::ConstantInt::get(Int32Ty, 1));
-    Builder.CreateStore(XPlusOne, AX);
-
-    // If (X < x2) goto Loop; else goto Exit;
-    Cond = Builder.CreateICmpSLT(XPlusOne, Arg_x2);
-    Builder.CreateCondBr(Cond, Loop, Exit);
-
-    // Exit:
-    Builder.SetInsertPoint(Exit);
-    Builder.CreateRetVoid();
 
     return true;
+  }
+
+  /// @brief Checks if pointers to allocation internals are exposed
+  ///
+  /// This function verifies if through the parameters passed to the kernel
+  /// or through calls to the runtime library the script gains access to
+  /// pointers pointing to data within a RenderScript Allocation.
+  /// If we know we control all loads from and stores to data within
+  /// RenderScript allocations and if we know the run-time internal accesses
+  /// are all annotated with RenderScript TBAA metadata, only then we
+  /// can safely use TBAA to distinguish between generic and from-allocation
+  /// pointers.
+  bool allocPointersExposed(llvm::Module &M) {
+    // Old style kernel function can expose pointers to elements within
+    // allocations.
+    // TODO: Extend analysis to allow simple cases of old-style kernels.
+    for (RSInfo::ExportForeachFuncListTy::const_iterator
+             func_iter = mFuncs.begin(), func_end = mFuncs.end();
+         func_iter != func_end; func_iter++) {
+      const char *Name = func_iter->first;
+      uint32_t Signature = func_iter->second;
+      if (M.getFunction(Name) &&
+          !bcinfo::MetadataExtractor::hasForEachSignatureKernel(Signature)) {
+        return true;
+      }
+    }
+
+    // Check for library functions that expose a pointer to an Allocation or
+    // that are not yet annotated with RenderScript-specific tbaa information.
+    static std::vector<std::string> Funcs;
+
+    // rsGetElementAt(...)
+    Funcs.push_back("_Z14rsGetElementAt13rs_allocationj");
+    Funcs.push_back("_Z14rsGetElementAt13rs_allocationjj");
+    Funcs.push_back("_Z14rsGetElementAt13rs_allocationjjj");
+    // rsSetElementAt()
+    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvj");
+    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvjj");
+    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvjjj");
+    // rsGetElementAtYuv_uchar_Y()
+    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_Y13rs_allocationjj");
+    // rsGetElementAtYuv_uchar_U()
+    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_U13rs_allocationjj");
+    // rsGetElementAtYuv_uchar_V()
+    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_V13rs_allocationjj");
+
+    for (std::vector<std::string>::iterator FI = Funcs.begin(),
+                                            FE = Funcs.end();
+         FI != FE; ++FI) {
+      llvm::Function *F = M.getFunction(*FI);
+
+      if (!F) {
+        ALOGE("Missing run-time function '%s'", FI->c_str());
+        return true;
+      }
+
+      if (F->getNumUses() > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// @brief Connect RenderScript TBAA metadata to C/C++ metadata
+  ///
+  /// The TBAA metadata used to annotate loads/stores from RenderScript
+  /// Allocations is generated in a separate TBAA tree with a "RenderScript TBAA"
+  /// root node. LLVM does assume may-alias for all nodes in unrelated alias
+  /// analysis trees. This function makes the RenderScript TBAA a subtree of the
+  /// normal C/C++ TBAA tree aside of normal C/C++ types. With the connected trees
+  /// every access to an Allocation is resolved to must-alias if compared to
+  /// a normal C/C++ access.
+  void connectRenderScriptTBAAMetadata(llvm::Module &M) {
+    llvm::MDBuilder MDHelper(*C);
+    llvm::MDNode *TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
+
+    llvm::MDNode *TBAARoot = MDHelper.createTBAARoot("Simple C/C++ TBAA");
+    llvm::MDNode *TBAAMergedRS = MDHelper.createTBAANode("RenderScript", TBAARoot);
+
+    TBAARenderScript->replaceAllUsesWith(TBAAMergedRS);
   }
 
   virtual bool runOnModule(llvm::Module &M) {
@@ -616,18 +674,31 @@ public:
     this->M = &M;
     C = &M.getContext();
 
+    bool AllocsExposed = allocPointersExposed(M);
+
     for (RSInfo::ExportForeachFuncListTy::const_iterator
              func_iter = mFuncs.begin(), func_end = mFuncs.end();
          func_iter != func_end; func_iter++) {
       const char *name = func_iter->first;
       uint32_t signature = func_iter->second;
       llvm::Function *kernel = M.getFunction(name);
-      if (kernel && isKernel(signature)) {
-        Changed |= ExpandKernel(kernel, signature);
+      if (kernel) {
+        if (bcinfo::MetadataExtractor::hasForEachSignatureKernel(signature)) {
+          Changed |= ExpandKernel(kernel, signature);
+          kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
+        } else if (kernel->getReturnType()->isVoidTy()) {
+          Changed |= ExpandFunction(kernel, signature);
+          kernel->setLinkage(llvm::GlobalValue::InternalLinkage);
+        } else {
+          // There are some graphics root functions that are not
+          // expanded, but that will be called directly. For those
+          // functions, we can not set the linkage to internal.
+        }
       }
-      else if (kernel && kernel->getReturnType()->isVoidTy()) {
-        Changed |= ExpandFunction(kernel, signature);
-      }
+    }
+
+    if (!AllocsExposed) {
+      connectRenderScriptTBAAMetadata(M);
     }
 
     return Changed;
