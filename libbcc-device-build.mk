@@ -49,7 +49,7 @@ else
   ifeq ($(TARGET_ARCH),mips)
     LOCAL_CFLAGS += -DFORCE_MIPS_CODEGEN
   else
-    ifeq ($(TARGET_ARCH),x86)
+    ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64))
       LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
     else
       $(error Unsupported architecture $(TARGET_ARCH))
