@@ -51,6 +51,10 @@ libbcinfo_STATIC_LIBRARIES := \
 
 LLVM_ROOT_PATH := external/llvm
 
+ifeq ($(TARGET_ARCH),aarch64)
+$(info TODOAArch64: $(LOCAL_PATH)/Android.mk Enable build of libbcinfo device shared library)
+else
+
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcinfo
@@ -69,6 +73,7 @@ LOCAL_SHARED_LIBRARIES := libLLVM libcutils liblog libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
+endif #!aarch64
 
 include $(CLEAR_VARS)
 
