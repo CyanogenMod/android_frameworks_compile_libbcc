@@ -424,7 +424,7 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   result->mHeader.hasDebugInformation =
       static_cast<uint8_t>(module.getNamedMetadata("llvm.dbg.cu") != NULL);
 
-  assert((cur_string_pool_offset == string_pool_size) &&
+  assert(((size_t) cur_string_pool_offset == string_pool_size) &&
             "Unexpected string pool size!");
 
   return result;
