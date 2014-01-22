@@ -72,8 +72,8 @@ include $(BUILD_SHARED_LIBRARY)
 #=====================================================================
 # Device Shared Library libbcc
 #=====================================================================
-ifeq ($(TARGET_ARCH),aarch64)
-$(info TODOAArch64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
+ifeq ($(TARGET_ARCH),arm64)
+$(info TODOArm64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
 else
 
 include $(CLEAR_VARS)
@@ -106,7 +106,7 @@ include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
 
-endif # !aarch64
+endif # !arm64
 #=====================================================================
 # Host Shared Library libbcc
 #=====================================================================
