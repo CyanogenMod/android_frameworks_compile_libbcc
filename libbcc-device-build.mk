@@ -34,8 +34,8 @@ endif
 # For the host build, we will include as many architecture as possible,
 # so that we can test the execution engine easily.
 
-ifeq ($(TARGET_ARCH),aarch64)
-$(info TODOAArch64: $(LOCAL_PATH)/Android.mk Add AArch64 define to LOCAL_CFLAGS)
+ifeq ($(TARGET_ARCH),arm64)
+$(info TODOArm64: $(LOCAL_PATH)/Android.mk Add Arm64 define to LOCAL_CFLAGS)
 else
 
 ifeq ($(TARGET_ARCH),arm)
@@ -69,4 +69,4 @@ LOCAL_C_INCLUDES := \
   $(LLVM_ROOT_PATH)/device/include \
   $(LOCAL_C_INCLUDES)
 
-endif # !aarch64
+endif # !arm64
