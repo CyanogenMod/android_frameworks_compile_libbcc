@@ -90,8 +90,9 @@ bool ELFObjectLoaderImpl::prepareDebugImage(void *pDebugImg,
       ELFSectionBits<32> *section =
           static_cast<ELFSectionBits<32> *>(mObject->getSectionByIndex(i));
       if (section != NULL) {
-        section_header_table[i].sh_addr =
-            reinterpret_cast<llvm::ELF::Elf32_Addr>(section->getBuffer());
+        uintptr_t address = reinterpret_cast<uintptr_t>(section->getBuffer());
+        LOG_FATAL_IF(address > 0xFFFFFFFFu, "Out of bound address for Elf32_Addr");
+        section_header_table[i].sh_addr = static_cast<llvm::ELF::Elf32_Addr>(address);
       }
     }
   }
