@@ -28,7 +28,13 @@ namespace bcc {
 
 class BCCContext;
 class CompilerConfig;
+class RSCompilerDriver;
 class RSExecutable;
+
+// Type signature for dynamically loaded initialization of an RSCompilerDriver.
+typedef void (*RSCompilerDriverInit_t) (bcc::RSCompilerDriver *);
+// Name of the function that we attempt to dynamically load/execute.
+#define RS_COMPILER_DRIVER_INIT_FN rsCompilerDriverInit
 
 class RSCompilerDriver {
 private:
@@ -41,6 +47,9 @@ private:
 
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
+
+  // Callback before linking with the runtime library.
+  RSLinkRuntimeCallback mLinkRuntimeCallback;
 
   // Do we merge global variables on ARM using LLVM's optimization pass?
   // Disabling LLVM's global merge pass allows static globals to be correctly
@@ -80,6 +89,14 @@ public:
 
   void setDebugContext(bool v) {
     mDebugContext = v;
+  }
+
+  void setLinkRuntimeCallback(RSLinkRuntimeCallback c) {
+    mLinkRuntimeCallback = c;
+  }
+
+  RSLinkRuntimeCallback getLinkRuntimeCallback() const {
+    return mLinkRuntimeCallback;
   }
 
   // This function enables/disables merging of global static variables.
