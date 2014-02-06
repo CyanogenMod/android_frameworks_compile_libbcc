@@ -72,8 +72,10 @@ include $(BUILD_SHARED_LIBRARY)
 #=====================================================================
 # Device Shared Library libbcc
 #=====================================================================
-ifeq ($(TARGET_ARCH),arm64)
-$(info TODOArm64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
+# TODOArm64
+# TODOMips64
+ifneq ($(filter $(TARGET_ARCH),arm64 mips64),)
+  $(info TODO$(TARGET_ARCH): $(LOCAL_PATH)/Android.mk Enable libbcc build)
 else
 
 include $(CLEAR_VARS)
@@ -106,7 +108,7 @@ include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
 
-endif # !arm64
+endif # !(arm64 || mips64)
 #=====================================================================
 # Host Shared Library libbcc
 #=====================================================================
