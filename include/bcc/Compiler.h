@@ -20,9 +20,14 @@
 namespace llvm {
 
 class raw_ostream;
-class PassManager;
 class DataLayout;
 class TargetMachine;
+
+namespace legacy {
+class PassManager;
+} // end namespace legacy
+
+using legacy::PassManager;
 
 } // end namespace llvm
 
