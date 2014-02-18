@@ -160,6 +160,10 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   const llvm::CodeGenOpt::Level script_opt_level =
       static_cast<llvm::CodeGenOpt::Level>(pScript.getOptimizationLevel());
 
+#if defined(DEFAULT_ARM_CODEGEN)
+  EnableGlobalMerge = mEnableGlobalMerge;
+#endif
+
   if (mConfig != NULL) {
     // Renderscript bitcode may have their optimization flag configuration
     // different than the previous run of RS compilation.
@@ -175,9 +179,6 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
       return false;
     }
     mConfig->setOptimizationLevel(script_opt_level);
-#if defined(DEFAULT_ARM_CODEGEN)
-    EnableGlobalMerge = mEnableGlobalMerge;
-#endif
     changed = true;
   }
 
