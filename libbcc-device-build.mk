@@ -34,33 +34,34 @@ endif
 # For the host build, we will include as many architecture as possible,
 # so that we can test the execution engine easily.
 
-# TODOArm64
-# TODOMips64
-ifneq ($(filter $(TARGET_ARCH),arm64 mips64),)
-  $(info TODO$(TARGET_ARCH): $(LOCAL_PATH)/libbcc-device-build.mk Add $(TARGET_ARCH) define to LOCAL_CFLAGS)
-else
+LOCAL_MODULE_TARGET_ARCH := $(LLVM_SUPPORTED_ARCH)
 
-ifeq ($(TARGET_ARCH),arm)
-  LOCAL_CFLAGS += -DFORCE_ARM_CODEGEN
-  ifeq ($(ARCH_ARM_HAVE_VFP),true)
-    LOCAL_CFLAGS += -DARCH_ARM_HAVE_VFP
-    ifeq ($(ARCH_ARM_HAVE_VFP_D32),true)
-      LOCAL_CFLAGS += -DARCH_ARM_HAVE_VFP_D32
-    endif
+ifeq ($(TARGET_ARCH),arm64)
+$(info TODOArm64: $(LOCAL_PATH)/Android.mk Add Arm64 define to LOCAL_CFLAGS)
+endif
+
+ifeq ($(TARGET_ARCH),mips64)
+$(info TODOMips64: $(LOCAL_PATH)/Android.mk Add Mips64 define to LOCAL_CFLAGS)
+endif
+
+LOCAL_CFLAGS_arm += -DFORCE_ARM_CODEGEN
+ifeq ($(ARCH_ARM_HAVE_VFP),true)
+  LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_VFP
+  ifeq ($(ARCH_ARM_HAVE_VFP_D32),true)
+    LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_VFP_D32
   endif
-  ifeq ($(ARCH_ARM_HAVE_NEON),true)
-    LOCAL_CFLAGS += -DARCH_ARM_HAVE_NEON
-  endif
-else
-  ifeq ($(TARGET_ARCH),mips)
-    LOCAL_CFLAGS += -DFORCE_MIPS_CODEGEN
-  else
-    ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64))
-      LOCAL_CFLAGS += -DFORCE_X86_CODEGEN
-    else
-      $(error Unsupported architecture $(TARGET_ARCH))
-    endif
-  endif
+endif
+ifeq ($(ARCH_ARM_HAVE_NEON),true)
+  LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_NEON
+endif
+
+LOCAL_CFLAGS_mips += -DFORCE_MIPS_CODEGEN
+
+LOCAL_CFLAGS_x86 += -DFORCE_X86_CODEGEN
+LOCAL_CFLAGS_x86_64 += -DFORCE_X86_CODEGEN
+
+ifeq (,$(filter $(TARGET_ARCH),arm64 arm mips mips64 x86 x86_64))
+  $(error Unsupported architecture $(TARGET_ARCH))
 endif
 
 LOCAL_C_INCLUDES := \
@@ -70,5 +71,3 @@ LOCAL_C_INCLUDES := \
   $(LLVM_ROOT_PATH)/include \
   $(LLVM_ROOT_PATH)/device/include \
   $(LOCAL_C_INCLUDES)
-
-endif # !(arm64 || mips64)

@@ -35,48 +35,24 @@ libbcc_WHOLE_STATIC_LIBRARIES += \
 # Calculate SHA1 checksum for libbcc.so, libRS.so and libclcore.bc
 #=====================================================================
 
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := libbcc.sha1
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-
-libbcc_SHA1_SRCS := \
-  $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libbcc.so \
-  $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libcompiler_rt.so \
-  $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/libRS.so \
-  $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore.bc,,)/libclcore.bc \
-  $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_debug.bc,,)/libclcore_debug.bc
-
-ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  libbcc_SHA1_SRCS += \
-    $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,)/libclcore_neon.bc
+my_2nd_arch_prefix :=
+include $(LOCAL_PATH)/libbcc.sha1.mk
+ifneq ($(TARGET_2ND_ARCH),)
+my_2nd_arch_prefix := $(TARGET_2ND_ARCH_VAR_PREFIX)
+include $(LOCAL_PATH)/libbcc.sha1.mk
 endif
-
-libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
-intermediates := $(call local-intermediates-dir)
-
-libbcc_SHA1_ASM := $(intermediates)/libbcc.sha1.S
-LOCAL_GENERATED_SOURCES += $(libbcc_SHA1_ASM)
-$(libbcc_SHA1_ASM): PRIVATE_SHA1_SRCS := $(libbcc_SHA1_SRCS)
-$(libbcc_SHA1_ASM): $(libbcc_SHA1_SRCS) $(libbcc_GEN_SHA1_STAMP)
-	@echo libbcc.sha1: $@
-	$(hide) mkdir -p $(dir $@)
-	$(hide) $(libbcc_GEN_SHA1_STAMP) $(PRIVATE_SHA1_SRCS) > $@
-
-LOCAL_CFLAGS += -D_REENTRANT -DPIC -fPIC
-LOCAL_CFLAGS += -O3 -nodefaultlibs -nostdlib
-
-include $(BUILD_SHARED_LIBRARY)
+my_2nd_arch_prefix :=
 
 #=====================================================================
 # Device Shared Library libbcc
 #=====================================================================
-# TODOArm64
-# TODOMips64
-ifneq ($(filter $(TARGET_ARCH),arm64 mips64),)
-  $(info TODO$(TARGET_ARCH): $(LOCAL_PATH)/Android.mk Enable libbcc build)
-else
+ifeq ($(TARGET_ARCH),arm64)
+$(info TODOArm64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
+endif
+
+ifeq ($(TARGET_ARCH),mips64)
+$(info TODOMips64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
+endif
 
 include $(CLEAR_VARS)
 
@@ -94,21 +70,25 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libs
 # installed.
 LOCAL_REQUIRED_MODULES := libclcore.bc libclcore_debug.bc libbcc.sha1 libcompiler_rt
 
-ifeq ($(TARGET_ARCH),$(filter $(TARGET_ARCH),x86 x86_64))
-LOCAL_REQUIRED_MODULES += libclcore_x86.bc
-endif
+LOCAL_REQUIRED_MODULES_x86 += libclcore_x86.bc
+LOCAL_REQUIRED_MODULES_x86_64 += libclcore_x86.bc
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  LOCAL_REQUIRED_MODULES += libclcore_neon.bc
+  LOCAL_REQUIRED_MODULES_arm += libclcore_neon.bc
 endif
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
+my_2nd_arch_prefix :=
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
+ifdef TARGET_2ND_ARCH
+my_2nd_arch_prefix := $(TARGET_2ND_ARCH_VAR_PREFIX)
+include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
+endif
+my_2nd_arch_prefix :=
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
 
-endif # !(arm64 || mips64)
 #=====================================================================
 # Host Shared Library libbcc
 #=====================================================================
@@ -136,6 +116,7 @@ LOCAL_LDLIBS := -ldl -lpthread
 endif
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
+my_2nd_arch_prefix :=
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
 
 include $(LIBBCC_HOST_BUILD_MK)
