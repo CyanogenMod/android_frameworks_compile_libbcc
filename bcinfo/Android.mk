@@ -51,18 +51,19 @@ libbcinfo_STATIC_LIBRARIES := \
 
 LLVM_ROOT_PATH := external/llvm
 
-# TODOArm64
-# TODOMips64
-ifneq ($(filter $(TARGET_ARCH),arm64 mips64),)
-  $(info TODO$(TARGET_ARCH): $(LOCAL_PATH)/Android.mk Enable build of libbcinfo device shared library)
-else
+ifeq ($(TARGET_ARCH),arm64)
+$(info TODOArm64: $(LOCAL_PATH)/Android.mk Enable build of libbcinfo device shared library)
+endif
+
+ifeq ($(TARGET_ARCH),mips64)
+$(info TODOMips64: $(LOCAL_PATH)/Android.mk Enable build of libbcinfo device shared library)
+endif
 
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcinfo
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_MODULE_TAGS := optional
-intermediates := $(local-intermediates-dir)
 
 LOCAL_SRC_FILES := $(libbcinfo_SRC_FILES)
 
@@ -75,7 +76,6 @@ LOCAL_SHARED_LIBRARIES := libLLVM libcutils liblog libstlport
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
-endif # !(arm64 || mips64)
 
 include $(CLEAR_VARS)
 

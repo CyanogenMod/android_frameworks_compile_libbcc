@@ -15,9 +15,9 @@
 #
 
 # Build rules for extracting configuration from Android.mk
-intermediates := $(call local-intermediates-dir)
+generated_sources := $(call local-generated-sources-dir)
 
-GEN_CONFIG_FROM_MK := $(intermediates)/ConfigFromMk.h
+GEN_CONFIG_FROM_MK := $(generated_sources)/ConfigFromMk.h
 
 $(GEN_CONFIG_FROM_MK): PRIVATE_PATH := $(LIBBCC_ROOT_PATH)
 $(GEN_CONFIG_FROM_MK): PRIVATE_CUSTOM_TOOL = \
