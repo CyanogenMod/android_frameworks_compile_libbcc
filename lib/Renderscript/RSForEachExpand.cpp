@@ -42,6 +42,8 @@ using namespace bcc;
 
 namespace {
 
+static const bool gEnableRsTbaa = false;
+
 /* RSForEachExpandPass - This pass operates on functions that are able to be
  * called via rsForEach() or "foreach_<NAME>". We create an inner loop for the
  * ForEach-able function to be invoked over the appropriate data cells of the
@@ -497,7 +499,9 @@ public:
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
-      OutBasePtr->setMetadata("tbaa", TBAAPointer);
+      if (gEnableRsTbaa) {
+        OutBasePtr->setMetadata("tbaa", TBAAPointer);
+      }
     }
 
     llvm::Type *InBaseTy = NULL;
@@ -509,7 +513,9 @@ public:
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
       InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
-      InBasePtr->setMetadata("tbaa", TBAAPointer);
+      if (gEnableRsTbaa) {
+        InBasePtr->setMetadata("tbaa", TBAAPointer);
+      }
       Args++;
     }
 
@@ -565,7 +571,9 @@ public:
 
     if (InPtr) {
       llvm::LoadInst *In = Builder.CreateLoad(InPtr, "In");
-      In->setMetadata("tbaa", TBAAAllocation);
+      if (gEnableRsTbaa) {
+        In->setMetadata("tbaa", TBAAAllocation);
+      }
       RootArgs.push_back(In);
     }
 
@@ -582,7 +590,9 @@ public:
 
     if (OutPtr && !PassOutByReference) {
       llvm::StoreInst *Store = Builder.CreateStore(RetVal, OutPtr);
-      Store->setMetadata("tbaa", TBAAAllocation);
+      if (gEnableRsTbaa) {
+        Store->setMetadata("tbaa", TBAAAllocation);
+      }
     }
 
     return true;
@@ -697,7 +707,7 @@ public:
       }
     }
 
-    if (!AllocsExposed) {
+    if (gEnableRsTbaa && !AllocsExposed) {
       connectRenderScriptTBAAMetadata(M);
     }
 
