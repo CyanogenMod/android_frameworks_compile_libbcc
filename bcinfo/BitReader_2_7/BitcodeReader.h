@@ -137,8 +137,6 @@ class BitcodeReader : public GVMaterializer {
   uint64_t NextUnreadBit;
   bool SeenValueSymbolTable;
 
-  const char *ErrorString;
-
   std::vector<Type*> TypeList;
   BitcodeReaderValueList ValueList;
   BitcodeReaderMDValueList MDValueList;
@@ -191,12 +189,40 @@ class BitcodeReader : public GVMaterializer {
   /// for compatibility.
   /// FIXME: Remove in LLVM 3.0.
   bool LLVM2_7MetadataDetected;
+  static const error_category &BitcodeErrorCategory();
 
 public:
+  enum ErrorType {
+    BitcodeStreamInvalidSize,
+    ConflictingMETADATA_KINDRecords,
+    CouldNotFindFunctionInStream,
+    ExpectedConstant,
+    InsufficientFunctionProtos,
+    InvalidBitcodeSignature,
+    InvalidBitcodeWrapperHeader,
+    InvalidConstantReference,
+    InvalidID, // A read identifier is not found in the table it should be in.
+    InvalidInstructionWithNoBB,
+    InvalidRecord, // A read record doesn't have the expected size or structure
+    InvalidTypeForValue, // Type read OK, but is invalid for its use
+    InvalidTYPETable,
+    InvalidType, // We were unable to read a type
+    MalformedBlock, // We are unable to advance in the stream.
+    MalformedGlobalInitializerSet,
+    InvalidMultipleBlocks, // We found multiple blocks of a kind that should
+                           // have only one
+    NeverResolvedValueFoundInFunction,
+    InvalidValue // Invalid version, inst number, attr number, etc
+  };
+
+  error_code Error(ErrorType E) {
+    return error_code(E, BitcodeErrorCategory());
+  }
+
   explicit BitcodeReader(MemoryBuffer *buffer, LLVMContext &C)
     : Context(C), TheModule(0), Buffer(buffer), BufferOwned(false),
       LazyStreamer(0), NextUnreadBit(0), SeenValueSymbolTable(false),
-      ErrorString(0), ValueList(C), MDValueList(C),
+      ValueList(C), MDValueList(C),
       SeenFirstFunctionBody(false), LLVM2_7MetadataDetected(false) {
   }
   ~BitcodeReader() {
@@ -211,23 +237,17 @@ public:
 
   virtual bool isMaterializable(const GlobalValue *GV) const;
   virtual bool isDematerializable(const GlobalValue *GV) const;
-  virtual bool Materialize(GlobalValue *GV, std::string *ErrInfo = 0);
-  virtual bool MaterializeModule(Module *M, std::string *ErrInfo = 0);
+  virtual error_code Materialize(GlobalValue *GV);
+  virtual error_code MaterializeModule(Module *M);
   virtual void Dematerialize(GlobalValue *GV);
-
-  bool Error(const char *Str) {
-    ErrorString = Str;
-    return true;
-  }
-  const char *getErrorString() const { return ErrorString; }
 
   /// @brief Main interface to parsing a bitcode buffer.
   /// @returns true if an error occurred.
-  bool ParseBitcodeInto(Module *M);
+  error_code ParseBitcodeInto(Module *M);
 
   /// @brief Cheap mechanism to just extract module triple
   /// @returns true if an error occurred.
-  bool ParseTriple(std::string &Triple);
+  error_code ParseTriple(std::string &Triple);
 
   static uint64_t decodeSignRotatedValue(uint64_t V);
 
@@ -278,25 +298,25 @@ private:
   }
 
 
-  bool ParseModule(bool Resume);
-  bool ParseAttributeBlock();
-  bool ParseTypeTable();
-  bool ParseOldTypeTable();         // FIXME: Remove in LLVM 3.1
-  bool ParseTypeTableBody();
+  error_code ParseModule(bool Resume);
+  error_code ParseAttributeBlock();
+  error_code ParseTypeTable();
+  error_code ParseOldTypeTable();         // FIXME: Remove in LLVM 3.1
+  error_code ParseTypeTableBody();
 
-  bool ParseOldTypeSymbolTable();   // FIXME: Remove in LLVM 3.1
-  bool ParseValueSymbolTable();
-  bool ParseConstants();
-  bool RememberAndSkipFunctionBody();
-  bool ParseFunctionBody(Function *F);
-  bool GlobalCleanup();
-  bool ResolveGlobalAndAliasInits();
-  bool ParseMetadata();
-  bool ParseMetadataAttachment();
-  bool ParseModuleTriple(std::string &Triple);
-  bool InitStream();
-  bool InitStreamFromBuffer();
-  bool InitLazyStream();
+  error_code ParseOldTypeSymbolTable();   // FIXME: Remove in LLVM 3.1
+  error_code ParseValueSymbolTable();
+  error_code ParseConstants();
+  error_code RememberAndSkipFunctionBody();
+  error_code ParseFunctionBody(Function *F);
+  error_code GlobalCleanup();
+  error_code ResolveGlobalAndAliasInits();
+  error_code ParseMetadata();
+  error_code ParseMetadataAttachment();
+  error_code ParseModuleTriple(std::string &Triple);
+  error_code InitStream();
+  error_code InitStreamFromBuffer();
+  error_code InitLazyStream();
 };
 
 } // End llvm_2_7 namespace
