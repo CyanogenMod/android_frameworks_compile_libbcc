@@ -34,15 +34,15 @@ a_suffix := $($(my_prefix)STATIC_LIB_SUFFIX)
 LOCAL_LIBBCC_LIB_DEPS := \
   $(foreach lib,$(LOCAL_STATIC_LIBRARIES), \
     $(call intermediates-dir-for, \
-      STATIC_LIBRARIES,$(lib),$(LOCAL_IS_HOST_MODULE))/$(lib)$(a_suffix)) \
+      STATIC_LIBRARIES,$(lib),$(LOCAL_IS_HOST_MODULE),,$(my_2nd_arch_prefix))/$(lib)$(a_suffix)) \
   $(foreach lib,$(LOCAL_WHOLE_STATIC_LIBRARIES), \
     $(call intermediates-dir-for, \
-      STATIC_LIBRARIES,$(lib),$(LOCAL_IS_HOST_MODULE))/$(lib)$(a_suffix)) \
-  $(addprefix $($(my_prefix)OUT_INTERMEDIATE_LIBRARIES)/, \
+      STATIC_LIBRARIES,$(lib),$(LOCAL_IS_HOST_MODULE),,$(my_2nd_arch_prefix))/$(lib)$(a_suffix)) \
+  $(addprefix $($(my_2nd_arch_prefix)$(my_prefix)OUT_INTERMEDIATE_LIBRARIES)/, \
     $(addsuffix $(so_suffix), $(LOCAL_SHARED_LIBRARIES))) \
 
 # Build Rules for Automatically Generated Build Information
-GEN := $(local-intermediates-dir)/BuildInfo.cpp
+GEN := $(call local-intermediates-dir,,$(my_2nd_arch_prefix))/BuildInfo.cpp
 
 gen_build_info := $(LOCAL_PATH)/tools/build/gen-build-info.py
 
@@ -54,4 +54,8 @@ $(GEN): $(gen_build_info) $(LOCAL_LIBBCC_LIB_DEPS) \
         $(wildcard $(LOCAL_PATH)/.git/COMMIT_EDITMSG)
 	$(transform-generated-source)
 
+ifdef LOCAL_IS_HOST_MODULE
 LOCAL_GENERATED_SOURCES += $(GEN)
+else
+LOCAL_GENERATED_SOURCES_$(TARGET_$(my_2nd_arch_prefix)ARCH) += $(GEN)
+endif
