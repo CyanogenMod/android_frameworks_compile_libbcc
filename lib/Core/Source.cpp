@@ -18,6 +18,7 @@
 
 #include <new>
 
+#include <llvm/Analysis/Verifier.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Linker.h>
@@ -114,6 +115,14 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
 
 Source *Source::CreateFromModule(BCCContext &pContext, llvm::Module &pModule,
                                  bool pNoDelete) {
+  std::string ErrorInfo;
+
+  if (llvm::verifyModule(pModule, llvm::ReturnStatusAction, &ErrorInfo)) {
+    ALOGE("Bitcode of RenderScript module does not pass verification: `%s'!",
+          ErrorInfo.c_str());
+    return NULL;
+  }
+
   Source *result = new (std::nothrow) Source(pContext, pModule, pNoDelete);
   if (result == NULL) {
     ALOGE("Out of memory during Source object allocation for `%s'!",
