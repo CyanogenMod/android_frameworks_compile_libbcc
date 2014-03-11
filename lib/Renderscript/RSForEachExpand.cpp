@@ -42,7 +42,7 @@ using namespace bcc;
 
 namespace {
 
-static const bool gEnableRsTbaa = false;
+static const bool gEnableRsTbaa = true;
 
 /* RSForEachExpandPass - This pass operates on functions that are able to be
  * called via rsForEach() or "foreach_<NAME>". We create an inner loop for the
@@ -473,11 +473,13 @@ public:
 
     // Create TBAA meta-data.
     llvm::MDNode *TBAARenderScript, *TBAAAllocation, *TBAAPointer;
-
     llvm::MDBuilder MDHelper(*C);
+
     TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
-    TBAAAllocation = MDHelper.createTBAANode("allocation", TBAARenderScript);
-    TBAAPointer = MDHelper.createTBAANode("pointer", TBAARenderScript);
+    TBAAAllocation = MDHelper.createTBAAScalarTypeNode("allocation", TBAARenderScript);
+    TBAAAllocation = MDHelper.createTBAAStructTagNode(TBAAAllocation, TBAAAllocation, 0);
+    TBAAPointer = MDHelper.createTBAAScalarTypeNode("pointer", TBAARenderScript);
+    TBAAPointer = MDHelper.createTBAAStructTagNode(TBAAPointer, TBAAPointer, 0);
 
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
