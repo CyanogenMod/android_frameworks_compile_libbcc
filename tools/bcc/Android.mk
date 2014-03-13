@@ -44,6 +44,9 @@ include $(BUILD_HOST_EXECUTABLE)
 # ========================================================
 include $(CLEAR_VARS)
 
+# not supported on 64-bit yet
+LOCAL_32_BIT_ONLY := true
+
 LOCAL_MODULE := bcc
 LOCAL_MODULE_CLASS := EXECUTABLES
 
