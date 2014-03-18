@@ -219,7 +219,7 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) 
   // Check the version.
   if (::memcmp(header->version,
                RSINFO_VERSION,
-               sizeof((header->version)) != 0)) {
+               sizeof(header->version)) != 0) {
     ALOGV("Mismatch the version of RS info file %s: (current) %s v.s. (file) "
           "%s. Treat it as as a dirty cache.", input_filename, RSINFO_VERSION,
           header->version);
