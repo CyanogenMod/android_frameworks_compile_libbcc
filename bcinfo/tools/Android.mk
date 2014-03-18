@@ -41,7 +41,7 @@ LOCAL_CFLAGS += -D__HOST__
 LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
-LOCAL_LDLIBS = -ldl
+LOCAL_LDLIBS = -ldl -lpthread
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
 include $(BUILD_HOST_EXECUTABLE)
