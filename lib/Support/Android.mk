@@ -37,6 +37,9 @@ libbcc_support_SRC_FILES := \
 
 include $(CLEAR_VARS)
 
+# not supported on 64-bit yet
+LOCAL_32_BIT_ONLY := true
+
 LOCAL_MODULE := libbccSupport
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
