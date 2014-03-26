@@ -156,29 +156,6 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
   return true;
 }
 
-static inline
-bool CompileScript(Compiler &pCompiler, Script &pScript,
-                   const std::string &pOutputPath) {
-  // Open the output file.
-  OutputFile output_file(pOutputPath, FileBase::kTruncate);
-
-  if (output_file.hasError()) {
-    llvm::errs() << "Failed to open the output file `" << pOutputPath
-                 << "'! (detail: " << output_file.getErrorMessage() << ")\n";
-    return false;
-  }
-
-  // Run the compiler.
-  Compiler::ErrorCode result = pCompiler.compile(pScript, output_file);
-  if (result != Compiler::kSuccess) {
-    llvm::errs() << "Fatal error during compilation (detail: "
-                 << Compiler::GetErrorString(result) << ".)\n";
-    return false;
-  }
-
-  return true;
-}
-
 int main(int argc, char **argv) {
   llvm::cl::SetVersionPrinter(BCCVersionPrinter);
   llvm::cl::ParseCommandLineOptions(argc, argv);
