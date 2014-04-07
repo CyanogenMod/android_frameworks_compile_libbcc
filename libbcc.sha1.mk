@@ -1,7 +1,7 @@
 #=====================================================================
 # Calculate SHA1 checksum for libbcc.so, libRS.so and libclcore.bc
 #=====================================================================
-
+ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
 # not supported on 64-bit yet
@@ -48,3 +48,4 @@ endif
 LOCAL_MODULE_TARGET_ARCH := $(LLVM_SUPPORTED_ARCH)
 
 include $(BUILD_SHARED_LIBRARY)
+endif
