@@ -31,7 +31,7 @@ libbcc_core_SRC_FILES := \
 #=====================================================================
 # Device Static Library: libbccCore
 #=====================================================================
-
+ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbccCore
@@ -44,7 +44,7 @@ include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_STATIC_LIBRARY)
-
+endif
 
 #=====================================================================
 # Host Static Library: libbccCore

@@ -34,7 +34,7 @@ libbcc_support_SRC_FILES := \
 #=====================================================================
 # Device Static Library: libbccSupport
 #=====================================================================
-
+ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
 # not supported on 64-bit yet
@@ -51,7 +51,7 @@ include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_STATIC_LIBRARY)
-
+endif
 
 #=====================================================================
 # Host Static Library: libbccSupport

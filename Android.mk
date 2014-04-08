@@ -46,6 +46,7 @@ my_2nd_arch_prefix :=
 #=====================================================================
 # Device Shared Library libbcc
 #=====================================================================
+ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 ifeq ($(TARGET_ARCH),arm64)
 $(info TODOArm64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
 endif
@@ -91,6 +92,7 @@ my_2nd_arch_prefix :=
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
+endif
 
 #=====================================================================
 # Host Shared Library libbcc
