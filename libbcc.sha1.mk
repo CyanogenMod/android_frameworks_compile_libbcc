@@ -4,10 +4,8 @@
 
 include $(CLEAR_VARS)
 
-ifneq ($(TARGET_ARCH), x86_64)
 # not supported on 64-bit yet
 LOCAL_32_BIT_ONLY := true
-endif
 
 LOCAL_MODULE := libbcc.sha1
 LOCAL_MODULE_TAGS := optional
