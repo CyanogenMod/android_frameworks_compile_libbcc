@@ -39,9 +39,6 @@ libbcc_renderscript_SRC_FILES := \
 ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
-# not supported on 64-bit yet
-LOCAL_32_BIT_ONLY := true
-
 LOCAL_MODULE := libbccRenderscript
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES

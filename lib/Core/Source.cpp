@@ -18,12 +18,14 @@
 
 #include <new>
 
-#include <llvm/Analysis/Verifier.h>
+#include <llvm/ADT/OwningPtr.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/Linker.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include "llvm/Support/raw_ostream.h"
 #include <llvm/Support/system_error.h>
 
 #include "bcc/BCCContext.h"
@@ -39,15 +41,13 @@ namespace {
 // return NULL and will NOT take the ownership of pInput.
 static inline llvm::Module *helper_load_bitcode(llvm::LLVMContext &pContext,
                                                 llvm::MemoryBuffer *pInput) {
-  std::string error;
-  llvm::Module *module = llvm::getLazyBitcodeModule(pInput, pContext, &error);
-
-  if (module == NULL) {
+  llvm::ErrorOr<llvm::Module *> moduleOrError = llvm::getLazyBitcodeModule(pInput, pContext);
+  if (llvm::error_code ec = moduleOrError.getError()) {
     ALOGE("Unable to parse the given bitcode file `%s'! (%s)",
-          pInput->getBufferIdentifier(), error.c_str());
+          pInput->getBufferIdentifier(), ec.message().c_str());
   }
 
-  return module;
+  return moduleOrError.get();
 }
 
 } // end anonymous namespace
@@ -116,10 +116,10 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
 Source *Source::CreateFromModule(BCCContext &pContext, llvm::Module &pModule,
                                  bool pNoDelete) {
   std::string ErrorInfo;
-
-  if (llvm::verifyModule(pModule, llvm::ReturnStatusAction, &ErrorInfo)) {
+  llvm::raw_string_ostream ErrorStream(ErrorInfo);
+  if (llvm::verifyModule(pModule, &ErrorStream)) {
     ALOGE("Bitcode of RenderScript module does not pass verification: `%s'!",
-          ErrorInfo.c_str());
+          ErrorStream.str().c_str());
     return NULL;
   }
 

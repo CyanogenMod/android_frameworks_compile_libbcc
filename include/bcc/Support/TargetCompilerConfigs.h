@@ -63,6 +63,18 @@ public:
 #endif // defined(PROVIDE_ARM_CODEGEN)
 
 //===----------------------------------------------------------------------===//
+// ARM64
+//===----------------------------------------------------------------------===//
+#if defined(PROVIDE_ARM64_CODEGEN)
+class ARM64CompilerConfig : public CompilerConfig {
+public:
+  ARM64CompilerConfig() : CompilerConfig(DEFAULT_ARM64_TRIPLE_STRING) {
+
+  }
+};
+#endif // defined(PROVIDE_ARM64_CODEGEN)
+
+//===----------------------------------------------------------------------===//
 // MIPS
 //===----------------------------------------------------------------------===//
 #if defined(PROVIDE_MIPS_CODEGEN)
@@ -116,6 +128,8 @@ class DefaultCompilerConfig : public
   X86_32CompilerConfig
 #elif defined(DEFAULT_X86_64_CODEGEN)
   X86_64CompilerConfig
+#elif defined(DEFAULT_ARM64_CODEGEN)
+  ARM64CompilerConfig
 #else
 #  error "Unsupported Default Target!"
 #endif

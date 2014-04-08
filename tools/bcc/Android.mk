@@ -45,9 +45,6 @@ include $(BUILD_HOST_EXECUTABLE)
 ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
-# not supported on 64-bit yet
-LOCAL_32_BIT_ONLY := true
-
 LOCAL_MODULE := bcc
 LOCAL_MODULE_CLASS := EXECUTABLES
 

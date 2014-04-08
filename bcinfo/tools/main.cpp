@@ -20,8 +20,8 @@
 
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/StringRef.h>
-#include <llvm/Assembly/AssemblyAnnotationWriter.h>
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/IR/AssemblyAnnotationWriter.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/ManagedStatic.h>
@@ -319,13 +319,16 @@ int main(int argc, char** argv) {
         inFile.c_str(), false));
 
     llvm::OwningPtr<llvm::Module> module;
-    std::string errmsg;
-    module.reset(llvm::ParseBitcodeFile(mem.get(), ctx, &errmsg));
-    if (module.get() != 0 && module->MaterializeAllPermanently(&errmsg)) {
-      module.reset();
+    llvm::ErrorOr<llvm::Module*> moduleOrError = llvm::parseBitcodeFile(mem.get(), ctx);
+    llvm::error_code ec = moduleOrError.getError();
+    if (!ec) {
+        module.reset(moduleOrError.get());
+        ec = module->materializeAllPermanently();
     }
-
-    if (module.get() == 0) {
+    std::string errmsg;
+    if (ec) {
+      errmsg = ec.message();
+      module.reset();
       if (errmsg.size()) {
         fprintf(stderr, "error: %s\n", errmsg.c_str());
       } else {
@@ -336,7 +339,7 @@ int main(int argc, char** argv) {
 
     llvm::OwningPtr<llvm::tool_output_file> tof(
         new llvm::tool_output_file(outFile.c_str(), errmsg,
-                                   llvm::sys::fs::F_Binary));
+                                   llvm::sys::fs::F_None));
     llvm::OwningPtr<llvm::AssemblyAnnotationWriter> ann;
     module->print(tof->os(), ann.get());
 
