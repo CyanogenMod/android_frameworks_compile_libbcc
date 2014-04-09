@@ -32,7 +32,7 @@ libbcc_executionengine_SRC_FILES := \
 #=====================================================================
 # Device Static Library: libbccExecutionEngine
 #=====================================================================
-
+ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbccExecutionEngine
@@ -54,7 +54,7 @@ include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_STATIC_LIBRARY)
-
+endif
 
 #=====================================================================
 # Host Static Library: libbccExecutionEngine
