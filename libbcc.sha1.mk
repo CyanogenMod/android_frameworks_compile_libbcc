@@ -39,13 +39,9 @@ $(libbcc_SHA1_ASM): $(libbcc_SHA1_SRCS) $(libbcc_GEN_SHA1_STAMP)
 LOCAL_CFLAGS += -D_REENTRANT -DPIC -fPIC
 LOCAL_CFLAGS += -O3 -nodefaultlibs -nostdlib
 
-ifeq ($(my_2nd_arch_prefix),)
-LOCAL_NO_2ND_ARCH := true
-else
-LOCAL_32_BIT_ONLY := true
-endif
+LOCAL_MODULE_TARGET_ARCH := $(filter $(TARGET_$(my_2nd_arch_prefix)ARCH),$(LLVM_SUPPORTED_ARCH))
 
-LOCAL_MODULE_TARGET_ARCH := $(LLVM_SUPPORTED_ARCH)
-
+ifdef LOCAL_MODULE_TARGET_ARCH
 include $(BUILD_SHARED_LIBRARY)
+endif
 endif
