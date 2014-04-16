@@ -170,7 +170,7 @@ public:
   static const char LibRSPath[];
   static const char LibCLCorePath[];
   static const char LibCLCoreDebugPath[];
-#if defined(__i386__)
+#if defined(__i386__) || defined(__x86_64__)
   static const char LibCLCoreX86Path[];
 #endif
 #if defined(ARCH_ARM_HAVE_NEON)

@@ -28,7 +28,7 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
   const char* core_lib = RSInfo::LibCLCorePath;
 
   // x86 devices will use an optimized library.
-#if defined(__i386__)
+#if defined(__i386__) || defined(__x86_64__)
   core_lib = RSInfo::LibCLCoreX86Path;
 #endif
 
