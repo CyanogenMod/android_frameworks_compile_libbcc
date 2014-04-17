@@ -31,8 +31,13 @@ namespace bcc {
 
 class ELFObjectLoaderImpl : public ObjectLoaderImpl {
 private:
+#ifdef __LP64__
+  ELFObject<64> *mObject;
+  ELFSectionSymTab<64> *mSymTab;
+#else
   ELFObject<32> *mObject;
   ELFSectionSymTab<32> *mSymTab;
+#endif
 
 public:
   ELFObjectLoaderImpl() : ObjectLoaderImpl(), mObject(NULL), mSymTab(NULL) { }
