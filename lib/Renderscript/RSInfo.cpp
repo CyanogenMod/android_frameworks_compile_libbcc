@@ -34,16 +34,22 @@
 
 using namespace bcc;
 
-const char RSInfo::LibBCCPath[] = "/system/lib/libbcc.so";
-const char RSInfo::LibCompilerRTPath[] = "/system/lib/libcompiler_rt.so";
-const char RSInfo::LibRSPath[] = "/system/lib/libRS.so";
-const char RSInfo::LibCLCorePath[] = "/system/lib/libclcore.bc";
-const char RSInfo::LibCLCoreDebugPath[] = "/system/lib/libclcore_debug.bc";
-#if defined(__i386__)
-const char RSInfo::LibCLCoreX86Path[] = "/system/lib/libclcore_x86.bc";
+#ifdef __LP64__
+#define SYSLIBPATH "/system/lib64"
+#else
+#define SYSLIBPATH "/system/lib"
+#endif
+
+const char RSInfo::LibBCCPath[] = SYSLIBPATH"/libbcc.so";
+const char RSInfo::LibCompilerRTPath[] = SYSLIBPATH"/libcompiler_rt.so";
+const char RSInfo::LibRSPath[] = SYSLIBPATH"/libRS.so";
+const char RSInfo::LibCLCorePath[] = SYSLIBPATH"/libclcore.bc";
+const char RSInfo::LibCLCoreDebugPath[] = SYSLIBPATH"/libclcore_debug.bc";
+#if defined(__i386__) || defined(__x86_64__)
+const char RSInfo::LibCLCoreX86Path[] = SYSLIBPATH"/libclcore_x86.bc";
 #endif
 #if defined(ARCH_ARM_HAVE_NEON)
-const char RSInfo::LibCLCoreNEONPath[] = "/system/lib/libclcore_neon.bc";
+const char RSInfo::LibCLCoreNEONPath[] = SYSLIBPATH"/libclcore_neon.bc";
 #endif
 
 const uint8_t *RSInfo::LibBCCSHA1 = NULL;
@@ -62,7 +68,7 @@ bool RSInfo::LoadBuiltInSHA1Information() {
     return true;
   }
 
-  void *h = ::dlopen("/system/lib/libbcc.sha1.so", RTLD_LAZY | RTLD_NOW);
+  void *h = ::dlopen(SYSLIBPATH"/libbcc.sha1.so", RTLD_LAZY | RTLD_NOW);
   if (h == NULL) {
     ALOGE("Failed to load SHA-1 information from shared library '"
           "/system/lib/libbcc.sha1.so'! (%s)", ::dlerror());
