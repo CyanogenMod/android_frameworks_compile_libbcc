@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+LOCAL_CLANG := true
+
 LOCAL_CFLAGS := \
   -Wall \
   -Wno-unused-parameter \

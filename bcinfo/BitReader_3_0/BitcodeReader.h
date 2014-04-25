@@ -15,13 +15,14 @@
 #define BITCODE_READER_H
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/BitstreamReader.h"
 #include "llvm/Bitcode/LLVMBitCodes.h"
-#include "llvm/GVMaterializer.h"
 #include "llvm/IR/Attributes.h"
+#include "llvm/IR/GVMaterializer.h"
 #include "llvm/IR/OperandTraits.h"
 #include "llvm/IR/Type.h"
-#include "llvm/Support/ValueHandle.h"
+#include "llvm/IR/ValueHandle.h"
 #include <vector>
 
 namespace llvm {

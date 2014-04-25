@@ -46,7 +46,7 @@ bool ELFObjectLoaderImpl::load(const void *pMem, size_t pMemSize) {
   // Retrive the pointer to the symbol table.
 #ifdef __LP64__
   mSymTab = static_cast<ELFSectionSymTab<64> *>(
-                mObject->getSectionByName(".symtab"));
+                 mObject->getSectionByName(".symtab"));
 #else
   mSymTab = static_cast<ELFSectionSymTab<32> *>(
                  mObject->getSectionByName(".symtab"));
