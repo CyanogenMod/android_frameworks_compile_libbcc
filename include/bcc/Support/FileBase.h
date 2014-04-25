@@ -18,7 +18,7 @@
 #define BCC_SUPPORT_FILE_BASE_H
 
 #include <fcntl.h>
-
+#include <unistd.h>
 #include <string>
 
 #include <llvm/Support/system_error.h>

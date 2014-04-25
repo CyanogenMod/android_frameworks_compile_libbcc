@@ -78,6 +78,17 @@ void bcc::init::Initialize() {
   LLVMInitializeX86Target();
 #endif
 
+#if defined(PROVIDE_ARM64_CODEGEN)
+  LLVMInitializeAArch64AsmPrinter();
+  LLVMInitializeAArch64AsmParser();
+# if USE_DISASSEMBLER
+  LLVMInitializeAArch64Disassembler();
+# endif
+  LLVMInitializeAArch64TargetMC();
+  LLVMInitializeAArch64TargetInfo();
+  LLVMInitializeAArch64Target();
+#endif
+
   is_initialized = true;
 
   return;

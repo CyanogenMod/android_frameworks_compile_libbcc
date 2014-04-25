@@ -15,13 +15,13 @@
 #ifndef BITREADER_2_7_H
 #define BITREADER_2_7_H
 
-#include "llvm/GVMaterializer.h"
 #include "llvm/IR/Attributes.h"
-#include "llvm/IR/Type.h"
+#include "llvm/IR/GVMaterializer.h"
 #include "llvm/IR/OperandTraits.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/ValueHandle.h"
 #include "llvm/Bitcode/BitstreamReader.h"
 #include "llvm/Bitcode/LLVMBitCodes.h"
-#include "llvm/Support/ValueHandle.h"
 #include "llvm/ADT/DenseMap.h"
 #include <string>
 

@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+LOCAL_CLANG := true
+
 LOCAL_CFLAGS := \
   -Wall \
   -Wno-unused-parameter \
@@ -55,6 +57,7 @@ ifeq ($(ARCH_ARM_HAVE_NEON),true)
   LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_NEON
 endif
 
+LOCAL_CFLAGS_arm64 += -DFORCE_ARM64_CODEGEN
 LOCAL_CFLAGS_mips += -DFORCE_MIPS_CODEGEN
 
 LOCAL_CFLAGS_x86 += -DFORCE_X86_CODEGEN
@@ -66,7 +69,7 @@ endif
 
 LOCAL_C_INCLUDES := \
   bionic \
-  external/stlport/stlport \
+  external/libcxx/include \
   $(LIBBCC_ROOT_PATH)/include \
   $(LLVM_ROOT_PATH)/include \
   $(LLVM_ROOT_PATH)/device/include \
