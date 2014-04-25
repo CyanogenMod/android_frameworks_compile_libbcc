@@ -419,12 +419,13 @@ bool MetadataExtractor::extract() {
     std::string error;
 
     // Module ownership is handled by the context, so we don't need to free it.
-    mModule = llvm::ParseBitcodeFile(MEM.get(), *mContext, &error);
-    if (!mModule) {
-      ALOGE("Could not parse bitcode file");
-      ALOGE("%s", error.c_str());
-      return false;
+    llvm::ErrorOr<llvm::Module* > errval = llvm::parseBitcodeFile(MEM.get(), *mContext);
+    if (llvm::error_code ec = errval.getError()) {
+        ALOGE("Could not parse bitcode file");
+        ALOGE("%s", ec.message().c_str());
+        return false;
     }
+    mModule = errval.get();
   }
 
   const llvm::NamedMDNode *ExportVarMetadata =

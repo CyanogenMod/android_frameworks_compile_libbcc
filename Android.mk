@@ -57,9 +57,6 @@ endif
 
 include $(CLEAR_VARS)
 
-# not supported on 64-bit yet
-LOCAL_32_BIT_ONLY := true
-
 LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
@@ -68,7 +65,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
-LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libstlport
+LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libc++
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
@@ -104,6 +101,8 @@ LOCAL_MODULE := libbcc
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_IS_HOST_MODULE := true
+
+LOCAL_CLANG := true
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 

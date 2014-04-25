@@ -16,7 +16,7 @@
 #include "BitReader_2_7.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/AutoUpgrade.h"
+#include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/InlineAsm.h"
@@ -47,41 +47,32 @@ using namespace llvm_2_7;
 #define TYPE_CODE_STRUCT_OLD_3_0      10
 
 namespace {
+
+  void StripDebugInfoOfFunction(Module* M, const char* name) {
+    if (Function* FuncStart = M->getFunction(name)) {
+      while (!FuncStart->use_empty()) {
+        cast<CallInst>(*FuncStart->use_begin())->eraseFromParent();
+      }
+      FuncStart->eraseFromParent();
+    }
+  }
+
   /// This function strips all debug info intrinsics, except for llvm.dbg.declare.
   /// If an llvm.dbg.declare intrinsic is invalid, then this function simply
   /// strips that use.
   void CheckDebugInfoIntrinsics(Module *M) {
-    if (Function *FuncStart = M->getFunction("llvm.dbg.func.start")) {
-      while (!FuncStart->use_empty())
-        cast<CallInst>(FuncStart->use_back())->eraseFromParent();
-      FuncStart->eraseFromParent();
-    }
-
-    if (Function *StopPoint = M->getFunction("llvm.dbg.stoppoint")) {
-      while (!StopPoint->use_empty())
-        cast<CallInst>(StopPoint->use_back())->eraseFromParent();
-      StopPoint->eraseFromParent();
-    }
-
-    if (Function *RegionStart = M->getFunction("llvm.dbg.region.start")) {
-      while (!RegionStart->use_empty())
-        cast<CallInst>(RegionStart->use_back())->eraseFromParent();
-      RegionStart->eraseFromParent();
-    }
-
-    if (Function *RegionEnd = M->getFunction("llvm.dbg.region.end")) {
-      while (!RegionEnd->use_empty())
-        cast<CallInst>(RegionEnd->use_back())->eraseFromParent();
-      RegionEnd->eraseFromParent();
-    }
+    StripDebugInfoOfFunction(M, "llvm.dbg.func.start");
+    StripDebugInfoOfFunction(M, "llvm.dbg.stoppoint");
+    StripDebugInfoOfFunction(M, "llvm.dbg.region.start");
+    StripDebugInfoOfFunction(M, "llvm.dbg.region.end");
 
     if (Function *Declare = M->getFunction("llvm.dbg.declare")) {
       if (!Declare->use_empty()) {
-        DbgDeclareInst *DDI = cast<DbgDeclareInst>(Declare->use_back());
+        DbgDeclareInst *DDI = cast<DbgDeclareInst>(*Declare->use_begin());
         if (!isa<MDNode>(DDI->getArgOperand(0)) ||
             !isa<MDNode>(DDI->getArgOperand(1))) {
           while (!Declare->use_empty()) {
-            CallInst *CI = cast<CallInst>(Declare->use_back());
+            CallInst *CI = cast<CallInst>(*Declare->use_begin());
             CI->eraseFromParent();
           }
           Declare->eraseFromParent();
@@ -131,16 +122,16 @@ static GlobalValue::LinkageTypes GetDecodedLinkage(unsigned Val) {
   case 2:  return GlobalValue::AppendingLinkage;
   case 3:  return GlobalValue::InternalLinkage;
   case 4:  return GlobalValue::LinkOnceAnyLinkage;
-  case 5:  return GlobalValue::DLLImportLinkage;
-  case 6:  return GlobalValue::DLLExportLinkage;
+  case 5:  return GlobalValue::ExternalLinkage; // Was DLLImportLinkage;
+  case 6:  return GlobalValue::ExternalLinkage; // Was DLLExportLinkage;
   case 7:  return GlobalValue::ExternalWeakLinkage;
   case 8:  return GlobalValue::CommonLinkage;
   case 9:  return GlobalValue::PrivateLinkage;
   case 10: return GlobalValue::WeakODRLinkage;
   case 11: return GlobalValue::LinkOnceODRLinkage;
   case 12: return GlobalValue::AvailableExternallyLinkage;
-  case 13: return GlobalValue::LinkerPrivateLinkage;
-  case 14: return GlobalValue::LinkerPrivateWeakLinkage;
+  case 13: return GlobalValue::PrivateLinkage; // Was LinkerPrivateLinkage;
+  case 14: return GlobalValue::ExternalWeakLinkage; // Was LinkerPrivateWeakLinkage;
   //ANDROID: convert LinkOnceODRAutoHideLinkage -> LinkOnceODRLinkage
   case 15: return GlobalValue::LinkOnceODRLinkage;
   }
@@ -331,12 +322,13 @@ void BitcodeReaderValueList::ResolveConstantForwardRefs() {
     // at once.
     while (!Placeholder->use_empty()) {
       Value::use_iterator UI = Placeholder->use_begin();
-      User *U = *UI;
+      Use &use = *UI;
+      User *U = use.getUser();
 
       // If the using object isn't uniqued, just update the operands.  This
       // handles instructions and initializers for global variables.
       if (!isa<Constant>(U) || isa<GlobalValue>(U)) {
-        UI.getUse().set(RealVal);
+        use.set(RealVal);
         continue;
       }
 
@@ -3041,10 +3033,10 @@ error_code BitcodeReader::InitLazyStream() {
 
 namespace {
 class BitcodeErrorCategoryType : public _do_message {
-  const char *name() const LLVM_OVERRIDE {
+  const char *name() const override {
     return "llvm.bitcode";
   }
-  std::string message(int IE) const LLVM_OVERRIDE {
+  std::string message(int IE) const override {
     BitcodeReader::ErrorType E = static_cast<BitcodeReader::ErrorType>(IE);
     switch (E) {
     case BitcodeReader::BitcodeStreamInvalidSize:
@@ -3132,7 +3124,8 @@ Module *llvm_2_7::ParseBitcodeFile(MemoryBuffer *Buffer, LLVMContext& Context,
   static_cast<BitcodeReader*>(M->getMaterializer())->setBufferOwned(false);
 
   // Read in the entire module, and destroy the BitcodeReader.
-  if (M->MaterializeAllPermanently(ErrMsg)) {
+  if (llvm::error_code ec = M->materializeAllPermanently()) {
+    *ErrMsg = ec.message();
     delete M;
     return 0;
   }
