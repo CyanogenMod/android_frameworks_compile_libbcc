@@ -62,6 +62,8 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES/libbc*_interme
 $(call add-clean-step, rm -rf $(HOST_OUT)/obj/STATIC_LIBRARIES/libbc*_intermediates)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/STATIC_LIBRARIES/libbc*_intermediates)
 $(call add-clean-step, rm -rf $(HOST_OUT)/obj/SHARED_LIBRARIES/libbc*_intermediates)
+$(call add-clean-step, rm -rf $(HOST_OUT)/obj/STATIC_LIBRARIES/libbc*_intermediates)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/STATIC_LIBRARIES/libbc*_intermediates)
 
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST
