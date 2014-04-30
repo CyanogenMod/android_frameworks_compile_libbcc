@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include <dlfcn.h>
 #include <stdlib.h>
 
 #include <llvm/ADT/OwningPtr.h>
@@ -26,6 +27,7 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/PluginLoader.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/system_error.h>
 
@@ -47,6 +49,9 @@
 #include <bcc/Support/TargetCompilerConfigs.h>
 
 using namespace bcc;
+
+#define STR2(a) #a
+#define STR(a) STR2(a)
 
 //===----------------------------------------------------------------------===//
 // General Options
@@ -89,6 +94,10 @@ llvm::cl::alias OptTargetTripleC("C", llvm::cl::NotHidden,
                                  llvm::cl::desc("Alias for -mtriple"),
                                  llvm::cl::aliasopt(OptTargetTriple));
 #endif
+
+llvm::cl::opt<bool>
+OptRSDebugContext("rs-debug-ctx",
+    llvm::cl::desc("Enable build to work with a RenderScript debug context"));
 
 //===----------------------------------------------------------------------===//
 // Compiler Options
@@ -148,6 +157,10 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
   pRSCD.setConfig(config);
   Compiler::ErrorCode result = RSC->config(*config);
 
+  if (OptRSDebugContext) {
+    pRSCD.setDebugContext(true);
+  }
+
   if (result != Compiler::kSuccess) {
     llvm::errs() << "Failed to configure the compiler! (detail: "
                  << Compiler::GetErrorString(result) << ")\n";
@@ -184,6 +197,15 @@ int main(int argc, char **argv) {
     ALOGE("Failed to configure compiler");
     return EXIT_FAILURE;
   }
+
+  // Attempt to dynamically initialize the compiler driver if such a function
+  // is present. It is only present if passed via "-load libFOO.so".
+  RSCompilerDriverInit_t rscdi = (RSCompilerDriverInit_t)
+      dlsym(RTLD_DEFAULT, STR(RS_COMPILER_DRIVER_INIT_FN));
+  if (rscdi != NULL) {
+    rscdi(&RSCD);
+  }
+
   bool built = RSCD.build(context, OptOutputPath.c_str(),
       OptOutputFilename.c_str(), bitcode, bitcodeSize,
       OptBCLibFilename.c_str(), NULL, OptEmitLLVM);
