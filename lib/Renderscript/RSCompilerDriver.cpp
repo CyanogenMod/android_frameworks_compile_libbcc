@@ -46,7 +46,7 @@ using namespace bcc;
 
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
     mConfig(NULL), mCompiler(), mCompilerRuntime(NULL), mDebugContext(false),
-    mEnableGlobalMerge(true) {
+    mLinkRuntimeCallback(NULL), mEnableGlobalMerge(true) {
   init::Initialize();
   // Chain the symbol resolvers for compiler_rt and RS runtimes.
   if (pUseCompilerRT) {
@@ -390,8 +390,11 @@ bool RSCompilerDriver::build(BCCContext &pContext,
     delete source;
     return false;
   }
+  if (pLinkRuntimeCallback) {
+    setLinkRuntimeCallback(pLinkRuntimeCallback);
+  }
 
-  script->setLinkRuntimeCallback(pLinkRuntimeCallback);
+  script->setLinkRuntimeCallback(getLinkRuntimeCallback());
 
   // Read information from bitcode wrapper.
   bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
