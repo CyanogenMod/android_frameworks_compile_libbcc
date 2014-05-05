@@ -51,7 +51,6 @@ LOCAL_CFLAGS += -DHAS_HW_DIV
 endif
 
 include $(LIBBCC_DEVICE_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_STATIC_LIBRARY)
 endif
@@ -74,6 +73,5 @@ LOCAL_C_INCLUDES := \
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
 
 include $(LIBBCC_HOST_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_STATIC_LIBRARY)
