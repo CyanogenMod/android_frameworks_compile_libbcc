@@ -32,12 +32,6 @@ RSLOADER_ROOT_PATH      := frameworks/rs/cpu_ref/linkloader
 
 LIBBCC_HOST_BUILD_MK    := $(LIBBCC_ROOT_PATH)/libbcc-host-build.mk
 LIBBCC_DEVICE_BUILD_MK  := $(LIBBCC_ROOT_PATH)/libbcc-device-build.mk
-LIBBCC_GEN_CONFIG_MK    := $(LIBBCC_ROOT_PATH)/libbcc-gen-config-from-mk.mk
-
-#=====================================================================
-# Configuration of libbcc
-#=====================================================================
-include $(LIBBCC_ROOT_PATH)/libbcc-config.mk
 
 #=====================================================================
 # Related Makefile Paths of LLVM
