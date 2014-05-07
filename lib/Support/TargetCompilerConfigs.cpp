@@ -67,12 +67,16 @@ ARMBaseCompilerConfig::GetFeatureVector(std::vector<std::string> &pAttributes,
     }
   }
 
-  if (pEnableNEON && Features.count("neon") && Features["neon"]) {
+#if defined(ARCH_ARM_HAVE_NEON)
+  if (pEnableNEON) {
     pAttributes.push_back("+neon");
   } else {
+#endif
     pAttributes.push_back("-neon");
     pAttributes.push_back("-neonfp");
+#if defined(ARCH_ARM_HAVE_NEON)
   }
+#endif
 
   if (!getProperty("debug.rs.arm-no-hwdiv")) {
     if (Features.count("hwdiv-arm") && Features["hwdiv-arm"])
