@@ -80,9 +80,6 @@ llvm::cl::opt<bool>
 OptEmitLLVM("emit-llvm",
             llvm::cl::desc("Emit an LLVM-IR version of the generated program"));
 
-#ifdef TARGET_BUILD
-const std::string OptTargetTriple(DEFAULT_TARGET_TRIPLE_STRING);
-#else
 llvm::cl::opt<std::string>
 OptTargetTriple("mtriple",
                 llvm::cl::desc("Specify the target triple (default: "
@@ -93,7 +90,6 @@ OptTargetTriple("mtriple",
 llvm::cl::alias OptTargetTripleC("C", llvm::cl::NotHidden,
                                  llvm::cl::desc("Alias for -mtriple"),
                                  llvm::cl::aliasopt(OptTargetTriple));
-#endif
 
 llvm::cl::opt<bool>
 OptRSDebugContext("rs-debug-ctx",
@@ -133,11 +129,7 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
   RSCompiler *RSC = pRSCD.getCompiler();
   CompilerConfig *config = NULL;
 
-#ifdef TARGET_BUILD
-  config = new (std::nothrow) DefaultCompilerConfig();
-#else
   config = new (std::nothrow) CompilerConfig(OptTargetTriple);
-#endif
   if (config == NULL) {
     llvm::errs() << "Out of memory when create the compiler configuration!\n";
     return false;
