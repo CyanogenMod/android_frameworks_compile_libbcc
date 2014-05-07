@@ -36,7 +36,6 @@ LOCAL_C_INCLUDES := \
 LOCAL_LDLIBS = -ldl
 
 include $(LIBBCC_HOST_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_EXECUTABLE)
 
@@ -54,7 +53,6 @@ LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libLLVM libutils lib
 
 include external/stlport/libstlport.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_EXECUTABLE)
 endif
