@@ -38,7 +38,6 @@ endif
 LOCAL_SRC_FILES := bcc_strip_attr.cpp
 
 include $(LIBBCC_HOST_BUILD_MK)
-include $(LIBBCC_GEN_CONFIG_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_EXECUTABLE)
 
