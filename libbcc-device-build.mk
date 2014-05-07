@@ -46,26 +46,7 @@ ifeq ($(TARGET_ARCH),mips64)
 $(info TODOMips64: $(LOCAL_PATH)/Android.mk Add Mips64 define to LOCAL_CFLAGS)
 endif
 
-LOCAL_CFLAGS_arm += -DFORCE_ARM_CODEGEN
-ifeq ($(ARCH_ARM_HAVE_VFP),true)
-  LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_VFP
-  ifeq ($(ARCH_ARM_HAVE_VFP_D32),true)
-    LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_VFP_D32
-  endif
-endif
-ifeq ($(ARCH_ARM_HAVE_NEON),true)
-  LOCAL_CFLAGS_arm += -DARCH_ARM_HAVE_NEON
-endif
-
-LOCAL_CFLAGS_arm64 += -DFORCE_ARM64_CODEGEN
-LOCAL_CFLAGS_mips += -DFORCE_MIPS_CODEGEN
-
-LOCAL_CFLAGS_x86 += -DFORCE_X86_CODEGEN
-LOCAL_CFLAGS_x86_64 += -DFORCE_X86_CODEGEN
-
-ifeq (,$(filter $(TARGET_ARCH),arm64 arm mips mips64 x86 x86_64))
-  $(error Unsupported architecture $(TARGET_ARCH))
-endif
+include frameworks/compile/libbcc/libbcc-targets.mk
 
 LOCAL_C_INCLUDES := \
   bionic \
