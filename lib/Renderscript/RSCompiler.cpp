@@ -20,12 +20,13 @@
 #include <llvm/PassManager.h>
 #include <llvm/Transforms/IPO.h>
 
+#include "bcc/Assert.h"
 #include "bcc/Renderscript/RSExecutable.h"
-#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Renderscript/RSTransforms.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
+#include "bcinfo/MetadataExtractor.h"
 
 using namespace bcc;
 
@@ -33,7 +34,12 @@ bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &p
   // Add a pass to internalize the symbols that don't need to have global
   // visibility.
   RSScript &script = static_cast<RSScript &>(pScript);
-  const RSInfo *info = script.getInfo();
+  llvm::Module &module = script.getSource().getModule();
+  bcinfo::MetadataExtractor me(&module);
+  if (!me.extract()) {
+    bccAssert(false && "Could not extract metadata for module!");
+    return false;
+  }
 
   // The vector contains the symbols that should not be internalized.
   std::vector<const char *> export_symbols;
@@ -47,41 +53,32 @@ bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &p
 
   // Visibility of symbols appeared in rs_export_var and rs_export_func should
   // also be preserved.
-  const RSInfo::ExportVarNameListTy &export_vars = info->getExportVarNames();
-  const RSInfo::ExportFuncNameListTy &export_funcs = info->getExportFuncNames();
+  size_t exportVarCount = me.getExportVarCount();
+  size_t exportFuncCount = me.getExportFuncCount();
+  size_t exportForEachCount = me.getExportForEachSignatureCount();
+  const char **exportVarNameList = me.getExportVarNameList();
+  const char **exportFuncNameList = me.getExportFuncNameList();
+  const char **exportForEachNameList = me.getExportForEachNameList();
+  size_t i;
 
-  for (RSInfo::ExportVarNameListTy::const_iterator
-           export_var_iter = export_vars.begin(),
-           export_var_end = export_vars.end();
-       export_var_iter != export_var_end; export_var_iter++) {
-    export_symbols.push_back(*export_var_iter);
+  for (i = 0; i < exportVarCount; ++i) {
+    export_symbols.push_back(exportVarNameList[i]);
   }
 
-  for (RSInfo::ExportFuncNameListTy::const_iterator
-           export_func_iter = export_funcs.begin(),
-           export_func_end = export_funcs.end();
-       export_func_iter != export_func_end; export_func_iter++) {
-    export_symbols.push_back(*export_func_iter);
+  for (i = 0; i < exportFuncCount; ++i) {
+    export_symbols.push_back(exportFuncNameList[i]);
   }
 
   // Expanded foreach functions should not be internalized, too.
-  const RSInfo::ExportForeachFuncListTy &export_foreach_func =
-      info->getExportForeachFuncs();
+  // expanded_foreach_funcs keeps the .expand version of the kernel names
+  // around until createInternalizePass() is finished making its own
+  // copy of the visible symbols.
   std::vector<std::string> expanded_foreach_funcs;
-  for (RSInfo::ExportForeachFuncListTy::const_iterator
-           foreach_func_iter = export_foreach_func.begin(),
-           foreach_func_end = export_foreach_func.end();
-       foreach_func_iter != foreach_func_end; foreach_func_iter++) {
-    std::string name(foreach_func_iter->first);
-    expanded_foreach_funcs.push_back(name.append(".expand"));
-  }
-
-  // Need to wait until ForEachExpandList is fully populated to fill in
-  // exported symbols.
-  for (size_t i = 0; i < expanded_foreach_funcs.size(); i++) {
+  for (i = 0; i < exportForEachCount; ++i) {
+    expanded_foreach_funcs.push_back(
+        std::string(exportForEachNameList[i]) + ".expand");
     export_symbols.push_back(expanded_foreach_funcs[i].c_str());
   }
-
   pPM.add(llvm::createInternalizePass(export_symbols));
 
   return true;
@@ -90,19 +87,10 @@ bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &p
 bool RSCompiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   // Script passed to RSCompiler must be a RSScript.
   RSScript &script = static_cast<RSScript &>(pScript);
-  const RSInfo *info = script.getInfo();
-  llvm::Module &module = script.getSource().getModule();
-
-  if (info == NULL) {
-    ALOGE("Missing RSInfo in RSScript to run the pass for foreach expansion on "
-          "%s!", module.getModuleIdentifier().c_str());
-    return false;
-  }
 
   // Expand ForEach on CPU path to reduce launch overhead.
   bool pEnableStepOpt = true;
-  pPM.add(createRSForEachExpandPass(info->getExportForeachFuncs(),
-                                    pEnableStepOpt));
+  pPM.add(createRSForEachExpandPass(pEnableStepOpt));
   if (script.getEmbedInfo())
     pPM.add(createRSEmbedInfoPass());
 
