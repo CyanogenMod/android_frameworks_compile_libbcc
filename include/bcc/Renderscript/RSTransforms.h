@@ -29,7 +29,7 @@ llvm::ModulePass *
 createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
                           bool pEnableStepOpt);
 
-llvm::ModulePass * createRSEmbedInfoPass(const RSInfo *info);
+llvm::ModulePass * createRSEmbedInfoPass();
 
 } // end namespace bcc
 
