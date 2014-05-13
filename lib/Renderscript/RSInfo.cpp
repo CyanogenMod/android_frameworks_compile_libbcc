@@ -48,7 +48,7 @@ const char RSInfo::LibCLCoreDebugPath[] = SYSLIBPATH"/libclcore_debug.bc";
 #if defined(__i386__) || defined(__x86_64__)
 const char RSInfo::LibCLCoreX86Path[] = SYSLIBPATH"/libclcore_x86.bc";
 #endif
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(__LP64__)
+#if defined(ARCH_ARM_HAVE_NEON)
 const char RSInfo::LibCLCoreNEONPath[] = SYSLIBPATH"/libclcore_neon.bc";
 #endif
 
@@ -57,7 +57,7 @@ const uint8_t *RSInfo::LibCompilerRTSHA1 = NULL;
 const uint8_t *RSInfo::LibRSSHA1 = NULL;
 const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
 const uint8_t *RSInfo::LibCLCoreDebugSHA1 = NULL;
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(__LP64__)
+#if defined(ARCH_ARM_HAVE_NEON)
 const uint8_t *RSInfo::LibCLCoreNEONSHA1 = NULL;
 #endif
 
@@ -83,7 +83,7 @@ bool RSInfo::LoadBuiltInSHA1Information() {
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_bc_SHA1"));
   LibCLCoreDebugSHA1 =
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_debug_bc_SHA1"));
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(__LP64__)
+#if defined(ARCH_ARM_HAVE_NEON)
   LibCLCoreNEONSHA1 =
       reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_neon_bc_SHA1"));
 #endif
@@ -114,7 +114,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
                              const DependencyTableTy &pDeps) {
   // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc plus
   // libclcore_neon.bc if NEON is available on the target device.
-#if !defined(ARCH_ARM_HAVE_NEON) && !defined(__LP64__)
+#if !defined(ARCH_ARM_HAVE_NEON)
   static const unsigned NumBuiltInDependencies = 5;
 #else
   static const unsigned NumBuiltInDependencies = 6;
@@ -125,7 +125,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
   if (pInfo.mDependencyTable.size() != (pDeps.size() + NumBuiltInDependencies)) {
     ALOGD("Number of dependencies recorded mismatch (%lu v.s. %lu) in %s!",
           static_cast<unsigned long>(pInfo.mDependencyTable.size()),
-          static_cast<unsigned long>(pDeps.size()), pInputFilename);
+          static_cast<unsigned long>(pDeps.size() + NumBuiltInDependencies), pInputFilename);
     return false;
   } else {
     // Built-in dependencies always go first.
@@ -139,7 +139,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         pInfo.mDependencyTable[3];
     const std::pair<const char *, const uint8_t *> &cache_libclcore_debug_dep =
         pInfo.mDependencyTable[4];
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(__LP64__)
+#if defined(ARCH_ARM_HAVE_NEON)
     const std::pair<const char *, const uint8_t *> &cache_libclcore_neon_dep =
         pInfo.mDependencyTable[5];
 #endif
@@ -197,7 +197,7 @@ bool RSInfo::CheckDependency(const RSInfo &pInfo,
         return false;
     }
 
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(__LP64__)
+#if defined(ARCH_ARM_HAVE_NEON)
     // Check libclcore_neon.bc if NEON is available.
     if (::memcmp(cache_libclcore_neon_dep.second, LibCLCoreNEONSHA1,
                  SHA1_DIGEST_LENGTH) != 0) {
