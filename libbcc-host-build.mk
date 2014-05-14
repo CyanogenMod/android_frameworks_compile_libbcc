@@ -21,6 +21,7 @@ LOCAL_CFLAGS := \
   -Wno-unused-parameter \
   -Werror \
   -D__HOST__ \
+  $(RS_VERSION_DEFINE) \
   $(LOCAL_CFLAGS)
 
 ifeq ($(TARGET_BUILD_VARIANT),eng)

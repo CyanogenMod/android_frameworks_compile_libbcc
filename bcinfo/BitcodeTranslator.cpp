@@ -55,7 +55,7 @@ namespace bcinfo {
  *  16 - Ice Cream Sandwich MR2
  */
 static const unsigned int kMinimumAPIVersion = 11;
-static const unsigned int kMaximumAPIVersion = BCINFO_API_VERSION;
+static const unsigned int kMaximumAPIVersion = RS_VERSION;
 static const unsigned int kCurrentAPIVersion = 10000;
 
 /**
