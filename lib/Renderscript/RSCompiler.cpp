@@ -104,7 +104,7 @@ bool RSCompiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   pPM.add(createRSForEachExpandPass(info->getExportForeachFuncs(),
                                     pEnableStepOpt));
   if (script.getEmbedInfo())
-    pPM.add(createRSEmbedInfoPass(info));
+    pPM.add(createRSEmbedInfoPass());
 
   return true;
 }
