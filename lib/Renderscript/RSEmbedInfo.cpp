@@ -37,13 +37,12 @@ using namespace bcc;
 
 namespace {
 
-/* RSForEachExpandPass - This pass operates on functions that are able to be
- * called via rsForEach() or "foreach_<NAME>". We create an inner loop for the
- * ForEach-able function to be invoked over the appropriate data cells of the
- * input/output allocations (adjusting other relevant parameters as we go). We
- * support doing this for any ForEach-able compute kernels. The new function
- * name is the original function name followed by ".expand". Note that we
- * still generate code for the original function.
+/* RSEmbedInfoPass - This pass operates on the entire module and embeds a
+ * string constaining relevant metadata directly as a global variable.
+ * This information does not need to be consistent across Android releases,
+ * because the standalone compiler + compatibility driver or system driver
+ * will be using the same format (i.e. bcc_compat + libRSSupport.so or
+ * bcc + libRSCpuRef are always paired together for installation).
  */
 class RSEmbedInfoPass : public llvm::ModulePass {
 private:
@@ -60,10 +59,7 @@ public:
         mInfo(info) {
   }
 
-  virtual bool runOnModule(llvm::Module &M) {
-    this->M = &M;
-    C = &M.getContext();
-
+  static std::string getRSInfoString(const RSInfo *info) {
     std::string str;
     llvm::raw_string_ostream s(str);
 
@@ -74,7 +70,7 @@ public:
     // on the line, while ForEach kernels have the encoded int signature,
     // followed by a hyphen followed by the identifier (function to look up).
     // Object Slots are just listed as one integer per line.
-    const RSInfo::ExportVarNameListTy &export_vars = mInfo->getExportVarNames();
+    const RSInfo::ExportVarNameListTy &export_vars = info->getExportVarNames();
     s << "exportVarCount: " << (unsigned int) export_vars.size() << "\n";
     for (RSInfo::ExportVarNameListTy::const_iterator
              export_var_iter = export_vars.begin(),
@@ -84,7 +80,7 @@ public:
     }
 
     const RSInfo::ExportFuncNameListTy &export_funcs =
-        mInfo->getExportFuncNames();
+        info->getExportFuncNames();
     s << "exportFuncCount: " << (unsigned int) export_funcs.size() << "\n";
     for (RSInfo::ExportFuncNameListTy::const_iterator
              export_func_iter = export_funcs.begin(),
@@ -94,7 +90,7 @@ public:
     }
 
     const RSInfo::ExportForeachFuncListTy &export_foreach_funcs =
-        mInfo->getExportForeachFuncs();
+        info->getExportForeachFuncs();
     s << "exportForEachCount: "
       << (unsigned int) export_foreach_funcs.size() << "\n";
     for (RSInfo::ExportForeachFuncListTy::const_iterator
@@ -108,7 +104,7 @@ public:
 
     std::vector<unsigned int> object_slot_numbers;
     unsigned int i = 0;
-    const RSInfo::ObjectSlotListTy &object_slots = mInfo->getObjectSlots();
+    const RSInfo::ObjectSlotListTy &object_slots = info->getObjectSlots();
     for (RSInfo::ObjectSlotListTy::const_iterator
              slots_iter = object_slots.begin(),
              slots_end = object_slots.end();
@@ -125,10 +121,17 @@ public:
     }
 
     s.flush();
+    return str;
+  }
+
+  virtual bool runOnModule(llvm::Module &M) {
+    this->M = &M;
+    C = &M.getContext();
 
     // Embed this as the global variable .rs.info so that it will be
     // accessible from the shared object later.
-    llvm::Constant *Init = llvm::ConstantDataArray::getString(*C, str);
+    llvm::Constant *Init = llvm::ConstantDataArray::getString(*C,
+                                                              getRSInfoString(mInfo));
     llvm::GlobalVariable *InfoGV =
         new llvm::GlobalVariable(M, Init->getType(), true,
                                  llvm::GlobalValue::ExternalLinkage, Init,
