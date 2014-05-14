@@ -83,7 +83,7 @@ MetadataExtractor::MetadataExtractor(const llvm::Module *module)
       mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
       mObjectSlotCount(0), mObjectSlotList(NULL),
       mRSFloatPrecision(RS_FP_Full) {
-  mCompilerVersion = 0;
+  mCompilerVersion = RS_VERSION;  // Default to the actual current version.
   mOptimizationLevel = 3;
 }
 
