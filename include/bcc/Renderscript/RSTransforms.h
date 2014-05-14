@@ -17,8 +17,6 @@
 #ifndef BCC_RS_TRANSFORMS_H
 #define BCC_RS_TRANSFORMS_H
 
-#include "bcc/Renderscript/RSInfo.h"
-
 namespace llvm {
   class ModulePass;
 }
@@ -26,8 +24,7 @@ namespace llvm {
 namespace bcc {
 
 llvm::ModulePass *
-createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
-                          bool pEnableStepOpt);
+createRSForEachExpandPass(bool pEnableStepOpt);
 
 llvm::ModulePass * createRSEmbedInfoPass();
 
