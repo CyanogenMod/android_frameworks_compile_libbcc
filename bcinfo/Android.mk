@@ -22,17 +22,10 @@ ifneq ($(TARGET_BUILD_VARIANT),eng)
 local_cflags_for_libbcinfo += -D__DISABLE_ASSERTS
 endif
 
-ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
-  BCINFO_API_VERSION := $(PLATFORM_SDK_VERSION)
-else
-  # Increment by 1 whenever this is not a final release build, since we want to
-  # be able to see the RS version number change during development.
-  # See build/core/version_defaults.mk for more information about this.
-  BCINFO_API_VERSION := "(1 + $(PLATFORM_SDK_VERSION))"
-endif
-local_cflags_for_libbcinfo += -DBCINFO_API_VERSION=$(BCINFO_API_VERSION)
-
 LOCAL_PATH := $(call my-dir)
+
+include frameworks/compile/slang/rs_version.mk
+local_cflags_for_libbcinfo += $(RS_VERSION_DEFINE)
 
 libbcinfo_SRC_FILES := \
   BitcodeTranslator.cpp \

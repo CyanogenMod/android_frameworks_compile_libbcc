@@ -21,6 +21,8 @@ LOCAL_PATH := $(call my-dir)
 LIBBCC_ROOT_PATH := $(LOCAL_PATH)
 include $(LIBBCC_ROOT_PATH)/libbcc.mk
 
+include frameworks/compile/slang/rs_version.mk
+
 #=====================================================================
 # Whole Static Library to Be Linked In
 #=====================================================================
