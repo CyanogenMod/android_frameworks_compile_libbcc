@@ -33,7 +33,6 @@
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include "bcc/Config/Config.h"
-#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Log.h"
 
 #include "bcinfo/MetadataExtractor.h"
@@ -59,7 +58,9 @@ private:
   llvm::Module *M;
   llvm::LLVMContext *C;
 
-  const RSInfo::ExportForeachFuncListTy &mFuncs;
+  uint32_t mExportForEachCount;
+  const char **mExportForEachNameList;
+  const uint32_t *mExportForEachSignatureList;
 
   // Turns on optimization of allocation stride values.
   bool mEnableStepOpt;
@@ -281,10 +282,8 @@ private:
   }
 
 public:
-  RSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
-                      bool pEnableStepOpt)
-      : ModulePass(ID), M(NULL), C(NULL), mFuncs(pForeachFuncs),
-        mEnableStepOpt(pEnableStepOpt) {
+  RSForEachExpandPass(bool pEnableStepOpt)
+      : ModulePass(ID), M(NULL), C(NULL), mEnableStepOpt(pEnableStepOpt) {
   }
 
   /* Performs the actual optimization on a selected function. On success, the
@@ -614,11 +613,9 @@ public:
     // Old style kernel function can expose pointers to elements within
     // allocations.
     // TODO: Extend analysis to allow simple cases of old-style kernels.
-    for (RSInfo::ExportForeachFuncListTy::const_iterator
-             func_iter = mFuncs.begin(), func_end = mFuncs.end();
-         func_iter != func_end; func_iter++) {
-      const char *Name = func_iter->first;
-      uint32_t Signature = func_iter->second;
+    for (size_t i = 0; i < mExportForEachCount; ++i) {
+      const char *Name = mExportForEachNameList[i];
+      uint32_t Signature = mExportForEachSignatureList[i];
       if (M.getFunction(Name) &&
           !bcinfo::MetadataExtractor::hasForEachSignatureKernel(Signature)) {
         return true;
@@ -685,14 +682,20 @@ public:
     bool Changed = false;
     this->M = &M;
     C = &M.getContext();
+    bcinfo::MetadataExtractor me(&M);
+    if (!me.extract()) {
+      ALOGE("Could not extract metadata from module!");
+      return false;
+    }
+    mExportForEachCount = me.getExportForEachSignatureCount();
+    mExportForEachNameList = me.getExportForEachNameList();
+    mExportForEachSignatureList = me.getExportForEachSignatureList();
 
     bool AllocsExposed = allocPointersExposed(M);
 
-    for (RSInfo::ExportForeachFuncListTy::const_iterator
-             func_iter = mFuncs.begin(), func_end = mFuncs.end();
-         func_iter != func_end; func_iter++) {
-      const char *name = func_iter->first;
-      uint32_t signature = func_iter->second;
+    for (size_t i = 0; i < mExportForEachCount; ++i) {
+      const char *name = mExportForEachNameList[i];
+      uint32_t signature = mExportForEachSignatureList[i];
       llvm::Function *kernel = M.getFunction(name);
       if (kernel) {
         if (bcinfo::MetadataExtractor::hasForEachSignatureKernel(signature)) {
@@ -729,9 +732,8 @@ char RSForEachExpandPass::ID = 0;
 namespace bcc {
 
 llvm::ModulePass *
-createRSForEachExpandPass(const RSInfo::ExportForeachFuncListTy &pForeachFuncs,
-                          bool pEnableStepOpt){
-  return new RSForEachExpandPass(pForeachFuncs, pEnableStepOpt);
+createRSForEachExpandPass(bool pEnableStepOpt){
+  return new RSForEachExpandPass(pEnableStepOpt);
 }
 
 } // end namespace bcc
