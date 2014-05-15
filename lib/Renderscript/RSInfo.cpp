@@ -251,6 +251,7 @@ RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
       ALOGE("Out of memory when allocate memory for string pool in RSInfo "
             "constructor (size: %u)!", mHeader.strPoolSize);
     }
+    ::memset(mStringPool, 0, mHeader.strPoolSize);
   }
 }
 
