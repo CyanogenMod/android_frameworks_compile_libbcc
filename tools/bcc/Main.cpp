@@ -180,10 +180,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  llvm::MemoryBuffer *input_memory = input_data.take();
-
-  const char *bitcode = input_memory->getBufferStart();
-  size_t bitcodeSize = input_memory->getBufferSize();
+  const char *bitcode = input_data->getBufferStart();
+  size_t bitcodeSize = input_data->getBufferSize();
 
   if (!ConfigCompiler(RSCD)) {
     ALOGE("Failed to configure compiler");
