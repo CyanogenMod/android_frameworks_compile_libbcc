@@ -24,10 +24,10 @@
 #include "bcinfo/BitcodeWrapper.h"
 
 #include "bcc/Compiler.h"
+#include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSExecutable.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Support/CompilerConfig.h"
-#include "bcc/Support/TargetCompilerConfigs.h"
 #include "bcc/Source.h"
 #include "bcc/Support/FileMutex.h"
 #include "bcc/Support/Log.h"
@@ -150,7 +150,7 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
   return result;
 }
 
-#if defined(DEFAULT_ARM_CODEGEN)
+#if defined(PROVIDE_ARM_CODEGEN)
 extern llvm::cl::opt<bool> EnableGlobalMerge;
 #endif
 
@@ -160,7 +160,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   const llvm::CodeGenOpt::Level script_opt_level =
       static_cast<llvm::CodeGenOpt::Level>(pScript.getOptimizationLevel());
 
-#if defined(DEFAULT_ARM_CODEGEN)
+#if defined(PROVIDE_ARM_CODEGEN)
   EnableGlobalMerge = mEnableGlobalMerge;
 #endif
 
@@ -173,7 +173,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
     }
   } else {
     // Haven't run the compiler ever.
-    mConfig = new (std::nothrow) DefaultCompilerConfig();
+    mConfig = new (std::nothrow) CompilerConfig(DEFAULT_TARGET_TRIPLE_STRING);
     if (mConfig == NULL) {
       // Return false since mConfig remains NULL and out-of-memory.
       return false;
@@ -182,13 +182,13 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
     changed = true;
   }
 
-#if defined(DEFAULT_ARM_CODEGEN)
-  // NEON should be disable when full-precision floating point is required.
+#if defined(PROVIDE_ARM_CODEGEN)
   assert((pScript.getInfo() != NULL) && "NULL RS info!");
-  if (pScript.getInfo()->getFloatPrecisionRequirement() == RSInfo::FP_Full) {
-    // Must be ARMCompilerConfig.
-    ARMCompilerConfig *arm_config = static_cast<ARMCompilerConfig *>(mConfig);
-    changed |= arm_config->enableNEON(/* pEnable */false);
+  bool script_full_prec = (pScript.getInfo()->getFloatPrecisionRequirement() ==
+                           RSInfo::FP_Full);
+  if (mConfig->getFullPrecision() != script_full_prec) {
+    mConfig->setFullPrecision(script_full_prec);
+    changed = true;
   }
 #endif
 
