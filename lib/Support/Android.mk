@@ -28,8 +28,7 @@ libbcc_support_SRC_FILES := \
   Initialization.cpp \
   InputFile.cpp \
   OutputFile.cpp \
-  Sha1Util.cpp \
-  TargetCompilerConfigs.cpp
+  Sha1Util.cpp
 
 #=====================================================================
 # Device Static Library: libbccSupport

@@ -15,18 +15,19 @@
  */
 
 #include "bcc/Support/CompilerConfig.h"
+#include "bcc/Support/Properties.h"
 
 #include <llvm/CodeGen/SchedulerRegistry.h>
 #include <llvm/MC/SubtargetFeature.h>
+#include <llvm/Support/Host.h>
 #include <llvm/Support/TargetRegistry.h>
 
 #include "bcc/Support/Log.h"
-#include "bcc/Support/TargetCompilerConfigs.h"
 
 using namespace bcc;
 
 CompilerConfig::CompilerConfig(const std::string &pTriple)
-  : mTriple(pTriple), mTarget(NULL) {
+  : mTriple(pTriple), mFullPrecision(true), mTarget(NULL) {
   //===--------------------------------------------------------------------===//
   // Default setting of register sheduler
   //===--------------------------------------------------------------------===//
@@ -86,13 +87,103 @@ bool CompilerConfig::initializeTarget() {
   }
 }
 
-void CompilerConfig::initializeArch() {
+bool CompilerConfig::initializeArch() {
   if (mTarget != NULL) {
     mArchType = llvm::Triple::getArchTypeForLLVMName(mTarget->getName());
   } else {
     mArchType = llvm::Triple::UnknownArch;
+    return false;
   }
-  return;
+
+  // Configure each architecture for any necessary additional flags.
+  switch (mArchType) {
+#if defined(PROVIDE_ARM_CODEGEN)
+  case llvm::Triple::arm: {
+    llvm::StringMap<bool> features;
+    llvm::sys::getHostCPUFeatures(features);
+    std::vector<std::string> attributes;
+
+#if defined(__HOST__) || defined(ARCH_ARM_HAVE_VFP)
+    attributes.push_back("+vfp3");
+#if !defined(__HOST__) && !defined(ARCH_ARM_HAVE_VFP_D32)
+    attributes.push_back("+d16");
+#endif  // !__HOST__ && !ARCH_ARM_HAVE_VFP_D32
+#endif  // __HOST__ || ARCH_ARM_HAVE_VFP
+
+#if defined(__HOST__) || defined(ARCH_ARM_HAVE_NEON)
+    // Only enable NEON on ARM if we have relaxed precision floats.
+    if (!mFullPrecision) {
+      attributes.push_back("+neon");
+    } else {
+#endif  // __HOST__ || ARCH_ARM_HAVE_NEON
+      attributes.push_back("-neon");
+      attributes.push_back("-neonfp");
+#if defined(__HOST__) || defined(ARCH_ARM_HAVE_NEON)
+    }
+#endif  // __HOST__ || ARCH_ARM_HAVE_NEON
+
+    if (!getProperty("debug.rs.arm-no-hwdiv")) {
+      if (features.count("hwdiv-arm") && features["hwdiv-arm"])
+        attributes.push_back("+hwdiv-arm");
+
+      if (features.count("hwdiv") && features["hwdiv"])
+        attributes.push_back("+hwdiv");
+    }
+
+    setFeatureString(attributes);
+
+#if defined(TARGET_BUILD)
+    if (!getProperty("debug.rs.arm-no-tune-for-cpu")) {
+      setCPU(llvm::sys::getHostCPUName());
+    }
+#endif  // TARGET_BUILD
+
+    break;
+  }
+#endif  // PROVIDE_ARM_CODEGEN
+
+#if defined(PROVIDE_ARM64_CODEGEN)
+  case llvm::Triple::aarch64:
+#if defined(TARGET_BUILD)
+    if (!getProperty("debug.rs.arm-no-tune-for-cpu")) {
+      setCPU(llvm::sys::getHostCPUName());
+    }
+#endif  // TARGET_BUILD
+    break;
+#endif  // PROVIDE_ARM64_CODEGEN
+
+#if defined (PROVIDE_MIPS_CODEGEN)
+  case llvm::Triple::mips:
+  case llvm::Triple::mipsel:
+  case llvm::Triple::mips64:
+  case llvm::Triple::mips64el:
+    setRelocationModel(llvm::Reloc::Static);
+    break;
+#endif  // PROVIDE_MIPS_CODEGEN
+
+#if defined (PROVIDE_X86_CODEGEN)
+  case llvm::Triple::x86:
+    // Disable frame pointer elimination optimization on x86 family.
+    getTargetOptions().NoFramePointerElim = true;
+    getTargetOptions().UseInitArray = true;
+    break;
+#endif  // PROVIDE_X86_CODEGEN
+
+#if defined (PROVIDE_X86_CODEGEN)
+  case llvm::Triple::x86_64:
+    setCodeModel(llvm::CodeModel::Medium);
+    // Disable frame pointer elimination optimization on x86 family.
+    getTargetOptions().NoFramePointerElim = true;
+    getTargetOptions().UseInitArray = true;
+    break;
+#endif  // PROVIDE_X86_CODEGEN
+
+  default:
+    ALOGE("Unsupported architecture type: %s", mTarget->getName());
+    return false;
+  }
+
+  return true;
 }
 
 void CompilerConfig::setFeatureString(const std::vector<std::string> &pAttrs) {

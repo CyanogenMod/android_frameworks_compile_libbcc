@@ -41,7 +41,6 @@
 #include <bcc/Support/Initialization.h>
 #include <bcc/Support/InputFile.h>
 #include <bcc/Support/OutputFile.h>
-#include <bcc/Support/TargetCompilerConfigs.h>
 
 using namespace bcc;
 
@@ -62,7 +61,6 @@ llvm::cl::opt<std::string>
 OptRuntimePath("rt-path", llvm::cl::desc("Specify the runtime library path"),
                llvm::cl::value_desc("path"));
 
-#ifndef TARGET_BUILD
 llvm::cl::opt<std::string>
 OptTargetTriple("mtriple",
                 llvm::cl::desc("Specify the target triple (default: "
@@ -73,7 +71,6 @@ OptTargetTriple("mtriple",
 llvm::cl::alias OptTargetTripleC("C", llvm::cl::NotHidden,
                                  llvm::cl::desc("Alias for -mtriple"),
                                  llvm::cl::aliasopt(OptTargetTriple));
-#endif
 
 //===----------------------------------------------------------------------===//
 // Compiler Options
@@ -165,11 +162,7 @@ bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
   RSCompiler *compiler = pCompilerDriver.getCompiler();
   CompilerConfig *config = NULL;
 
-#ifdef TARGET_BUILD
-  config = new (std::nothrow) DefaultCompilerConfig();
-#else
   config = new (std::nothrow) CompilerConfig(OptTargetTriple);
-#endif
   if (config == NULL) {
     llvm::errs() << "Out of memory when create the compiler configuration!\n";
     return false;
