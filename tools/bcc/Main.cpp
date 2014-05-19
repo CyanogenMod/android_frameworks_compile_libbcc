@@ -46,7 +46,6 @@
 #include <bcc/Support/Initialization.h>
 #include <bcc/Support/InputFile.h>
 #include <bcc/Support/OutputFile.h>
-#include <bcc/Support/TargetCompilerConfigs.h>
 
 using namespace bcc;
 
