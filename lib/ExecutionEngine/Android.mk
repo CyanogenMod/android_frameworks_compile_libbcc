@@ -46,10 +46,6 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_SRC_FILES := $(libbcc_executionengine_SRC_FILES)
 
-ifeq ($(strip $(TARGET_CPU_VARIANT)),cortex-a15)
-LOCAL_CFLAGS += -DHAS_HW_DIV
-endif
-
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_STATIC_LIBRARY)
