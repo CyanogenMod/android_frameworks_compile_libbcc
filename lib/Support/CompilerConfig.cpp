@@ -15,6 +15,7 @@
  */
 
 #include "bcc/Support/CompilerConfig.h"
+#include "bcc/Config/Config.h"
 #include "bcc/Support/Properties.h"
 
 #include <llvm/CodeGen/SchedulerRegistry.h>
