@@ -45,25 +45,19 @@
 using namespace bcc;
 
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
-    mConfig(NULL), mCompiler(), mCompilerRuntime(NULL), mDebugContext(false),
+    mConfig(NULL), mCompiler(), mDebugContext(false),
     mLinkRuntimeCallback(NULL), mEnableGlobalMerge(true) {
   init::Initialize();
-  // Chain the symbol resolvers for compiler_rt and RS runtimes.
-  if (pUseCompilerRT) {
-    mCompilerRuntime = new CompilerRTSymbolResolver();
-    mResolver.chainResolver(*mCompilerRuntime);
-  }
-  mResolver.chainResolver(mRSRuntime);
 }
 
 RSCompilerDriver::~RSCompilerDriver() {
-  delete mCompilerRuntime;
   delete mConfig;
 }
 
 RSExecutable *
 RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
-                             const char *pBitcode, size_t pBitcodeSize) {
+                             const char *pBitcode, size_t pBitcodeSize,
+                             SymbolResolverProxy &pResolver) {
   //android::StopWatch load_time("bcc: RSCompilerDriver::loadScript time");
   if ((pCacheDir == NULL) || (pResName == NULL)) {
     ALOGE("Missing pCacheDir and/or pResName");
@@ -140,7 +134,7 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
   //===--------------------------------------------------------------------===//
   // Create the RSExecutable.
   //===--------------------------------------------------------------------===//
-  RSExecutable *result = RSExecutable::Create(*info, *object_file, mResolver);
+  RSExecutable *result = RSExecutable::Create(*info, *object_file, pResolver);
   if (result == NULL) {
     delete object_file;
     delete info;
