@@ -41,10 +41,6 @@ private:
   CompilerConfig *mConfig;
   RSCompiler mCompiler;
 
-  CompilerRTSymbolResolver *mCompilerRuntime;
-  LookupFunctionSymbolResolver<void*> mRSRuntime;
-  SymbolResolverProxy mResolver;
-
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
 
@@ -72,12 +68,6 @@ private:
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
   ~RSCompilerDriver();
-
-  inline void setRSRuntimeLookupFunction(
-      LookupFunctionSymbolResolver<>::LookupFunctionTy pLookupFunc)
-  { mRSRuntime.setLookupFunction(pLookupFunc); }
-  inline void setRSRuntimeLookupContext(void *pContext)
-  { mRSRuntime.setContext(pContext); }
 
   RSCompiler *getCompiler() {
     return &mCompiler;
@@ -123,8 +113,9 @@ public:
   // Returns true if script is successfully compiled.
   bool build(RSScript &pScript, const char *pOut, const char *pRuntimePath);
 
-  RSExecutable *loadScript(const char *pCacheDir, const char *pResName,
-                           const char *pBitcode, size_t pBitcodeSize);
+  static RSExecutable *loadScript(const char *pCacheDir, const char *pResName,
+                                  const char *pBitcode, size_t pBitcodeSize,
+                                  SymbolResolverProxy &pResolver);
 };
 
 } // end namespace bcc
