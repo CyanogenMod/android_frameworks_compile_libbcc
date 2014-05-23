@@ -54,8 +54,4 @@ $(GEN): $(gen_build_info) $(LOCAL_LIBBCC_LIB_DEPS) \
         $(wildcard $(LOCAL_PATH)/.git/COMMIT_EDITMSG)
 	$(transform-generated-source)
 
-ifdef LOCAL_IS_HOST_MODULE
-LOCAL_GENERATED_SOURCES += $(GEN)
-else
-LOCAL_GENERATED_SOURCES_$(TARGET_$(my_2nd_arch_prefix)ARCH) += $(GEN)
-endif
+LOCAL_GENERATED_SOURCES_$($(my_prefix)$(my_2nd_arch_prefix)ARCH) += $(GEN)
