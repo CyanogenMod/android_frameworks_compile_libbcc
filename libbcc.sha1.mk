@@ -22,6 +22,11 @@ ifeq ($(ARCH_ARM_HAVE_NEON),true)
 endif
 endif
 
+ifeq ($(TARGET_$(my_2nd_arch_prefix)ARCH),arm64)
+  libbcc_SHA1_SRCS += \
+    $(call intermediates-dir-for,SHARED_LIBRARIES,libclcore_neon.bc,,,$(my_2nd_arch_prefix))/libclcore_neon.bc
+endif
+
 libbcc_GEN_SHA1_STAMP := $(LOCAL_PATH)/tools/build/gen-sha1-stamp.py
 intermediates := $(call local-intermediates-dir,,$(my_2nd_arch_prefix))
 
