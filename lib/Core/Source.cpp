@@ -88,7 +88,7 @@ Source *Source::CreateFromBuffer(BCCContext &pContext,
 }
 
 Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
-  llvm::OwningPtr<llvm::MemoryBuffer> input_data;
+  std::unique_ptr<llvm::MemoryBuffer> input_data;
 
   llvm::error_code ec = llvm::MemoryBuffer::getFile(pPath, input_data);
   if (ec != llvm::error_code::success()) {
@@ -97,7 +97,7 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
     return NULL;
   }
 
-  llvm::MemoryBuffer *input_memory = input_data.take();
+  llvm::MemoryBuffer *input_memory = input_data.release();
   llvm::Module *module = helper_load_bitcode(pContext.mImpl->mLLVMContext,
                                              input_memory);
   if (module == NULL) {
