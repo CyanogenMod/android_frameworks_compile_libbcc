@@ -77,8 +77,12 @@ bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &p
   for (i = 0; i < exportForEachCount; ++i) {
     expanded_foreach_funcs.push_back(
         std::string(exportForEachNameList[i]) + ".expand");
-    export_symbols.push_back(expanded_foreach_funcs[i].c_str());
   }
+
+  for (i = 0; i < exportForEachCount; i++) {
+      export_symbols.push_back(expanded_foreach_funcs[i].c_str());
+  }
+
   pPM.add(llvm::createInternalizePass(export_symbols));
 
   return true;
