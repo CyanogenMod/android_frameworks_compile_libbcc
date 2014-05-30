@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
   BCCContext context;
   RSCompilerDriver RSCD;
 
-  llvm::OwningPtr<llvm::MemoryBuffer> input_data;
+  std::unique_ptr<llvm::MemoryBuffer> input_data;
 
   llvm::error_code ec =
       llvm::MemoryBuffer::getFile(OptInputFilename.c_str(), input_data);
