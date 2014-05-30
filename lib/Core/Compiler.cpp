@@ -137,9 +137,6 @@ enum Compiler::ErrorCode Compiler::config(const CompilerConfig &pConfig) {
     llvm::RegisterRegAlloc::setDefault(llvm::createGreedyRegisterAllocator);
   }
 
-  // Relax all machine instructions.
-  mTarget->setMCRelaxAll(true);
-
   return kSuccess;
 }
 
