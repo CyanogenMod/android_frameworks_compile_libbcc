@@ -80,6 +80,8 @@ ifeq ($(ARCH_ARM_HAVE_NEON),true)
   LOCAL_REQUIRED_MODULES_arm += libclcore_neon.bc
 endif
 
+LOCAL_REQUIRED_MODULES_arm64 += libclcore_neon.bc
+
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
 my_2nd_arch_prefix :=
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
