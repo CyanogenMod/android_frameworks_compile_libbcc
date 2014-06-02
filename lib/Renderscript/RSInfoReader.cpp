@@ -284,11 +284,6 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) 
     goto bail;
   }
 
-  // Check dependency to see whether the cache is dirty or not.
-  if (!CheckDependency(*result, pInput.getName().c_str(), pDeps)) {
-    goto bail;
-  }
-
   if (!helper_read_list<rsinfo::PragmaItem, PragmaListTy>
         (data, *result, header->pragmaList, result->mPragmas)) {
     goto bail;
