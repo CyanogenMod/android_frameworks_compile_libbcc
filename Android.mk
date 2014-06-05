@@ -124,12 +124,14 @@ LOCAL_LDLIBS := -ldl -lpthread
 endif
 
 # Generate build information (Build time + Build git revision + Build Semi SHA1)
-ifeq ($(HOST_PREFER_32_BIT),true)
+# For the host generate BuildInfo for a 32-bit build.
+ifdef HOST_2ND_ARCH
 my_2nd_arch_prefix := $(HOST_2ND_ARCH_VAR_PREFIX)
 else
 my_2nd_arch_prefix :=
 endif
 include $(LIBBCC_ROOT_PATH)/libbcc-gen-build-info.mk
+my_2nd_arch_prefix :=
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(BUILD_HOST_SHARED_LIBRARY)
