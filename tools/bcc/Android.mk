@@ -49,9 +49,8 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 
 LOCAL_SRC_FILES := Main.cpp
 
-LOCAL_SHARED_LIBRARIES := libdl libstlport libbcinfo libbcc libLLVM libutils libcutils
+LOCAL_SHARED_LIBRARIES := libdl libbcinfo libbcc libLLVM libutils libcutils
 
-include external/stlport/libstlport.mk
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_EXECUTABLE)
