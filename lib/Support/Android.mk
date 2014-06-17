@@ -28,7 +28,8 @@ libbcc_support_SRC_FILES := \
   Initialization.cpp \
   InputFile.cpp \
   OutputFile.cpp \
-  Sha1Util.cpp
+  Sha1Util.cpp \
+  sha1.c \
 
 #=====================================================================
 # Device Static Library: libbccSupport
@@ -40,8 +41,8 @@ LOCAL_MODULE := libbccSupport
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-# Bionic already includes SHA-1 routines.
-LOCAL_SRC_FILES := $(libbcc_support_SRC_FILES)
+LOCAL_SRC_FILES := \
+  $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_DEVICE_BUILD_MK)
 include $(LLVM_DEVICE_BUILD_MK)
@@ -59,7 +60,6 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := \
-  sha1.c \
   $(libbcc_support_SRC_FILES)
 
 include $(LIBBCC_HOST_BUILD_MK)
