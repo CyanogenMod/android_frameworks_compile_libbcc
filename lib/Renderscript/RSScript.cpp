@@ -34,7 +34,7 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
 
   // NEON-capable devices can use an accelerated math library for all
   // reduced precision scripts.
-#if defined(ARCH_ARM_HAVE_NEON)
+#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
   const RSInfo* info = pScript.getInfo();
   if ((info != NULL) &&
       (info->getFloatPrecisionRequirement() != RSInfo::FP_Full)) {
