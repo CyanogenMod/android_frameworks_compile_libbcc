@@ -48,7 +48,7 @@ local_library_directory = os.path.join(os.getenv('ANDROID_PRODUCT_OUT', 'out'),
 # LoadAndroidApp   - Sets the package and intent names for an app
 
 def _interesting_libs():
-  return ['libc', 'libbcc', 'libRS', 'libandroid_runtime', 'libdvm']
+  return ['libc', 'libbcc', 'libRS', 'libandroid_runtime', 'libart']
 
 # In python 2.6, subprocess.check_output does not exist, so it is implemented here
 def check_output(*popenargs, **kwargs):
