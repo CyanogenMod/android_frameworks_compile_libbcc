@@ -31,29 +31,6 @@ template<typename ItemType, typename ItemContainer> inline bool
 helper_adapt_list_item(ItemType &pResult, const RSInfo &pInfo,
                        const typename ItemContainer::const_iterator &pItem);
 
-template<> inline bool
-helper_adapt_list_item<rsinfo::DependencyTableItem, RSInfo::DependencyTableTy>(
-    rsinfo::DependencyTableItem &pResult,
-    const RSInfo &pInfo,
-    const RSInfo::DependencyTableTy::const_iterator &pItem) {
-  pResult.id = pInfo.getStringIdxInPool(pItem->first);
-  pResult.sha1 =
-      pInfo.getStringIdxInPool(reinterpret_cast<const char *>(pItem->second));
-
-  if (pResult.id == rsinfo::gInvalidStringIndex) {
-    ALOGE("RS dependency table contains invalid source id string '%s'.",
-          pItem->first);
-    return false;
-  }
-
-  if (pResult.sha1 == rsinfo::gInvalidStringIndex) {
-    ALOGE("RS dependency table contains invalid SHA-1 checksum string in '%s'.",
-          pItem->first);
-    return false;
-  }
-
-  return true;
-}
 
 template<> inline bool
 helper_adapt_list_item<rsinfo::PragmaItem, RSInfo::PragmaListTy>(
@@ -191,12 +168,6 @@ bool RSInfo::write(OutputFile &pOutput) {
           != mHeader.strPoolSize) {
     ALOGE("Cannot write out the string pool for RSInfo file %s! (%s)",
           output_filename, pOutput.getErrorMessage().c_str());
-    return false;
-  }
-
-  // Write dependencyTable.
-  if (!helper_write_list<rsinfo::DependencyTableItem, DependencyTableTy>
-        (pOutput, *this, mHeader.dependencyTable, mDependencyTable)) {
     return false;
   }
 

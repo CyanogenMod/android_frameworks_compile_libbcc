@@ -34,199 +34,35 @@
 
 using namespace bcc;
 
-#ifdef __LP64__
-#define SYSLIBPATH "/system/lib64"
-#else
-#define SYSLIBPATH "/system/lib"
-#endif
-
-const char RSInfo::LibBCCPath[] = SYSLIBPATH"/libbcc.so";
-const char RSInfo::LibCompilerRTPath[] = SYSLIBPATH"/libcompiler_rt.so";
-const char RSInfo::LibRSPath[] = SYSLIBPATH"/libRS.so";
-const char RSInfo::LibCLCorePath[] = SYSLIBPATH"/libclcore.bc";
-const char RSInfo::LibCLCoreDebugPath[] = SYSLIBPATH"/libclcore_debug.bc";
-#if defined(__i386__) || defined(__x86_64__)
-const char RSInfo::LibCLCoreX86Path[] = SYSLIBPATH"/libclcore_x86.bc";
-#endif
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-const char RSInfo::LibCLCoreNEONPath[] = SYSLIBPATH"/libclcore_neon.bc";
-#endif
-
-const uint8_t *RSInfo::LibBCCSHA1 = NULL;
-const uint8_t *RSInfo::LibCompilerRTSHA1 = NULL;
-const uint8_t *RSInfo::LibRSSHA1 = NULL;
-const uint8_t *RSInfo::LibCLCoreSHA1 = NULL;
-const uint8_t *RSInfo::LibCLCoreDebugSHA1 = NULL;
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-const uint8_t *RSInfo::LibCLCoreNEONSHA1 = NULL;
-#endif
-
-bool RSInfo::LoadBuiltInSHA1Information() {
-#ifdef TARGET_BUILD
-  if (LibBCCSHA1 != NULL) {
-    // Loaded before.
-    return true;
-  }
-
-  void *h = ::dlopen(SYSLIBPATH"/libbcc.sha1.so", RTLD_LAZY | RTLD_NOW);
-  if (h == NULL) {
-    ALOGE("Failed to load SHA-1 information from shared library '"
-          "/system/lib64/libbcc.sha1.so'! (%s)", ::dlerror());
-    return false;
-  }
-
-  LibBCCSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libbcc_so_SHA1"));
-  LibCompilerRTSHA1 =
-      reinterpret_cast<const uint8_t *>(::dlsym(h, "libcompiler_rt_so_SHA1"));
-  LibRSSHA1 = reinterpret_cast<const uint8_t *>(::dlsym(h, "libRS_so_SHA1"));
-  LibCLCoreSHA1 =
-      reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_bc_SHA1"));
-  LibCLCoreDebugSHA1 =
-      reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_debug_bc_SHA1"));
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-  LibCLCoreNEONSHA1 =
-      reinterpret_cast<const uint8_t *>(::dlsym(h, "libclcore_neon_bc_SHA1"));
-#endif
-
-  return true;
-#else  // TARGET_BUILD
-  return false;
-#endif  // TARGET_BUILD
-}
-
 android::String8 RSInfo::GetPath(const char *pFilename) {
   android::String8 result(pFilename);
   result.append(".info");
   return result;
 }
 
-#define PRINT_DEPENDENCY(PREFIX, N, X) \
-        ALOGV("\t" PREFIX "Source name: %s, "                                 \
-                          "SHA-1: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x"   \
+#define PRINT_DEPENDENCY(PREFIX, X) \
+        ALOGV("\t" PREFIX "SHA-1: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x"   \
                                  "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",  \
-              (N), (X)[ 0], (X)[ 1], (X)[ 2], (X)[ 3], (X)[ 4], (X)[ 5],      \
+                   (X)[ 0], (X)[ 1], (X)[ 2], (X)[ 3], (X)[ 4], (X)[ 5],      \
                    (X)[ 6], (X)[ 7], (X)[ 8], (X)[ 9], (X)[10], (X)[11],      \
                    (X)[12], (X)[13], (X)[14], (X)[15], (X)[16], (X)[17],      \
                    (X)[18], (X)[19]);
 
-bool RSInfo::CheckDependency(const RSInfo &pInfo,
-                             const char *pInputFilename,
-                             const DependencyTableTy &pDeps) {
-  // Built-in dependencies are libbcc.so, libRS.so and libclcore.bc plus
-  // libclcore_neon.bc if NEON is available on the target device.
-#if !defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-  static const unsigned NumBuiltInDependencies = 5;
-#else
-  static const unsigned NumBuiltInDependencies = 6;
-#endif
-
-  LoadBuiltInSHA1Information();
-
-  if (pInfo.mDependencyTable.size() != (pDeps.size() + NumBuiltInDependencies)) {
-    ALOGD("Number of dependencies recorded mismatch (%lu v.s. %lu) in %s!",
-          static_cast<unsigned long>(pInfo.mDependencyTable.size()),
-          static_cast<unsigned long>(pDeps.size() + NumBuiltInDependencies), pInputFilename);
-    return false;
-  } else {
-    // Built-in dependencies always go first.
-    const std::pair<const char *, const uint8_t *> &cache_libbcc_dep =
-        pInfo.mDependencyTable[0];
-    const std::pair<const char *, const uint8_t *> &cache_libcompiler_rt_dep =
-        pInfo.mDependencyTable[1];
-    const std::pair<const char *, const uint8_t *> &cache_libRS_dep =
-        pInfo.mDependencyTable[2];
-    const std::pair<const char *, const uint8_t *> &cache_libclcore_dep =
-        pInfo.mDependencyTable[3];
-    const std::pair<const char *, const uint8_t *> &cache_libclcore_debug_dep =
-        pInfo.mDependencyTable[4];
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-    const std::pair<const char *, const uint8_t *> &cache_libclcore_neon_dep =
-        pInfo.mDependencyTable[5];
-#endif
-
-    // Check libbcc.so.
-    if (::memcmp(cache_libbcc_dep.second, LibBCCSHA1, SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibBCCPath);
-        PRINT_DEPENDENCY("current - ", LibBCCPath, LibBCCSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libbcc_dep.first,
-                                     cache_libbcc_dep.second);
+bool RSInfo::CheckDependency(const char* pInputFilename,
+                             const DependencyHashTy& pExpectedSourceHash) {
+    if (::memcmp(mSourceHash, pExpectedSourceHash, SHA1_DIGEST_LENGTH) != 0) {
+        ALOGD("Cache %s is dirty due to the source it depends on has been changed:",
+              pInputFilename);
+        PRINT_DEPENDENCY("given - ", pExpectedSourceHash);
+        PRINT_DEPENDENCY("cache - ", mSourceHash);
         return false;
     }
+    // TODO Remove once done with cache fixes.
+    // ALOGD("Cache %s is not dirty, the source it depends on has not changed:", pInputFilename);
+    // PRINT_DEPENDENCY("given - ", pExpectedSourceHash);
+    // PRINT_DEPENDENCY("cache - ", mSourceHash);
 
-    // Check libcompiler_rt.so.
-    if (::memcmp(cache_libcompiler_rt_dep.second, LibCompilerRTSHA1,
-                 SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibCompilerRTPath);
-        PRINT_DEPENDENCY("current - ", LibCompilerRTPath, LibCompilerRTSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libcompiler_rt_dep.first,
-                                     cache_libcompiler_rt_dep.second);
-        return false;
-    }
-
-    // Check libRS.so.
-    if (::memcmp(cache_libRS_dep.second, LibRSSHA1, SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibRSPath);
-        PRINT_DEPENDENCY("current - ", LibRSPath, LibRSSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libRS_dep.first,
-                                     cache_libRS_dep.second);
-        return false;
-    }
-
-    // Check libclcore.bc.
-    if (::memcmp(cache_libclcore_dep.second, LibCLCoreSHA1,
-                 SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibCLCorePath);
-        PRINT_DEPENDENCY("current - ", LibCLCorePath, LibCLCoreSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libclcore_dep.first,
-                                     cache_libclcore_dep.second);
-        return false;
-    }
-
-    // Check libclcore_debug.bc.
-    if (::memcmp(cache_libclcore_debug_dep.second, LibCLCoreDebugSHA1,
-                 SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibCLCoreDebugPath);
-        PRINT_DEPENDENCY("current - ", LibCLCoreDebugPath, LibCLCoreDebugSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libclcore_debug_dep.first,
-                                     cache_libclcore_debug_dep.second);
-        return false;
-    }
-
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-    // Check libclcore_neon.bc if NEON is available.
-    if (::memcmp(cache_libclcore_neon_dep.second, LibCLCoreNEONSHA1,
-                 SHA1_DIGEST_LENGTH) != 0) {
-        ALOGD("Cache %s is dirty due to %s has been updated.", pInputFilename,
-              LibCLCoreNEONPath);
-        PRINT_DEPENDENCY("current - ", LibCLCoreNEONPath, LibCLCoreNEONSHA1);
-        PRINT_DEPENDENCY("cache - ", cache_libclcore_neon_dep.first,
-                                     cache_libclcore_neon_dep.second);
-        return false;
-    }
-#endif
-
-    for (unsigned i = 0; i < pDeps.size(); i++) {
-      const std::pair<const char *, const uint8_t *> &cache_dep =
-          pInfo.mDependencyTable[i + NumBuiltInDependencies];
-
-      if ((::strcmp(pDeps[i].first, cache_dep.first) != 0) ||
-          (::memcmp(pDeps[i].second, cache_dep.second,
-                    SHA1_DIGEST_LENGTH) != 0)) {
-        ALOGD("Cache %s is dirty due to the source it dependends on has been "
-              "changed:", pInputFilename);
-        PRINT_DEPENDENCY("given - ", pDeps[i].first, pDeps[i].second);
-        PRINT_DEPENDENCY("cache - ", cache_dep.first, cache_dep.second);
-        return false;
-      }
-    }
-  }
-
-  return true;
+    return true;
 }
 
 RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
@@ -237,7 +73,6 @@ RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
 
   mHeader.headerSize = sizeof(mHeader);
 
-  mHeader.dependencyTable.itemSize = sizeof(rsinfo::DependencyTableItem);
   mHeader.pragmaList.itemSize = sizeof(rsinfo::PragmaItem);
   mHeader.objectSlotList.itemSize = sizeof(rsinfo::ObjectSlotItem);
   mHeader.exportVarNameList.itemSize = sizeof(rsinfo::ExportVarNameItem);
@@ -253,6 +88,7 @@ RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
     }
     ::memset(mStringPool, 0, mHeader.strPoolSize);
   }
+  mSourceHash = NULL;
 }
 
 RSInfo::~RSInfo() {
@@ -260,15 +96,12 @@ RSInfo::~RSInfo() {
 }
 
 bool RSInfo::layout(off_t initial_offset) {
-  mHeader.dependencyTable.offset = initial_offset +
-                                   mHeader.headerSize +
-                                   mHeader.strPoolSize;
-  mHeader.dependencyTable.count = mDependencyTable.size();
-
-#define AFTER(_list) ((_list).offset + (_list).itemSize * (_list).count)
-  mHeader.pragmaList.offset = AFTER(mHeader.dependencyTable);
+  mHeader.pragmaList.offset = initial_offset +
+                              mHeader.headerSize +
+                              mHeader.strPoolSize;
   mHeader.pragmaList.count = mPragmas.size();
 
+#define AFTER(_list) ((_list).offset + (_list).itemSize * (_list).count)
   mHeader.objectSlotList.offset = AFTER(mHeader.pragmaList);
   mHeader.objectSlotList.count = mObjectSlots.size();
 
@@ -295,17 +128,18 @@ void RSInfo::dump() const {
   ALOGV("\tHeader size: %u", mHeader.headerSize);
   ALOGV("\tString pool size: %u", mHeader.strPoolSize);
 
+  if (mSourceHash == NULL) {
+      ALOGE("Source hash: NULL!");
+  } else {
+      PRINT_DEPENDENCY("Source hash: ", mSourceHash);
+  }
+
 #define DUMP_LIST_HEADER(_name, _header) do { \
   ALOGV(_name ":"); \
   ALOGV("\toffset: %u", (_header).offset);  \
   ALOGV("\t# of item: %u", (_header).count);  \
   ALOGV("\tsize of each item: %u", (_header).itemSize); \
 } while (false)
-  DUMP_LIST_HEADER("Dependency table", mHeader.dependencyTable);
-  for (DependencyTableTy::const_iterator dep_iter = mDependencyTable.begin(),
-          dep_end = mDependencyTable.end(); dep_iter != dep_end; dep_iter++) {
-    PRINT_DEPENDENCY("", dep_iter->first, dep_iter->second);
-  }
 
   DUMP_LIST_HEADER("Pragma list", mHeader.pragmaList);
   for (PragmaListTy::const_iterator pragma_iter = mPragmas.begin(),
