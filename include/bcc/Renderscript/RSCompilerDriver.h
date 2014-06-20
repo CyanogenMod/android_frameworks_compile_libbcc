@@ -62,7 +62,7 @@ private:
                                     const char* pScriptName,
                                     const char *pOutputPath,
                                     const char *pRuntimePath,
-                                    const RSInfo::DependencyTableTy &pDeps,
+                                    const RSInfo::DependencyHashTy &pSourceHash,
                                     bool pSkipLoad, bool pDumpIR = false);
 
 public:
@@ -111,7 +111,7 @@ public:
              bool pDumpIR = false);
 
   // Returns true if script is successfully compiled.
-  bool build(RSScript &pScript, const char *pOut, const char *pRuntimePath);
+  bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath);
 
   static RSExecutable *loadScript(const char *pCacheDir, const char *pResName,
                                   const char *pBitcode, size_t pBitcodeSize,

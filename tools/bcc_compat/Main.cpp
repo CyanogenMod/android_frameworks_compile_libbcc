@@ -30,7 +30,6 @@
 
 #include <bcc/BCCContext.h>
 #include <bcc/Compiler.h>
-#include <bcc/Config/BuildInfo.h>
 #include <bcc/Config/Config.h>
 #include <bcc/ExecutionEngine/SymbolResolverProxy.h>
 #include <bcc/ExecutionEngine/SymbolResolvers.h>
@@ -109,14 +108,8 @@ OptShared("shared", llvm::cl::desc("Create a shared library from input bitcode "
 void BCCVersionPrinter() {
   llvm::raw_ostream &os = llvm::outs();
   os << "libbcc (The Android Open Source Project, http://www.android.com/):\n"
-     << "  Build time: " << BuildInfo::GetBuildTime() << "\n"
-     << "  Build revision: " << BuildInfo::GetBuildRev() << "\n"
-     << "  Build source blob: " << BuildInfo::GetBuildSourceBlob() << "\n"
-     << "  Default target: " << DEFAULT_TARGET_TRIPLE_STRING << "\n";
-
-  os << "\n";
-
-  os << "LLVM (http://llvm.org/):\n"
+     << "  Default target: " << DEFAULT_TARGET_TRIPLE_STRING << "\n\n"
+     << "LLVM (http://llvm.org/):\n"
      << "  Version: " << PACKAGE_VERSION << "\n";
   return;
 }
@@ -277,7 +270,7 @@ int main(int argc, char **argv) {
 
   RSScript *s = NULL;
   s = PrepareRSScript(context, OptInputFilenames);
-  if (!rscd.build(*s, OutputFilename.c_str(), OptRuntimePath.c_str())) {
+  if (!rscd.buildForCompatLib(*s, OutputFilename.c_str(), OptRuntimePath.c_str())) {
     fprintf(stderr, "Failed to compile script!");
     return EXIT_FAILURE;
   }
