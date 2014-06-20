@@ -70,16 +70,13 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
     return NULL;
   }
 
-  RSInfo::DependencyTableTy dep_info;
-  uint8_t bitcode_sha1[20];
+  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
   Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
 
   // {pCacheDir}/{pResName}.o
   llvm::SmallString<80> output_path(pCacheDir);
   llvm::sys::path::append(output_path, pResName);
   llvm::sys::path::replace_extension(output_path, ".o");
-
-  dep_info.push(std::make_pair(output_path.c_str(), bitcode_sha1));
 
   //===--------------------------------------------------------------------===//
   // Acquire the read lock for reading the Script object file.
@@ -121,13 +118,22 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
   // Open and load the RS info file.
   //===--------------------------------------------------------------------===//
   InputFile info_file(info_path.string());
-  RSInfo *info = RSInfo::ReadFromFile(info_file, dep_info);
+  RSInfo *info = RSInfo::ReadFromFile(info_file);
 
   // Release the lock on object_file.
   object_file->unlock();
 
   if (info == NULL) {
     delete object_file;
+    return NULL;
+  }
+
+  // If the info file contains a different hash for the source than what we are
+  // looking for, bail.  The bit code found on disk is out of date and needs to
+  // be recompiled first.
+  if (!info->CheckDependency(output_path.c_str(), bitcode_sha1)) {
+    delete object_file;
+    delete info;
     return NULL;
   }
 
@@ -194,7 +200,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
                                 const char* pScriptName,
                                 const char *pOutputPath,
                                 const char *pRuntimePath,
-                                const RSInfo::DependencyTableTy &pDeps,
+                                const RSInfo::DependencyHashTy &pSourceHash,
                                 bool pSkipLoad, bool pDumpIR) {
   //android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
   RSInfo *info = NULL;
@@ -204,7 +210,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // RS info may contains configuration (such as #optimization_level) to the
   // compiler therefore it should be extracted before compilation.
-  info = RSInfo::ExtractFromSource(pScript.getSource(), pDeps);
+  info = RSInfo::ExtractFromSource(pScript.getSource(), pSourceHash);
   if (info == NULL) {
     return Compiler::kErrInvalidSource;
   }
@@ -354,8 +360,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   // Prepare dependency information.
   //===--------------------------------------------------------------------===//
-  RSInfo::DependencyTableTy dep_info;
-  uint8_t bitcode_sha1[20];
+  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
   Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
 
   //===--------------------------------------------------------------------===//
@@ -365,8 +370,6 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   llvm::SmallString<80> output_path(pCacheDir);
   llvm::sys::path::append(output_path, pResName);
   llvm::sys::path::replace_extension(output_path, ".o");
-
-  dep_info.push(std::make_pair(output_path.c_str(), bitcode_sha1));
 
   //===--------------------------------------------------------------------===//
   // Load the bitcode and create script.
@@ -401,7 +404,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   Compiler::ErrorCode status = compileScript(*script, pResName,
                                              output_path.c_str(),
-                                             pRuntimePath, dep_info, false,
+                                             pRuntimePath, bitcode_sha1, false,
                                              pDumpIR);
 
   // Script is no longer used. Free it to get more memory.
@@ -415,10 +418,10 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 }
 
 
-bool RSCompilerDriver::build(RSScript &pScript, const char *pOut,
-                             const char *pRuntimePath) {
-  RSInfo::DependencyTableTy dep_info;
-  RSInfo *info = RSInfo::ExtractFromSource(pScript.getSource(), dep_info);
+bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
+                                         const char *pRuntimePath) {
+  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
+  RSInfo *info = RSInfo::ExtractFromSource(pScript.getSource(), bitcode_sha1);
   if (info == NULL) {
     return false;
   }
@@ -429,7 +432,7 @@ bool RSCompilerDriver::build(RSScript &pScript, const char *pOut,
   pScript.setEmbedInfo(true);
 
   Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath,
-                                             dep_info, true);
+                                             bitcode_sha1, true);
   if (status != Compiler::kSuccess) {
     return false;
   }

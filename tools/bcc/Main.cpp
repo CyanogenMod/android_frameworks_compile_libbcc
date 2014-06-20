@@ -33,7 +33,6 @@
 
 #include <bcc/BCCContext.h>
 #include <bcc/Compiler.h>
-#include <bcc/Config/BuildInfo.h>
 #include <bcc/Config/Config.h>
 #include <bcc/ExecutionEngine/CompilerRTSymbolResolver.h>
 #include <bcc/ExecutionEngine/ObjectLoader.h>
@@ -109,14 +108,8 @@ OptOptLevel("O", llvm::cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
 void BCCVersionPrinter() {
   llvm::raw_ostream &os = llvm::outs();
   os << "libbcc (The Android Open Source Project, http://www.android.com/):\n"
-     << "  Build time: " << BuildInfo::GetBuildTime() << "\n"
-     << "  Build revision: " << BuildInfo::GetBuildRev() << "\n"
-     << "  Build source blob: " << BuildInfo::GetBuildSourceBlob() << "\n"
-     << "  Default target: " << DEFAULT_TARGET_TRIPLE_STRING << "\n";
-
-  os << "\n";
-
-  os << "LLVM (http://llvm.org/):\n"
+     << "  Default target: " << DEFAULT_TARGET_TRIPLE_STRING << "\n\n"
+     << "LLVM (http://llvm.org/):\n"
      << "  Version: " << PACKAGE_VERSION << "\n";
   return;
 }
@@ -170,6 +163,11 @@ int main(int argc, char **argv) {
   RSCompilerDriver RSCD;
 
   std::unique_ptr<llvm::MemoryBuffer> input_data;
+
+  if (OptBCLibFilename.empty()) {
+    ALOGE("Failed to compile bit code, -bclib was not specified");
+    return EXIT_FAILURE;
+  }
 
   llvm::error_code ec =
       llvm::MemoryBuffer::getFile(OptInputFilename.c_str(), input_data);
