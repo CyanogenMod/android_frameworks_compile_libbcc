@@ -48,7 +48,7 @@ namespace rsinfo {
 #define RSINFO_MAGIC      "\0rsinfo\n"
 
 /* RS info file version, encoded in 4 bytes of ASCII */
-#define RSINFO_VERSION    "004\0"
+#define RSINFO_VERSION    "005\0"
 
 struct __attribute__((packed)) ListHeader {
   // The offset from the beginning of the file of data
@@ -58,6 +58,8 @@ struct __attribute__((packed)) ListHeader {
   // Size of each item
   uint8_t itemSize;
 };
+
+typedef uint32_t StringIndexTy;
 
 /* RS info file header */
 struct __attribute__((packed)) Header {
@@ -72,7 +74,10 @@ struct __attribute__((packed)) Header {
 
   uint32_t strPoolSize;
 
-  struct ListHeader dependencyTable;
+  // The SHA-1 checksum of the source file is stored as a string in the string pool.
+  // It has a fixed-length of SHA1_DIGEST_LENGTH (=20) bytes.
+  StringIndexTy sourceSha1Idx;
+
   struct ListHeader pragmaList;
   struct ListHeader objectSlotList;
   struct ListHeader exportVarNameList;
@@ -80,17 +85,9 @@ struct __attribute__((packed)) Header {
   struct ListHeader exportForeachFuncList;
 };
 
-typedef uint32_t StringIndexTy;
 // Use value -1 as an invalid string index marker. No need to declare with
 // 'static' modifier since 'const' variable has internal linkage by default.
 const StringIndexTy gInvalidStringIndex = static_cast<StringIndexTy>(-1);
-
-struct __attribute__((packed)) DependencyTableItem {
-  StringIndexTy id;
-  // SHA-1 checksum is stored as a string in string pool (and has fixed-length
-  // SHA1_DIGEST_LENGTH (=20) bytes)
-  StringIndexTy sha1;
-};
 
 struct __attribute__((packed)) PragmaItem {
   // Pragma is a key-value pair.
@@ -121,10 +118,6 @@ template<typename Item>
 inline const char *GetItemTypeName();
 
 template<>
-inline const char *GetItemTypeName<DependencyTableItem>()
-{ return "rs dependency info"; }
-
-template<>
 inline const char *GetItemTypeName<PragmaItem>()
 {  return "rs pragma"; }
 
@@ -148,8 +141,7 @@ inline const char *GetItemTypeName<ExportForeachFuncItem>()
 
 class RSInfo {
 public:
-  typedef android::Vector<std::pair<const char *,
-                                    const uint8_t *> > DependencyTableTy;
+  typedef const uint8_t* DependencyHashTy;
   typedef android::Vector<std::pair<const char*, const char*> > PragmaListTy;
   typedef android::Vector<uint32_t> ObjectSlotListTy;
   typedef android::Vector<const char *> ExportVarNameListTy;
@@ -158,49 +150,19 @@ public:
                                     uint32_t> > ExportForeachFuncListTy;
 
 public:
-  // Calculate or load the SHA-1 information of the built-in dependencies.
-  static bool LoadBuiltInSHA1Information();
-
   // Return the path of the RS info file corresponded to the given output
   // executable file.
   static android::String8 GetPath(const char *pFilename);
 
-  static const char LibBCCPath[];
-  static const char LibCompilerRTPath[];
-  static const char LibRSPath[];
-  static const char LibCLCorePath[];
-  static const char LibCLCoreDebugPath[];
-#if defined(__i386__) || defined(__x86_64__)
-  static const char LibCLCoreX86Path[];
-#endif
-#if defined(ARCH_ARM_HAVE_NEON)
-  static const char LibCLCoreNEONPath[];
-#endif
+  bool CheckDependency(const char* pInputFilename, const DependencyHashTy& expectedSourceHash);
 
 private:
-  // SHA-1 of the built-in dependencies. Will be initialized in
-  // LoadBuiltInSHA1Information().
-  static const uint8_t *LibBCCSHA1;
-  static const uint8_t *LibCompilerRTSHA1;
-  static const uint8_t *LibRSSHA1;
-  static const uint8_t *LibCLCoreSHA1;
-  static const uint8_t *LibCLCoreDebugSHA1;
-#if defined(ARCH_ARM_HAVE_NEON)
-  static const uint8_t *LibCLCoreNEONSHA1;
-#endif
-
-  static bool CheckDependency(const RSInfo &pInfo,
-                              const char *pInputFilename,
-                              const DependencyTableTy &pDeps);
-  static bool AddBuiltInDependencies(RSInfo &pInfo);
 
   rsinfo::Header mHeader;
 
   char *mStringPool;
 
-  // In most of the time, there're 4 source dependencies stored (libbcc.so,
-  // libRS.so, libclcore and the input bitcode itself.)
-  DependencyTableTy mDependencyTable;
+  DependencyHashTy mSourceHash;
   PragmaListTy mPragmas;
   ObjectSlotListTy mObjectSlots;
   ExportVarNameListTy mExportVarNames;
@@ -220,11 +182,10 @@ public:
 
   // Implemented in RSInfoExtractor.cpp.
   static RSInfo *ExtractFromSource(const Source &pSource,
-                                   const DependencyTableTy &pDeps);
+                                   const DependencyHashTy &sourceHash);
 
   // Implemented in RSInfoReader.cpp.
-  static RSInfo *ReadFromFile(InputFile &pInput,
-                              const DependencyTableTy &pDeps);
+  static RSInfo *ReadFromFile(InputFile &pInput);
 
   // Implemneted in RSInfoWriter.cpp
   bool write(OutputFile &pOutput);
@@ -236,8 +197,6 @@ public:
   { return mHeader.isThreadable; }
   inline bool hasDebugInformation() const
   { return mHeader.hasDebugInformation; }
-  inline const DependencyTableTy &getDependencyTable() const
-  { return mDependencyTable; }
   inline const PragmaListTy &getPragmas() const
   { return mPragmas; }
   inline const ObjectSlotListTy &getObjectSlots() const

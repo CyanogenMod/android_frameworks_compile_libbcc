@@ -16,35 +16,18 @@
 
 #include "bcc/Renderscript/RSScript.h"
 
+#include "bcc/Assert.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 
 using namespace bcc;
 
-bool RSScript::LinkRuntime(RSScript &pScript, const char *rt_path) {
+bool RSScript::LinkRuntime(RSScript &pScript, const char *core_lib) {
+  bccAssert(core_lib != NULL);
+
   // Using the same context with the source in pScript.
   BCCContext &context = pScript.getSource().getContext();
-  const char* core_lib = RSInfo::LibCLCorePath;
-
-  // x86 devices will use an optimized library.
-#if defined(__i386__) || defined(__x86_64__)
-  core_lib = RSInfo::LibCLCoreX86Path;
-#endif
-
-  // NEON-capable devices can use an accelerated math library for all
-  // reduced precision scripts.
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-  const RSInfo* info = pScript.getInfo();
-  if ((info != NULL) &&
-      (info->getFloatPrecisionRequirement() != RSInfo::FP_Full)) {
-    core_lib = RSInfo::LibCLCoreNEONPath;
-  }
-#endif
-
-  if (rt_path != NULL) {
-    core_lib = rt_path;
-  }
 
   Source *libclcore_source = Source::CreateFromFile(context, core_lib);
   if (libclcore_source == NULL) {

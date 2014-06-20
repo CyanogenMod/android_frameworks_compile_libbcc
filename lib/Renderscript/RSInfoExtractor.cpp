@@ -105,28 +105,10 @@ const char *writeString(const llvm::StringRef &pString, char *pStringPool,
   return pStringWriteStart;
 }
 
-bool writeDependency(const std::string &pSourceName, const uint8_t *pSHA1,
-                     char *pStringPool, off_t *pWriteStart,
-                     RSInfo::DependencyTableTy &pDepTable) {
-  const char *source_name = writeString(pSourceName, pStringPool, pWriteStart);
-
-  uint8_t *sha1 = reinterpret_cast<uint8_t *>(pStringPool + *pWriteStart);
-
-  // SHA-1 is special. It's size of SHA1_DIGEST_LENGTH (=20) bytes long without
-  // null-terminator.
-  ::memcpy(sha1, pSHA1, SHA1_DIGEST_LENGTH);
-  // Record in the result RSInfo object.
-  pDepTable.push(std::make_pair(source_name, sha1));
-  // Update the string pool pointer.
-  *pWriteStart += SHA1_DIGEST_LENGTH;
-
-  return true;
-}
-
 } // end anonymous namespace
 
 RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
-                                  const DependencyTableTy &pDeps)
+                                  const DependencyHashTy &pSourceHashToEmbed)
 {
   const llvm::Module &module = pSource.getModule();
   const char *module_name = module.getModuleIdentifier().c_str();
@@ -163,22 +145,8 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   string_pool_size += getMetadataStringLength<1>(export_func);
   string_pool_size += getMetadataStringLength<1>(export_foreach_name);
 
-  // Don't forget to reserve the space for the dependency informationin string
-  // pool.
-  string_pool_size += ::strlen(LibBCCPath) + 1 + SHA1_DIGEST_LENGTH;
-  string_pool_size += ::strlen(LibCompilerRTPath) + 1 + SHA1_DIGEST_LENGTH;
-  string_pool_size += ::strlen(LibRSPath) + 1 + SHA1_DIGEST_LENGTH;
-  string_pool_size += ::strlen(LibCLCorePath) + 1 + SHA1_DIGEST_LENGTH;
-  string_pool_size += ::strlen(LibCLCoreDebugPath) + 1 + SHA1_DIGEST_LENGTH;
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-  string_pool_size += ::strlen(LibCLCoreNEONPath) + 1 + SHA1_DIGEST_LENGTH;
-#endif
-  for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
-    // +1 for null-terminator
-    string_pool_size += ::strlen(/* name */pDeps[i].first) + 1;
-    // +SHA1_DIGEST_LENGTH for SHA-1 checksum
-    string_pool_size += SHA1_DIGEST_LENGTH;
-  }
+  // Reserve the space for the source hash.
+  string_pool_size += SHA1_DIGEST_LENGTH;
 
   // Allocate result object
   result = new (std::nothrow) RSInfo(string_pool_size);
@@ -362,58 +330,17 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   }
 #undef FOR_EACH_NODE_IN
 
-  if (LoadBuiltInSHA1Information()) {
-    //===------------------------------------------------------------------===//
-    // Record built-in dependency information.
-    //===------------------------------------------------------------------===//
-    if (!writeDependency(LibBCCPath, LibBCCSHA1,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
-    }
-
-    if (!writeDependency(LibCompilerRTPath, LibCompilerRTSHA1,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
-    }
-
-    if (!writeDependency(LibRSPath, LibRSSHA1,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
-    }
-
-    if (!writeDependency(LibCLCorePath, LibCLCoreSHA1,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
-    }
-
-    if (!writeDependency(LibCLCoreDebugPath, LibCLCoreDebugSHA1,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
-    }
-
-#if defined(ARCH_ARM_HAVE_NEON) && !defined(DISABLE_CLCORE_NEON)
-    if (!writeDependency(LibCLCoreNEONPath, LibCLCoreNEONSHA1,
-                         result->mStringPool, &cur_string_pool_offset,
-                         result->mDependencyTable)) {
-      goto bail;
-    }
-#endif
-
-    //===------------------------------------------------------------------===//
-    // Record dependency information.
-    //===------------------------------------------------------------------===//
-    for (unsigned i = 0, e = pDeps.size(); i != e; i++) {
-      if (!writeDependency(/* name */pDeps[i].first, /* SHA-1 */pDeps[i].second,
-                           result->mStringPool, &cur_string_pool_offset,
-                           result->mDependencyTable)) {
-        goto bail;
-      }
-    }
+  //===------------------------------------------------------------------===//
+  // Record dependency information.
+  //===------------------------------------------------------------------===//
+  {
+      // Store the SHA-1 in the string pool but without a null-terminator.
+      result->mHeader.sourceSha1Idx = cur_string_pool_offset;
+      uint8_t* sha1 = reinterpret_cast<uint8_t*>(result->mStringPool + cur_string_pool_offset);
+      ::memcpy(sha1, pSourceHashToEmbed, SHA1_DIGEST_LENGTH);
+      // Update the string pool pointer.
+      cur_string_pool_offset += SHA1_DIGEST_LENGTH;
+      result->mSourceHash = sha1;
   }
 
   //===--------------------------------------------------------------------===//

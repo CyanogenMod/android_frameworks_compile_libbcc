@@ -36,33 +36,6 @@ inline bool helper_read_list_item(const ItemType &pItem,
                                   const RSInfo &pInfo,
                                   ItemContainer &pResult);
 
-// Process DependencyTableItem in the file
-template<> inline bool
-helper_read_list_item<rsinfo::DependencyTableItem, RSInfo::DependencyTableTy>(
-    const rsinfo::DependencyTableItem &pItem,
-    const RSInfo &pInfo,
-    RSInfo::DependencyTableTy &pResult)
-{
-  const char *id = pInfo.getStringFromPool(pItem.id);
-  const uint8_t *sha1 =
-      reinterpret_cast<const uint8_t *>(pInfo.getStringFromPool(pItem.sha1));
-
-  if (id == NULL) {
-    ALOGE("Invalid string index %d for source id in RS dependenct table.",
-          pItem.id);
-    return false;
-  }
-
-  if (sha1 == NULL) {
-    ALOGE("Invalid string index %d for SHA-1 checksum in RS dependenct table.",
-          pItem.id);
-    return false;
-  }
-
-  pResult.push(std::make_pair(id, sha1));
-  return true;
-}
-
 // Process PragmaItem in the file
 template<> inline bool
 helper_read_list_item<rsinfo::PragmaItem, RSInfo::PragmaListTy>(
@@ -173,7 +146,7 @@ inline bool helper_read_list(const uint8_t *pData,
 
 } // end anonymous namespace
 
-RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) {
+RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
   android::FileMap *map = NULL;
   RSInfo *result = NULL;
   const uint8_t *data;
@@ -228,7 +201,6 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) 
 
   // Check the size.
   if ((header->headerSize != sizeof(rsinfo::Header)) ||
-      (header->dependencyTable.itemSize != sizeof(rsinfo::DependencyTableItem)) ||
       (header->pragmaList.itemSize != sizeof(rsinfo::PragmaItem)) ||
       (header->objectSlotList.itemSize != sizeof(rsinfo::ObjectSlotItem)) ||
       (header->exportVarNameList.itemSize != sizeof(rsinfo::ExportVarNameItem)) ||
@@ -242,7 +214,6 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) 
 #define LIST_DATA_RANGE(_list_header) \
   ((_list_header).offset + (_list_header).count * (_list_header).itemSize)
   if (((header->headerSize + header->strPoolSize) > filesize) ||
-      (LIST_DATA_RANGE(header->dependencyTable) > filesize) ||
       (LIST_DATA_RANGE(header->pragmaList) > filesize) ||
       (LIST_DATA_RANGE(header->objectSlotList) > filesize) ||
       (LIST_DATA_RANGE(header->exportVarNameList) > filesize) ||
@@ -279,9 +250,11 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput, const DependencyTableTy &pDeps) 
   }
 
   // Populate all the data to the result object.
-  if (!helper_read_list<rsinfo::DependencyTableItem, DependencyTableTy>
-        (data, *result, header->dependencyTable, result->mDependencyTable)) {
-    goto bail;
+  result->mSourceHash =
+              reinterpret_cast<const uint8_t*>(result->getStringFromPool(header->sourceSha1Idx));
+  if (result->mSourceHash == NULL) {
+      ALOGE("Invalid string index %d for SHA-1 checksum of source.", header->sourceSha1Idx);
+      goto bail;
   }
 
   if (!helper_read_list<rsinfo::PragmaItem, PragmaListTy>
