@@ -35,6 +35,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <cstdlib>
+#include <climits>
 
 namespace bcinfo {
 
@@ -54,9 +55,10 @@ namespace bcinfo {
  * LLVM 3.1
  *  16 - Ice Cream Sandwich MR2
  */
-static const unsigned int kMinimumAPIVersion = 11;
-static const unsigned int kMaximumAPIVersion = RS_VERSION;
-static const unsigned int kCurrentAPIVersion = 10000;
+static const unsigned int kMinimumAPIVersion     = 11;
+static const unsigned int kMaximumAPIVersion     = RS_VERSION;
+static const unsigned int kCurrentAPIVersion     = 10000;
+static const unsigned int kDevelopmentAPIVersion = UINT_MAX;
 
 /**
  * The minimum version which does not require translation (i.e. is already
@@ -98,9 +100,10 @@ bool BitcodeTranslator::translate() {
           BCWrapper.getTargetAPI(), mVersion);
   }
 
-  if ((mVersion != kCurrentAPIVersion) &&
-      ((mVersion < kMinimumAPIVersion) ||
-       (mVersion > kMaximumAPIVersion))) {
+  if ((mVersion != kDevelopmentAPIVersion) &&
+      (mVersion != kCurrentAPIVersion)     &&
+       ((mVersion < kMinimumAPIVersion) ||
+        (mVersion > kMaximumAPIVersion))) {
     ALOGE("Invalid API version: %u is out of range ('%u' - '%u')", mVersion,
          kMinimumAPIVersion, kMaximumAPIVersion);
     return false;
@@ -167,4 +170,3 @@ bool BitcodeTranslator::translate() {
 }
 
 }  // namespace bcinfo
-
