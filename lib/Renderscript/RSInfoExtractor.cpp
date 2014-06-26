@@ -88,6 +88,7 @@ inline size_t getMetadataStringLength(const llvm::NamedMDNode *pMetadata) {
 
 // Write a string pString to the string pool pStringPool at offset pWriteStart.
 // Return the pointer the pString resides within the string pool.
+// Updates pWriteStart to the next available spot.
 const char *writeString(const llvm::StringRef &pString, char *pStringPool,
                         off_t *pWriteStart) {
   if (pString.empty()) {
@@ -107,9 +108,9 @@ const char *writeString(const llvm::StringRef &pString, char *pStringPool,
 
 } // end anonymous namespace
 
-RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
-                                  const DependencyHashTy &pSourceHashToEmbed)
-{
+RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy& sourceHashToEmbed,
+                                  const char* compileCommandLineToEmbed,
+                                  const char* buildFingerprintToEmbed) {
   const llvm::Module &module = pSource.getModule();
   const char *module_name = module.getModuleIdentifier().c_str();
 
@@ -145,8 +146,10 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
   string_pool_size += getMetadataStringLength<1>(export_func);
   string_pool_size += getMetadataStringLength<1>(export_foreach_name);
 
-  // Reserve the space for the source hash.
+  // Reserve the space for the source hash, command line, and fingerprint
   string_pool_size += SHA1_DIGEST_LENGTH;
+  string_pool_size += strlen(compileCommandLineToEmbed) + 1;
+  string_pool_size += strlen(buildFingerprintToEmbed) + 1;
 
   // Allocate result object
   result = new (std::nothrow) RSInfo(string_pool_size);
@@ -331,16 +334,24 @@ RSInfo *RSInfo::ExtractFromSource(const Source &pSource,
 #undef FOR_EACH_NODE_IN
 
   //===------------------------------------------------------------------===//
-  // Record dependency information.
+  // Record information used to invalidate the cache
   //===------------------------------------------------------------------===//
   {
       // Store the SHA-1 in the string pool but without a null-terminator.
       result->mHeader.sourceSha1Idx = cur_string_pool_offset;
       uint8_t* sha1 = reinterpret_cast<uint8_t*>(result->mStringPool + cur_string_pool_offset);
-      ::memcpy(sha1, pSourceHashToEmbed, SHA1_DIGEST_LENGTH);
+      ::memcpy(sha1, sourceHashToEmbed, SHA1_DIGEST_LENGTH);
       // Update the string pool pointer.
       cur_string_pool_offset += SHA1_DIGEST_LENGTH;
       result->mSourceHash = sha1;
+
+      result->mHeader.compileCommandLineIdx = cur_string_pool_offset;
+      result->mCompileCommandLine = writeString(compileCommandLineToEmbed, result->mStringPool,
+                                                &cur_string_pool_offset);
+
+      result->mHeader.buildFingerprintIdx = cur_string_pool_offset;
+      result->mBuildFingerprint = writeString(buildFingerprintToEmbed, result->mStringPool,
+                                              &cur_string_pool_offset);
   }
 
   //===--------------------------------------------------------------------===//
