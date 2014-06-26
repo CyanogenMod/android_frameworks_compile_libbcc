@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//#define LOG_NDEBUG 0
+// #define LOG_NDEBUG 0
 #include "bcc/Renderscript/RSInfo.h"
 
 #if !defined(_WIN32)  /* TODO create a HAVE_DLFCN_H */
@@ -40,28 +40,51 @@ android::String8 RSInfo::GetPath(const char *pFilename) {
   return result;
 }
 
-#define PRINT_DEPENDENCY(PREFIX, X) \
-        ALOGV("\t" PREFIX "SHA-1: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x"   \
-                                 "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",  \
-                   (X)[ 0], (X)[ 1], (X)[ 2], (X)[ 3], (X)[ 4], (X)[ 5],      \
-                   (X)[ 6], (X)[ 7], (X)[ 8], (X)[ 9], (X)[10], (X)[11],      \
-                   (X)[12], (X)[13], (X)[14], (X)[15], (X)[16], (X)[17],      \
-                   (X)[18], (X)[19]);
+static std::string stringFromSourceHash(const RSInfo::DependencyHashTy& hash) {
+    std::string s;
+    s.reserve(SHA1_DIGEST_LENGTH + 1);
+    for (int i = 0; i < SHA1_DIGEST_LENGTH; i++) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02x", hash[i]);
+        s.append(buf);
+    }
+    return s;
+}
 
-bool RSInfo::CheckDependency(const char* pInputFilename,
-                             const DependencyHashTy& pExpectedSourceHash) {
-    if (::memcmp(mSourceHash, pExpectedSourceHash, SHA1_DIGEST_LENGTH) != 0) {
+std::string bcc::getCommandLine(int argc, const char* const* argv) {
+    std::string s;
+    for (int i = 0; i < argc; i++) {
+        if (i > 0) {
+            s += ' ';
+        }
+        s += argv[i];
+    }
+    return s;
+}
+
+bool RSInfo::IsConsistent(const char* pInputFilename, const DependencyHashTy& expectedSourceHash,
+                          const char* expectedCompileCommandLine,
+                          const char* expectedBuildFingerprint) {
+    if (::memcmp(mSourceHash, expectedSourceHash, SHA1_DIGEST_LENGTH) != 0) {
         ALOGD("Cache %s is dirty due to the source it depends on has been changed:",
               pInputFilename);
-        PRINT_DEPENDENCY("given - ", pExpectedSourceHash);
-        PRINT_DEPENDENCY("cache - ", mSourceHash);
+        ALOGD("expected: %s", stringFromSourceHash(expectedSourceHash).c_str());
+        ALOGD("cached  : %s", stringFromSourceHash(mSourceHash).c_str());
         return false;
     }
-    // TODO Remove once done with cache fixes.
-    // ALOGD("Cache %s is not dirty, the source it depends on has not changed:", pInputFilename);
-    // PRINT_DEPENDENCY("given - ", pExpectedSourceHash);
-    // PRINT_DEPENDENCY("cache - ", mSourceHash);
-
+    if (strcmp(expectedCompileCommandLine, mCompileCommandLine) != 0) {
+        ALOGD("Cache %s is dirty because the command line used to compile it has changed:",
+              pInputFilename);
+        ALOGD("expected: %s", expectedCompileCommandLine);
+        ALOGD("cached  : %s", mCompileCommandLine);
+        return false;
+    }
+    if (strcmp(expectedBuildFingerprint, mBuildFingerprint) != 0) {
+        ALOGD("Cache %s is dirty because the build fingerprint has changed:", pInputFilename);
+        ALOGD("expected: %s", expectedBuildFingerprint);
+        ALOGD("cached  : %s", mBuildFingerprint);
+        return false;
+    }
     return true;
 }
 
@@ -89,6 +112,8 @@ RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
     ::memset(mStringPool, 0, mHeader.strPoolSize);
   }
   mSourceHash = NULL;
+  mCompileCommandLine = NULL;
+  mBuildFingerprint = NULL;
 }
 
 RSInfo::~RSInfo() {
@@ -129,10 +154,13 @@ void RSInfo::dump() const {
   ALOGV("\tString pool size: %u", mHeader.strPoolSize);
 
   if (mSourceHash == NULL) {
-      ALOGE("Source hash: NULL!");
+      ALOGV("Source hash: NULL!");
   } else {
-      PRINT_DEPENDENCY("Source hash: ", mSourceHash);
+      ALOGV("Source hash: %s", stringFromSourceHash(mSourceHash).c_str());
   }
+
+  ALOGV("Compile Command Line: ", mCompileCommandLine ? mCompileCommandLine : "(NULL)");
+  ALOGV("mBuildFingerprint: ", mBuildFingerprint ? mBuildFingerprint : "(NULL)");
 
 #define DUMP_LIST_HEADER(_name, _header) do { \
   ALOGV(_name ":"); \

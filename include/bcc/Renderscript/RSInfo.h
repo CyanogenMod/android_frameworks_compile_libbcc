@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include <string>
 #include <utility>
 
 #include "bcc/Support/Log.h"
@@ -48,7 +49,7 @@ namespace rsinfo {
 #define RSINFO_MAGIC      "\0rsinfo\n"
 
 /* RS info file version, encoded in 4 bytes of ASCII */
-#define RSINFO_VERSION    "005\0"
+#define RSINFO_VERSION    "006\0"
 
 struct __attribute__((packed)) ListHeader {
   // The offset from the beginning of the file of data
@@ -74,9 +75,13 @@ struct __attribute__((packed)) Header {
 
   uint32_t strPoolSize;
 
-  // The SHA-1 checksum of the source file is stored as a string in the string pool.
+  // The index in the pool of the SHA-1 checksum of the source file.
   // It has a fixed-length of SHA1_DIGEST_LENGTH (=20) bytes.
   StringIndexTy sourceSha1Idx;
+  // The index in the pool of the command used to compile this source.
+  StringIndexTy compileCommandLineIdx;
+  // The index in the pool of the build fingerprint of Android when the source was compiled.
+  StringIndexTy buildFingerprintIdx;
 
   struct ListHeader pragmaList;
   struct ListHeader objectSlotList;
@@ -154,7 +159,10 @@ public:
   // executable file.
   static android::String8 GetPath(const char *pFilename);
 
-  bool CheckDependency(const char* pInputFilename, const DependencyHashTy& expectedSourceHash);
+  // Check whether this info contains the same source hash, compile command line, and fingerprint.
+  // If not, it's an indication we need to recompile.
+  bool IsConsistent(const char* pInputFilename, const DependencyHashTy& sourceHash,
+                    const char* compileCommandLine, const char* buildFingerprint);
 
 private:
 
@@ -162,7 +170,14 @@ private:
 
   char *mStringPool;
 
+  // Pointer to the hash of the souce file, somewhere in the string pool.
   DependencyHashTy mSourceHash;
+  // Pointer to the command used to compile this source, somewhere in the string pool.
+  const char* mCompileCommandLine;
+  // Pointer to the build fingerprint of Android when the source was compiled, somewhere in the
+  // string pool.
+  const char* mBuildFingerprint;
+
   PragmaListTy mPragmas;
   ObjectSlotListTy mObjectSlots;
   ExportVarNameListTy mExportVarNames;
@@ -182,7 +197,9 @@ public:
 
   // Implemented in RSInfoExtractor.cpp.
   static RSInfo *ExtractFromSource(const Source &pSource,
-                                   const DependencyHashTy &sourceHash);
+                                   const DependencyHashTy &sourceHashToEmbed,
+                                   const char* compileCommandLineToEmbed,
+                                   const char* buildFingerprintToEmbed);
 
   // Implemented in RSInfoReader.cpp.
   static RSInfo *ReadFromFile(InputFile &pInput);
@@ -226,6 +243,9 @@ public:
   // script.
   FloatPrecision getFloatPrecisionRequirement() const;
 };
+
+// Returns the arguments concatenated into one string.
+std::string getCommandLine(int argc, const char* const* argv);
 
 } // end namespace bcc
 

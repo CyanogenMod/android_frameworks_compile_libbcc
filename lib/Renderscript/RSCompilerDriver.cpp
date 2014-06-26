@@ -26,6 +26,7 @@
 #include "bcc/Compiler.h"
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSExecutable.h"
+#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Support/CompilerConfig.h"
 #include "bcc/Source.h"
@@ -44,6 +45,17 @@
 
 using namespace bcc;
 
+// Get the build fingerprint of the Android device we are running on.
+static std::string getBuildFingerPrint() {
+#ifdef HAVE_ANDROID_OS
+    char fingerprint[PROPERTY_VALUE_MAX];
+    property_get("ro.build.fingerprint", fingerprint, "");
+    return fingerprint;
+#else
+    return "HostBuild";
+#endif
+}
+
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
     mConfig(NULL), mCompiler(), mDebugContext(false),
     mLinkRuntimeCallback(NULL), mEnableGlobalMerge(true) {
@@ -54,11 +66,11 @@ RSCompilerDriver::~RSCompilerDriver() {
   delete mConfig;
 }
 
-RSExecutable *
-RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
-                             const char *pBitcode, size_t pBitcodeSize,
-                             SymbolResolverProxy &pResolver) {
-  //android::StopWatch load_time("bcc: RSCompilerDriver::loadScript time");
+RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pResName,
+                                           const char* pBitcode, size_t pBitcodeSize,
+                                           const char* expectedCompileCommandLine,
+                                           SymbolResolverProxy& pResolver) {
+  // android::StopWatch load_time("bcc: RSCompilerDriver::loadScript time");
   if ((pCacheDir == NULL) || (pResName == NULL)) {
     ALOGE("Missing pCacheDir and/or pResName");
     return NULL;
@@ -69,9 +81,6 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
           pBitcode, pBitcodeSize);
     return NULL;
   }
-
-  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
-  Sha1Util::GetSHA1DigestFromBuffer(bitcode_sha1, pBitcode, pBitcodeSize);
 
   // {pCacheDir}/{pResName}.o
   llvm::SmallString<80> output_path(pCacheDir);
@@ -114,7 +123,7 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
     return NULL;
   }
 
- //===---------------------------------------------------------------------===//
+  //===---------------------------------------------------------------------===//
   // Open and load the RS info file.
   //===--------------------------------------------------------------------===//
   InputFile info_file(info_path.string());
@@ -128,26 +137,37 @@ RSCompilerDriver::loadScript(const char *pCacheDir, const char *pResName,
     return NULL;
   }
 
-  // If the info file contains a different hash for the source than what we are
-  // looking for, bail.  The bit code found on disk is out of date and needs to
-  // be recompiled first.
-  if (!info->CheckDependency(output_path.c_str(), bitcode_sha1)) {
-    delete object_file;
-    delete info;
-    return NULL;
+  //===---------------------------------------------------------------------===//
+  // Check that the info in the RS info file is consistent we what we want.
+  //===--------------------------------------------------------------------===//
+
+  uint8_t expectedSourceHash[SHA1_DIGEST_LENGTH];
+  Sha1Util::GetSHA1DigestFromBuffer(expectedSourceHash, pBitcode, pBitcodeSize);
+
+  std::string expectedBuildFingerprint = getBuildFingerPrint();
+
+  // If the info file contains different hash for the source than what we are
+  // looking for, bail.  Do the same if the command line used when compiling or the
+  // build fingerprint of Android has changed.  The compiled code found on disk is
+  // out of date and needs to be recompiled first.
+  if (!info->IsConsistent(output_path.c_str(), expectedSourceHash, expectedCompileCommandLine,
+                          expectedBuildFingerprint.c_str())) {
+      delete object_file;
+      delete info;
+      return NULL;
   }
 
   //===--------------------------------------------------------------------===//
   // Create the RSExecutable.
   //===--------------------------------------------------------------------===//
-  RSExecutable *result = RSExecutable::Create(*info, *object_file, pResolver);
-  if (result == NULL) {
+  RSExecutable *executable = RSExecutable::Create(*info, *object_file, pResolver);
+  if (executable == NULL) {
     delete object_file;
     delete info;
     return NULL;
   }
 
-  return result;
+  return executable;
 }
 
 #if defined(PROVIDE_ARM_CODEGEN)
@@ -195,14 +215,13 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   return changed;
 }
 
-Compiler::ErrorCode
-RSCompilerDriver::compileScript(RSScript &pScript,
-                                const char* pScriptName,
-                                const char *pOutputPath,
-                                const char *pRuntimePath,
-                                const RSInfo::DependencyHashTy &pSourceHash,
-                                bool pSkipLoad, bool pDumpIR) {
-  //android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
+Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const char* pScriptName,
+                                                    const char* pOutputPath,
+                                                    const char* pRuntimePath,
+                                                    const RSInfo::DependencyHashTy& pSourceHash,
+                                                    const char* compileCommandLineToEmbed,
+                                                    bool saveInfoFile, bool pDumpIR) {
+  // android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
   RSInfo *info = NULL;
 
   //===--------------------------------------------------------------------===//
@@ -210,7 +229,8 @@ RSCompilerDriver::compileScript(RSScript &pScript,
   //===--------------------------------------------------------------------===//
   // RS info may contains configuration (such as #optimization_level) to the
   // compiler therefore it should be extracted before compilation.
-  info = RSInfo::ExtractFromSource(pScript.getSource(), pSourceHash);
+  info = RSInfo::ExtractFromSource(pScript.getSource(), pSourceHash, compileCommandLineToEmbed,
+                                   getBuildFingerPrint().c_str());
   if (info == NULL) {
     return Compiler::kErrInvalidSource;
   }
@@ -299,13 +319,7 @@ RSCompilerDriver::compileScript(RSScript &pScript,
     }
   }
 
-  // No need to produce an RSExecutable in this case.
-  // TODO: Error handling in this case is nonexistent.
-  if (pSkipLoad) {
-    return Compiler::kSuccess;
-  }
-
-  {
+  if (saveInfoFile) {
     android::String8 info_path = RSInfo::GetPath(pOutputPath);
     OutputFile info_file(info_path.string(), FileBase::kTruncate);
 
@@ -337,6 +351,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
                              const char *pResName,
                              const char *pBitcode,
                              size_t pBitcodeSize,
+                             const char *commandLine,
                              const char *pRuntimePath,
                              RSLinkRuntimeCallback pLinkRuntimeCallback,
                              bool pDumpIR) {
@@ -380,48 +395,42 @@ bool RSCompilerDriver::build(BCCContext &pContext,
     return false;
   }
 
-  RSScript *script = new (std::nothrow) RSScript(*source);
-  if (script == NULL) {
-    ALOGE("Out of memory when create Script object for '%s'! (output: %s)",
-          pResName, output_path.c_str());
-    delete source;
-    return false;
-  }
+  RSScript script(*source);
   if (pLinkRuntimeCallback) {
     setLinkRuntimeCallback(pLinkRuntimeCallback);
   }
 
-  script->setLinkRuntimeCallback(getLinkRuntimeCallback());
+  script.setLinkRuntimeCallback(getLinkRuntimeCallback());
 
   // Read information from bitcode wrapper.
   bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
-  script->setCompilerVersion(wrapper.getCompilerVersion());
-  script->setOptimizationLevel(static_cast<RSScript::OptimizationLevel>(
-                                   wrapper.getOptimizationLevel()));
+  script.setCompilerVersion(wrapper.getCompilerVersion());
+  script.setOptimizationLevel(static_cast<RSScript::OptimizationLevel>(
+                              wrapper.getOptimizationLevel()));
 
   //===--------------------------------------------------------------------===//
   // Compile the script
   //===--------------------------------------------------------------------===//
-  Compiler::ErrorCode status = compileScript(*script, pResName,
+  Compiler::ErrorCode status = compileScript(script, pResName,
                                              output_path.c_str(),
-                                             pRuntimePath, bitcode_sha1, false,
-                                             pDumpIR);
+                                             pRuntimePath, bitcode_sha1, commandLine,
+                                             true, pDumpIR);
 
-  // Script is no longer used. Free it to get more memory.
-  delete script;
-
-  if (status != Compiler::kSuccess) {
-    return false;
-  }
-
-  return true;
+  return status == Compiler::kSuccess;
 }
 
 
 bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
                                          const char *pRuntimePath) {
-  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
-  RSInfo *info = RSInfo::ExtractFromSource(pScript.getSource(), bitcode_sha1);
+  // For compat lib, we don't check the RS info file so we don't need the source hash,
+  // compile command, and build fingerprint.
+  // TODO We may want to make them optional or embed real values.
+  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH] = {0};
+  const char* compileCommandLineToEmbed = "";
+  const char* buildFingerprintToEmbed = "";
+
+  RSInfo* info = RSInfo::ExtractFromSource(pScript.getSource(), bitcode_sha1,
+                                           compileCommandLineToEmbed, buildFingerprintToEmbed);
   if (info == NULL) {
     return false;
   }
@@ -431,8 +440,8 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
   // offline (host) compilation.
   pScript.setEmbedInfo(true);
 
-  Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath,
-                                             bitcode_sha1, true);
+  Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath, bitcode_sha1,
+                                             compileCommandLineToEmbed, false, false);
   if (status != Compiler::kSuccess) {
     return false;
   }
