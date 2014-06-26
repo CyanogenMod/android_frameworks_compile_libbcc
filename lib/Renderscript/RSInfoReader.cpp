@@ -257,6 +257,18 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
       goto bail;
   }
 
+  result->mCompileCommandLine = result->getStringFromPool(header->compileCommandLineIdx);
+  if (result->mCompileCommandLine == NULL) {
+      ALOGE("Invalid string index %d for compile command line.", header->compileCommandLineIdx);
+      goto bail;
+  }
+
+  result->mBuildFingerprint = result->getStringFromPool(header->buildFingerprintIdx);
+  if (result->mBuildFingerprint == NULL) {
+      ALOGE("Invalid string index %d for build fingerprint.", header->buildFingerprintIdx);
+      goto bail;
+  }
+
   if (!helper_read_list<rsinfo::PragmaItem, PragmaListTy>
         (data, *result, header->pragmaList, result->mPragmas)) {
     goto bail;

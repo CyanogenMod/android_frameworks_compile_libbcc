@@ -58,12 +58,16 @@ private:
   // been changed and false if it remains unchanged.
   bool setupConfig(const RSScript &pScript);
 
-  Compiler::ErrorCode compileScript(RSScript &pScript,
-                                    const char* pScriptName,
-                                    const char *pOutputPath,
-                                    const char *pRuntimePath,
-                                    const RSInfo::DependencyHashTy &pSourceHash,
-                                    bool pSkipLoad, bool pDumpIR = false);
+  // Compiles the provided bitcode, placing the binary at pOutputPath.
+  // - If saveInfoFile is true, it also stores the RSInfo data in a file with a path derived from
+  //   pOutputPath.
+  // - pSourceHash and commandLineToEmbed are values to embed in the RSInfo for future cache
+  //   invalidation decision.
+  // - If pDumpIR is true, a ".ll" file will also be created.
+  Compiler::ErrorCode compileScript(RSScript& pScript, const char* pScriptName,
+                                    const char* pOutputPath, const char* pRuntimePath,
+                                    const RSInfo::DependencyHashTy& pSourceHash,
+                                    const char* commandLineToEmbed, bool saveInfoFile, bool pDumpIR);
 
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
@@ -104,18 +108,20 @@ public:
   //        all be const-methods. They're not now because the getAddress() in
   //        SymbolResolverInterface is not a const-method.
   // Returns true if script is successfully compiled.
-  bool build(BCCContext &pContext, const char *pCacheDir, const char *pResName,
-             const char *pBitcode, size_t pBitcodeSize,
-             const char *pRuntimePath,
-             RSLinkRuntimeCallback pLinkRuntimeCallback = NULL,
+  bool build(BCCContext& pContext, const char* pCacheDir, const char* pResName,
+             const char* pBitcode, size_t pBitcodeSize, const char* commandLine,
+             const char* pRuntimePath, RSLinkRuntimeCallback pLinkRuntimeCallback = NULL,
              bool pDumpIR = false);
 
   // Returns true if script is successfully compiled.
   bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath);
 
-  static RSExecutable *loadScript(const char *pCacheDir, const char *pResName,
-                                  const char *pBitcode, size_t pBitcodeSize,
-                                  SymbolResolverProxy &pResolver);
+  // Tries to load the the compiled bit code at pCacheDir of the given name.  It checks that
+  // the file has been compiled from the same bit code and with the same compile arguments as
+  // provided.
+  static RSExecutable* loadScript(const char* pCacheDir, const char* pResName, const char* pBitcode,
+                                  size_t pBitcodeSize, const char* expectedCompileCommandLine,
+                                  SymbolResolverProxy& pResolver);
 };
 
 } // end namespace bcc

@@ -157,6 +157,7 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
 int main(int argc, char **argv) {
   llvm::cl::SetVersionPrinter(BCCVersionPrinter);
   llvm::cl::ParseCommandLineOptions(argc, argv);
+  std::string commandLine = bcc::getCommandLine(argc, argv);
   init::Initialize();
 
   BCCContext context;
@@ -193,9 +194,9 @@ int main(int argc, char **argv) {
     rscdi(&RSCD);
   }
 
-  bool built = RSCD.build(context, OptOutputPath.c_str(),
-      OptOutputFilename.c_str(), bitcode, bitcodeSize,
-      OptBCLibFilename.c_str(), NULL, OptEmitLLVM);
+  bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
+                          bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), NULL,
+                          OptEmitLLVM);
 
   if (!built) {
     return EXIT_FAILURE;
