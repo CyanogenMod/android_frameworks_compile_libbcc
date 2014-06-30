@@ -103,8 +103,7 @@ A million repetitions of "a"
 
 #define LINESIZE 2048
 
-static void SHA1Transform(unsigned long state[5],
-    const unsigned char buffer[64]);
+static void SHA1Transform(uint32_t state[5], const uint8_t buffer[64]);
 
 #define rol(value,bits) \
  (((value)<<(bits))|((value)>>(32-(bits))))
@@ -131,17 +130,17 @@ static void SHA1Transform(unsigned long state[5],
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-static void SHA1Transform(unsigned long state[5],
-    const unsigned char buffer[64])
+static void SHA1Transform(uint32_t state[5],
+    const uint8_t buffer[64])
 {
-unsigned long a, b, c, d, e;
+uint32_t a, b, c, d, e;
 typedef union {
-    unsigned char c[64];
-    unsigned long l[16];
+    uint8_t c[64];
+    uint32_t l[16];
 } CHAR64LONG16;
 CHAR64LONG16* block;
 #ifdef SHA1HANDSOFF
-static unsigned char workspace[64];
+static uint8_t workspace[64];
     block = (CHAR64LONG16*)workspace;
     memcpy(block, buffer, 64);
 #else
@@ -211,10 +210,10 @@ void SHA1Init(SHA1_CTX* context)
 
 /* Run your data through this. */
 
-void SHA1Update(SHA1_CTX* context, const unsigned char* data,
-    unsigned long len)  /* JHB */
+void SHA1Update(SHA1_CTX* context, const uint8_t* data,
+    uint32_t len)  /* JHB */
 {
-    unsigned long i, j; /* JHB */
+    uint32_t i, j; /* JHB */
 
     j = (context->count[0] >> 3) & 63;
     if ((context->count[0] += len << 3) < (len << 3))
@@ -237,26 +236,26 @@ void SHA1Update(SHA1_CTX* context, const unsigned char* data,
 
 /* Add padding and return the message digest. */
 
-void SHA1Final(unsigned char digest[HASHSIZE], SHA1_CTX*
+void SHA1Final(uint8_t digest[HASHSIZE], SHA1_CTX*
 context)
 {
-unsigned long i;    /* JHB */
-unsigned char finalcount[8];
+uint32_t i;    /* JHB */
+uint8_t finalcount[8];
 
     for (i = 0; i < 8; i++)
     {
-        finalcount[i] = (unsigned char)((context->count[(i>=4?
+        finalcount[i] = (uint8_t)((context->count[(i>=4?
             0:1)]>>((3-(i&3))*8))&255);
         /* Endian independent */
     }
-    SHA1Update(context, (unsigned char *)"\200", 1);
+    SHA1Update(context, (uint8_t *)"\200", 1);
     while ((context->count[0] & 504) != 448) {
-        SHA1Update(context, (unsigned char *)"\0", 1);
+        SHA1Update(context, (uint8_t *)"\0", 1);
     }
     SHA1Update(context, finalcount, 8);
     /* Should cause a SHA1Transform() */
     for (i = 0; i < HASHSIZE; i++) {
-        digest[i] = (unsigned char)
+        digest[i] = (uint8_t)
          ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
     /* Wipe variables */
@@ -278,11 +277,11 @@ unsigned char finalcount[8];
    it in the 20-byte array digest. If fname is NULL, stdin is
    assumed.
 */
-void sha1file(char *fname, unsigned char* digest)
+void sha1file(char *fname, uint8_t* digest)
 {
     int bytesread;
     SHA1_CTX context;
-    unsigned char buffer[16384];
+    uint8_t buffer[16384];
     FILE* f;
 
     if (fname)
@@ -311,9 +310,9 @@ void sha1file(char *fname, unsigned char* digest)
 }
 
 /* Convert ASCII hexidecimal digit to 4-bit value. */
-unsigned char hexval(char c)
+uint8_t hexval(char c)
 {
-    unsigned char h;
+    uint8_t h;
 
     c = toupper(c);
     if (c >= 'A')
@@ -329,12 +328,12 @@ int verifyfile(char *fname)
 {
     int j, k;
     int found = 0;
-    unsigned char digest[HASHSIZE];
-    unsigned char expected_digest[HASHSIZE];
+    uint8_t digest[HASHSIZE];
+    uint8_t expected_digest[HASHSIZE];
     FILE *checkfile;
     char checkline[LINESIZE];
     char *s;
-    unsigned char err;
+    uint8_t err;
 
     checkfile = fopen(fname, "rt");
     if (!checkfile)
@@ -419,8 +418,8 @@ int main(int argc, char** argv)
     int i, j, k;
     int check = 0;
     int found = 0;
-    unsigned char digest[HASHSIZE];
-    unsigned char expected_digest[HASHSIZE];
+    uint8_t digest[HASHSIZE];
+    uint8_t expected_digest[HASHSIZE];
     FILE *checkfile;
     char checkline[LINESIZE];
     char *s;
@@ -433,7 +432,7 @@ int main(int argc, char** argv)
     char name[MAXFILE];
     char ext[MAXEXT];
 #endif
-    unsigned char err;
+    uint8_t err;
     const char *binary_output_file = 0;
 
     for (i = 1; i < argc; i++)
