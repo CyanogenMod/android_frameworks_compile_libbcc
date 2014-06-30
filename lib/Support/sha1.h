@@ -4,10 +4,12 @@
 #ifndef _DALVIK_SHA1
 #define _DALVIK_SHA1
 
+#include <stdint.h>
+
 typedef struct {
-    unsigned long state[5];
-    unsigned long count[2];
-    unsigned char buffer[64];
+    uint32_t state[5];
+    uint32_t count[2];
+    uint8_t buffer[64];
 } SHA1_CTX;
 
 #define HASHSIZE 20
@@ -17,9 +19,8 @@ extern "C" {
 #endif
 
 void SHA1Init(SHA1_CTX* context);
-void SHA1Update(SHA1_CTX* context, const unsigned char* data,
-    unsigned long len);
-void SHA1Final(unsigned char digest[HASHSIZE], SHA1_CTX* context);
+void SHA1Update(SHA1_CTX* context, const uint8_t* data, uint32_t len);
+void SHA1Final(uint8_t digest[HASHSIZE], SHA1_CTX* context);
 
 #if defined(__cplusplus)
 }
