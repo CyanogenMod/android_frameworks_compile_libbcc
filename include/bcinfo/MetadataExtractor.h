@@ -30,7 +30,6 @@ namespace bcinfo {
 enum RSFloatPrecision {
   RS_FP_Full = 0,
   RS_FP_Relaxed = 1,
-  RS_FP_Imprecise = 2
 };
 
 class MetadataExtractor {
