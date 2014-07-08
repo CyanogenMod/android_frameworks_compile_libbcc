@@ -166,6 +166,8 @@ private:
      *   uint32_t lod;
      *   enum RsAllocationCubemapFace face;
      *   uint32_t ar[16];
+     *   const void **ins;
+     *   uint32_t *eStrideIns;
      * };
      */
     llvm::SmallVector<llvm::Type*, 16> StructTypes;
@@ -179,6 +181,9 @@ private:
     StructTypes.push_back(Int32Ty);    // uint32_t lod
     StructTypes.push_back(Int32Ty);    // enum RsAllocationCubemapFace
     StructTypes.push_back(llvm::ArrayType::get(Int32Ty, 16)); // uint32_t ar[16]
+
+    StructTypes.push_back(llvm::PointerType::getUnqual(VoidPtrTy)); // const void **ins
+    StructTypes.push_back(Int32Ty->getPointerTo()); // uint32_t *eStrideIns
 
     ForEachStubType =
       llvm::StructType::create(StructTypes, "RsForEachStubParamStruct");
@@ -450,12 +455,13 @@ public:
     llvm::Function *ExpandedFunction =
       createEmptyExpandedFunction(Function->getName());
 
-    bccAssert(ExpandedFunction->arg_size() == NUM_EXPANDED_FUNCTION_PARAMS);
-
     /*
      * Extract the expanded function's parameters.  It is guaranteed by
      * createEmptyExpandedFunction that there will be five parameters.
      */
+
+    bccAssert(ExpandedFunction->arg_size() == NUM_EXPANDED_FUNCTION_PARAMS);
+
     llvm::Function::arg_iterator ExpandedFunctionArgIter =
       ExpandedFunction->arg_begin();
 
@@ -464,9 +470,6 @@ public:
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_instep  = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_outstep = &*ExpandedFunctionArgIter;
-
-    llvm::Value *InStep = NULL;
-    llvm::Value *OutStep = NULL;
 
     // Construct the actual function body.
     llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
@@ -481,22 +484,50 @@ public:
     TBAAPointer = MDHelper.createTBAAScalarTypeNode("pointer", TBAARenderScript);
     TBAAPointer = MDHelper.createTBAAStructTagNode(TBAAPointer, TBAAPointer, 0);
 
-    // Collect and construct the arguments for the kernel().
-    // Note that we load any loop-invariant arguments before entering the Loop.
-    llvm::Function::arg_iterator FunctionArgIterator = Function->arg_begin();
+    /*
+     * Collect and construct the arguments for the kernel().
+     *
+     * Note that we load any loop-invariant arguments before entering the Loop.
+     */
+    size_t NumInputs = Function->arg_size();
 
-    llvm::Type *OutTy = NULL;
-    bool PassOutByReference = false;
+    llvm::Value *Y = NULL;
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
+      Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
+      --NumInputs;
+    }
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
+      --NumInputs;
+    }
+
+    // No usrData parameter on kernels.
+    bccAssert(
+        !bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature));
+
+    llvm::Function::arg_iterator ArgIter = Function->arg_begin();
+
+    // Check the return type
+    llvm::Type     *OutTy      = NULL;
+    llvm::Value    *OutStep    = NULL;
     llvm::LoadInst *OutBasePtr = NULL;
+
+    bool PassOutByReference = false;
+
     if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       llvm::Type *OutBaseTy = Function->getReturnType();
+
       if (OutBaseTy->isVoidTy()) {
         PassOutByReference = true;
-        OutTy = (FunctionArgIterator++)->getType();
+        OutTy = ArgIter->getType();
+
+        ArgIter++;
+        --NumInputs;
       } else {
-        OutTy = OutBaseTy->getPointerTo();
         // We don't increment Args, since we are using the actual return type.
+        OutTy = OutBaseTy->getPointerTo();
       }
+
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
@@ -505,35 +536,63 @@ public:
       }
     }
 
-    llvm::Type *InBaseTy = NULL;
-    llvm::Type *InTy = NULL;
-    llvm::LoadInst *InBasePtr = NULL;
-    if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
-      InBaseTy = (FunctionArgIterator++)->getType();
-      InTy = InBaseTy->getPointerTo();
-      InStep = getStepValue(&DL, InTy, Arg_instep);
+    llvm::SmallVector<llvm::Type*,     8> InTypes;
+    llvm::SmallVector<llvm::Value*,    8> InSteps;
+    llvm::SmallVector<llvm::LoadInst*, 8> InBasePtrs;
+
+    if (NumInputs == 1) {
+      llvm::Type  *InType = ArgIter->getType()->getPointerTo();
+      llvm::Value *InStep = getStepValue(&DL, InType, Arg_instep);
+
       InStep->setName("instep");
-      InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
+
+      llvm::Value    *Input     = Builder.CreateStructGEP(Arg_p, 0);
+      llvm::LoadInst *InBasePtr = Builder.CreateLoad(Input, "input_base");
+
       if (gEnableRsTbaa) {
         InBasePtr->setMetadata("tbaa", TBAAPointer);
       }
+
+      InTypes.push_back(InType);
+      InSteps.push_back(InStep);
+      InBasePtrs.push_back(InBasePtr);
+
+    } else if (NumInputs > 1) {
+      llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p, 10);
+      llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember,
+                                                      "inputs_base");
+
+      llvm::Value    *InStepsMember = Builder.CreateStructGEP(Arg_p, 11);
+      llvm::LoadInst *InStepsBase   = Builder.CreateLoad(InStepsMember,
+                                                         "insteps_base");
+
+      for (size_t InputIndex = 0; InputIndex < NumInputs;
+           ++InputIndex, ArgIter++) {
+
+          llvm::Value *IndexVal = Builder.getInt32(InputIndex);
+
+          llvm::Value    *InStepAddr = Builder.CreateGEP(InStepsBase, IndexVal);
+          llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
+                                                          "instep_addr");
+
+          llvm::Type  *InType = ArgIter->getType()->getPointerTo();
+          llvm::Value *InStep = getStepValue(&DL, InType, InStepArg);
+
+          InStep->setName("instep");
+
+          llvm::Value    *InputAddr = Builder.CreateGEP(InsBasePtr, IndexVal);
+          llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
+                                                         "input_base");
+
+          if (gEnableRsTbaa) {
+            InBasePtr->setMetadata("tbaa", TBAAPointer);
+          }
+
+          InTypes.push_back(InType);
+          InSteps.push_back(InStep);
+          InBasePtrs.push_back(InBasePtr);
+      }
     }
-
-    // No usrData parameter on kernels.
-    bccAssert(
-        !bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature));
-
-    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
-      FunctionArgIterator++;
-    }
-
-    llvm::Value *Y = NULL;
-    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-      Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
-      FunctionArgIterator++;
-    }
-
-    bccAssert(FunctionArgIterator == Function->arg_end());
 
     llvm::PHINode *IV;
     createLoop(Builder, Arg_x1, Arg_x2, &IV);
@@ -541,41 +600,51 @@ public:
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
-    llvm::Value *InPtr  = NULL;
-    llvm::Value *OutPtr = NULL;
-
     // Calculate the current input and output pointers
     //
-    // We always calculate the input/output pointers with a GEP operating on i8
-    // values and only cast at the very end to OutTy. This is because the step
-    // between two values is given in bytes.
     //
-    // TODO: We could further optimize the output by using a GEP operation of
-    // type 'OutTy' in cases where the element type of the allocation allows.
+    // We always calculate the input/output pointers with a GEP operating on i8
+    // values combined with a multiplication and only cast at the very end to
+    // OutTy.  This is to account for dynamic stepping sizes when the value
+    // isn't apparent at compile time.  In the (very common) case when we know
+    // the step size at compile time, due to haveing complete type information
+    // this multiplication will optmized out and produces code equivalent to a
+    // a GEP on a pointer of the correct type.
+
+    // Output
+
+    llvm::Value *OutPtr = NULL;
     if (OutBasePtr) {
       llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
+
       OutOffset = Builder.CreateMul(OutOffset, OutStep);
-      OutPtr = Builder.CreateGEP(OutBasePtr, OutOffset);
-      OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
-    }
+      OutPtr    = Builder.CreateGEP(OutBasePtr, OutOffset);
+      OutPtr    = Builder.CreatePointerCast(OutPtr, OutTy);
 
-    if (InBasePtr) {
-      llvm::Value *InOffset = Builder.CreateSub(IV, Arg_x1);
-      InOffset = Builder.CreateMul(InOffset, InStep);
-      InPtr = Builder.CreateGEP(InBasePtr, InOffset);
-      InPtr = Builder.CreatePointerCast(InPtr, InTy);
-    }
-
-    if (PassOutByReference) {
-      RootArgs.push_back(OutPtr);
-    }
-
-    if (InPtr) {
-      llvm::LoadInst *In = Builder.CreateLoad(InPtr, "In");
-      if (gEnableRsTbaa) {
-        In->setMetadata("tbaa", TBAAAllocation);
+      if (PassOutByReference) {
+        RootArgs.push_back(OutPtr);
       }
-      RootArgs.push_back(In);
+    }
+
+    // Inputs
+
+    if (NumInputs > 0) {
+      llvm::Value *Offset = Builder.CreateSub(IV, Arg_x1);
+
+      for (size_t Index = 0; Index < NumInputs; ++Index) {
+        llvm::Value *InOffset = Builder.CreateMul(Offset, InSteps[Index]);
+        llvm::Value *InPtr    = Builder.CreateGEP(InBasePtrs[Index], InOffset);
+
+        InPtr = Builder.CreatePointerCast(InPtr, InTypes[Index]);
+
+        llvm::LoadInst *Input = Builder.CreateLoad(InPtr, "input");
+
+        if (gEnableRsTbaa) {
+          Input->setMetadata("tbaa", TBAAAllocation);
+        }
+
+        RootArgs.push_back(Input);
+      }
     }
 
     llvm::Value *X = IV;
