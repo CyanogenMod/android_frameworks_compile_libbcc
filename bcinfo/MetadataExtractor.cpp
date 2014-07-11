@@ -29,6 +29,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
 #include "llvm/Support/MemoryBuffer.h"
 
 #include <cstdlib>
@@ -66,9 +67,9 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
       mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
-      mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL),
-      mRSFloatPrecision(RS_FP_Full) {
+      mExportForEachInputCountList(NULL), mPragmaCount(0),
+      mPragmaKeyList(NULL), mPragmaValueList(NULL), mObjectSlotCount(0),
+      mObjectSlotList(NULL), mRSFloatPrecision(RS_FP_Full) {
   BitcodeWrapper wrapper(bitcode, bitcodeSize);
   mCompilerVersion = wrapper.getCompilerVersion();
   mOptimizationLevel = wrapper.getOptimizationLevel();
@@ -80,9 +81,9 @@ MetadataExtractor::MetadataExtractor(const llvm::Module *module)
       mExportFuncCount(0), mExportForEachSignatureCount(0),
       mExportVarNameList(NULL), mExportFuncNameList(NULL),
       mExportForEachNameList(NULL), mExportForEachSignatureList(NULL),
-      mPragmaCount(0), mPragmaKeyList(NULL), mPragmaValueList(NULL),
-      mObjectSlotCount(0), mObjectSlotList(NULL),
-      mRSFloatPrecision(RS_FP_Full) {
+      mExportForEachInputCountList(NULL), mPragmaCount(0),
+      mPragmaKeyList(NULL), mPragmaValueList(NULL), mObjectSlotCount(0),
+      mObjectSlotList(NULL), mRSFloatPrecision(RS_FP_Full) {
   mCompilerVersion = RS_VERSION;  // Default to the actual current version.
   mOptimizationLevel = 3;
 }
@@ -328,6 +329,26 @@ bool MetadataExtractor::populateFuncNameMetadata(
 }
 
 
+uint32_t MetadataExtractor::calculateNumInputs(const llvm::Function *Function,
+                                               uint32_t Signature) {
+
+  if (hasForEachSignatureIn(Signature)) {
+    uint32_t OtherCount = 0;
+
+    OtherCount += hasForEachSignatureUsrData(Signature);
+    OtherCount += hasForEachSignatureX(Signature);
+    OtherCount += hasForEachSignatureY(Signature);
+    OtherCount += hasForEachSignatureOut(Signature) &&
+                  Function->getReturnType()->isVoidTy();
+
+    return Function->arg_size() - OtherCount;
+
+  } else {
+    return 0;
+  }
+}
+
+
 bool MetadataExtractor::populateForEachMetadata(
     const llvm::NamedMDNode *Names,
     const llvm::NamedMDNode *Signatures) {
@@ -361,6 +382,7 @@ bool MetadataExtractor::populateForEachMetadata(
 
   uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
   const char **TmpNameList = new const char*[mExportForEachSignatureCount];
+  uint32_t *TmpInputCountList = new uint32_t[mExportForEachSignatureCount];
 
   for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
     llvm::MDNode *SigNode = Signatures->getOperand(i);
@@ -384,6 +406,11 @@ bool MetadataExtractor::populateForEachMetadata(
       llvm::MDNode *Name = Names->getOperand(i);
       if (Name != NULL && Name->getNumOperands() == 1) {
         TmpNameList[i] = createStringFromValue(Name->getOperand(0));
+
+        llvm::Function *Func = mModule->getFunction(llvm::StringRef(TmpNameList[i]));
+
+        TmpInputCountList[i] = (Func != NULL) ?
+          calculateNumInputs(Func, TmpSigList[i]) : 0;
       }
     }
   } else {
@@ -398,6 +425,7 @@ bool MetadataExtractor::populateForEachMetadata(
 
   mExportForEachNameList = TmpNameList;
   mExportForEachSignatureList = TmpSigList;
+  mExportForEachInputCountList = TmpInputCountList;
 
   return true;
 }
@@ -469,4 +497,3 @@ bool MetadataExtractor::extract() {
 }
 
 }  // namespace bcinfo
-

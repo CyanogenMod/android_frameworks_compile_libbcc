@@ -138,8 +138,10 @@ static int dumpInfo(bcinfo::MetadataExtractor *ME) {
           ME->getExportForEachSignatureCount());
   const char **nameList = ME->getExportForEachNameList();
   const uint32_t *sigList = ME->getExportForEachSignatureList();
+  const uint32_t *inputCountList = ME->getExportForEachInputCountList();
   for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
-    fprintf(info, "%u - %s\n", sigList[i], nameList[i]);
+    fprintf(info, "%u - %s - %u\n", sigList[i], nameList[i],
+            inputCountList[i]);
   }
 
   fprintf(info, "objectSlotCount: %u\n", ME->getObjectSlotCount());
@@ -192,9 +194,10 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
          ME->getExportForEachSignatureCount());
   const char **nameList = ME->getExportForEachNameList();
   const uint32_t *sigList = ME->getExportForEachSignatureList();
+  const uint32_t *inputCountList = ME->getExportForEachInputCountList();
   for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
-    printf("exportForEachSignatureList[%u]: %s - %u\n", i, nameList[i],
-           sigList[i]);
+    printf("exportForEachSignatureList[%u]: %s - %u - %u\n", i, nameList[i],
+           sigList[i], inputCountList[i]);
   }
   printf("\n");
 
