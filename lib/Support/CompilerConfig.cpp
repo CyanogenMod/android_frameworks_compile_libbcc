@@ -135,7 +135,15 @@ bool CompilerConfig::initializeArch() {
 
 #if defined(TARGET_BUILD)
     if (!getProperty("debug.rs.arm-no-tune-for-cpu")) {
+#ifndef FORCE_CPU_VARIANT_32
       setCPU(llvm::sys::getHostCPUName());
+#else
+#define XSTR(S) #S
+#define STR(S) XSTR(S)
+      setCPU(STR(FORCE_CPU_VARIANT_32));
+#undef STR
+#undef XSTR
+#endif
     }
 #endif  // TARGET_BUILD
 
@@ -147,7 +155,16 @@ bool CompilerConfig::initializeArch() {
   case llvm::Triple::aarch64:
 #if defined(TARGET_BUILD)
     if (!getProperty("debug.rs.arm-no-tune-for-cpu")) {
+#ifndef FORCE_CPU_VARIANT_64
       setCPU(llvm::sys::getHostCPUName());
+#else
+#define XSTR(S) #S
+#define STR(S) XSTR(S)
+      setCPU(STR(FORCE_CPU_VARIANT_64));
+#undef STR
+#undef XSTR
+#endif
+
     }
 #endif  // TARGET_BUILD
     break;
