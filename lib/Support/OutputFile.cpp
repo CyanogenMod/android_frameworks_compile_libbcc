@@ -92,7 +92,7 @@ llvm::raw_fd_ostream *OutputFile::dup() {
       new (std::nothrow) llvm::raw_fd_ostream(newfd, /* shouldClose */true);
 
   if (result == NULL) {
-    mError.assign(llvm::errc::not_enough_memory, llvm::system_category());
+    mError = std::make_error_code(std::errc::not_enough_memory);
   }
 
   return result;

@@ -18,7 +18,6 @@
 #include <bcinfo/BitcodeWrapper.h>
 #include <bcinfo/MetadataExtractor.h>
 
-#include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/AssemblyAnnotationWriter.h>
@@ -289,14 +288,14 @@ int main(int argc, char** argv) {
     printf("optimizationLevel: %u\n\n", bcWrapper.getOptimizationLevel());
   }
 
-  llvm::OwningPtr<bcinfo::BitcodeTranslator> BT;
+  std::unique_ptr<bcinfo::BitcodeTranslator> BT;
   BT.reset(new bcinfo::BitcodeTranslator(bitcode, bitcodeSize, version));
   if (!BT->translate()) {
     fprintf(stderr, "failed to translate bitcode\n");
     return 3;
   }
 
-  llvm::OwningPtr<bcinfo::MetadataExtractor> ME;
+  std::unique_ptr<bcinfo::MetadataExtractor> ME;
   ME.reset(new bcinfo::MetadataExtractor(BT->getTranslatedBitcode(),
                                          BT->getTranslatedBitcodeSize()));
   if (!ME->extract()) {
@@ -313,15 +312,15 @@ int main(int argc, char** argv) {
     llvm::LLVMContext &ctx = llvm::getGlobalContext();
     llvm::llvm_shutdown_obj called_on_exit;
 
-    llvm::OwningPtr<llvm::MemoryBuffer> mem;
+    std::unique_ptr<llvm::MemoryBuffer> mem;
 
     mem.reset(llvm::MemoryBuffer::getMemBuffer(
         llvm::StringRef(translatedBitcode, translatedBitcodeSize),
         inFile.c_str(), false));
 
-    llvm::OwningPtr<llvm::Module> module;
+    std::unique_ptr<llvm::Module> module;
     llvm::ErrorOr<llvm::Module*> moduleOrError = llvm::parseBitcodeFile(mem.get(), ctx);
-    llvm::error_code ec = moduleOrError.getError();
+    std::error_code ec = moduleOrError.getError();
     if (!ec) {
         module.reset(moduleOrError.get());
         ec = module->materializeAllPermanently();
@@ -338,10 +337,10 @@ int main(int argc, char** argv) {
       return 5;
     }
 
-    llvm::OwningPtr<llvm::tool_output_file> tof(
+    std::unique_ptr<llvm::tool_output_file> tof(
         new llvm::tool_output_file(outFile.c_str(), errmsg,
                                    llvm::sys::fs::F_None));
-    llvm::OwningPtr<llvm::AssemblyAnnotationWriter> ann;
+    std::unique_ptr<llvm::AssemblyAnnotationWriter> ann;
     module->print(tof->os(), ann.get());
 
     tof->keep();
