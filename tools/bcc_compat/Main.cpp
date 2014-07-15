@@ -26,7 +26,6 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/system_error.h>
 
 #include <bcc/BCCContext.h>
 #include <bcc/Compiler.h>
@@ -224,8 +223,8 @@ std::string DetermineOutputFilename(const std::string &pOutputPath) {
   const std::string &input_path = OptInputFilenames[0];
   llvm::SmallString<200> output_path(input_path);
 
-  llvm::error_code err = llvm::sys::fs::make_absolute(output_path);
-  if (err != llvm::errc::success) {
+  std::error_code err = llvm::sys::fs::make_absolute(output_path);
+  if (err) {
     llvm::errs() << "Failed to determine the absolute path of `" << input_path
                  << "'! (detail: " << err.message() << ")\n";
     return "";

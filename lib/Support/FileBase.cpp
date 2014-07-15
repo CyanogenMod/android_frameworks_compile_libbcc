@@ -128,7 +128,7 @@ bool FileBase::checkFileIntegrity() {
 
 void FileBase::detectError() {
   // Read error from errno.
-  mError.assign(errno, llvm::posix_category());
+  mError.assign(errno, std::generic_category());
 }
 
 bool FileBase::lock(enum LockModeEnum pMode,
@@ -154,7 +154,7 @@ bool FileBase::lock(enum LockModeEnum pMode,
   } else if (pMode == kWriteLock) {
     lock_operation = LOCK_EX;
   } else {
-    mError.assign(llvm::errc::invalid_argument, llvm::posix_category());
+    mError = std::make_error_code(std::errc::invalid_argument);
     return false;
   }
 
@@ -230,7 +230,7 @@ android::FileMap *FileBase::createMap(off_t pOffset, size_t pLength,
 
   android::FileMap *map = new (std::nothrow) android::FileMap();
   if (map == NULL) {
-    mError.assign(llvm::errc::not_enough_memory, llvm::system_category());
+    mError = make_error_code(std::errc::not_enough_memory);
     return NULL;
   }
 
