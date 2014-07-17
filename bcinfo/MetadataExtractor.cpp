@@ -226,32 +226,25 @@ void MetadataExtractor::populatePragmaMetadata(
   std::string Imprecise("rs_fp_imprecise");
   std::string Full("rs_fp_full");
   bool RelaxedPragmaSeen = false;
-  bool ImprecisePragmaSeen = false;
-
+  bool FullPragmaSeen = false;
   for (size_t i = 0; i < mPragmaCount; i++) {
     if (!Relaxed.compare(mPragmaKeyList[i])) {
-      if (RelaxedPragmaSeen || ImprecisePragmaSeen) {
-        ALOGE("Multiple float precision pragmas specified!");
-      }
       RelaxedPragmaSeen = true;
     } else if (!Imprecise.compare(mPragmaKeyList[i])) {
-      if (RelaxedPragmaSeen || ImprecisePragmaSeen) {
-        ALOGE("Multiple float precision pragmas specified!");
-      }
-      ImprecisePragmaSeen = true;
+      ALOGW("rs_fp_imprecise is deprecated.  Assuming rs_fp_relaxed instead.");
+      RelaxedPragmaSeen = true;
+    } else if (!Full.compare(mPragmaKeyList[i])) {
+      FullPragmaSeen = true;
     }
   }
 
-  // Imprecise is selected over Relaxed precision.
-  // In the absence of both, we stick to the default Full precision.
-  if (ImprecisePragmaSeen) {
-    mRSFloatPrecision = RS_FP_Imprecise;
-  } else if (RelaxedPragmaSeen) {
-    mRSFloatPrecision = RS_FP_Relaxed;
+  if (RelaxedPragmaSeen && FullPragmaSeen) {
+    ALOGE("Full and relaxed precision specified at the same time!");
   }
+  mRSFloatPrecision = RelaxedPragmaSeen ? RS_FP_Relaxed : RS_FP_Full;
 
 #ifdef HAVE_ANDROID_OS
-  // Provide an override for precsion via adb shell setprop
+  // Provide an override for precsiion via adb shell setprop
   // adb shell setprop debug.rs.precision rs_fp_full
   // adb shell setprop debug.rs.precision rs_fp_relaxed
   // adb shell setprop debug.rs.precision rs_fp_imprecise
@@ -260,19 +253,20 @@ void MetadataExtractor::populatePragmaMetadata(
   property_get("debug.rs.precision", PrecisionPropBuf, "");
   if (PrecisionPropBuf[0]) {
     if (!Relaxed.compare(PrecisionPropBuf)) {
-      ALOGE("Switching to RS FP relaxed mode via setprop");
+      ALOGI("Switching to RS FP relaxed mode via setprop");
       mRSFloatPrecision = RS_FP_Relaxed;
     } else if (!Imprecise.compare(PrecisionPropBuf)) {
-      ALOGE("Switching to RS FP imprecise mode via setprop");
-      mRSFloatPrecision = RS_FP_Imprecise;
+      ALOGW("Switching to RS FP relaxed mode via setprop. rs_fp_imprecise was specified but is "
+              "deprecated ");
+      mRSFloatPrecision = RS_FP_Relaxed;
     } else if (!Full.compare(PrecisionPropBuf)) {
-      ALOGE("Switching to RS FP full mode via setprop");
+      ALOGI("Switching to RS FP full mode via setprop");
       mRSFloatPrecision = RS_FP_Full;
+    } else {
+      ALOGE("Unrecognized debug.rs.precision %s", PrecisionPropBuf);
     }
   }
 #endif
-
-  return;
 }
 
 

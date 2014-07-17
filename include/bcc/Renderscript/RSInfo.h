@@ -236,7 +236,6 @@ public:
   enum FloatPrecision {
     FP_Full,
     FP_Relaxed,
-    FP_Imprecise,
   };
 
   // Return the minimal floating point precision required for the associated
