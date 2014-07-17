@@ -166,9 +166,6 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
   case bcinfo::RS_FP_Relaxed:
     printf("Relaxed\n\n");
     break;
-  case bcinfo::RS_FP_Imprecise:
-    printf("Imprecise\n\n");
-    break;
   default:
     printf("UNKNOWN\n\n");
     break;
