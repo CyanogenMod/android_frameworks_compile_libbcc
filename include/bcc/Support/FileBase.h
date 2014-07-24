@@ -20,8 +20,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string>
-
-#include <llvm/Support/system_error.h>
+#include <system_error>
 
 namespace android {
   class FileMap;
@@ -66,7 +65,7 @@ protected:
   // error message such that they can implement their own I/O functionality.
   int mFD;
 
-  llvm::error_code mError;
+  std::error_code mError;
 
 private:
   std::string mName;
@@ -133,13 +132,13 @@ public:
   off_t tell();
 
   inline bool hasError() const
-  { return (mError.value() != llvm::errc::success); }
+  { return (bool) mError; }
 
-  inline const llvm::error_code &getError() const
+  inline const std::error_code &getError() const
   { return mError; }
 
-  // The return value of llvm::error_code::message() is obtained upon the call
-  // and is passed by value (that is, it's not a member of llvm::error_code.)
+  // The return value of std::error_code::message() is obtained upon the call
+  // and is passed by value (that is, it's not a member of std::error_code.)
   inline std::string getErrorMessage() const
   { return mError.message(); }
 

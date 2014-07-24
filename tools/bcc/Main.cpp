@@ -20,7 +20,6 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 
-#include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Config/config.h>
@@ -29,7 +28,6 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/PluginLoader.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/system_error.h>
 
 #include <bcc/BCCContext.h>
 #include <bcc/Compiler.h>
@@ -163,20 +161,19 @@ int main(int argc, char **argv) {
   BCCContext context;
   RSCompilerDriver RSCD;
 
-  std::unique_ptr<llvm::MemoryBuffer> input_data;
-
   if (OptBCLibFilename.empty()) {
     ALOGE("Failed to compile bit code, -bclib was not specified");
     return EXIT_FAILURE;
   }
 
-  llvm::error_code ec =
-      llvm::MemoryBuffer::getFile(OptInputFilename.c_str(), input_data);
-  if (ec != llvm::error_code::success()) {
+  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> mb_or_error =
+      llvm::MemoryBuffer::getFile(OptInputFilename.c_str());
+  if (mb_or_error.getError()) {
     ALOGE("Failed to load bitcode from path %s! (%s)",
-          OptInputFilename.c_str(), ec.message().c_str());
+          OptInputFilename.c_str(), mb_or_error.getError().message().c_str());
     return EXIT_FAILURE;
   }
+  std::unique_ptr<llvm::MemoryBuffer> input_data = std::move(mb_or_error.get());
 
   const char *bitcode = input_data->getBufferStart();
   size_t bitcodeSize = input_data->getBufferSize();

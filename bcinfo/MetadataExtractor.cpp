@@ -24,7 +24,6 @@
 #include <cutils/properties.h>
 #endif
 
-#include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/LLVMContext.h"
@@ -403,18 +402,18 @@ bool MetadataExtractor::extract() {
     return false;
   }
 
-  llvm::OwningPtr<llvm::LLVMContext> mContext;
+  std::unique_ptr<llvm::LLVMContext> mContext;
 
   if (!mModule) {
     mContext.reset(new llvm::LLVMContext());
-    llvm::OwningPtr<llvm::MemoryBuffer> MEM(
+    std::unique_ptr<llvm::MemoryBuffer> MEM(
       llvm::MemoryBuffer::getMemBuffer(
         llvm::StringRef(mBitcode, mBitcodeSize), "", false));
     std::string error;
 
     // Module ownership is handled by the context, so we don't need to free it.
     llvm::ErrorOr<llvm::Module* > errval = llvm::parseBitcodeFile(MEM.get(), *mContext);
-    if (llvm::error_code ec = errval.getError()) {
+    if (std::error_code ec = errval.getError()) {
         ALOGE("Could not parse bitcode file");
         ALOGE("%s", ec.message().c_str());
         return false;
