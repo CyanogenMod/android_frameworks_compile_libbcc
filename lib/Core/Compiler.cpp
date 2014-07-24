@@ -255,7 +255,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
     // A module with non-null materializer means that it is a lazy-load module.
     // Materialize it now via invoking MaterializeAllPermanently(). This
     // function returns false when the materialization is successful.
-    llvm::error_code ec = module.materializeAllPermanently();
+    std::error_code ec = module.materializeAllPermanently();
     if (ec) {
       ALOGE("Failed to materialize the module `%s'! (%s)",
             module.getModuleIdentifier().c_str(), ec.message().c_str());

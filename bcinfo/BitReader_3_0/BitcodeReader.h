@@ -15,7 +15,6 @@
 #define BITCODE_READER_H
 
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/BitstreamReader.h"
 #include "llvm/Bitcode/LLVMBitCodes.h"
 #include "llvm/IR/Attributes.h"
@@ -132,7 +131,7 @@ class BitcodeReader : public GVMaterializer {
   Module *TheModule;
   MemoryBuffer *Buffer;
   bool BufferOwned;
-  OwningPtr<BitstreamReader> StreamFile;
+  std::unique_ptr<BitstreamReader> StreamFile;
   BitstreamCursor Stream;
   DataStreamer *LazyStreamer;
   uint64_t NextUnreadBit;
@@ -185,7 +184,7 @@ class BitcodeReader : public GVMaterializer {
   typedef std::pair<unsigned, GlobalVariable*> BlockAddrRefTy;
   DenseMap<Function*, std::vector<BlockAddrRefTy> > BlockAddrFwdRefs;
 
-  static const error_category &BitcodeErrorCategory();
+  static const std::error_category &BitcodeErrorCategory();
 
 public:
   enum ErrorType {
@@ -211,8 +210,8 @@ public:
     InvalidValue // Invalid version, inst number, attr number, etc
   };
 
-  error_code Error(ErrorType E) {
-    return error_code(E, BitcodeErrorCategory());
+  std::error_code Error(ErrorType E) {
+    return std::error_code(E, BitcodeErrorCategory());
   }
 
   explicit BitcodeReader(MemoryBuffer *buffer, LLVMContext &C)
@@ -231,19 +230,23 @@ public:
   /// when the reader is destroyed.
   void setBufferOwned(bool Owned) { BufferOwned = Owned; }
 
+  void releaseBuffer() {
+    Buffer = nullptr;
+  }
+
   virtual bool isMaterializable(const GlobalValue *GV) const;
   virtual bool isDematerializable(const GlobalValue *GV) const;
-  virtual error_code Materialize(GlobalValue *GV);
-  virtual error_code MaterializeModule(Module *M);
+  virtual std::error_code Materialize(GlobalValue *GV);
+  virtual std::error_code MaterializeModule(Module *M);
   virtual void Dematerialize(GlobalValue *GV);
 
   /// @brief Main interface to parsing a bitcode buffer.
   /// @returns true if an error occurred.
-  error_code ParseBitcodeInto(Module *M);
+  std::error_code ParseBitcodeInto(Module *M);
 
   /// @brief Cheap mechanism to just extract module triple
   /// @returns true if an error occurred.
-  error_code ParseTriple(std::string &Triple);
+  std::error_code ParseTriple(std::string &Triple);
 
   static uint64_t decodeSignRotatedValue(uint64_t V);
 
@@ -294,25 +297,25 @@ private:
   }
 
 
-  error_code ParseModule(bool Resume);
-  error_code ParseAttributeBlock();
-  error_code ParseTypeTable();
-  error_code ParseOldTypeTable();         // FIXME: Remove in LLVM 3.1
-  error_code ParseTypeTableBody();
+  std::error_code ParseModule(bool Resume);
+  std::error_code ParseAttributeBlock();
+  std::error_code ParseTypeTable();
+  std::error_code ParseOldTypeTable();         // FIXME: Remove in LLVM 3.1
+  std::error_code ParseTypeTableBody();
 
-  error_code ParseOldTypeSymbolTable();   // FIXME: Remove in LLVM 3.1
-  error_code ParseValueSymbolTable();
-  error_code ParseConstants();
-  error_code RememberAndSkipFunctionBody();
-  error_code ParseFunctionBody(Function *F);
-  error_code GlobalCleanup();
-  error_code ResolveGlobalAndAliasInits();
-  error_code ParseMetadata();
-  error_code ParseMetadataAttachment();
-  error_code ParseModuleTriple(std::string &Triple);
-  error_code InitStream();
-  error_code InitStreamFromBuffer();
-  error_code InitLazyStream();
+  std::error_code ParseOldTypeSymbolTable();   // FIXME: Remove in LLVM 3.1
+  std::error_code ParseValueSymbolTable();
+  std::error_code ParseConstants();
+  std::error_code RememberAndSkipFunctionBody();
+  std::error_code ParseFunctionBody(Function *F);
+  std::error_code GlobalCleanup();
+  std::error_code ResolveGlobalAndAliasInits();
+  std::error_code ParseMetadata();
+  std::error_code ParseMetadataAttachment();
+  std::error_code ParseModuleTriple(std::string &Triple);
+  std::error_code InitStream();
+  std::error_code InitStreamFromBuffer();
+  std::error_code InitLazyStream();
 };
 
 } // End llvm_3_0 namespace

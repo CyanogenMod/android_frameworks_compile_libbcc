@@ -65,6 +65,7 @@ ifeq ($(ARCH_ARM_HAVE_NEON),true)
 endif
 
 include $(LIBBCC_DEVICE_BUILD_MK)
+include $(LLVM_DEVICE_BUILD_MK)
 include $(BUILD_SHARED_LIBRARY)
 endif
 
@@ -99,6 +100,7 @@ LOCAL_LDLIBS := -ldl -lpthread
 endif
 
 include $(LIBBCC_HOST_BUILD_MK)
+include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif # Don't build in unbundled branches
