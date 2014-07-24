@@ -26,7 +26,6 @@
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
 
-#include "llvm/ADT/OwningPtr.h"
 #include "llvm/Bitcode/BitstreamWriter.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/LLVMContext.h"
@@ -119,8 +118,8 @@ bool BitcodeTranslator::translate() {
 
   // Do the actual transcoding by invoking a 2.7-era bitcode reader that can
   // then write the bitcode back out in a more modern (acceptable) version.
-  llvm::OwningPtr<llvm::LLVMContext> mContext(new llvm::LLVMContext());
-  llvm::OwningPtr<llvm::MemoryBuffer> MEM(
+  std::unique_ptr<llvm::LLVMContext> mContext(new llvm::LLVMContext());
+  std::unique_ptr<llvm::MemoryBuffer> MEM(
     llvm::MemoryBuffer::getMemBuffer(
       llvm::StringRef(mBitcode, mBitcodeSize), "", false));
   std::string error;
