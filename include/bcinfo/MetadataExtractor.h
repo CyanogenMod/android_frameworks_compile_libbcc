@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 namespace llvm {
+  class Function;
   class Module;
   class NamedMDNode;
 }
@@ -46,6 +47,8 @@ class MetadataExtractor {
   const char **mExportForEachNameList;
   const uint32_t *mExportForEachSignatureList;
 
+  const uint32_t *mExportForEachInputCountList;
+
   size_t mPragmaCount;
   const char **mPragmaKeyList;
   const char **mPragmaValueList;
@@ -65,6 +68,9 @@ class MetadataExtractor {
                                const llvm::NamedMDNode *Signatures);
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
   void populatePragmaMetadata(const llvm::NamedMDNode *PragmaMetadata);
+
+  uint32_t calculateNumInputs(const llvm::Function *Function,
+                              uint32_t Signature);
 
  public:
   /**
@@ -138,6 +144,13 @@ class MetadataExtractor {
    */
   const char **getExportForEachNameList() const {
     return mExportForEachNameList;
+  }
+
+  /**
+   * \return array of input parameter counts.
+   */
+  const uint32_t *getExportForEachInputCountList() const {
+    return mExportForEachInputCountList;
   }
 
   /**
