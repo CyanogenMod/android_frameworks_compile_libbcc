@@ -147,43 +147,58 @@ private:
     }
   }
 
-  /// @brief Builds the types required by the pass for the given context.
+#define PARAM_FIELD_IN          0
+#define PARAM_FIELD_OUT         1
+#define PARAM_FIELD_Y           2
+#define PARAM_FIELD_Z           3
+#define PARAM_FIELD_LID         4
+#define PARAM_FIELD_INS         5
+#define PARAM_FIELD_ESTRIDEINS  6
+#define PARAM_FIELD_USR         7
+#define PARAM_FIELD_DIMX        8
+#define PARAM_FIELD_DIMY        9
+#define PARAM_FIELD_DIMZ       10
+#define PARAM_FIELD_SLOT       11
+
+  /// Builds the types required by the pass for the given context.
   void buildTypes(void) {
     // Create the RsForEachStubParam struct.
 
-    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(*Context);
-    llvm::Type *Int32Ty   = llvm::Type::getInt32Ty(*Context);
-    /* Defined in frameworks/base/libs/rs/rs_hal.h:
+    llvm::Type *VoidPtrTy    = llvm::Type::getInt8PtrTy(*Context);
+    llvm::Type *VoidPtrPtrTy = VoidPtrTy->getPointerTo();
+    llvm::Type *Int32Ty      = llvm::Type::getInt32Ty(*Context);
+    llvm::Type *Int32PtrTy   = Int32Ty->getPointerTo();
+
+    /* Defined in frameworks/base/libs/rs/cpu_ref/rsCpuCore.h:
      *
-     * struct RsForEachStubParamStruct {
+     * struct RsForEachKernelStruct{
      *   const void *in;
      *   void *out;
-     *   const void *usr;
-     *   uint32_t usr_len;
-     *   uint32_t x;
      *   uint32_t y;
      *   uint32_t z;
-     *   uint32_t lod;
-     *   enum RsAllocationCubemapFace face;
-     *   uint32_t ar[16];
+     *   uint32_t lid;
      *   const void **ins;
      *   uint32_t *eStrideIns;
+     *   const void *usr;
+     *   uint32_t dimX;
+     *   uint32_t dimY;
+     *   uint32_t dimZ;
+     *   uint32_t slot;
      * };
      */
-    llvm::SmallVector<llvm::Type*, 16> StructTypes;
-    StructTypes.push_back(VoidPtrTy);  // const void *in
-    StructTypes.push_back(VoidPtrTy);  // void *out
-    StructTypes.push_back(VoidPtrTy);  // const void *usr
-    StructTypes.push_back(Int32Ty);    // uint32_t usr_len
-    StructTypes.push_back(Int32Ty);    // uint32_t x
-    StructTypes.push_back(Int32Ty);    // uint32_t y
-    StructTypes.push_back(Int32Ty);    // uint32_t z
-    StructTypes.push_back(Int32Ty);    // uint32_t lod
-    StructTypes.push_back(Int32Ty);    // enum RsAllocationCubemapFace
-    StructTypes.push_back(llvm::ArrayType::get(Int32Ty, 16)); // uint32_t ar[16]
-
-    StructTypes.push_back(llvm::PointerType::getUnqual(VoidPtrTy)); // const void **ins
-    StructTypes.push_back(Int32Ty->getPointerTo()); // uint32_t *eStrideIns
+    llvm::SmallVector<llvm::Type*, 12> StructTypes;
+    StructTypes.push_back(VoidPtrTy);    // const void *in
+    StructTypes.push_back(VoidPtrTy);    // void *out
+    StructTypes.push_back(Int32Ty);      // uint32_t y
+    StructTypes.push_back(Int32Ty);      // uint32_t z
+    StructTypes.push_back(Int32Ty);      // uint32_t lid
+    StructTypes.push_back(VoidPtrPtrTy); // const void **ins
+    StructTypes.push_back(Int32PtrTy);   // uint32_t *eStrideIns
+    StructTypes.push_back(VoidPtrTy);    // const void *usr
+    StructTypes.push_back(Int32Ty);      // uint32_t dimX
+    StructTypes.push_back(Int32Ty);      // uint32_t dimY
+    StructTypes.push_back(Int32Ty);      // uint32_t dimZ
+    StructTypes.push_back(Int32Ty);      // uint32_t slot
 
     ForEachStubType =
       llvm::StructType::create(StructTypes, "RsForEachStubParamStruct");
@@ -354,7 +369,8 @@ public:
       InTy = (FunctionArgIter++)->getType();
       InStep = getStepValue(&DL, InTy, Arg_instep);
       InStep->setName("instep");
-      InBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 0));
+      InBasePtr = Builder.CreateLoad(
+                    Builder.CreateStructGEP(Arg_p, PARAM_FIELD_IN));
     }
 
     llvm::Type *OutTy = NULL;
@@ -363,14 +379,15 @@ public:
       OutTy = (FunctionArgIter++)->getType();
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
+      OutBasePtr = Builder.CreateLoad(
+                     Builder.CreateStructGEP(Arg_p, PARAM_FIELD_OUT));
     }
 
     llvm::Value *UsrData = NULL;
     if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = (FunctionArgIter++)->getType();
       UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, 2)), UsrDataTy);
+          Builder.CreateStructGEP(Arg_p, PARAM_FIELD_USR)), UsrDataTy);
       UsrData->setName("UsrData");
     }
 
@@ -380,7 +397,9 @@ public:
 
     llvm::Value *Y = NULL;
     if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-      Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
+      Y = Builder.CreateLoad(
+            Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
+
       FunctionArgIter++;
     }
 
@@ -493,7 +512,9 @@ public:
 
     llvm::Value *Y = NULL;
     if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-      Y = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 5), "Y");
+      Y = Builder.CreateLoad(
+            Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
+
       --NumInputs;
     }
 
@@ -530,7 +551,9 @@ public:
 
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      OutBasePtr = Builder.CreateLoad(Builder.CreateStructGEP(Arg_p, 1));
+      OutBasePtr = Builder.CreateLoad(
+                     Builder.CreateStructGEP(Arg_p, PARAM_FIELD_OUT));
+
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
       }
@@ -546,7 +569,7 @@ public:
 
       InStep->setName("instep");
 
-      llvm::Value    *Input     = Builder.CreateStructGEP(Arg_p, 0);
+      llvm::Value    *Input     = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_IN);
       llvm::LoadInst *InBasePtr = Builder.CreateLoad(Input, "input_base");
 
       if (gEnableRsTbaa) {
@@ -558,11 +581,11 @@ public:
       InBasePtrs.push_back(InBasePtr);
 
     } else if (NumInputs > 1) {
-      llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p, 10);
+      llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INS);
       llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember,
                                                       "inputs_base");
 
-      llvm::Value    *InStepsMember = Builder.CreateStructGEP(Arg_p, 11);
+      llvm::Value    *InStepsMember = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_ESTRIDEINS);
       llvm::LoadInst *InStepsBase   = Builder.CreateLoad(InStepsMember,
                                                          "insteps_base");
 
