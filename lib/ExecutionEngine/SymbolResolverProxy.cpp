@@ -20,12 +20,13 @@ using namespace bcc;
 
 void *SymbolResolverProxy::getAddress(const char *pName) {
   // Search the address of the symbol by following the chain of resolvers.
-  for (size_t i = 0; i < mChain.size(); i++) {
-    void *addr = mChain[i]->getAddress(pName);
+  for (auto resolver : mChain) {
+    void *addr = resolver->getAddress(pName);
     if (addr != NULL) {
       return addr;
     }
   }
+
   // Symbol not found or there's no resolver containing in the chain.
   return NULL;
 }

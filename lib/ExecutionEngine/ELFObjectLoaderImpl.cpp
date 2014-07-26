@@ -181,7 +181,7 @@ size_t ELFObjectLoaderImpl::getSymbolSize(const char *pName) const {
 }
 
 bool
-ELFObjectLoaderImpl::getSymbolNameList(android::Vector<const char *>& pNameList,
+ELFObjectLoaderImpl::getSymbolNameList(std::vector<const char *>& pNameList,
                                        ObjectLoader::SymbolType pType) const {
   if (mSymTab == NULL) {
     return false;

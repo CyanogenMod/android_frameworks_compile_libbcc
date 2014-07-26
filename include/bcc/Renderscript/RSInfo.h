@@ -21,12 +21,12 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "bcc/Support/Log.h"
 #include "bcc/Support/Sha1Util.h"
 
 #include <utils/String8.h>
-#include <utils/Vector.h>
 
 namespace llvm {
 class Module;
@@ -147,11 +147,11 @@ inline const char *GetItemTypeName<ExportForeachFuncItem>()
 class RSInfo {
 public:
   typedef const uint8_t* DependencyHashTy;
-  typedef android::Vector<std::pair<const char*, const char*> > PragmaListTy;
-  typedef android::Vector<uint32_t> ObjectSlotListTy;
-  typedef android::Vector<const char *> ExportVarNameListTy;
-  typedef android::Vector<const char *> ExportFuncNameListTy;
-  typedef android::Vector<std::pair<const char *,
+  typedef std::vector<std::pair<const char*, const char*> > PragmaListTy;
+  typedef std::vector<uint32_t> ObjectSlotListTy;
+  typedef std::vector<const char *> ExportVarNameListTy;
+  typedef std::vector<const char *> ExportFuncNameListTy;
+  typedef std::vector<std::pair<const char *,
                                     uint32_t> > ExportForeachFuncListTy;
 
 public:
