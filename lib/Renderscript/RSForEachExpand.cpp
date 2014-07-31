@@ -562,9 +562,27 @@ public:
     llvm::SmallVector<llvm::Type*,     8> InTypes;
     llvm::SmallVector<llvm::Value*,    8> InSteps;
     llvm::SmallVector<llvm::LoadInst*, 8> InBasePtrs;
+    llvm::SmallVector<bool,            8> InIsStructPointer;
 
     if (NumInputs == 1) {
-      llvm::Type  *InType = ArgIter->getType()->getPointerTo();
+      llvm::Type *InType = ArgIter->getType();
+
+      /*
+       * AArch64 calling dictate that structs of sufficient size get passed by
+       * pointer instead of passed by value.  This, combined with the fact that
+       * we don't allow kernels to operate on pointer data means that if we see
+       * a kernel with a pointer parameter we know that it is struct input that
+       * has been promoted.  As such we don't need to convert its type to a
+       * pointer.  Later we will need to know to avoid a load, so we save this
+       * information in InIsStructPointer.
+       */
+      if (!InType->isPointerTy()) {
+        InType = InType->getPointerTo();
+        InIsStructPointer.push_back(false);
+      } else {
+        InIsStructPointer.push_back(true);
+      }
+
       llvm::Value *InStep = getStepValue(&DL, InType, Arg_instep);
 
       InStep->setName("instep");
@@ -598,7 +616,24 @@ public:
           llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
                                                           "instep_addr");
 
-          llvm::Type  *InType = ArgIter->getType()->getPointerTo();
+          llvm::Type *InType = ArgIter->getType();
+
+        /*
+         * AArch64 calling dictate that structs of sufficient size get passed by
+         * pointer instead of passed by value.  This, combined with the fact
+         * that we don't allow kernels to operate on pointer data means that if
+         * we see a kernel with a pointer parameter we know that it is struct
+         * input that has been promoted.  As such we don't need to convert its
+         * type to a pointer.  Later we will need to know to avoid a load, so we
+         * save this information in InIsStructPointer.
+         */
+          if (!InType->isPointerTy()) {
+            InType = InType->getPointerTo();
+            InIsStructPointer.push_back(false);
+          } else {
+            InIsStructPointer.push_back(true);
+          }
+
           llvm::Value *InStep = getStepValue(&DL, InType, InStepArg);
 
           InStep->setName("instep");
@@ -660,10 +695,19 @@ public:
 
         InPtr = Builder.CreatePointerCast(InPtr, InTypes[Index]);
 
-        llvm::LoadInst *Input = Builder.CreateLoad(InPtr, "input");
+        llvm::Value *Input;
 
-        if (gEnableRsTbaa) {
-          Input->setMetadata("tbaa", TBAAAllocation);
+        if (InIsStructPointer[Index]) {
+          Input = InPtr;
+
+        } else {
+          llvm::LoadInst *InputLoad = Builder.CreateLoad(InPtr, "input");
+
+          if (gEnableRsTbaa) {
+            InputLoad->setMetadata("tbaa", TBAAAllocation);
+          }
+
+          Input = InputLoad;
         }
 
         RootArgs.push_back(Input);
