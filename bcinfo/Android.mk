@@ -14,9 +14,6 @@
 # limitations under the License.
 #
 
-# Don't build for unbundled branches
-ifeq (,$(TARGET_BUILD_APPS))
-
 local_cflags_for_libbcinfo := -Wall -Wno-unused-parameter -Werror
 ifneq ($(TARGET_BUILD_VARIANT),eng)
 local_cflags_for_libbcinfo += -D__DISABLE_ASSERTS
@@ -71,6 +68,9 @@ LOCAL_SHARED_LIBRARIES := libLLVM libcutils liblog
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
 include $(BUILD_SHARED_LIBRARY)
 endif
+
+# Don't build for unbundled branches
+ifeq (,$(TARGET_BUILD_APPS))
 
 include $(CLEAR_VARS)
 

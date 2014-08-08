@@ -16,9 +16,6 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# Don't build for unbundled branches
-ifeq (,$(TARGET_BUILD_APPS))
-
 # Executable for host
 # ========================================================
 include $(CLEAR_VARS)
@@ -40,5 +37,3 @@ LOCAL_SRC_FILES := bcc_strip_attr.cpp
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LLVM_HOST_BUILD_MK)
 include $(BUILD_HOST_EXECUTABLE)
-
-endif  # Don't build for unbundled branches
