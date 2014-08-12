@@ -173,13 +173,17 @@ bool CompilerConfig::initializeArch() {
 #if defined (PROVIDE_MIPS_CODEGEN)
   case llvm::Triple::mips:
   case llvm::Triple::mipsel:
-  case llvm::Triple::mips64:
-  case llvm::Triple::mips64el:
     if (getRelocationModel() == llvm::Reloc::Default) {
       setRelocationModel(llvm::Reloc::Static);
     }
     break;
 #endif  // PROVIDE_MIPS_CODEGEN
+
+#if defined (PROVIDE_MIPS64_CODEGEN)
+  case llvm::Triple::mips64:
+  case llvm::Triple::mips64el:
+    break;
+#endif // PROVIDE_MIPS64_CODEGEN
 
 #if defined (PROVIDE_X86_CODEGEN)
   case llvm::Triple::x86:
