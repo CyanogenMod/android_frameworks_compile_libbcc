@@ -569,7 +569,7 @@ public:
 
       /*
        * AArch64 calling dictate that structs of sufficient size get passed by
-       * poiter instead of passed by value.  This, combined with the fact that
+       * pointer instead of passed by value.  This, combined with the fact that
        * we don't allow kernels to operate on pointer data means that if we see
        * a kernel with a pointer parameter we know that it is struct input that
        * has been promoted.  As such we don't need to convert its type to a
@@ -618,14 +618,14 @@ public:
 
           llvm::Type *InType = ArgIter->getType();
 
-          /*
+        /*
          * AArch64 calling dictate that structs of sufficient size get passed by
-         * poiter instead of passed by value.  This, combined with the fact that
-         * we don't allow kernels to operate on pointer data means that if we
-         * see a kernel with a pointer parameter we know that it is struct input
-         * that has been promoted.  As such we don't need to convert its type to
-         * a pointer.  Later we will need to know to avoid a load, so we save
-         * this information in InIsStructPointer.
+         * pointer instead of passed by value.  This, combined with the fact
+         * that we don't allow kernels to operate on pointer data means that if
+         * we see a kernel with a pointer parameter we know that it is struct
+         * input that has been promoted.  As such we don't need to convert its
+         * type to a pointer.  Later we will need to know to avoid a load, so we
+         * save this information in InIsStructPointer.
          */
           if (!InType->isPointerTy()) {
             InType = InType->getPointerTo();
