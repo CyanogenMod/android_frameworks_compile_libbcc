@@ -46,7 +46,7 @@ bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &p
 
   // Special RS functions should always be global symbols.
   const char **special_functions = RSExecutable::SpecialFunctionNames;
-  while (*special_functions != NULL) {
+  while (*special_functions != nullptr) {
     export_symbols.push_back(*special_functions);
     special_functions++;
   }

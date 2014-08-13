@@ -38,7 +38,7 @@ bool ELFObjectLoaderImpl::load(const void *pMem, size_t pMemSize) {
 #else
   mObject = ELFObject<32>::read(reader);
 #endif
-  if (mObject == NULL) {
+  if (mObject == nullptr) {
     ALOGE("Unable to load the ELF object!");
     return false;
   }
@@ -51,7 +51,7 @@ bool ELFObjectLoaderImpl::load(const void *pMem, size_t pMemSize) {
   mSymTab = static_cast<ELFSectionSymTab<32> *>(
                  mObject->getSectionByName(".symtab"));
 #endif
-  if (mSymTab == NULL) {
+  if (mSymTab == nullptr) {
     ALOGW("Object doesn't contain any symbol table.");
   }
 
@@ -125,7 +125,7 @@ bool ELFObjectLoaderImpl::prepareDebugImage(void *pDebugImg,
       ELFSectionBits<32> *section =
           static_cast<ELFSectionBits<32> *>(mObject->getSectionByIndex(i));
 #endif
-      if (section != NULL) {
+      if (section != nullptr) {
         uintptr_t address = reinterpret_cast<uintptr_t>(section->getBuffer());
 #ifdef __LP64__
         LOG_FATAL_IF(address > 0xFFFFFFFFFFFFFFFFu, "Out of bound address for Elf64_Addr");
@@ -142,8 +142,8 @@ bool ELFObjectLoaderImpl::prepareDebugImage(void *pDebugImg,
 }
 
 void *ELFObjectLoaderImpl::getSymbolAddress(const char *pName) const {
-  if (mSymTab == NULL) {
-    return NULL;
+  if (mSymTab == nullptr) {
+    return nullptr;
   }
 
 #ifdef __LP64__
@@ -151,9 +151,9 @@ void *ELFObjectLoaderImpl::getSymbolAddress(const char *pName) const {
 #else
   const ELFSymbol<32> *symbol = mSymTab->getByName(pName);
 #endif
-  if (symbol == NULL) {
+  if (symbol == nullptr) {
     ALOGV("Request symbol '%s' is not found in the object!", pName);
-    return NULL;
+    return nullptr;
   }
 
   return symbol->getAddress(mObject->getHeader()->getMachine(),
@@ -161,7 +161,7 @@ void *ELFObjectLoaderImpl::getSymbolAddress(const char *pName) const {
 }
 
 size_t ELFObjectLoaderImpl::getSymbolSize(const char *pName) const {
-  if (mSymTab == NULL) {
+  if (mSymTab == nullptr) {
     return 0;
   }
 
@@ -171,7 +171,7 @@ size_t ELFObjectLoaderImpl::getSymbolSize(const char *pName) const {
   const ELFSymbol<32> *symbol = mSymTab->getByName(pName);
 #endif
 
-  if (symbol == NULL) {
+  if (symbol == nullptr) {
     ALOGV("Request symbol '%s' is not found in the object!", pName);
     return 0;
   }
@@ -183,7 +183,7 @@ size_t ELFObjectLoaderImpl::getSymbolSize(const char *pName) const {
 bool
 ELFObjectLoaderImpl::getSymbolNameList(std::vector<const char *>& pNameList,
                                        ObjectLoader::SymbolType pType) const {
-  if (mSymTab == NULL) {
+  if (mSymTab == nullptr) {
     return false;
   }
 
@@ -208,14 +208,14 @@ ELFObjectLoaderImpl::getSymbolNameList(std::vector<const char *>& pNameList,
 #else
     ELFSymbol<32> *symbol = (*mSymTab)[i];
 #endif
-    if (symbol == NULL) {
+    if (symbol == nullptr) {
       continue;
     }
 
     if ((pType == ObjectLoader::kUnknownType) ||
         (symbol->getType() == elf_type)) {
       const char *symbol_name = symbol->getName();
-      if (symbol_name != NULL) {
+      if (symbol_name != nullptr) {
         pNameList.push_back(symbol_name);
       }
     }

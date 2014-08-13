@@ -28,7 +28,7 @@
 using namespace bcc;
 
 CompilerConfig::CompilerConfig(const std::string &pTriple)
-  : mTriple(pTriple), mFullPrecision(true), mTarget(NULL) {
+  : mTriple(pTriple), mFullPrecision(true), mTarget(nullptr) {
   //===--------------------------------------------------------------------===//
   // Default setting of register sheduler
   //===--------------------------------------------------------------------===//
@@ -79,7 +79,7 @@ CompilerConfig::CompilerConfig(const std::string &pTriple)
 bool CompilerConfig::initializeTarget() {
   std::string error;
   mTarget = llvm::TargetRegistry::lookupTarget(mTriple, error);
-  if (mTarget != NULL) {
+  if (mTarget != nullptr) {
     return true;
   } else {
     ALOGE("Cannot initialize llvm::Target for given triple '%s'! (%s)",
@@ -89,7 +89,7 @@ bool CompilerConfig::initializeTarget() {
 }
 
 bool CompilerConfig::initializeArch() {
-  if (mTarget != NULL) {
+  if (mTarget != nullptr) {
     mArchType = llvm::Triple::getArchTypeForLLVMName(mTarget->getName());
   } else {
     mArchType = llvm::Triple::UnknownArch;

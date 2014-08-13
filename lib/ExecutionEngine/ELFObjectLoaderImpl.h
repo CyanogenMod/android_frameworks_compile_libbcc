@@ -40,7 +40,7 @@ private:
 #endif
 
 public:
-  ELFObjectLoaderImpl() : ObjectLoaderImpl(), mObject(NULL), mSymTab(NULL) { }
+  ELFObjectLoaderImpl() : ObjectLoaderImpl(), mObject(nullptr), mSymTab(nullptr) { }
 
   virtual bool load(const void *pMem, size_t pMemSize);
 

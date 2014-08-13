@@ -58,7 +58,7 @@ private:
   virtual bool doReset();
 
 public:
-  static bool LinkRuntime(RSScript &pScript, const char *rt_path = NULL);
+  static bool LinkRuntime(RSScript &pScript, const char *rt_path = nullptr);
 
   RSScript(Source &pSource);
 
