@@ -147,18 +147,17 @@ private:
     }
   }
 
-#define PARAM_FIELD_IN          0
-#define PARAM_FIELD_OUT         1
-#define PARAM_FIELD_Y           2
-#define PARAM_FIELD_Z           3
-#define PARAM_FIELD_LID         4
-#define PARAM_FIELD_INS         5
-#define PARAM_FIELD_ESTRIDEINS  6
-#define PARAM_FIELD_USR         7
-#define PARAM_FIELD_DIMX        8
-#define PARAM_FIELD_DIMY        9
-#define PARAM_FIELD_DIMZ       10
-#define PARAM_FIELD_SLOT       11
+#define PARAM_FIELD_INS         0
+#define PARAM_FIELD_INESTRIDES  1
+#define PARAM_FIELD_OUT         2
+#define PARAM_FIELD_Y           3
+#define PARAM_FIELD_Z           4
+#define PARAM_FIELD_LID         5
+#define PARAM_FIELD_USR         6
+#define PARAM_FIELD_DIMX        7
+#define PARAM_FIELD_DIMY        8
+#define PARAM_FIELD_DIMZ        9
+#define PARAM_FIELD_SLOT       10
 
   /// Builds the types required by the pass for the given context.
   void buildTypes(void) {
@@ -178,7 +177,7 @@ private:
      *   uint32_t z;
      *   uint32_t lid;
      *   const void **ins;
-     *   uint32_t *eStrideIns;
+     *   uint32_t *inEStrides;
      *   const void *usr;
      *   uint32_t dimX;
      *   uint32_t dimY;
@@ -187,13 +186,12 @@ private:
      * };
      */
     llvm::SmallVector<llvm::Type*, 12> StructTypes;
-    StructTypes.push_back(VoidPtrTy);    // const void *in
+    StructTypes.push_back(VoidPtrPtrTy); // const void **ins
+    StructTypes.push_back(Int32PtrTy);   // uint32_t *inEStrides
     StructTypes.push_back(VoidPtrTy);    // void *out
     StructTypes.push_back(Int32Ty);      // uint32_t y
     StructTypes.push_back(Int32Ty);      // uint32_t z
     StructTypes.push_back(Int32Ty);      // uint32_t lid
-    StructTypes.push_back(VoidPtrPtrTy); // const void **ins
-    StructTypes.push_back(Int32PtrTy);   // uint32_t *eStrideIns
     StructTypes.push_back(VoidPtrTy);    // const void *usr
     StructTypes.push_back(Int32Ty);      // uint32_t dimX
     StructTypes.push_back(Int32Ty);      // uint32_t dimY
@@ -214,9 +212,9 @@ private:
     ParamTypes.push_back(Int32Ty);          // uint32_t instep
     ParamTypes.push_back(Int32Ty);          // uint32_t outstep
 
-    ExpandedFunctionType = llvm::FunctionType::get(llvm::Type::getVoidTy(*Context),
-                                              ParamTypes,
-                                              false);
+    ExpandedFunctionType =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(*Context), ParamTypes,
+                                false);
   }
 
   /// @brief Create skeleton of the expanded function.
@@ -350,7 +348,8 @@ public:
     llvm::Value *Arg_p       = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x1      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
-    llvm::Value *Arg_instep  = &*(ExpandedFunctionArgIter++);
+    // Skip the instep param.
+    ExpandedFunctionArgIter++;
     llvm::Value *Arg_outstep = &*ExpandedFunctionArgIter;
 
     llvm::Value *InStep  = NULL;
@@ -363,14 +362,31 @@ public:
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator FunctionArgIter = Function->arg_begin();
 
-    llvm::Type *InTy = NULL;
+    llvm::Type  *InTy      = NULL;
     llvm::Value *InBasePtr = NULL;
     if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
+      llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p,
+                                                           PARAM_FIELD_INS);
+      llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember, "inputs_base");
+
+      llvm::Value *InStepsMember =
+        Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INESTRIDES);
+      llvm::LoadInst *InStepsBase = Builder.CreateLoad(InStepsMember,
+                                                       "insteps_base");
+
+      llvm::Value *IndexVal = Builder.getInt32(0);
+
+      llvm::Value    *InStepAddr = Builder.CreateGEP(InStepsBase, IndexVal);
+      llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
+                                                      "instep_addr");
+
       InTy = (FunctionArgIter++)->getType();
-      InStep = getStepValue(&DL, InTy, Arg_instep);
+      InStep = getStepValue(&DL, InTy, InStepArg);
+
       InStep->setName("instep");
-      InBasePtr = Builder.CreateLoad(
-                    Builder.CreateStructGEP(Arg_p, PARAM_FIELD_IN));
+
+      llvm::Value *InputAddr = Builder.CreateGEP(InsBasePtr, IndexVal);
+      InBasePtr = Builder.CreateLoad(InputAddr, "input_base");
     }
 
     llvm::Type *OutTy = NULL;
@@ -487,7 +503,8 @@ public:
     llvm::Value *Arg_p       = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x1      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
-    llvm::Value *Arg_instep  = &*(ExpandedFunctionArgIter++);
+    // Skip the instep param.
+    ExpandedFunctionArgIter++;
     llvm::Value *Arg_outstep = &*ExpandedFunctionArgIter;
 
     // Construct the actual function body.
@@ -498,9 +515,12 @@ public:
     llvm::MDBuilder MDHelper(*Context);
 
     TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
-    TBAAAllocation = MDHelper.createTBAAScalarTypeNode("allocation", TBAARenderScript);
-    TBAAAllocation = MDHelper.createTBAAStructTagNode(TBAAAllocation, TBAAAllocation, 0);
-    TBAAPointer = MDHelper.createTBAAScalarTypeNode("pointer", TBAARenderScript);
+    TBAAAllocation = MDHelper.createTBAAScalarTypeNode("allocation",
+                                                       TBAARenderScript);
+    TBAAAllocation = MDHelper.createTBAAStructTagNode(TBAAAllocation,
+                                                      TBAAAllocation, 0);
+    TBAAPointer = MDHelper.createTBAAScalarTypeNode("pointer",
+                                                    TBAARenderScript);
     TBAAPointer = MDHelper.createTBAAStructTagNode(TBAAPointer, TBAAPointer, 0);
 
     /*
@@ -533,13 +553,13 @@ public:
     llvm::Value    *OutStep    = NULL;
     llvm::LoadInst *OutBasePtr = NULL;
 
-    bool PassOutByReference = false;
+    bool PassOutByPointer = false;
 
     if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       llvm::Type *OutBaseTy = Function->getReturnType();
 
       if (OutBaseTy->isVoidTy()) {
-        PassOutByReference = true;
+        PassOutByPointer = true;
         OutTy = ArgIter->getType();
 
         ArgIter++;
@@ -564,47 +584,13 @@ public:
     llvm::SmallVector<llvm::LoadInst*, 8> InBasePtrs;
     llvm::SmallVector<bool,            8> InIsStructPointer;
 
-    if (NumInputs == 1) {
-      llvm::Type *InType = ArgIter->getType();
+    if (NumInputs > 0) {
+      llvm::Value *InsMember = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INS);
+      llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember, "inputs_base");
 
-      /*
-       * AArch64 calling dictate that structs of sufficient size get passed by
-       * pointer instead of passed by value.  This, combined with the fact that
-       * we don't allow kernels to operate on pointer data means that if we see
-       * a kernel with a pointer parameter we know that it is struct input that
-       * has been promoted.  As such we don't need to convert its type to a
-       * pointer.  Later we will need to know to avoid a load, so we save this
-       * information in InIsStructPointer.
-       */
-      if (!InType->isPointerTy()) {
-        InType = InType->getPointerTo();
-        InIsStructPointer.push_back(false);
-      } else {
-        InIsStructPointer.push_back(true);
-      }
-
-      llvm::Value *InStep = getStepValue(&DL, InType, Arg_instep);
-
-      InStep->setName("instep");
-
-      llvm::Value    *Input     = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_IN);
-      llvm::LoadInst *InBasePtr = Builder.CreateLoad(Input, "input_base");
-
-      if (gEnableRsTbaa) {
-        InBasePtr->setMetadata("tbaa", TBAAPointer);
-      }
-
-      InTypes.push_back(InType);
-      InSteps.push_back(InStep);
-      InBasePtrs.push_back(InBasePtr);
-
-    } else if (NumInputs > 1) {
-      llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INS);
-      llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember,
-                                                      "inputs_base");
-
-      llvm::Value    *InStepsMember = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_ESTRIDEINS);
-      llvm::LoadInst *InStepsBase   = Builder.CreateLoad(InStepsMember,
+      llvm::Value *InStepsMember =
+        Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INESTRIDES);
+      llvm::LoadInst *InStepsBase = Builder.CreateLoad(InStepsMember,
                                                          "insteps_base");
 
       for (size_t InputIndex = 0; InputIndex < NumInputs;
@@ -679,7 +665,7 @@ public:
       OutPtr    = Builder.CreateGEP(OutBasePtr, OutOffset);
       OutPtr    = Builder.CreatePointerCast(OutPtr, OutTy);
 
-      if (PassOutByReference) {
+      if (PassOutByPointer) {
         RootArgs.push_back(OutPtr);
       }
     }
@@ -725,7 +711,7 @@ public:
 
     llvm::Value *RetVal = Builder.CreateCall(Function, RootArgs);
 
-    if (OutPtr && !PassOutByReference) {
+    if (OutPtr && !PassOutByPointer) {
       llvm::StoreInst *Store = Builder.CreateStore(RetVal, OutPtr);
       if (gEnableRsTbaa) {
         Store->setMetadata("tbaa", TBAAAllocation);
@@ -798,12 +784,12 @@ public:
   /// @brief Connect RenderScript TBAA metadata to C/C++ metadata
   ///
   /// The TBAA metadata used to annotate loads/stores from RenderScript
-  /// Allocations is generated in a separate TBAA tree with a "RenderScript TBAA"
-  /// root node. LLVM does assume may-alias for all nodes in unrelated alias
-  /// analysis trees. This function makes the RenderScript TBAA a subtree of the
-  /// normal C/C++ TBAA tree aside of normal C/C++ types. With the connected trees
-  /// every access to an Allocation is resolved to must-alias if compared to
-  /// a normal C/C++ access.
+  /// Allocations is generated in a separate TBAA tree with a
+  /// "RenderScript TBAA" root node. LLVM does assume may-alias for all nodes in
+  /// unrelated alias analysis trees. This function makes the RenderScript TBAA
+  /// a subtree of the normal C/C++ TBAA tree aside of normal C/C++ types. With
+  /// the connected trees every access to an Allocation is resolved to
+  /// must-alias if compared to a normal C/C++ access.
   void connectRenderScriptTBAAMetadata(llvm::Module &Module) {
     llvm::MDBuilder MDHelper(*Context);
     llvm::MDNode *TBAARenderScript =
