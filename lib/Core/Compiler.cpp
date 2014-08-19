@@ -28,11 +28,16 @@
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/Scalar.h>
 
+#include "bcc/Assert.h"
+#include "bcc/Renderscript/RSExecutable.h"
+#include "bcc/Renderscript/RSScript.h"
+#include "bcc/Renderscript/RSTransforms.h"
 #include "bcc/Script.h"
 #include "bcc/Source.h"
 #include "bcc/Support/CompilerConfig.h"
 #include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"
+#include "bcinfo/MetadataExtractor.h"
 
 #include <string>
 
@@ -62,20 +67,8 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
     return "Failed to prepare file for output.";
   case kPrepareCodeGenPass:
     return "Failed to construct pass list for code-generation.";
-  case kErrHookBeforeAddLTOPasses:
-    return "Error occurred during beforeAddLTOPasses() in subclass.";
-  case kErrHookAfterAddLTOPasses:
-    return "Error occurred during afterAddLTOPasses() in subclass.";
-  case kErrHookAfterExecuteLTOPasses:
-    return "Error occurred during afterExecuteLTOPasses() in subclass.";
-  case kErrHookBeforeAddCodeGenPasses:
-    return "Error occurred during beforeAddCodeGenPasses() in subclass.";
-  case kErrHookAfterAddCodeGenPasses:
-    return "Error occurred during afterAddCodeGenPasses() in subclass.";
-  case kErrHookBeforeExecuteCodeGenPasses:
-    return "Error occurred during beforeExecuteCodeGenPasses() in subclass.";
-  case kErrHookAfterExecuteCodeGenPasses:
-    return "Error occurred during afterExecuteCodeGenPasses() in subclass.";
+  case kErrCustomPasses:
+    return "Error occurred while adding custom passes.";
   case kErrInvalidSource:
     return "Error loading input bitcode";
   }
@@ -89,12 +82,12 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
 //===----------------------------------------------------------------------===//
 // Instance Methods
 //===----------------------------------------------------------------------===//
-Compiler::Compiler() : mTarget(nullptr), mEnableLTO(true) {
+Compiler::Compiler() : mTarget(nullptr), mEnableOpt(true) {
   return;
 }
 
 Compiler::Compiler(const CompilerConfig &pConfig) : mTarget(nullptr),
-                                                    mEnableLTO(true) {
+                                                    mEnableOpt(true) {
   const std::string &triple = pConfig.getTriple();
 
   enum ErrorCode err = config(pConfig);
@@ -123,7 +116,7 @@ enum Compiler::ErrorCode Compiler::config(const CompilerConfig &pConfig) {
 
   if (new_target == nullptr) {
     return ((mTarget != nullptr) ? kErrSwitchTargetMachine :
-                                kErrCreateTargetMachine);
+                                   kErrCreateTargetMachine);
   }
 
   // Replace the old TargetMachine.
@@ -146,98 +139,50 @@ Compiler::~Compiler() {
   delete mTarget;
 }
 
-enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
-  llvm::DataLayoutPass *data_layout_pass = nullptr;
-
+enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
+                                             llvm::raw_ostream &pResult) {
   // Pass manager for link-time optimization
-  llvm::PassManager lto_passes;
+  llvm::PassManager passes;
+
+  // Empty MCContext.
+  llvm::MCContext *mc_context = nullptr;
 
   // Prepare DataLayout target data from Module
-  data_layout_pass = new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
+  llvm::DataLayoutPass *data_layout_pass =
+    new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
+
   if (data_layout_pass == nullptr) {
     return kErrDataLayoutNoMemory;
   }
 
   // Add DataLayout to the pass manager.
-  lto_passes.add(data_layout_pass);
+  passes.add(data_layout_pass);
 
-  // Invoke "beforeAddLTOPasses" before adding the first pass.
-  if (!beforeAddLTOPasses(pScript, lto_passes)) {
-    return kErrHookBeforeAddLTOPasses;
+  // Add our custom passes.
+  if (!addCustomPasses(pScript, passes)) {
+    return kErrCustomPasses;
   }
 
   if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
-    lto_passes.add(llvm::createGlobalOptimizerPass());
-    lto_passes.add(llvm::createConstantMergePass());
+    passes.add(llvm::createGlobalOptimizerPass());
+    passes.add(llvm::createConstantMergePass());
+
   } else {
     // FIXME: Figure out which passes should be executed.
     llvm::PassManagerBuilder Builder;
-    Builder.populateLTOPassManager(lto_passes, /*Internalize*/false,
-                                   /*RunInliner*/true);
-  }
-
-  // Invoke "afterAddLTOPasses" after pass manager finished its
-  // construction.
-  if (!afterAddLTOPasses(pScript, lto_passes)) {
-    return kErrHookAfterAddLTOPasses;
-  }
-
-  lto_passes.run(pScript.getSource().getModule());
-
-  // Invoke "afterExecuteLTOPasses" before returning.
-  if (!afterExecuteLTOPasses(pScript)) {
-    return kErrHookAfterExecuteLTOPasses;
-  }
-
-  return kSuccess;
-}
-
-enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
-                                              llvm::raw_ostream &pResult) {
-  llvm::DataLayoutPass *data_layout_pass;
-  llvm::MCContext *mc_context = nullptr;
-
-  // Create pass manager for MC code generation.
-  llvm::PassManager codegen_passes;
-
-  // Prepare DataLayout target data from Module
-  data_layout_pass = new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
-  if (data_layout_pass == nullptr) {
-    return kErrDataLayoutNoMemory;
-  }
-
-  // Add DataLayout to the pass manager.
-  codegen_passes.add(data_layout_pass);
-
-  // Invokde "beforeAddCodeGenPasses" before adding the first pass.
-  if (!beforeAddCodeGenPasses(pScript, codegen_passes)) {
-    return kErrHookBeforeAddCodeGenPasses;
+    Builder.populateLTOPassManager(passes,
+                                   /*Internalize*/ false,
+                                   /*RunInliner*/  true);
   }
 
   // Add passes to the pass manager to emit machine code through MC layer.
-  if (mTarget->addPassesToEmitMC(codegen_passes, mc_context, pResult,
+  if (mTarget->addPassesToEmitMC(passes, mc_context, pResult,
                                  /* DisableVerify */false)) {
     return kPrepareCodeGenPass;
   }
 
-  // Invokde "afterAddCodeGenPasses" after pass manager finished its
-  // construction.
-  if (!afterAddCodeGenPasses(pScript, codegen_passes)) {
-    return kErrHookAfterAddCodeGenPasses;
-  }
-
-  // Invokde "beforeExecuteCodeGenPasses" before executing the passes.
-  if (!beforeExecuteCodeGenPasses(pScript, codegen_passes)) {
-    return kErrHookBeforeExecuteCodeGenPasses;
-  }
-
-  // Execute the pass.
-  codegen_passes.run(pScript.getSource().getModule());
-
-  // Invokde "afterExecuteCodeGenPasses" before returning.
-  if (!afterExecuteCodeGenPasses(pScript)) {
-    return kErrHookAfterExecuteCodeGenPasses;
-  }
+  // Execute the passes.
+  passes.run(pScript.getSource().getModule());
 
   return kSuccess;
 }
@@ -280,15 +225,12 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
     }
   }
 
-  if (mEnableLTO && ((err = runLTO(pScript)) != kSuccess)) {
+  if ((err = runPasses(pScript, pResult)) != kSuccess) {
     return err;
   }
 
-  if (IRStream)
+  if (IRStream) {
     *IRStream << module;
-
-  if ((err = runCodeGen(pScript, pResult)) != kSuccess) {
-    return err;
   }
 
   return kSuccess;
@@ -315,4 +257,85 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   delete out;
 
   return err;
+}
+
+bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM) {
+  // Add a pass to internalize the symbols that don't need to have global
+  // visibility.
+  RSScript &script = static_cast<RSScript &>(pScript);
+  llvm::Module &module = script.getSource().getModule();
+  bcinfo::MetadataExtractor me(&module);
+  if (!me.extract()) {
+    bccAssert(false && "Could not extract metadata for module!");
+    return false;
+  }
+
+  // The vector contains the symbols that should not be internalized.
+  std::vector<const char *> export_symbols;
+
+  // Special RS functions should always be global symbols.
+  const char **special_functions = RSExecutable::SpecialFunctionNames;
+  while (*special_functions != nullptr) {
+    export_symbols.push_back(*special_functions);
+    special_functions++;
+  }
+
+  // Visibility of symbols appeared in rs_export_var and rs_export_func should
+  // also be preserved.
+  size_t exportVarCount = me.getExportVarCount();
+  size_t exportFuncCount = me.getExportFuncCount();
+  size_t exportForEachCount = me.getExportForEachSignatureCount();
+  const char **exportVarNameList = me.getExportVarNameList();
+  const char **exportFuncNameList = me.getExportFuncNameList();
+  const char **exportForEachNameList = me.getExportForEachNameList();
+  size_t i;
+
+  for (i = 0; i < exportVarCount; ++i) {
+    export_symbols.push_back(exportVarNameList[i]);
+  }
+
+  for (i = 0; i < exportFuncCount; ++i) {
+    export_symbols.push_back(exportFuncNameList[i]);
+  }
+
+  // Expanded foreach functions should not be internalized, too.
+  // expanded_foreach_funcs keeps the .expand version of the kernel names
+  // around until createInternalizePass() is finished making its own
+  // copy of the visible symbols.
+  std::vector<std::string> expanded_foreach_funcs;
+  for (i = 0; i < exportForEachCount; ++i) {
+    expanded_foreach_funcs.push_back(
+        std::string(exportForEachNameList[i]) + ".expand");
+  }
+
+  for (i = 0; i < exportForEachCount; i++) {
+      export_symbols.push_back(expanded_foreach_funcs[i].c_str());
+  }
+
+  pPM.add(llvm::createInternalizePass(export_symbols));
+
+  return true;
+}
+
+bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
+  // Script passed to RSCompiler must be a RSScript.
+  RSScript &script = static_cast<RSScript &>(pScript);
+
+  // Expand ForEach on CPU path to reduce launch overhead.
+  bool pEnableStepOpt = true;
+  pPM.add(createRSForEachExpandPass(pEnableStepOpt));
+  if (script.getEmbedInfo())
+    pPM.add(createRSEmbedInfoPass());
+
+  return true;
+}
+
+bool Compiler::addCustomPasses(Script &pScript, llvm::PassManager &pPM) {
+  if (!addExpandForEachPass(pScript, pPM))
+    return false;
+
+  if (!addInternalizeSymbolsPass(pScript, pPM))
+    return false;
+
+  return true;
 }
