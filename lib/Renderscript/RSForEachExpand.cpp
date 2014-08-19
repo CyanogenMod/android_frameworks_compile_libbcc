@@ -37,7 +37,7 @@
 
 #include "bcinfo/MetadataExtractor.h"
 
-#define NUM_EXPANDED_FUNCTION_PARAMS 5
+#define NUM_EXPANDED_FUNCTION_PARAMS 4
 
 using namespace bcc;
 
@@ -209,7 +209,6 @@ private:
     ParamTypes.push_back(ForEachStubPtrTy); // const RsForEachStubParamStruct *p
     ParamTypes.push_back(Int32Ty);          // uint32_t x1
     ParamTypes.push_back(Int32Ty);          // uint32_t x2
-    ParamTypes.push_back(Int32Ty);          // uint32_t instep
     ParamTypes.push_back(Int32Ty);          // uint32_t outstep
 
     ExpandedFunctionType =
@@ -222,7 +221,7 @@ private:
   /// This creates a function with the following signature:
   ///
   ///   void (const RsForEachStubParamStruct *p, uint32_t x1, uint32_t x2,
-  ///         uint32_t instep, uint32_t outstep)
+  ///         uint32_t outstep)
   ///
   llvm::Function *createEmptyExpandedFunction(llvm::StringRef OldName) {
     llvm::Function *ExpandedFunction =
@@ -237,7 +236,6 @@ private:
     (AI++)->setName("p");
     (AI++)->setName("x1");
     (AI++)->setName("x2");
-    (AI++)->setName("arg_instep");
     (AI++)->setName("arg_outstep");
 
     llvm::BasicBlock *Begin = llvm::BasicBlock::Create(*Context, "Begin",
@@ -348,9 +346,7 @@ public:
     llvm::Value *Arg_p       = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x1      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
-    // Skip the instep param.
-    ExpandedFunctionArgIter++;
-    llvm::Value *Arg_outstep = &*ExpandedFunctionArgIter;
+    llvm::Value *Arg_outstep = &*(ExpandedFunctionArgIter);
 
     llvm::Value *InStep  = NULL;
     llvm::Value *OutStep = NULL;
@@ -503,9 +499,7 @@ public:
     llvm::Value *Arg_p       = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x1      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
-    // Skip the instep param.
-    ExpandedFunctionArgIter++;
-    llvm::Value *Arg_outstep = &*ExpandedFunctionArgIter;
+    llvm::Value *Arg_outstep = &*(ExpandedFunctionArgIter);
 
     // Construct the actual function body.
     llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
