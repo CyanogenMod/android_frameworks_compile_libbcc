@@ -156,7 +156,7 @@ size_t ObjectLoader::getSymbolSize(const char *pName) const {
   return mImpl->getSymbolSize(pName);
 }
 
-bool ObjectLoader::getSymbolNameList(android::Vector<const char *>& pNameList,
+bool ObjectLoader::getSymbolNameList(std::vector<const char *>& pNameList,
                                      SymbolType pType) const {
   return mImpl->getSymbolNameList(pNameList, pType);
 }

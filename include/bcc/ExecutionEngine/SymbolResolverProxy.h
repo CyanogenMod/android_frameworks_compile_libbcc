@@ -17,16 +17,16 @@
 #ifndef BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
 #define BCC_EXECUTION_ENGINE_SYMBOL_RESOLVER_PROXY_H
 
+#include <vector>
+
 #include "bcc/ExecutionEngine/SymbolResolverInterface.h"
 #include "bcc/Support/Log.h"
-
-#include <utils/Vector.h>
 
 namespace bcc {
 
 class SymbolResolverProxy : public SymbolResolverInterface {
 private:
-  android::Vector<SymbolResolverInterface *> mChain;
+  std::vector<SymbolResolverInterface *> mChain;
 
 public:
   SymbolResolverProxy() { }
