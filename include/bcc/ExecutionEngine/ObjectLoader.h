@@ -18,10 +18,9 @@
 #define BCC_EXECUTION_ENGINE_OBJECT_LOADER_H
 
 #include <cstddef>
+#include <vector>
 
 #include "bcc/Support/Log.h"
-
-#include <utils/Vector.h>
 
 namespace bcc {
 
@@ -61,7 +60,7 @@ public:
 
   // Get the symbol name where the symbol is of the type pType. If kUnknownType
   // is given, it returns all symbols' names in the object.
-  bool getSymbolNameList(android::Vector<const char *>& pNameList,
+  bool getSymbolNameList(std::vector<const char *>& pNameList,
                          SymbolType pType = kUnknownType) const;
 
   ~ObjectLoader();

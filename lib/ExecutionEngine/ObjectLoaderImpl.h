@@ -18,11 +18,10 @@
 #define OBJECT_LOADER_IMPL_H
 
 #include <cstring>
+#include <vector>
 
 #include "bcc/ExecutionEngine/ObjectLoader.h"
 #include "bcc/Support/Log.h"
-
-#include <utils/Vector.h>
 
 namespace bcc {
 
@@ -42,7 +41,7 @@ public:
 
   virtual size_t getSymbolSize(const char *pName) const = 0;
 
-  virtual bool getSymbolNameList(android::Vector<const char *>& pNameList,
+  virtual bool getSymbolNameList(std::vector<const char *>& pNameList,
                                  ObjectLoader::SymbolType pType) const = 0;
 
   virtual ~ObjectLoaderImpl() { }

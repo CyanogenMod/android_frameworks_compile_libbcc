@@ -18,13 +18,12 @@
 #define BCC_RS_EXECUTABLE_H
 
 #include <cstddef>
+#include <vector>
 
 
 #include "bcc/ExecutionEngine/ObjectLoader.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Support/Log.h"
-
-#include <utils/Vector.h>
 
 namespace bcc {
 
@@ -45,15 +44,15 @@ private:
   ObjectLoader *mLoader;
 
   // Memory address of rs export stuffs
-  android::Vector<void *> mExportVarAddrs;
-  android::Vector<void *> mExportFuncAddrs;
-  android::Vector<void *> mExportForeachFuncAddrs;
+  std::vector<void *> mExportVarAddrs;
+  std::vector<void *> mExportFuncAddrs;
+  std::vector<void *> mExportForeachFuncAddrs;
 
   // FIXME: These are designed for Renderscript HAL and is initialized in
   //        RSExecutable::Create(). Both of them come from RSInfo::getPragmas().
   //        If possible, read the pragma key/value pairs directly from RSInfo.
-  android::Vector<const char *> mPragmaKeys;
-  android::Vector<const char *> mPragmaValues;
+  std::vector<const char *> mPragmaKeys;
+  std::vector<const char *> mPragmaValues;
 
   RSExecutable(RSInfo &pInfo, FileBase &pObjFile, ObjectLoader &pLoader)
     : mInfo(&pInfo), mIsInfoDirty(false), mObjFile(&pObjFile), mLoader(&pLoader)
@@ -94,16 +93,16 @@ public:
   // Disassemble and dump the relocated functions to the pOutput.
   void dumpDisassembly(OutputFile &pOutput) const;
 
-  inline const android::Vector<void *> &getExportVarAddrs() const
+  inline const std::vector<void *> &getExportVarAddrs() const
   { return mExportVarAddrs; }
-  inline const android::Vector<void *> &getExportFuncAddrs() const
+  inline const std::vector<void *> &getExportFuncAddrs() const
   { return mExportFuncAddrs; }
-  inline const android::Vector<void *> &getExportForeachFuncAddrs() const
+  inline const std::vector<void *> &getExportForeachFuncAddrs() const
   { return mExportForeachFuncAddrs; }
 
-  inline const android::Vector<const char *> &getPragmaKeys() const
+  inline const std::vector<const char *> &getPragmaKeys() const
   { return mPragmaKeys; }
-  inline const android::Vector<const char *> &getPragmaValues() const
+  inline const std::vector<const char *> &getPragmaValues() const
   { return mPragmaValues; }
 
   ~RSExecutable();

@@ -166,7 +166,7 @@ void RSExecutable::dumpDisassembly(OutputFile &pOutput) const {
   }
 
   // Get MC codegen emitted function name list.
-  android::Vector<const char *> func_list;
+  std::vector<const char *> func_list;
 
   if (!mLoader->getSymbolNameList(func_list, ObjectLoader::kFunctionType)) {
       ALOGW("Failed to get the list of function name in %s for disassembly!",
