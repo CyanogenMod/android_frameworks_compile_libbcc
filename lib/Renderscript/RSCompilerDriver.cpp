@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <string>
+
 #include "bcc/Renderscript/RSCompilerDriver.h"
 
 #include <llvm/IR/Module.h>
@@ -40,7 +42,6 @@
 #ifdef HAVE_ANDROID_OS
 #include <cutils/properties.h>
 #endif
-#include <utils/String8.h>
 #include <utils/StopWatch.h>
 
 using namespace bcc;
@@ -113,11 +114,11 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
   //===--------------------------------------------------------------------===//
   // Acquire the read lock on object_file for reading its RS info file.
   //===--------------------------------------------------------------------===//
-  android::String8 info_path = RSInfo::GetPath(output_path.c_str());
+  std::string info_path = RSInfo::GetPath(output_path.c_str());
 
   if (!object_file->lock()) {
     ALOGE("Unable to acquire the read lock on %s for reading %s! (%s)",
-          output_path.c_str(), info_path.string(),
+          output_path.c_str(), info_path.c_str(),
           object_file->getErrorMessage().c_str());
     delete object_file;
     return NULL;
@@ -126,7 +127,7 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
   //===---------------------------------------------------------------------===//
   // Open and load the RS info file.
   //===--------------------------------------------------------------------===//
-  InputFile info_file(info_path.string());
+  InputFile info_file(info_path.c_str());
   RSInfo *info = RSInfo::ReadFromFile(info_file);
 
   // Release the lock on object_file.
@@ -297,15 +298,15 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
     OutputFile *ir_file = NULL;
     llvm::raw_fd_ostream *IRStream = NULL;
     if (pDumpIR) {
-      android::String8 path(pOutputPath);
+      std::string path(pOutputPath);
       path.append(".ll");
-      ir_file = new OutputFile(path.string(), FileBase::kTruncate);
+      ir_file = new OutputFile(path.c_str(), FileBase::kTruncate);
       IRStream = ir_file->dup();
     }
 
     // Run the compiler.
-    Compiler::ErrorCode compile_result = mCompiler.compile(pScript,
-                                                           output_file, IRStream);
+    Compiler::ErrorCode compile_result =
+        mCompiler.compile(pScript, output_file, IRStream);
 
     if (ir_file) {
       ir_file->close();
@@ -320,25 +321,25 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
   }
 
   if (saveInfoFile) {
-    android::String8 info_path = RSInfo::GetPath(pOutputPath);
-    OutputFile info_file(info_path.string(), FileBase::kTruncate);
+    std::string info_path = RSInfo::GetPath(pOutputPath);
+    OutputFile info_file(info_path.c_str(), FileBase::kTruncate);
 
     if (info_file.hasError()) {
       ALOGE("Failed to open the info file %s for write! (%s)",
-            info_path.string(), info_file.getErrorMessage().c_str());
+            info_path.c_str(), info_file.getErrorMessage().c_str());
       return Compiler::kErrInvalidSource;
     }
 
-    FileMutex<FileBase::kWriteLock> write_info_mutex(info_path.string());
+    FileMutex<FileBase::kWriteLock> write_info_mutex(info_path.c_str());
     if (write_info_mutex.hasError() || !write_info_mutex.lock()) {
       ALOGE("Unable to acquire the lock for writing %s! (%s)",
-            info_path.string(), write_info_mutex.getErrorMessage().c_str());
+            info_path.c_str(), write_info_mutex.getErrorMessage().c_str());
       return Compiler::kErrInvalidSource;
     }
 
     // Perform the write.
     if (!info->write(info_file)) {
-      ALOGE("Failed to sync the RS info file %s!", info_path.string());
+      ALOGE("Failed to sync the RS info file %s!", info_path.c_str());
       return Compiler::kErrInvalidSource;
     }
   }
@@ -448,4 +449,3 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
 
   return true;
 }
-

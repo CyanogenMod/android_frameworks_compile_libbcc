@@ -34,8 +34,8 @@
 
 using namespace bcc;
 
-android::String8 RSInfo::GetPath(const char *pFilename) {
-  android::String8 result(pFilename);
+std::string RSInfo::GetPath(const char *pFilename) {
+  std::string result(pFilename);
   result.append(".info");
   return result;
 }
