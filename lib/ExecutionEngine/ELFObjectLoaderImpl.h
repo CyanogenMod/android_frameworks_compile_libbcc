@@ -52,7 +52,7 @@ public:
 
   virtual size_t getSymbolSize(const char *pName) const;
 
-  virtual bool getSymbolNameList(android::Vector<const char *>& pNameList,
+  virtual bool getSymbolNameList(std::vector<const char *>& pNameList,
                                  ObjectLoader::SymbolType pType) const;
   ~ELFObjectLoaderImpl();
 };

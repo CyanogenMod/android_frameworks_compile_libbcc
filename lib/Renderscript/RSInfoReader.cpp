@@ -56,7 +56,7 @@ helper_read_list_item<rsinfo::PragmaItem, RSInfo::PragmaListTy>(
     return false;
   }
 
-  pResult.push(std::make_pair(key, value));
+  pResult.push_back(std::make_pair(key, value));
   return true;
 }
 
@@ -67,7 +67,7 @@ helper_read_list_item<rsinfo::ObjectSlotItem, RSInfo::ObjectSlotListTy>(
     const RSInfo &pInfo,
     RSInfo::ObjectSlotListTy &pResult)
 {
-  pResult.push(pItem.slot);
+  pResult.push_back(pItem.slot);
   return true;
 }
 
@@ -85,7 +85,7 @@ helper_read_list_item<rsinfo::ExportVarNameItem, RSInfo::ExportVarNameListTy>(
     return false;
   }
 
-  pResult.push(name);
+  pResult.push_back(name);
   return true;
 }
 
@@ -103,7 +103,7 @@ helper_read_list_item<rsinfo::ExportFuncNameItem, RSInfo::ExportFuncNameListTy>(
     return false;
   }
 
-  pResult.push(name);
+  pResult.push_back(name);
   return true;
 }
 
@@ -121,7 +121,7 @@ helper_read_list_item<rsinfo::ExportForeachFuncItem, RSInfo::ExportForeachFuncLi
     return false;
   }
 
-  pResult.push(std::make_pair(name, pItem.signature));
+  pResult.push_back(std::make_pair(name, pItem.signature));
   return true;
 }
 

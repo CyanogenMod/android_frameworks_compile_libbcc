@@ -186,7 +186,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
           ALOGW("%s contains pragma metadata with empty key (skip)!",
                 module_name);
         } else {
-          result->mPragmas.push(std::make_pair(
+          result->mPragmas.push_back(std::make_pair(
               writeString(key, result->mStringPool, &cur_string_pool_offset),
               writeString(val, result->mStringPool, &cur_string_pool_offset)));
         } // key.empty()
@@ -204,7 +204,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
         ALOGW("%s contains empty entry in #rs_export_var metadata (skip)!",
               module_name);
       } else {
-          result->mExportVarNames.push(
+          result->mExportVarNames.push_back(
               writeString(name, result->mStringPool, &cur_string_pool_offset));
       }
     }
@@ -221,7 +221,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
         ALOGW("%s contains empty entry in #rs_export_func metadata (skip)!",
               module_name);
       } else {
-        result->mExportFuncNames.push(
+        result->mExportFuncNames.push_back(
             writeString(name, result->mStringPool, &cur_string_pool_offset));
       }
     }
@@ -279,7 +279,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
                 signature_string.str().c_str(), name.str().c_str(), module_name);
           goto bail;
         }
-        result->mExportForeachFuncs.push(std::make_pair(
+        result->mExportForeachFuncs.push_back(std::make_pair(
               writeString(name, result->mStringPool, &cur_string_pool_offset),
               signature));
       } else {
@@ -301,7 +301,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
     // To handle the legacy case, we generate a full signature for a "root"
     // function which means that we need to set the bottom 5 bits (0x1f) in the
     // mask.
-    result->mExportForeachFuncs.push(std::make_pair(
+    result->mExportForeachFuncs.push_back(std::make_pair(
           writeString(llvm::StringRef("root"), result->mStringPool,
                       &cur_string_pool_offset), 0x1f));
   }
@@ -312,7 +312,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   if (object_slots != NULL) {
     llvm::MDNode *node;
     for (unsigned int i = 0; i <= export_var->getNumOperands(); i++) {
-      result->mObjectSlots.push(0);
+      result->mObjectSlots.push_back(0);
     }
     FOR_EACH_NODE_IN(object_slots, node) {
       llvm::StringRef val = getStringFromOperand(node->getOperand(0));
@@ -326,7 +326,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
                 module.getModuleIdentifier().c_str());
           goto bail;
         } else {
-          result->mObjectSlots.editItemAt(slot) = 1;
+          result->mObjectSlots[slot] = 1;
         }
       }
     }
