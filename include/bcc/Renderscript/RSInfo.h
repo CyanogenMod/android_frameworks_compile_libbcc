@@ -26,8 +26,6 @@
 #include "bcc/Support/Log.h"
 #include "bcc/Support/Sha1Util.h"
 
-#include <utils/String8.h>
-
 namespace llvm {
 class Module;
 }
@@ -157,7 +155,7 @@ public:
 public:
   // Return the path of the RS info file corresponded to the given output
   // executable file.
-  static android::String8 GetPath(const char *pFilename);
+  static std::string GetPath(const char *pFilename);
 
   // Check whether this info contains the same source hash, compile command line, and fingerprint.
   // If not, it's an indication we need to recompile.
