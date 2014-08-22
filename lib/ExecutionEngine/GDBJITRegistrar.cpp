@@ -116,10 +116,10 @@ void NotifyGDB(jit_code_entry* JITCodeEntry) {
   __jit_debug_descriptor.action_flag = JIT_REGISTER_FN;
 
   // Insert this entry at the head of the list.
-  JITCodeEntry->prev_entry = NULL;
+  JITCodeEntry->prev_entry = nullptr;
   jit_code_entry* NextEntry = __jit_debug_descriptor.first_entry;
   JITCodeEntry->next_entry = NextEntry;
-  if (NextEntry != NULL) {
+  if (NextEntry != nullptr) {
     NextEntry->prev_entry = JITCodeEntry;
   }
   __jit_debug_descriptor.first_entry = JITCodeEntry;
@@ -128,13 +128,13 @@ void NotifyGDB(jit_code_entry* JITCodeEntry) {
 }
 
 GDBJITRegistrar* RegistrarSingleton() {
-  static GDBJITRegistrar* sRegistrar = NULL;
-  if (sRegistrar == NULL) {
+  static GDBJITRegistrar* sRegistrar = nullptr;
+  if (sRegistrar == nullptr) {
     // The mutex is here so that it won't slow down access once the registrar
     //   is instantiated
     llvm::MutexGuard locked(JITDebugLock);
     // Check again to be sure another thread didn't create this while we waited
-    if (sRegistrar == NULL) {
+    if (sRegistrar == nullptr) {
       sRegistrar = new GDBJITRegistrar;
     }
   }
@@ -225,7 +225,7 @@ void GDBJITRegistrar::deregisterObjectInternal(
   }
 
   delete JITCodeEntry;
-  JITCodeEntry = NULL;
+  JITCodeEntry = nullptr;
 }
 
 } // end namespace

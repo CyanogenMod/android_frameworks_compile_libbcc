@@ -24,18 +24,18 @@
 using namespace bcc;
 
 bool RSScript::LinkRuntime(RSScript &pScript, const char *core_lib) {
-  bccAssert(core_lib != NULL);
+  bccAssert(core_lib != nullptr);
 
   // Using the same context with the source in pScript.
   BCCContext &context = pScript.getSource().getContext();
 
   Source *libclcore_source = Source::CreateFromFile(context, core_lib);
-  if (libclcore_source == NULL) {
+  if (libclcore_source == nullptr) {
     ALOGE("Failed to load Renderscript library '%s' to link!", core_lib);
     return false;
   }
 
-  if (NULL != pScript.mLinkRuntimeCallback) {
+  if (pScript.mLinkRuntimeCallback != nullptr) {
     pScript.mLinkRuntimeCallback(&pScript,
         &pScript.getSource().getModule(), &libclcore_source->getModule());
   }
@@ -51,12 +51,12 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *core_lib) {
 }
 
 RSScript::RSScript(Source &pSource)
-  : Script(pSource), mInfo(NULL), mCompilerVersion(0),
-    mOptimizationLevel(kOptLvl3), mLinkRuntimeCallback(NULL),
+  : Script(pSource), mInfo(nullptr), mCompilerVersion(0),
+    mOptimizationLevel(kOptLvl3), mLinkRuntimeCallback(nullptr),
     mEmbedInfo(false) { }
 
 bool RSScript::doReset() {
-  mInfo = NULL;
+  mInfo = nullptr;
   mCompilerVersion = 0;
   mOptimizationLevel = kOptLvl3;
   return true;

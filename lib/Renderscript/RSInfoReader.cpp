@@ -46,12 +46,12 @@ helper_read_list_item<rsinfo::PragmaItem, RSInfo::PragmaListTy>(
   const char *key = pInfo.getStringFromPool(pItem.key);
   const char *value =pInfo.getStringFromPool(pItem.value);
 
-  if (key == NULL) {
+  if (key == nullptr) {
     ALOGE("Invalid string index %d for key in RS pragma list.", pItem.key);
     return false;
   }
 
-  if (value == NULL) {
+  if (value == nullptr) {
     ALOGE("Invalid string index %d for value in RS pragma list.", pItem.value);
     return false;
   }
@@ -80,7 +80,7 @@ helper_read_list_item<rsinfo::ExportVarNameItem, RSInfo::ExportVarNameListTy>(
 {
   const char *name = pInfo.getStringFromPool(pItem.name);
 
-  if (name == NULL) {
+  if (name == nullptr) {
     ALOGE("Invalid string index %d for name in RS export vars.", pItem.name);
     return false;
   }
@@ -98,7 +98,7 @@ helper_read_list_item<rsinfo::ExportFuncNameItem, RSInfo::ExportFuncNameListTy>(
 {
   const char *name = pInfo.getStringFromPool(pItem.name);
 
-  if (name == NULL) {
+  if (name == nullptr) {
     ALOGE("Invalid string index %d for name in RS export funcs.", pItem.name);
     return false;
   }
@@ -116,7 +116,7 @@ helper_read_list_item<rsinfo::ExportForeachFuncItem, RSInfo::ExportForeachFuncLi
 {
   const char *name = pInfo.getStringFromPool(pItem.name);
 
-  if (name == NULL) {
+  if (name == nullptr) {
     ALOGE("Invalid string index %d for name in RS export foreachs.", pItem.name);
     return false;
   }
@@ -147,8 +147,8 @@ inline bool helper_read_list(const uint8_t *pData,
 } // end anonymous namespace
 
 RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
-  android::FileMap *map = NULL;
-  RSInfo *result = NULL;
+  android::FileMap *map = nullptr;
+  RSInfo *result = nullptr;
   const uint8_t *data;
   const rsinfo::Header *header;
   size_t filesize;
@@ -171,7 +171,7 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
   // Create memory map for the file.
   map = pInput.createMap(/* pOffset */cur_input_offset,
                          /* pLength */filesize - cur_input_offset);
-  if (map == NULL) {
+  if (map == nullptr) {
     ALOGE("Failed to map RS info file %s to the memory! (%s)",
           input_filename, pInput.getErrorMessage().c_str());
     goto bail;
@@ -226,7 +226,7 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
 
   // File seems ok, create result RSInfo object.
   result = new (std::nothrow) RSInfo(header->strPoolSize);
-  if (result == NULL) {
+  if (result == nullptr) {
     ALOGE("Out of memory when create RSInfo object for %s!", input_filename);
     goto bail;
   }
@@ -240,7 +240,7 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
   if (header->strPoolSize > 0) {
     // Copy the string pool. The string pool is immediately after the header at
     // the offset header->headerSize.
-    if (result->mStringPool == NULL) {
+    if (result->mStringPool == nullptr) {
       ALOGE("Out of memory when allocate string pool for RS info file %s!",
             input_filename);
       goto bail;
@@ -252,19 +252,19 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
   // Populate all the data to the result object.
   result->mSourceHash =
               reinterpret_cast<const uint8_t*>(result->getStringFromPool(header->sourceSha1Idx));
-  if (result->mSourceHash == NULL) {
+  if (result->mSourceHash == nullptr) {
       ALOGE("Invalid string index %d for SHA-1 checksum of source.", header->sourceSha1Idx);
       goto bail;
   }
 
   result->mCompileCommandLine = result->getStringFromPool(header->compileCommandLineIdx);
-  if (result->mCompileCommandLine == NULL) {
+  if (result->mCompileCommandLine == nullptr) {
       ALOGE("Invalid string index %d for compile command line.", header->compileCommandLineIdx);
       goto bail;
   }
 
   result->mBuildFingerprint = result->getStringFromPool(header->buildFingerprintIdx);
-  if (result->mBuildFingerprint == NULL) {
+  if (result->mBuildFingerprint == nullptr) {
       ALOGE("Invalid string index %d for build fingerprint.", header->buildFingerprintIdx);
       goto bail;
   }
@@ -300,11 +300,11 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
   return result;
 
 bail:
-  if (map != NULL) {
+  if (map != nullptr) {
     map->release();
   }
 
   delete result;
 
-  return NULL;
+  return nullptr;
 } // RSInfo::ReadFromFile

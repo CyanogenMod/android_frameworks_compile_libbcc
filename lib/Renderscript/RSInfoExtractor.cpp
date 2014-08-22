@@ -54,7 +54,7 @@ const llvm::StringRef export_foreach_metadata_name("#rs_export_foreach");
 const llvm::StringRef object_slot_metadata_name("#rs_object_slots");
 
 inline llvm::StringRef getStringFromOperand(const llvm::Value *pString) {
-  if ((pString != NULL) && (pString->getValueID() == llvm::Value::MDStringVal)) {
+  if ((pString != nullptr) && (pString->getValueID() == llvm::Value::MDStringVal)) {
     return static_cast<const llvm::MDString *>(pString)->getString();
   }
   return llvm::StringRef();
@@ -62,14 +62,14 @@ inline llvm::StringRef getStringFromOperand(const llvm::Value *pString) {
 
 template<size_t NumOperands>
 inline size_t getMetadataStringLength(const llvm::NamedMDNode *pMetadata) {
-  if (pMetadata == NULL) {
+  if (pMetadata == nullptr) {
     return 0;
   }
 
   size_t string_size = 0;
   for (unsigned i = 0, e = pMetadata->getNumOperands(); i < e; i++) {
     llvm::MDNode *node = pMetadata->getOperand(i);
-    if ((node != NULL) && (node->getNumOperands() >= NumOperands)) {
+    if ((node != nullptr) && (node->getNumOperands() >= NumOperands)) {
       // Compiler try its best to unroll this loop since NumOperands is a
       // template parameter (therefore the number of iteration can be determined
       // at compile-time and it's usually small.)
@@ -131,13 +131,13 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   size_t string_pool_size = 1;
   off_t cur_string_pool_offset = 0;
 
-  RSInfo *result = NULL;
+  RSInfo *result = nullptr;
 
   // Handle legacy case for pre-ICS bitcode that doesn't contain a metadata
   // section for ForEach. We generate a full signature for a "root" function.
-  if ((export_foreach_name == NULL) || (export_foreach_signature == NULL)) {
-    export_foreach_name = NULL;
-    export_foreach_signature = NULL;
+  if ((export_foreach_name == nullptr) || (export_foreach_signature == nullptr)) {
+    export_foreach_name = nullptr;
+    export_foreach_signature = nullptr;
     string_pool_size += 5;  // insert "root\0" for #rs_export_foreach_name
   }
 
@@ -153,13 +153,13 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
 
   // Allocate result object
   result = new (std::nothrow) RSInfo(string_pool_size);
-  if (result == NULL) {
+  if (result == nullptr) {
     ALOGE("Out of memory when create RSInfo object for %s!", module_name);
     goto bail;
   }
 
   // Check string pool.
-  if (result->mStringPool == NULL) {
+  if (result->mStringPool == nullptr) {
     ALOGE("Out of memory when allocate string pool in RSInfo object for %s!",
           module_name);
     goto bail;
@@ -171,13 +171,13 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   // Populate all the strings and data.
 #define FOR_EACH_NODE_IN(_metadata, _node)  \
   for (unsigned i = 0, e = (_metadata)->getNumOperands(); i != e; i++)  \
-    if (((_node) = (_metadata)->getOperand(i)) != NULL)
+    if (((_node) = (_metadata)->getOperand(i)) != nullptr)
   //===--------------------------------------------------------------------===//
   // #pragma
   //===--------------------------------------------------------------------===//
   // Pragma is actually a key-value pair. The value can be an empty string while
   // the key cannot.
-  if (pragma != NULL) {
+  if (pragma != nullptr) {
     llvm::MDNode *node;
     FOR_EACH_NODE_IN(pragma, node) {
         llvm::StringRef key = getStringFromOperand(node->getOperand(0));
@@ -191,12 +191,12 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
               writeString(val, result->mStringPool, &cur_string_pool_offset)));
         } // key.empty()
     } // FOR_EACH_NODE_IN
-  } // pragma != NULL
+  } // pragma != nullptr
 
   //===--------------------------------------------------------------------===//
   // #rs_export_var
   //===--------------------------------------------------------------------===//
-  if (export_var != NULL) {
+  if (export_var != nullptr) {
     llvm::MDNode *node;
     FOR_EACH_NODE_IN(export_var, node) {
       llvm::StringRef name = getStringFromOperand(node->getOperand(0));
@@ -213,7 +213,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   //===--------------------------------------------------------------------===//
   // #rs_export_func
   //===--------------------------------------------------------------------===//
-  if (export_func != NULL) {
+  if (export_func != nullptr) {
     llvm::MDNode *node;
     FOR_EACH_NODE_IN(export_func, node) {
       llvm::StringRef name = getStringFromOperand(node->getOperand(0));
@@ -245,7 +245,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   // for-eachable. In this case, #rs_export_foreach (the function name) and
   // #rs_export_foreach metadata (the signature) is one-to-one mapping among
   // their entries.
-  if ((export_foreach_name != NULL) && (export_foreach_signature != NULL)) {
+  if ((export_foreach_name != nullptr) && (export_foreach_signature != nullptr)) {
     unsigned num_foreach_function;
 
     // Should be one-to-one mapping.
@@ -264,15 +264,15 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
       llvm::MDNode *signature_node = export_foreach_signature->getOperand(i);
 
       llvm::StringRef name, signature_string;
-      if (name_node != NULL) {
+      if (name_node != nullptr) {
         name = getStringFromOperand(name_node->getOperand(0));
       }
-      if (signature_node != NULL) {
+      if (signature_node != nullptr) {
         signature_string = getStringFromOperand(signature_node->getOperand(0));
       }
 
       if (!name.empty() && !signature_string.empty()) {
-        // Both name_node and signature_node are not NULL nodes.
+        // Both name_node and signature_node are not nullptr nodes.
         uint32_t signature;
         if (signature_string.getAsInteger(10, signature)) {
           ALOGE("Non-integer signature value '%s' for function %s found in %s!",
@@ -287,7 +287,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
         // if both of them are empty.
         if (name.empty() && signature_string.empty()) {
           ALOGW("Entries #%u at #rs_export_foreach_name and #rs_export_foreach"
-                " are both NULL in %s! (skip)", i, module_name);
+                " are both nullptr in %s! (skip)", i, module_name);
           continue;
         } else {
           ALOGE("Entries #%u at %s is NULL in %s! (skip)", i,
@@ -309,7 +309,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   //===--------------------------------------------------------------------===//
   // #rs_object_slots
   //===--------------------------------------------------------------------===//
-  if (object_slots != NULL) {
+  if (object_slots != nullptr) {
     llvm::MDNode *node;
     for (unsigned int i = 0; i <= export_var->getNumOperands(); i++) {
       result->mObjectSlots.push_back(0);
@@ -360,7 +360,7 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
   // The root context of the debug information in the bitcode is put under
   // the metadata named "llvm.dbg.cu".
   result->mHeader.hasDebugInformation =
-      static_cast<uint8_t>(module.getNamedMetadata("llvm.dbg.cu") != NULL);
+      static_cast<uint8_t>(module.getNamedMetadata("llvm.dbg.cu") != nullptr);
 
   assert((cur_string_pool_offset == string_pool_size) &&
             "Unexpected string pool size!");
@@ -369,5 +369,5 @@ RSInfo* RSInfo::ExtractFromSource(const Source& pSource, const DependencyHashTy&
 
 bail:
   delete result;
-  return NULL;
+  return nullptr;
 }

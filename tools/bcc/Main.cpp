@@ -117,10 +117,10 @@ void BCCVersionPrinter() {
 static inline
 bool ConfigCompiler(RSCompilerDriver &pRSCD) {
   RSCompiler *RSC = pRSCD.getCompiler();
-  CompilerConfig *config = NULL;
+  CompilerConfig *config = nullptr;
 
   config = new (std::nothrow) CompilerConfig(OptTargetTriple);
-  if (config == NULL) {
+  if (config == nullptr) {
     llvm::errs() << "Out of memory when create the compiler configuration!\n";
     return false;
   }
@@ -187,12 +187,12 @@ int main(int argc, char **argv) {
   // is present. It is only present if passed via "-load libFOO.so".
   RSCompilerDriverInit_t rscdi = (RSCompilerDriverInit_t)
       dlsym(RTLD_DEFAULT, STR(RS_COMPILER_DRIVER_INIT_FN));
-  if (rscdi != NULL) {
+  if (rscdi != nullptr) {
     rscdi(&RSCD);
   }
 
   bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
-                          bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), NULL,
+                          bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), nullptr,
                           OptEmitLLVM);
 
   if (!built) {

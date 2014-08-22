@@ -42,7 +42,7 @@ public:
   virtual void *getAddress(const char *pName);
 
   inline bool hasError() const
-  { return (mError != NULL); }
+  { return (mError != nullptr); }
   inline const char *getError() const
   { return mError; }
 
@@ -75,11 +75,11 @@ public:
   ArraySymbolResolver(bool pSorted = false) : mSorted(pSorted) { }
 
   virtual void *getAddress(const char *pName) {
-    const SymbolMap *result = NULL;
+    const SymbolMap *result = nullptr;
 
     if (mSorted) {
       // Use binary search.
-      const SymbolMap key = { pName, NULL };
+      const SymbolMap key = { pName, nullptr };
 
       result = reinterpret_cast<SymbolMap *>(
                    ::bsearch(&key, Subclass::SymbolArray,
@@ -96,7 +96,7 @@ public:
       }
     }
 
-    return ((result != NULL) ? result->mAddr : NULL);
+    return ((result != nullptr) ? result->mAddr : nullptr);
   }
 };
 
@@ -110,12 +110,12 @@ private:
   ContextTy mContext;
 
 public:
-  LookupFunctionSymbolResolver(LookupFunctionTy pLookupFunc = NULL,
-                               ContextTy pContext = NULL)
+  LookupFunctionSymbolResolver(LookupFunctionTy pLookupFunc = nullptr,
+                               ContextTy pContext = nullptr)
     : mLookupFunc(pLookupFunc), mContext(pContext) { }
 
   virtual void *getAddress(const char *pName) {
-    return ((mLookupFunc != NULL) ? mLookupFunc(mContext, pName) : NULL);
+    return ((mLookupFunc != nullptr) ? mLookupFunc(mContext, pName) : nullptr);
   }
 
   inline LookupFunctionTy getLookupFunction() const

@@ -31,7 +31,7 @@ public:
    if (pName && (pName[0] == '_') && (pName[1] == '_')) {
      return DyldSymbolResolver::getAddress(pName);
    } else {
-     return NULL;
+     return nullptr;
    }
  }
 };

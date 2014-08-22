@@ -58,8 +58,8 @@ static std::string getBuildFingerPrint() {
 }
 
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
-    mConfig(NULL), mCompiler(), mDebugContext(false),
-    mLinkRuntimeCallback(NULL), mEnableGlobalMerge(true) {
+    mConfig(nullptr), mCompiler(), mDebugContext(false),
+    mLinkRuntimeCallback(nullptr), mEnableGlobalMerge(true) {
   init::Initialize();
 }
 
@@ -72,15 +72,15 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
                                            const char* expectedCompileCommandLine,
                                            SymbolResolverProxy& pResolver) {
   // android::StopWatch load_time("bcc: RSCompilerDriver::loadScript time");
-  if ((pCacheDir == NULL) || (pResName == NULL)) {
+  if ((pCacheDir == nullptr) || (pResName == nullptr)) {
     ALOGE("Missing pCacheDir and/or pResName");
-    return NULL;
+    return nullptr;
   }
 
-  if ((pBitcode == NULL) || (pBitcodeSize <= 0)) {
+  if ((pBitcode == nullptr) || (pBitcodeSize <= 0)) {
     ALOGE("No bitcode supplied! (bitcode: %p, size of bitcode: %zu)",
           pBitcode, pBitcodeSize);
-    return NULL;
+    return nullptr;
   }
 
   // {pCacheDir}/{pResName}.o
@@ -96,7 +96,7 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
   if (read_output_mutex.hasError() || !read_output_mutex.lock()) {
     ALOGE("Unable to acquire the read lock for %s! (%s)", output_path.c_str(),
           read_output_mutex.getErrorMessage().c_str());
-    return NULL;
+    return nullptr;
   }
 
   //===--------------------------------------------------------------------===//
@@ -104,11 +104,11 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
   //===--------------------------------------------------------------------===//
   InputFile *object_file = new (std::nothrow) InputFile(output_path.c_str());
 
-  if ((object_file == NULL) || object_file->hasError()) {
+  if ((object_file == nullptr) || object_file->hasError()) {
       //      ALOGE("Unable to open the %s for read! (%s)", output_path.c_str(),
       //            object_file->getErrorMessage().c_str());
     delete object_file;
-    return NULL;
+    return nullptr;
   }
 
   //===--------------------------------------------------------------------===//
@@ -121,7 +121,7 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
           output_path.c_str(), info_path.c_str(),
           object_file->getErrorMessage().c_str());
     delete object_file;
-    return NULL;
+    return nullptr;
   }
 
   //===---------------------------------------------------------------------===//
@@ -133,9 +133,9 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
   // Release the lock on object_file.
   object_file->unlock();
 
-  if (info == NULL) {
+  if (info == nullptr) {
     delete object_file;
-    return NULL;
+    return nullptr;
   }
 
   //===---------------------------------------------------------------------===//
@@ -155,17 +155,17 @@ RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pR
                           expectedBuildFingerprint.c_str())) {
       delete object_file;
       delete info;
-      return NULL;
+      return nullptr;
   }
 
   //===--------------------------------------------------------------------===//
   // Create the RSExecutable.
   //===--------------------------------------------------------------------===//
   RSExecutable *executable = RSExecutable::Create(*info, *object_file, pResolver);
-  if (executable == NULL) {
+  if (executable == nullptr) {
     delete object_file;
     delete info;
-    return NULL;
+    return nullptr;
   }
 
   return executable;
@@ -185,7 +185,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   EnableGlobalMerge = mEnableGlobalMerge;
 #endif
 
-  if (mConfig != NULL) {
+  if (mConfig != nullptr) {
     // Renderscript bitcode may have their optimization flag configuration
     // different than the previous run of RS compilation.
     if (mConfig->getOptimizationLevel() != script_opt_level) {
@@ -195,7 +195,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   } else {
     // Haven't run the compiler ever.
     mConfig = new (std::nothrow) CompilerConfig(DEFAULT_TARGET_TRIPLE_STRING);
-    if (mConfig == NULL) {
+    if (mConfig == nullptr) {
       // Return false since mConfig remains NULL and out-of-memory.
       return false;
     }
@@ -204,7 +204,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
   }
 
 #if defined(PROVIDE_ARM_CODEGEN)
-  assert((pScript.getInfo() != NULL) && "NULL RS info!");
+  assert((pScript.getInfo() != nullptr) && "NULL RS info!");
   bool script_full_prec = (pScript.getInfo()->getFloatPrecisionRequirement() ==
                            RSInfo::FP_Full);
   if (mConfig->getFullPrecision() != script_full_prec) {
@@ -223,7 +223,7 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
                                                     const char* compileCommandLineToEmbed,
                                                     bool saveInfoFile, bool pDumpIR) {
   // android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
-  RSInfo *info = NULL;
+  RSInfo *info = nullptr;
 
   //===--------------------------------------------------------------------===//
   // Extract RS-specific information from source bitcode.
@@ -232,7 +232,7 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
   // compiler therefore it should be extracted before compilation.
   info = RSInfo::ExtractFromSource(pScript.getSource(), pSourceHash, compileCommandLineToEmbed,
                                    getBuildFingerPrint().c_str());
-  if (info == NULL) {
+  if (info == nullptr) {
     return Compiler::kErrInvalidSource;
   }
 
@@ -280,7 +280,7 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
     // Setup the config to the compiler.
     bool compiler_need_reconfigure = setupConfig(pScript);
 
-    if (mConfig == NULL) {
+    if (mConfig == nullptr) {
       ALOGE("Failed to setup config for RS compiler to compile %s!",
             pOutputPath);
       return Compiler::kErrInvalidSource;
@@ -295,8 +295,8 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
       }
     }
 
-    OutputFile *ir_file = NULL;
-    llvm::raw_fd_ostream *IRStream = NULL;
+    OutputFile *ir_file = nullptr;
+    llvm::raw_fd_ostream *IRStream = nullptr;
     if (pDumpIR) {
       std::string path(pOutputPath);
       path.append(".ll");
@@ -360,14 +360,14 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   // Check parameters.
   //===--------------------------------------------------------------------===//
-  if ((pCacheDir == NULL) || (pResName == NULL)) {
+  if ((pCacheDir == nullptr) || (pResName == nullptr)) {
     ALOGE("Invalid parameter passed to RSCompilerDriver::build()! (cache dir: "
           "%s, resource name: %s)", ((pCacheDir) ? pCacheDir : "(null)"),
                                     ((pResName) ? pResName : "(null)"));
     return false;
   }
 
-  if ((pBitcode == NULL) || (pBitcodeSize <= 0)) {
+  if ((pBitcode == nullptr) || (pBitcodeSize <= 0)) {
     ALOGE("No bitcode supplied! (bitcode: %p, size of bitcode: %u)",
           pBitcode, static_cast<unsigned>(pBitcodeSize));
     return false;
@@ -392,7 +392,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   //===--------------------------------------------------------------------===//
   Source *source = Source::CreateFromBuffer(pContext, pResName,
                                             pBitcode, pBitcodeSize);
-  if (source == NULL) {
+  if (source == nullptr) {
     return false;
   }
 
@@ -432,7 +432,7 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
 
   RSInfo* info = RSInfo::ExtractFromSource(pScript.getSource(), bitcode_sha1,
                                            compileCommandLineToEmbed, buildFingerprintToEmbed);
-  if (info == NULL) {
+  if (info == nullptr) {
     return false;
   }
   pScript.setInfo(info);

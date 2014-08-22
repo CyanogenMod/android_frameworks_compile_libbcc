@@ -63,7 +63,7 @@ public:
   // in Renderscript (e.g., root().)
   static const char *SpecialFunctionNames[];
 
-  // Return NULL on error. If the return object is non-NULL, it claims the
+  // Return nullptr on error. If the return object is non-NULL, it claims the
   // ownership of pInfo and pObjFile.
   static RSExecutable *Create(RSInfo &pInfo,
                               FileBase &pObjFile,

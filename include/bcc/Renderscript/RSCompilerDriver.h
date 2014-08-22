@@ -110,15 +110,16 @@ public:
   // Returns true if script is successfully compiled.
   bool build(BCCContext& pContext, const char* pCacheDir, const char* pResName,
              const char* pBitcode, size_t pBitcodeSize, const char* commandLine,
-             const char* pRuntimePath, RSLinkRuntimeCallback pLinkRuntimeCallback = NULL,
+             const char* pRuntimePath,
+             RSLinkRuntimeCallback pLinkRuntimeCallback = nullptr,
              bool pDumpIR = false);
 
   // Returns true if script is successfully compiled.
   bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath);
 
-  // Tries to load the the compiled bit code at pCacheDir of the given name.  It checks that
-  // the file has been compiled from the same bit code and with the same compile arguments as
-  // provided.
+  // Tries to load the the compiled bit code at pCacheDir of the given name.
+  // It checks that the file has been compiled from the same bit code and with
+  // the same compile arguments as provided.
   static RSExecutable* loadScript(const char* pCacheDir, const char* pResName, const char* pBitcode,
                                   size_t pBitcodeSize, const char* expectedCompileCommandLine,
                                   SymbolResolverProxy& pResolver);

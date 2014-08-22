@@ -143,7 +143,7 @@ namespace {
     LLVMContext &Context = M->getContext();
     Type *ExnTy = PointerType::getUnqual(Type::getInt8Ty(Context));
     Type *SelTy = Type::getInt32Ty(Context);
-    Type *LPadSlotTy = StructType::get(ExnTy, SelTy, NULL);
+    Type *LPadSlotTy = StructType::get(ExnTy, SelTy, nullptr);
 
     // This map links the invoke instruction with the eh.exception and eh.selector
     // calls associated with it.
@@ -1429,7 +1429,7 @@ std::error_code BitcodeReader::ParseMetadata() {
         else if (!Ty->isVoidTy())
           Elts.push_back(ValueList.getValueFwdRef(Record[i+1], Ty));
         else
-          Elts.push_back(NULL);
+          Elts.push_back(nullptr);
       }
       Value *V = MDNode::getWhenValsUnresolved(Context, Elts, IsFunctionLocal);
       IsFunctionLocal = false;
@@ -2762,7 +2762,7 @@ std::error_code BitcodeReader::ParseFunctionBody(Function *F) {
         }
 
         unsigned OpNum = 0;
-        Value *Op = NULL;
+        Value *Op = nullptr;
         if (getValueTypePair(Record, OpNum, NextValueNo, Op))
           return Error(InvalidRecord);
         if (OpNum != Record.size())
@@ -2902,7 +2902,7 @@ std::error_code BitcodeReader::ParseFunctionBody(Function *F) {
       // 'unwind' instruction has been removed in LLVM 3.1
       // Replace 'unwind' with 'landingpad' and 'resume'.
       Type *ExnTy = StructType::get(Type::getInt8PtrTy(Context),
-                                    Type::getInt32Ty(Context), NULL);
+                                    Type::getInt32Ty(Context), nullptr);
       Constant *PersFn =
         F->getParent()->
         getOrInsertFunction("__gcc_personality_v0",
