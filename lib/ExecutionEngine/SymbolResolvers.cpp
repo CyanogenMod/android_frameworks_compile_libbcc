@@ -21,7 +21,7 @@
 #else
 /* TODO hack: definitions from bionic/libc/include/dlfcn.h */
 void* dlopen(const char*  filename, int flag) {
-  return NULL;
+  return nullptr;
 }
 
 int dlclose(void*  handle) {
@@ -33,7 +33,7 @@ const char* dlerror(void) {
 }
 
 void* dlsym(void*  handle, const char*  symbol) {
-  return NULL;
+  return nullptr;
 }
 
 #define RTLD_NOW    0
@@ -54,7 +54,7 @@ using namespace bcc;
 // DyldSymbolResolver
 //===----------------------------------------------------------------------===//
 DyldSymbolResolver::DyldSymbolResolver(const char *pFileName,
-                                       bool pLazyBinding) : mError(NULL) {
+                                       bool pLazyBinding) : mError(nullptr) {
   int flags = (pLazyBinding) ? RTLD_LAZY : RTLD_NOW;
 
   // Make the symbol within the given library to be local such that it won't
@@ -62,34 +62,34 @@ DyldSymbolResolver::DyldSymbolResolver(const char *pFileName,
   flags |= RTLD_LOCAL;
 
   mHandle = ::dlopen(pFileName, flags);
-  if (mHandle == NULL) {
+  if (mHandle == nullptr) {
     const char *err = ::dlerror();
 
 #define DYLD_ERROR_MSG_PATTERN  "Failed to load %s! (%s)"
     size_t error_length = ::strlen(DYLD_ERROR_MSG_PATTERN) +
                           ::strlen(pFileName) + 1;
-    if (err != NULL) {
+    if (err != nullptr) {
       error_length += ::strlen(err);
     }
 
     mError = new (std::nothrow) char [error_length];
-    if (mError != NULL) {
+    if (mError != nullptr) {
       ::snprintf(mError, error_length, DYLD_ERROR_MSG_PATTERN, pFileName,
-                 ((err != NULL) ? err : ""));
+                 ((err != nullptr) ? err : ""));
     }
   }
 #undef DYLD_ERROR_MSG_PATTERN
 }
 
 void *DyldSymbolResolver::getAddress(const char *pName) {
-  assert((mHandle != NULL) && "Invalid DyldSymbolResolver!");
+  assert((mHandle != nullptr) && "Invalid DyldSymbolResolver!");
   return ::dlsym(mHandle, pName);
 }
 
 DyldSymbolResolver::~DyldSymbolResolver() {
-  if (mHandle != NULL) {
+  if (mHandle != nullptr) {
     ::dlclose(mHandle);
-    mHandle = NULL;
+    mHandle = nullptr;
   }
   delete [] mError;
 }

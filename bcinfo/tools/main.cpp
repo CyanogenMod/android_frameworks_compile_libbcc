@@ -255,7 +255,7 @@ static size_t readBitcode(const char **bitcode) {
 static void releaseBitcode(const char **bitcode) {
   if (bitcode && *bitcode) {
     free((void*) *bitcode);
-    *bitcode = NULL;
+    *bitcode = nullptr;
   }
   return;
 }
@@ -267,7 +267,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const char *bitcode = NULL;
+  const char *bitcode = nullptr;
   size_t bitcodeSize = readBitcode(&bitcode);
 
   unsigned int version = 0;

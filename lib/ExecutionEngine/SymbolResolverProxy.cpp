@@ -22,13 +22,13 @@ void *SymbolResolverProxy::getAddress(const char *pName) {
   // Search the address of the symbol by following the chain of resolvers.
   for (auto resolver : mChain) {
     void *addr = resolver->getAddress(pName);
-    if (addr != NULL) {
+    if (addr != nullptr) {
       return addr;
     }
   }
 
   // Symbol not found or there's no resolver containing in the chain.
-  return NULL;
+  return nullptr;
 }
 
 void SymbolResolverProxy::chainResolver(SymbolResolverInterface &pResolver) {

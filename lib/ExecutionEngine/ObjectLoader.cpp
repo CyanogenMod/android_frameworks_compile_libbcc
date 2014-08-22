@@ -30,10 +30,10 @@ ObjectLoader *ObjectLoader::Load(void *pMemStart, size_t pMemSize,
                                  const char *pName,
                                  SymbolResolverInterface &pResolver,
                                  bool pEnableGDBDebug) {
-  ObjectLoader *result = NULL;
+  ObjectLoader *result = nullptr;
 
   // Check parameters.
-  if ((pMemStart == NULL) || (pMemSize <= 0)) {
+  if ((pMemStart == nullptr) || (pMemSize <= 0)) {
     ALOGE("Invalid memory '%s' was given to load (memory addr: %p, size: %u)",
           pName, pMemStart, static_cast<unsigned>(pMemSize));
     goto bail;
@@ -41,7 +41,7 @@ ObjectLoader *ObjectLoader::Load(void *pMemStart, size_t pMemSize,
 
   // Create result object
   result = new (std::nothrow) ObjectLoader();
-  if (result == NULL) {
+  if (result == nullptr) {
     ALOGE("Out of memory when create object loader for %s!", pName);
     goto bail;
   }
@@ -50,7 +50,7 @@ ObjectLoader *ObjectLoader::Load(void *pMemStart, size_t pMemSize,
   // to detect the object file type and to select the one appropriated. Directly
   // try out the ELF object loader.
   result->mImpl = new (std::nothrow) ELFObjectLoaderImpl();
-  if (result->mImpl == NULL) {
+  if (result->mImpl == nullptr) {
     ALOGE("Out of memory when create ELF object loader for %s", pName);
     goto bail;
   }
@@ -79,7 +79,7 @@ ObjectLoader *ObjectLoader::Load(void *pMemStart, size_t pMemSize,
     // section lives in the process image. Therefore, a writable memory with its
     // contents initialized to the contents of pFile is created.
     result->mDebugImage = new (std::nothrow) uint8_t [ pMemSize ];
-    if (result->mDebugImage != NULL) {
+    if (result->mDebugImage != nullptr) {
       ::memcpy(result->mDebugImage, pMemStart, pMemSize);
       if (!result->mImpl->prepareDebugImage(result->mDebugImage, pMemSize)) {
         ALOGW("GDB debug for %s is enabled by the user but won't work due to "
@@ -96,22 +96,22 @@ ObjectLoader *ObjectLoader::Load(void *pMemStart, size_t pMemSize,
 
 bail:
   delete result;
-  return NULL;
+  return nullptr;
 }
 
 ObjectLoader *ObjectLoader::Load(FileBase &pFile,
                                  SymbolResolverInterface &pResolver,
                                  bool pEnableGDBDebug) {
   size_t file_size;
-  android::FileMap *file_map = NULL;
+  android::FileMap *file_map = nullptr;
   const char *input_filename = pFile.getName().c_str();
-  ObjectLoader *result = NULL;
+  ObjectLoader *result = nullptr;
 
   // Check the inputs.
   if (pFile.hasError()) {
     ALOGE("Input file %s to the object loader is in the invalid state! (%s)",
           input_filename, pFile.getErrorMessage().c_str());
-    return NULL;
+    return nullptr;
   }
 
   // Get the file size.
@@ -119,21 +119,21 @@ ObjectLoader *ObjectLoader::Load(FileBase &pFile,
   if (pFile.hasError()) {
     ALOGE("Failed to get size of file %s! (%s)", input_filename,
           pFile.getErrorMessage().c_str());
-    return NULL;
+    return nullptr;
   }
 
   // Abort on empty file.
   if (file_size <= 0) {
     ALOGE("Empty file %s to the object loader.", input_filename);
-    return NULL;
+    return nullptr;
   }
 
   // Create memory map for the input file.
   file_map = pFile.createMap(0, file_size, /* pIsReadOnly */true);
-  if ((file_map == NULL) || pFile.hasError())  {
+  if ((file_map == nullptr) || pFile.hasError())  {
     ALOGE("Failed to map the file %s to the memory! (%s)", input_filename,
           pFile.getErrorMessage().c_str());
-    return NULL;
+    return nullptr;
   }
 
   // Delegate the load request.

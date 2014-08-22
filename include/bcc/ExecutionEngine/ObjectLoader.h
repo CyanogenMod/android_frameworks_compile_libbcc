@@ -41,7 +41,7 @@ private:
 
   void *mDebugImage;
 
-  ObjectLoader() : mImpl(NULL), mDebugImage(0) { }
+  ObjectLoader() : mImpl(nullptr), mDebugImage(0) { }
 
 public:
   // Load from a in-memory object. pName is a descriptive name of this memory.

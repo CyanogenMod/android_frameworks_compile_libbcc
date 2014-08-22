@@ -88,7 +88,7 @@ bool RSInfo::IsConsistent(const char* pInputFilename, const DependencyHashTy& ex
     return true;
 }
 
-RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
+RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(nullptr) {
   ::memset(&mHeader, 0, sizeof(mHeader));
 
   ::memcpy(mHeader.magic, RSINFO_MAGIC, sizeof(mHeader.magic));
@@ -105,15 +105,15 @@ RSInfo::RSInfo(size_t pStringPoolSize) : mStringPool(NULL) {
   if (pStringPoolSize > 0) {
     mHeader.strPoolSize = pStringPoolSize;
     mStringPool = new (std::nothrow) char [ mHeader.strPoolSize ];
-    if (mStringPool == NULL) {
+    if (mStringPool == nullptr) {
       ALOGE("Out of memory when allocate memory for string pool in RSInfo "
             "constructor (size: %u)!", mHeader.strPoolSize);
     }
     ::memset(mStringPool, 0, mHeader.strPoolSize);
   }
-  mSourceHash = NULL;
-  mCompileCommandLine = NULL;
-  mBuildFingerprint = NULL;
+  mSourceHash = nullptr;
+  mCompileCommandLine = nullptr;
+  mBuildFingerprint = nullptr;
 }
 
 RSInfo::~RSInfo() {
@@ -153,14 +153,16 @@ void RSInfo::dump() const {
   ALOGV("\tHeader size: %u", mHeader.headerSize);
   ALOGV("\tString pool size: %u", mHeader.strPoolSize);
 
-  if (mSourceHash == NULL) {
+  if (mSourceHash == nullptr) {
       ALOGV("Source hash: NULL!");
   } else {
       ALOGV("Source hash: %s", stringFromSourceHash(mSourceHash).c_str());
   }
 
-  ALOGV("Compile Command Line: ", mCompileCommandLine ? mCompileCommandLine : "(NULL)");
-  ALOGV("mBuildFingerprint: ", mBuildFingerprint ? mBuildFingerprint : "(NULL)");
+  ALOGV("Compile Command Line: ", mCompileCommandLine ? mCompileCommandLine :
+                                                        "(NULL)");
+  ALOGV("mBuildFingerprint: ", mBuildFingerprint ? mBuildFingerprint :
+                                                   "(NULL)");
 
 #define DUMP_LIST_HEADER(_name, _header) do { \
   ALOGV(_name ":"); \
@@ -213,7 +215,7 @@ const char *RSInfo::getStringFromPool(rsinfo::StringIndexTy pStrIdx) const {
   if (pStrIdx >= mHeader.strPoolSize) {
     ALOGE("String index #%u is out of range in string pool (size: %u)!",
           pStrIdx, mHeader.strPoolSize);
-    return NULL;
+    return nullptr;
   }
   return &mStringPool[ pStrIdx ];
 }

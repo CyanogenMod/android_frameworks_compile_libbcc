@@ -41,7 +41,7 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
   case kSuccess:
     return "Successfully compiled.";
   case kInvalidConfigNoTarget:
-    return "Invalid compiler config supplied (getTarget() returns NULL.) "
+    return "Invalid compiler config supplied (getTarget() returns nullptr.) "
            "(missing call to CompilerConfig::initialize()?)";
   case kErrCreateTargetMachine:
     return "Failed to create llvm::TargetMachine.";
@@ -87,11 +87,11 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
 //===----------------------------------------------------------------------===//
 // Instance Methods
 //===----------------------------------------------------------------------===//
-Compiler::Compiler() : mTarget(NULL), mEnableLTO(true) {
+Compiler::Compiler() : mTarget(nullptr), mEnableLTO(true) {
   return;
 }
 
-Compiler::Compiler(const CompilerConfig &pConfig) : mTarget(NULL),
+Compiler::Compiler(const CompilerConfig &pConfig) : mTarget(nullptr),
                                                     mEnableLTO(true) {
   const std::string &triple = pConfig.getTriple();
 
@@ -106,7 +106,7 @@ Compiler::Compiler(const CompilerConfig &pConfig) : mTarget(NULL),
 }
 
 enum Compiler::ErrorCode Compiler::config(const CompilerConfig &pConfig) {
-  if (pConfig.getTarget() == NULL) {
+  if (pConfig.getTarget() == nullptr) {
     return kInvalidConfigNoTarget;
   }
 
@@ -119,8 +119,8 @@ enum Compiler::ErrorCode Compiler::config(const CompilerConfig &pConfig) {
                                                  pConfig.getCodeModel(),
                                                  pConfig.getOptimizationLevel());
 
-  if (new_target == NULL) {
-    return ((mTarget != NULL) ? kErrSwitchTargetMachine :
+  if (new_target == nullptr) {
+    return ((mTarget != nullptr) ? kErrSwitchTargetMachine :
                                 kErrCreateTargetMachine);
   }
 
@@ -145,14 +145,14 @@ Compiler::~Compiler() {
 }
 
 enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
-  llvm::DataLayoutPass *data_layout_pass = NULL;
+  llvm::DataLayoutPass *data_layout_pass = nullptr;
 
   // Pass manager for link-time optimization
   llvm::PassManager lto_passes;
 
   // Prepare DataLayout target data from Module
   data_layout_pass = new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
-  if (data_layout_pass == NULL) {
+  if (data_layout_pass == nullptr) {
     return kErrDataLayoutNoMemory;
   }
 
@@ -193,14 +193,14 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
 enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
                                               llvm::raw_ostream &pResult) {
   llvm::DataLayoutPass *data_layout_pass;
-  llvm::MCContext *mc_context = NULL;
+  llvm::MCContext *mc_context = nullptr;
 
   // Create pass manager for MC code generation.
   llvm::PassManager codegen_passes;
 
   // Prepare DataLayout target data from Module
   data_layout_pass = new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
-  if (data_layout_pass == NULL) {
+  if (data_layout_pass == nullptr) {
     return kErrDataLayoutNoMemory;
   }
 
@@ -246,12 +246,12 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   llvm::Module &module = pScript.getSource().getModule();
   enum ErrorCode err;
 
-  if (mTarget == NULL) {
+  if (mTarget == nullptr) {
     return kErrNoTargetMachine;
   }
 
   // Materialize the bitcode module.
-  if (module.getMaterializer() != NULL) {
+  if (module.getMaterializer() != nullptr) {
     // A module with non-null materializer means that it is a lazy-load module.
     // Materialize it now via invoking MaterializeAllPermanently(). This
     // function returns false when the materialization is successful.
@@ -287,7 +287,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
 
   // Open the output file decorated in llvm::raw_ostream.
   llvm::raw_ostream *out = pResult.dup();
-  if (out == NULL) {
+  if (out == nullptr) {
     return kErrPrepareOutput;
   }
 

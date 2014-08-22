@@ -117,31 +117,31 @@ void BCCVersionPrinter() {
 
 RSScript *PrepareRSScript(BCCContext &pContext,
                           const llvm::cl::list<std::string> &pBitcodeFiles) {
-  RSScript *result = NULL;
+  RSScript *result = nullptr;
 
   for (unsigned i = 0; i < pBitcodeFiles.size(); i++) {
     const std::string &input_bitcode = pBitcodeFiles[i];
     Source *source = Source::CreateFromFile(pContext, input_bitcode);
-    if (source == NULL) {
+    if (source == nullptr) {
       llvm::errs() << "Failed to load llvm module from file `" << input_bitcode
                    << "'!\n";
-      return NULL;
+      return nullptr;
     }
 
-    if (result != NULL) {
+    if (result != nullptr) {
       if (!result->mergeSource(*source, /* pPreserveSource */false)) {
         llvm::errs() << "Failed to merge the llvm module `" << input_bitcode
                      << "' to compile!\n";
         delete source;
-        return NULL;
+        return nullptr;
       }
     } else {
       result = new (std::nothrow) RSScript(*source);
-      if (result == NULL) {
+      if (result == nullptr) {
         llvm::errs() << "Out of memory when create script for file `"
                      << input_bitcode << "'!\n";
         delete source;
-        return NULL;
+        return nullptr;
       }
     }
   }
@@ -152,10 +152,10 @@ RSScript *PrepareRSScript(BCCContext &pContext,
 static inline
 bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
   RSCompiler *compiler = pCompilerDriver.getCompiler();
-  CompilerConfig *config = NULL;
+  CompilerConfig *config = nullptr;
 
   config = new (std::nothrow) CompilerConfig(OptTargetTriple);
-  if (config == NULL) {
+  if (config == nullptr) {
     llvm::errs() << "Out of memory when create the compiler configuration!\n";
     return false;
   }
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  RSScript *s = NULL;
+  RSScript *s = nullptr;
   s = PrepareRSScript(context, OptInputFilenames);
   if (!rscd.buildForCompatLib(*s, OutputFilename.c_str(), OptRuntimePath.c_str())) {
     fprintf(stderr, "Failed to compile script!");

@@ -70,7 +70,7 @@ static const unsigned int kMinimumCompatibleVersion_LLVM_2_7 = 11;
 
 BitcodeTranslator::BitcodeTranslator(const char *bitcode, size_t bitcodeSize,
                                      unsigned int version)
-    : mBitcode(bitcode), mBitcodeSize(bitcodeSize), mTranslatedBitcode(NULL),
+    : mBitcode(bitcode), mBitcodeSize(bitcodeSize), mTranslatedBitcode(nullptr),
       mTranslatedBitcodeSize(0), mVersion(version) {
   return;
 }
@@ -82,7 +82,7 @@ BitcodeTranslator::~BitcodeTranslator() {
     // the bitcode would be improper.
     delete [] mTranslatedBitcode;
   }
-  mTranslatedBitcode = NULL;
+  mTranslatedBitcode = nullptr;
   return;
 }
 
@@ -125,7 +125,7 @@ bool BitcodeTranslator::translate() {
   std::string error;
 
   // Module ownership is handled by the context, so we don't need to free it.
-  llvm::Module *module = NULL;
+  llvm::Module *module = nullptr;
 
   if (mVersion >= kMinimumCompatibleVersion_LLVM_3_0) {
     module = llvm_3_0::ParseBitcodeFile(MEM.get(), *mContext, &error);
