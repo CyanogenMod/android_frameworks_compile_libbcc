@@ -26,7 +26,7 @@ public:
   static void *LookupFunction(void *pResolver, const char *pName) {
     SymbolResolverInterface *resolver =
         reinterpret_cast<SymbolResolverInterface*>(pResolver);
-    return ((resolver != NULL) ? resolver->getAddress(pName) : NULL);
+    return ((resolver != nullptr) ? resolver->getAddress(pName) : nullptr);
   }
 
   // Should this be a const method?

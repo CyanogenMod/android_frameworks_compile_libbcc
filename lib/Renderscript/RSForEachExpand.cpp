@@ -103,7 +103,7 @@ private:
     // We only handle the case for legacy root() functions here, so this is
     // hard-coded to look at only the first such function.
     llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(0);
-    if (SigNode != NULL && SigNode->getNumOperands() == 1) {
+    if (SigNode != nullptr && SigNode->getNumOperands() == 1) {
       llvm::Value *SigVal = SigNode->getOperand(0);
       if (SigVal->getValueID() == llvm::Value::MDStringVal) {
         llvm::StringRef SigString =
@@ -307,7 +307,7 @@ private:
 
 public:
   RSForEachExpandPass(bool pEnableStepOpt)
-      : ModulePass(ID), Module(NULL), Context(NULL),
+      : ModulePass(ID), Module(nullptr), Context(nullptr),
         mEnableStepOpt(pEnableStepOpt) {
 
   }
@@ -348,8 +348,8 @@ public:
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_outstep = &*(ExpandedFunctionArgIter);
 
-    llvm::Value *InStep  = NULL;
-    llvm::Value *OutStep = NULL;
+    llvm::Value *InStep  = nullptr;
+    llvm::Value *OutStep = nullptr;
 
     // Construct the actual function body.
     llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
@@ -358,8 +358,8 @@ public:
     // Note that we load any loop-invariant arguments before entering the Loop.
     llvm::Function::arg_iterator FunctionArgIter = Function->arg_begin();
 
-    llvm::Type  *InTy      = NULL;
-    llvm::Value *InBasePtr = NULL;
+    llvm::Type  *InTy      = nullptr;
+    llvm::Value *InBasePtr = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
       llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p,
                                                            PARAM_FIELD_INS);
@@ -385,8 +385,8 @@ public:
       InBasePtr = Builder.CreateLoad(InputAddr, "input_base");
     }
 
-    llvm::Type *OutTy = NULL;
-    llvm::Value *OutBasePtr = NULL;
+    llvm::Type *OutTy = nullptr;
+    llvm::Value *OutBasePtr = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureOut(Signature)) {
       OutTy = (FunctionArgIter++)->getType();
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
@@ -395,7 +395,7 @@ public:
                      Builder.CreateStructGEP(Arg_p, PARAM_FIELD_OUT));
     }
 
-    llvm::Value *UsrData = NULL;
+    llvm::Value *UsrData = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = (FunctionArgIter++)->getType();
       UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
@@ -407,7 +407,7 @@ public:
       FunctionArgIter++;
     }
 
-    llvm::Value *Y = NULL;
+    llvm::Value *Y = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
       Y = Builder.CreateLoad(
             Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
@@ -423,8 +423,8 @@ public:
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
-    llvm::Value *InPtr  = NULL;
-    llvm::Value *OutPtr = NULL;
+    llvm::Value *InPtr  = nullptr;
+    llvm::Value *OutPtr = nullptr;
 
     // Calculate the current input and output pointers
     //
@@ -524,7 +524,7 @@ public:
      */
     size_t NumInputs = Function->arg_size();
 
-    llvm::Value *Y = NULL;
+    llvm::Value *Y = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
       Y = Builder.CreateLoad(
             Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
@@ -543,9 +543,9 @@ public:
     llvm::Function::arg_iterator ArgIter = Function->arg_begin();
 
     // Check the return type
-    llvm::Type     *OutTy      = NULL;
-    llvm::Value    *OutStep    = NULL;
-    llvm::LoadInst *OutBasePtr = NULL;
+    llvm::Type     *OutTy      = nullptr;
+    llvm::Value    *OutStep    = nullptr;
+    llvm::LoadInst *OutBasePtr = nullptr;
 
     bool PassOutByPointer = false;
 
@@ -651,7 +651,7 @@ public:
 
     // Output
 
-    llvm::Value *OutPtr = NULL;
+    llvm::Value *OutPtr = nullptr;
     if (OutBasePtr) {
       llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
 

@@ -54,7 +54,7 @@ private:
 public:
   RSEmbedInfoPass()
       : ModulePass(ID),
-        M(NULL) {
+        M(nullptr) {
   }
 
   static std::string getRSInfoString(const llvm::Module *module) {

@@ -32,7 +32,7 @@ const char *RSExecutable::SpecialFunctionNames[] = {
   "init",      // Initialization routine called implicitly on startup.
   ".rs.dtor",  // Static global destructor for a script instance.
   ".rs.info",  // Variable containing string of RS metadata info.
-  NULL         // Must be NULL-terminated.
+  nullptr         // Must be nullptr-terminated.
 };
 
 RSExecutable *RSExecutable::Create(RSInfo &pInfo,
@@ -43,18 +43,18 @@ RSExecutable *RSExecutable::Create(RSInfo &pInfo,
   ObjectLoader *loader = ObjectLoader::Load(pObjFile,
                                             pResolver,
                                             pInfo.hasDebugInformation());
-  if (loader == NULL) {
-    return NULL;
+  if (loader == nullptr) {
+    return nullptr;
   }
 
   // Now, all things required to build a RSExecutable object are ready.
   RSExecutable *result = new (std::nothrow) RSExecutable(pInfo,
                                                          pObjFile,
                                                          *loader);
-  if (result == NULL) {
+  if (result == nullptr) {
     ALOGE("Out of memory when create object to hold RS result file for %s!",
           pObjFile.getName().c_str());
-    return NULL;
+    return nullptr;
   }
 
   unsigned idx;
@@ -68,7 +68,7 @@ RSExecutable *RSExecutable::Create(RSInfo &pInfo,
        var_iter++, idx++) {
     const char *name = *var_iter;
     void *addr = result->getSymbolAddress(name);
-    if (addr == NULL) {
+    if (addr == nullptr) {
         //ALOGW("RS export var at entry #%u named %s cannot be found in the result "
         //"object!", idx, name);
     }
@@ -170,7 +170,7 @@ void RSExecutable::dumpDisassembly(OutputFile &pOutput) const {
       void *func = mLoader->getSymbolAddress(func_name);
       size_t func_size = mLoader->getSymbolSize(func_name);
 
-      if (func == NULL) {
+      if (func == nullptr) {
         continue;
       }
       DisassembleResult result =

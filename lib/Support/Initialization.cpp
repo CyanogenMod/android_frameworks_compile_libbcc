@@ -43,7 +43,7 @@ void bcc::init::Initialize() {
 
   // Setup error handler for LLVM.
   llvm::remove_fatal_error_handler();
-  llvm::install_fatal_error_handler(llvm_error_handler, NULL);
+  llvm::install_fatal_error_handler(llvm_error_handler, nullptr);
 
 #if defined(PROVIDE_ARM_CODEGEN)
   LLVMInitializeARMAsmPrinter();
