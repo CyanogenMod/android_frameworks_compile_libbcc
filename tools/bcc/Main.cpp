@@ -125,6 +125,30 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
     return false;
   }
 
+  // llvm3.5 has removed the auto-detect feature for x86 subtarget,
+  // so set features explicitly in bcc.
+  if ((config->getTriple().find("i686") != std::string::npos) ||
+    (config->getTriple().find("x86_64") != std::string::npos)) {
+    std::vector<std::string> fv;
+
+#if defined(__SSE3__)
+    fv.push_back("+sse3");
+#endif
+#if defined(__SSSE3__)
+    fv.push_back("+ssse3");
+#endif
+#if defined(__SSE4_1__)
+    fv.push_back("+sse4.1");
+#endif
+#if defined(__SSE4_2__)
+    fv.push_back("+sse4.2");
+#endif
+
+    if (fv.size()) {
+      config->setFeatureString(fv);
+    }
+  }
+
   switch (OptOptLevel) {
     case '0': config->setOptimizationLevel(llvm::CodeGenOpt::None); break;
     case '1': config->setOptimizationLevel(llvm::CodeGenOpt::Less); break;
