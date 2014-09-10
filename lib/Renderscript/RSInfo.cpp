@@ -159,10 +159,10 @@ void RSInfo::dump() const {
       ALOGV("Source hash: %s", stringFromSourceHash(mSourceHash).c_str());
   }
 
-  ALOGV("Compile Command Line: ", mCompileCommandLine ? mCompileCommandLine :
-                                                        "(NULL)");
-  ALOGV("mBuildFingerprint: ", mBuildFingerprint ? mBuildFingerprint :
-                                                   "(NULL)");
+  ALOGV("Compile Command Line: %s", mCompileCommandLine ? mCompileCommandLine :
+                                                          "(NULL)");
+  ALOGV("mBuildFingerprint: %s", mBuildFingerprint ? mBuildFingerprint :
+                                                     "(NULL)");
 
 #define DUMP_LIST_HEADER(_name, _header) do { \
   ALOGV(_name ":"); \
