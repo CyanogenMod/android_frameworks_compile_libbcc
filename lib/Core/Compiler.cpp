@@ -34,6 +34,8 @@
 #include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"
 
+#include <string>
+
 using namespace bcc;
 
 const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
@@ -248,6 +250,21 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
 
   if (mTarget == NULL) {
     return kErrNoTargetMachine;
+  }
+
+  const std::string &triple = module.getTargetTriple();
+  const llvm::DataLayout *dl = getTargetMachine().getDataLayout();
+  unsigned int pointerSize = dl->getPointerSizeInBits();
+  if (triple == "armv7-none-linux-gnueabi") {
+    if (pointerSize != 32) {
+      return kErrInvalidSource;
+    }
+  } else if (triple == "aarch64-none-linux-gnueabi") {
+    if (pointerSize != 64) {
+      return kErrInvalidSource;
+    }
+  } else {
+    return kErrInvalidSource;
   }
 
   // Materialize the bitcode module.
