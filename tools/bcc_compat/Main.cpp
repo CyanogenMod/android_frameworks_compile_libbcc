@@ -170,14 +170,10 @@ bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
     config->setFeatureString(fv);
   }
 
-  // FIXME: Atom code generation in LLVM 3.5 seems broken.
-  // Bug: 15343872
-#if 0
   // Compatibility mode on x86 requires atom code generation.
   if (config->getTriple().find("i686") != std::string::npos) {
     config->setCPU("atom");
   }
-#endif
 
   // Setup the config according to the value of command line option.
   if (OptPIC) {
