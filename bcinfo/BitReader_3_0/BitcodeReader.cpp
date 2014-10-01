@@ -3403,8 +3403,8 @@ std::error_code BitcodeReader::InitLazyStream() {
 }
 
 namespace {
-class BitcodeErrorCategoryType : public std::__do_message {
-  const char *name() const override {
+class BitcodeErrorCategoryType : public std::error_category {
+  const char *name() const LLVM_NOEXCEPT override {
     return "llvm.bitcode";
   }
   std::string message(int IE) const override {
