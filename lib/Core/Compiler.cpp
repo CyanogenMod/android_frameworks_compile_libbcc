@@ -147,6 +147,8 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
   // Empty MCContext.
   llvm::MCContext *mc_context = nullptr;
 
+  mTarget->addAnalysisPasses(passes);
+
   // Prepare DataLayout target data from Module
   llvm::DataLayoutPass *data_layout_pass =
     new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
