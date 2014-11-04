@@ -16,8 +16,10 @@
 
 #include "bcc/Renderscript/RSCompiler.h"
 
+#include <llvm/ADT/Triple.h>
 #include <llvm/IR/Module.h>
 #include <llvm/PassManager.h>
+#include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO.h>
 
 #include "bcc/Assert.h"
@@ -88,6 +90,14 @@ bool RSCompiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &p
   return true;
 }
 
+bool RSCompiler::addInvokeHelperPass(llvm::PassManager &pPM) {
+  llvm::Triple arch(getTargetMachine().getTargetTriple());
+  if (arch.isArch64Bit()) {
+    pPM.add(createRSInvokeHelperPass());
+  }
+  return true;
+}
+
 bool RSCompiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   // Script passed to RSCompiler must be a RSScript.
   RSScript &script = static_cast<RSScript &>(pScript);
@@ -102,6 +112,9 @@ bool RSCompiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
 }
 
 bool RSCompiler::beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM) {
+  if (!addInvokeHelperPass(pPM))
+    return false;
+
   if (!addExpandForEachPass(pScript, pPM))
     return false;
 

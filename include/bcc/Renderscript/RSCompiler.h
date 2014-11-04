@@ -26,6 +26,7 @@ private:
   virtual bool beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM);
   bool addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM);
   bool addExpandForEachPass(Script &pScript, llvm::PassManager &pPM);
+  bool addInvokeHelperPass(llvm::PassManager &pPM);
 };
 
 } // end namespace bcc
