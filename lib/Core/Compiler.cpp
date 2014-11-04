@@ -152,6 +152,8 @@ enum Compiler::ErrorCode Compiler::runLTO(Script &pScript) {
   // Pass manager for link-time optimization
   llvm::PassManager lto_passes;
 
+  mTarget->addAnalysisPasses(lto_passes);
+
   // Prepare DataLayout target data from Module
   data_layout_pass = new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
   if (data_layout_pass == nullptr) {
@@ -199,6 +201,8 @@ enum Compiler::ErrorCode Compiler::runCodeGen(Script &pScript,
 
   // Create pass manager for MC code generation.
   llvm::PassManager codegen_passes;
+
+  mTarget->addAnalysisPasses(codegen_passes);
 
   // Prepare DataLayout target data from Module
   data_layout_pass = new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
