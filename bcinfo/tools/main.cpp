@@ -121,19 +121,19 @@ static int dumpInfo(bcinfo::MetadataExtractor *ME) {
     return 2;
   }
 
-  fprintf(info, "exportVarCount: %zu\n", ME->getExportVarCount());
+  fprintf(info, "exportVarCount: %u\n", ME->getExportVarCount());
   const char **varNameList = ME->getExportVarNameList();
   for (size_t i = 0; i < ME->getExportVarCount(); i++) {
     fprintf(info, "%s\n", varNameList[i]);
   }
 
-  fprintf(info, "exportFuncCount: %zu\n", ME->getExportFuncCount());
+  fprintf(info, "exportFuncCount: %u\n", ME->getExportFuncCount());
   const char **funcNameList = ME->getExportFuncNameList();
   for (size_t i = 0; i < ME->getExportFuncCount(); i++) {
     fprintf(info, "%s\n", funcNameList[i]);
   }
 
-  fprintf(info, "exportForEachCount: %zu\n",
+  fprintf(info, "exportForEachCount: %u\n",
           ME->getExportForEachSignatureCount());
   const char **nameList = ME->getExportForEachNameList();
   const uint32_t *sigList = ME->getExportForEachSignatureList();
@@ -143,7 +143,7 @@ static int dumpInfo(bcinfo::MetadataExtractor *ME) {
             inputCountList[i]);
   }
 
-  fprintf(info, "objectSlotCount: %zu\n", ME->getObjectSlotCount());
+  fprintf(info, "objectSlotCount: %u\n", ME->getObjectSlotCount());
   const uint32_t *slotList = ME->getObjectSlotList();
   for (size_t i = 0; i < ME->getObjectSlotCount(); i++) {
     fprintf(info, "%u\n", slotList[i]);
@@ -172,43 +172,43 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
     break;
   }
 
-  printf("exportVarCount: %zu\n", ME->getExportVarCount());
+  printf("exportVarCount: %u\n", ME->getExportVarCount());
   const char **varNameList = ME->getExportVarNameList();
   for (size_t i = 0; i < ME->getExportVarCount(); i++) {
-    printf("var[%zu]: %s\n", i, varNameList[i]);
+    printf("var[%u]: %s\n", i, varNameList[i]);
   }
   printf("\n");
 
-  printf("exportFuncCount: %zu\n", ME->getExportFuncCount());
+  printf("exportFuncCount: %u\n", ME->getExportFuncCount());
   const char **funcNameList = ME->getExportFuncNameList();
   for (size_t i = 0; i < ME->getExportFuncCount(); i++) {
-    printf("func[%zu]: %s\n", i, funcNameList[i]);
+    printf("func[%u]: %s\n", i, funcNameList[i]);
   }
   printf("\n");
 
-  printf("exportForEachSignatureCount: %zu\n",
+  printf("exportForEachSignatureCount: %u\n",
          ME->getExportForEachSignatureCount());
   const char **nameList = ME->getExportForEachNameList();
   const uint32_t *sigList = ME->getExportForEachSignatureList();
   const uint32_t *inputCountList = ME->getExportForEachInputCountList();
   for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
-    printf("exportForEachSignatureList[%zu]: %s - %u - %u\n", i, nameList[i],
+    printf("exportForEachSignatureList[%u]: %s - %u - %u\n", i, nameList[i],
            sigList[i], inputCountList[i]);
   }
   printf("\n");
 
-  printf("pragmaCount: %zu\n", ME->getPragmaCount());
+  printf("pragmaCount: %u\n", ME->getPragmaCount());
   const char **keyList = ME->getPragmaKeyList();
   const char **valueList = ME->getPragmaValueList();
   for (size_t i = 0; i < ME->getPragmaCount(); i++) {
-    printf("pragma[%zu]: %s - %s\n", i, keyList[i], valueList[i]);
+    printf("pragma[%u]: %s - %s\n", i, keyList[i], valueList[i]);
   }
   printf("\n");
 
-  printf("objectSlotCount: %zu\n", ME->getObjectSlotCount());
+  printf("objectSlotCount: %u\n", ME->getObjectSlotCount());
   const uint32_t *slotList = ME->getObjectSlotList();
   for (size_t i = 0; i < ME->getObjectSlotCount(); i++) {
-    printf("objectSlotList[%zu]: %u\n", i, slotList[i]);
+    printf("objectSlotList[%u]: %u\n", i, slotList[i]);
   }
   printf("\n");
 
