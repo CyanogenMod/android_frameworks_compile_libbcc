@@ -84,7 +84,7 @@ bool ELFObjectLoaderImpl::prepareDebugImage(void *pDebugImg,
   if (elf_header->e_shoff > pDebugImgSize) {
 #ifdef __LP64__
     ALOGE("Invalid section header table offset found! (e_shoff = %ld)",
-	  elf_header->e_shoff);
+    static_cast<unsigned long>(elf_header->e_shoff));
 #else
     ALOGE("Invalid section header table offset found! (e_shoff = %d)",
           elf_header->e_shoff);
@@ -96,8 +96,8 @@ bool ELFObjectLoaderImpl::prepareDebugImage(void *pDebugImg,
        sizeof(llvm::ELF::Elf32_Shdr) * elf_header->e_shnum) > pDebugImgSize) {
 #ifdef __LP64__
     ALOGE("Invalid image supplied (debug image doesn't contain all the section"
-	  "header or corrupted image)! (e_shoff = %ld, e_shnum = %d)",
-	  elf_header->e_shoff, elf_header->e_shnum);
+    "header or corrupted image)! (e_shoff = %ld, e_shnum = %d)",
+    static_cast<unsigned long>(elf_header->e_shoff), elf_header->e_shnum);
 #else
     ALOGE("Invalid image supplied (debug image doesn't contain all the section"
           "header or corrupted image)! (e_shoff = %d, e_shnum = %d)",
