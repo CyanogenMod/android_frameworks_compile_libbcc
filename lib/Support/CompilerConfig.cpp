@@ -182,6 +182,8 @@ bool CompilerConfig::initializeArch() {
 #if defined (PROVIDE_MIPS64_CODEGEN)
   case llvm::Triple::mips64:
   case llvm::Triple::mips64el:
+    // Default revision for MIPS64 Android is R6.
+    setCPU("mips64r6");
     break;
 #endif // PROVIDE_MIPS64_CODEGEN
 
