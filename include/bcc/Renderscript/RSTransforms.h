@@ -19,12 +19,16 @@
 
 namespace llvm {
   class ModulePass;
+  class FunctionPass;
 }
 
 namespace bcc {
 
 llvm::ModulePass *
 createRSForEachExpandPass(bool pEnableStepOpt);
+
+llvm::FunctionPass *
+createRSInvokeHelperPass();
 
 llvm::ModulePass * createRSEmbedInfoPass();
 
