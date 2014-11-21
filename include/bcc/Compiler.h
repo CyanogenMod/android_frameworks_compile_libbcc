@@ -64,14 +64,7 @@ public:
     kErrPrepareOutput,
     kPrepareCodeGenPass,
 
-    kErrHookBeforeAddLTOPasses,
-    kErrHookAfterAddLTOPasses,
-    kErrHookAfterExecuteLTOPasses,
-
-    kErrHookBeforeAddCodeGenPasses,
-    kErrHookAfterAddCodeGenPasses,
-    kErrHookBeforeExecuteCodeGenPasses,
-    kErrHookAfterExecuteCodeGenPasses,
+    kErrCustomPasses,
 
     kErrInvalidSource
   };
@@ -80,11 +73,15 @@ public:
 
 private:
   llvm::TargetMachine *mTarget;
-  // LTO is enabled by default.
-  bool mEnableLTO;
+  // Optimization is enabled by default.
+  bool mEnableOpt;
 
-  enum ErrorCode runLTO(Script &pScript);
-  enum ErrorCode runCodeGen(Script &pScript, llvm::raw_ostream &pResult);
+  enum ErrorCode runPasses(Script &pScript, llvm::raw_ostream &pResult);
+
+  bool addCustomPasses(Script &pScript, llvm::PassManager &pPM);
+  bool addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM);
+  bool addExpandForEachPass(Script &pScript, llvm::PassManager &pPM);
+  bool addInvokeHelperPass(llvm::PassManager &pPM);
 
 public:
   Compiler();
@@ -106,48 +103,10 @@ public:
   const llvm::TargetMachine& getTargetMachine() const
   { return *mTarget; }
 
-  void enableLTO(bool pEnable = true)
-  { mEnableLTO = pEnable; }
+  void enableOpt(bool pEnable = true)
+  { mEnableOpt = pEnable; }
 
-  virtual ~Compiler();
-
-protected:
-  //===--------------------------------------------------------------------===//
-  // Plugin callbacks for sub-class.
-  //===--------------------------------------------------------------------===//
-  // Called before adding first pass to code-generation passes.
-  virtual bool beforeAddLTOPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
-
-  // Called after adding last pass to code-generation passes.
-  virtual bool afterAddLTOPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
-
-  // Called before executing code-generation passes.
-  virtual bool beforeExecuteLTOPasses(Script &pScript,
-                                          llvm::PassManager &pPM)
-  { return true; }
-
-  // Called after executing code-generation passes.
-  virtual bool afterExecuteLTOPasses(Script &pScript)
-  { return true; }
-
-  // Called before adding first pass to code-generation passes.
-  virtual bool beforeAddCodeGenPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
-
-  // Called after adding last pass to code-generation passes.
-  virtual bool afterAddCodeGenPasses(Script &pScript, llvm::PassManager &pPM)
-  { return true; }
-
-  // Called before executing code-generation passes.
-  virtual bool beforeExecuteCodeGenPasses(Script &pScript,
-                                          llvm::PassManager &pPM)
-  { return true; }
-
-  // Called after executing code-generation passes.
-  virtual bool afterExecuteCodeGenPasses(Script &pScript)
-  { return true; }
+  ~Compiler();
 };
 
 } // end namespace bcc
