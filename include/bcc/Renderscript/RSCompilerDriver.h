@@ -17,11 +17,11 @@
 #ifndef BCC_RS_COMPILER_DRIVER_H
 #define BCC_RS_COMPILER_DRIVER_H
 
+#include "bcc/Compiler.h"
 #include "bcc/ExecutionEngine/CompilerRTSymbolResolver.h"
 #include "bcc/ExecutionEngine/SymbolResolvers.h"
 #include "bcc/ExecutionEngine/SymbolResolverProxy.h"
 #include "bcc/Renderscript/RSInfo.h"
-#include "bcc/Renderscript/RSCompiler.h"
 #include "bcc/Renderscript/RSScript.h"
 
 namespace bcc {
@@ -39,7 +39,7 @@ typedef void (*RSCompilerDriverInit_t) (bcc::RSCompilerDriver *);
 class RSCompilerDriver {
 private:
   CompilerConfig *mConfig;
-  RSCompiler mCompiler;
+  Compiler mCompiler;
 
   // Are we compiling under an RS debug context with additional checks?
   bool mDebugContext;
@@ -73,7 +73,7 @@ public:
   RSCompilerDriver(bool pUseCompilerRT = true);
   ~RSCompilerDriver();
 
-  RSCompiler *getCompiler() {
+  Compiler *getCompiler() {
     return &mCompiler;
   }
 

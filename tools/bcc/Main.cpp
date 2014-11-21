@@ -116,7 +116,7 @@ void BCCVersionPrinter() {
 
 static inline
 bool ConfigCompiler(RSCompilerDriver &pRSCD) {
-  RSCompiler *RSC = pRSCD.getCompiler();
+  Compiler *RSC = pRSCD.getCompiler();
   CompilerConfig *config = nullptr;
 
   config = new (std::nothrow) CompilerConfig(OptTargetTriple);
