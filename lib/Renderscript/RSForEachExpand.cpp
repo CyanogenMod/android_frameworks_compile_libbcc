@@ -579,9 +579,10 @@ public:
     llvm::Function::arg_iterator ArgIter = Function->arg_begin();
 
     // Check the return type
-    llvm::Type     *OutTy      = nullptr;
-    llvm::Value    *OutStep    = nullptr;
-    llvm::LoadInst *OutBasePtr = nullptr;
+    llvm::Type     *OutTy            = nullptr;
+    llvm::Value    *OutStep          = nullptr;
+    llvm::LoadInst *OutBasePtr       = nullptr;
+    llvm::Value    *CastedOutBasePtr = nullptr;
 
     bool PassOutByPointer = false;
 
@@ -607,12 +608,13 @@ public:
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
       }
+      CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
     }
 
-    llvm::SmallVector<llvm::Type*,     8> InTypes;
-    llvm::SmallVector<llvm::Value*,    8> InSteps;
-    llvm::SmallVector<llvm::LoadInst*, 8> InBasePtrs;
-    llvm::SmallVector<bool,            8> InIsStructPointer;
+    llvm::SmallVector<llvm::Type*,  8> InTypes;
+    llvm::SmallVector<llvm::Value*, 8> InSteps;
+    llvm::SmallVector<llvm::Value*, 8> InBasePtrs;
+    llvm::SmallVector<bool,         8> InIsStructPointer;
 
     if (NumInputs > 0) {
       llvm::Value *InsMember = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INS);
@@ -657,14 +659,15 @@ public:
           llvm::Value    *InputAddr = Builder.CreateGEP(InsBasePtr, IndexVal);
           llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
                                                          "input_base");
-
+          llvm::Value    *CastInBasePtr = Builder.CreatePointerCast(InBasePtr,
+                                                                    InType, "casted_in");
           if (gEnableRsTbaa) {
             InBasePtr->setMetadata("tbaa", TBAAPointer);
           }
 
           InTypes.push_back(InType);
           InSteps.push_back(InStep);
-          InBasePtrs.push_back(InBasePtr);
+          InBasePtrs.push_back(CastInBasePtr);
       }
     }
 
@@ -688,12 +691,10 @@ public:
     // Output
 
     llvm::Value *OutPtr = nullptr;
-    if (OutBasePtr) {
+    if (CastedOutBasePtr) {
       llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
 
-      OutOffset = Builder.CreateMul(OutOffset, OutStep);
-      OutPtr    = Builder.CreateGEP(OutBasePtr, OutOffset);
-      OutPtr    = Builder.CreatePointerCast(OutPtr, OutTy);
+      OutPtr    = Builder.CreateGEP(CastedOutBasePtr, OutOffset);
 
       if (PassOutByPointer) {
         RootArgs.push_back(OutPtr);
@@ -706,11 +707,7 @@ public:
       llvm::Value *Offset = Builder.CreateSub(IV, Arg_x1);
 
       for (size_t Index = 0; Index < NumInputs; ++Index) {
-        llvm::Value *InOffset = Builder.CreateMul(Offset, InSteps[Index]);
-        llvm::Value *InPtr    = Builder.CreateGEP(InBasePtrs[Index], InOffset);
-
-        InPtr = Builder.CreatePointerCast(InPtr, InTypes[Index]);
-
+        llvm::Value *InPtr    = Builder.CreateGEP(InBasePtrs[Index], Offset);
         llvm::Value *Input;
 
         if (InIsStructPointer[Index]) {
