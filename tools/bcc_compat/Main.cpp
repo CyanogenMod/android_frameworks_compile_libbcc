@@ -151,7 +151,7 @@ RSScript *PrepareRSScript(BCCContext &pContext,
 
 static inline
 bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
-  RSCompiler *compiler = pCompilerDriver.getCompiler();
+  Compiler *compiler = pCompilerDriver.getCompiler();
   CompilerConfig *config = nullptr;
 
   config = new (std::nothrow) CompilerConfig(OptTargetTriple);
