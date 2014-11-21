@@ -317,6 +317,14 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM
   return true;
 }
 
+bool Compiler::addInvokeHelperPass(llvm::PassManager &pPM) {
+  llvm::Triple arch(getTargetMachine().getTargetTriple());
+  if (arch.isArch64Bit()) {
+    pPM.add(createRSInvokeHelperPass());
+  }
+  return true;
+}
+
 bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   // Script passed to RSCompiler must be a RSScript.
   RSScript &script = static_cast<RSScript &>(pScript);
@@ -331,6 +339,9 @@ bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
 }
 
 bool Compiler::addCustomPasses(Script &pScript, llvm::PassManager &pPM) {
+  if (!addInvokeHelperPass(pPM))
+    return false;
+
   if (!addExpandForEachPass(pScript, pPM))
     return false;
 
