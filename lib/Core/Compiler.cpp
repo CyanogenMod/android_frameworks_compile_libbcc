@@ -23,6 +23,7 @@
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/Target/TargetSubtargetInfo.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
@@ -151,7 +152,7 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
 
   // Prepare DataLayout target data from Module
   llvm::DataLayoutPass *data_layout_pass =
-    new (std::nothrow) llvm::DataLayoutPass(*mTarget->getDataLayout());
+    new (std::nothrow) llvm::DataLayoutPass();
 
   if (data_layout_pass == nullptr) {
     return kErrDataLayoutNoMemory;
@@ -172,9 +173,8 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
   } else {
     // FIXME: Figure out which passes should be executed.
     llvm::PassManagerBuilder Builder;
-    Builder.populateLTOPassManager(passes,
-                                   /*Internalize*/ false,
-                                   /*RunInliner*/  true);
+    Builder.Inliner = llvm::createFunctionInliningPass();
+    Builder.populateLTOPassManager(passes, mTarget);
   }
 
   // Add passes to the pass manager to emit machine code through MC layer.
@@ -200,7 +200,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   const std::string &triple = module.getTargetTriple();
-  const llvm::DataLayout *dl = getTargetMachine().getDataLayout();
+  const llvm::DataLayout *dl = getTargetMachine().getSubtargetImpl()->getDataLayout();
   unsigned int pointerSize = dl->getPointerSizeInBits();
   if (triple == "armv7-none-linux-gnueabi") {
     if (pointerSize != 32) {

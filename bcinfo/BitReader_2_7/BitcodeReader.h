@@ -129,8 +129,7 @@ public:
 class BitcodeReader : public GVMaterializer {
   LLVMContext &Context;
   Module *TheModule;
-  MemoryBuffer *Buffer;
-  bool BufferOwned;
+  std::unique_ptr<MemoryBuffer> Buffer;
   std::unique_ptr<BitstreamReader> StreamFile;
   BitstreamCursor Stream;
   DataStreamer *LazyStreamer;
@@ -193,7 +192,6 @@ class BitcodeReader : public GVMaterializer {
 
 public:
   enum ErrorType {
-    BitcodeStreamInvalidSize,
     ConflictingMETADATA_KINDRecords,
     CouldNotFindFunctionInStream,
     ExpectedConstant,
@@ -215,12 +213,12 @@ public:
     InvalidValue // Invalid version, inst number, attr number, etc
   };
 
-  std::error_code Error(ErrorType E) {
-    return std::error_code(E, BitcodeErrorCategory());
+  std::error_code Error(BitcodeError E) {
+    return make_error_code(E);
   }
 
   explicit BitcodeReader(MemoryBuffer *buffer, LLVMContext &C)
-    : Context(C), TheModule(0), Buffer(buffer), BufferOwned(false),
+    : Context(C), TheModule(0), Buffer(buffer),
       LazyStreamer(0), NextUnreadBit(0), SeenValueSymbolTable(false),
       ValueList(C), MDValueList(C),
       SeenFirstFunctionBody(false), LLVM2_7MetadataDetected(false) {
@@ -231,17 +229,13 @@ public:
 
   void FreeState();
 
-  /// setBufferOwned - If this is true, the reader will destroy the MemoryBuffer
-  /// when the reader is destroyed.
-  void setBufferOwned(bool Owned) { BufferOwned = Owned; }
-
   void releaseBuffer() {
     Buffer = nullptr;
   }
 
   virtual bool isMaterializable(const GlobalValue *GV) const;
   virtual bool isDematerializable(const GlobalValue *GV) const;
-  virtual std::error_code Materialize(GlobalValue *GV);
+  virtual std::error_code materialize(GlobalValue *GV);
   virtual std::error_code MaterializeModule(Module *M);
   virtual void Dematerialize(GlobalValue *GV);
 
@@ -251,7 +245,7 @@ public:
 
   /// @brief Cheap mechanism to just extract module triple
   /// @returns true if an error occurred.
-  std::error_code ParseTriple(std::string &Triple);
+  llvm::ErrorOr<std::string> parseTriple();
 
   static uint64_t decodeSignRotatedValue(uint64_t V);
 
@@ -317,7 +311,7 @@ private:
   std::error_code ResolveGlobalAndAliasInits();
   std::error_code ParseMetadata();
   std::error_code ParseMetadataAttachment();
-  std::error_code ParseModuleTriple(std::string &Triple);
+  llvm::ErrorOr<std::string> parseModuleTriple();
   std::error_code InitStream();
   std::error_code InitStreamFromBuffer();
   std::error_code InitLazyStream();
