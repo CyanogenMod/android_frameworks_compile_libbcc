@@ -66,7 +66,9 @@ public:
 
     kErrCustomPasses,
 
-    kErrInvalidSource
+    kErrInvalidSource,
+
+    kIllegalGlobalFunction
   };
 
   static const char *GetErrorString(enum ErrorCode pErrCode);
@@ -77,6 +79,7 @@ private:
   bool mEnableOpt;
 
   enum ErrorCode runPasses(Script &pScript, llvm::raw_ostream &pResult);
+  enum ErrorCode screenGlobals(Script &pScript);
 
   bool addCustomPasses(Script &pScript, llvm::PassManager &pPM);
   bool addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM);

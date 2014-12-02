@@ -1,5 +1,5 @@
 /*
- * Copyright 2012, The Android Open Source Project
+ * Copyright 2014, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef BCC_RS_TRANSFORMS_H
-#define BCC_RS_TRANSFORMS_H
+#ifndef RSStubsWhiteList_H
+#define RSStubsWhiteList_H
 
-namespace llvm {
-  class ModulePass;
-  class FunctionPass;
-}
+#include <cstdlib>
+#include <vector>
+#include <string>
 
-namespace bcc {
+extern std::vector<std::string> stubList;
 
-llvm::ModulePass *
-createRSForEachExpandPass(bool pEnableStepOpt);
-
-llvm::FunctionPass *
-createRSInvokeHelperPass();
-
-llvm::ModulePass * createRSEmbedInfoPass();
-
-
-typedef struct { bool failed; } ScreenFunctionStatus;
-llvm::ModulePass *
-createRSScreenFunctionsPass(ScreenFunctionStatus *pStatus);
-
-} // end namespace bcc
-
-#endif // BCC_RS_TRANSFORMS_H
+#endif // RSStubsWhiteList_H
