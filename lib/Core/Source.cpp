@@ -38,8 +38,8 @@ namespace {
 // and take the ownership of input memory buffer (i.e., pInput). On error,
 // return nullptr and will NOT take the ownership of pInput.
 static inline llvm::Module *helper_load_bitcode(llvm::LLVMContext &pContext,
-                                                llvm::MemoryBuffer *pInput) {
-  llvm::ErrorOr<llvm::Module *> moduleOrError = llvm::getLazyBitcodeModule(pInput, pContext);
+                                                std::unique_ptr<llvm::MemoryBuffer> &&pInput) {
+  llvm::ErrorOr<llvm::Module *> moduleOrError = llvm::getLazyBitcodeModule(std::move(pInput), pContext);
   if (std::error_code ec = moduleOrError.getError()) {
     ALOGE("Unable to parse the given bitcode file `%s'! (%s)",
           pInput->getBufferIdentifier(), ec.message().c_str());
@@ -62,7 +62,7 @@ Source *Source::CreateFromBuffer(BCCContext &pContext,
                                  const char *pBitcode,
                                  size_t pBitcodeSize) {
   llvm::StringRef input_data(pBitcode, pBitcodeSize);
-  llvm::MemoryBuffer *input_memory =
+  std::unique_ptr<llvm::MemoryBuffer> input_memory =
       llvm::MemoryBuffer::getMemBuffer(input_data, "", false);
 
   if (input_memory == nullptr) {
@@ -71,9 +71,8 @@ Source *Source::CreateFromBuffer(BCCContext &pContext,
   }
 
   llvm::Module *module = helper_load_bitcode(pContext.mImpl->mLLVMContext,
-                                             input_memory);
+                                             std::move(input_memory));
   if (module == nullptr) {
-    delete input_memory;
     return nullptr;
   }
 
@@ -96,11 +95,10 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
   }
   std::unique_ptr<llvm::MemoryBuffer> input_data = std::move(mb_or_error.get());
 
-  llvm::MemoryBuffer *input_memory = input_data.release();
+  std::unique_ptr<llvm::MemoryBuffer> input_memory(input_data.release());
   llvm::Module *module = helper_load_bitcode(pContext.mImpl->mLLVMContext,
-                                             input_memory);
+                                             std::move(input_memory));
   if (module == nullptr) {
-    delete input_memory;
     return nullptr;
   }
 
@@ -141,24 +139,12 @@ Source::~Source() {
     delete mModule;
 }
 
-bool Source::merge(Source &pSource, bool pPreserveSource) {
-  std::string error;
-  llvm::Linker::LinkerMode mode =
-      ((pPreserveSource) ? llvm::Linker::PreserveSource :
-                           llvm::Linker::DestroySource);
-
-  if (llvm::Linker::LinkModules(mModule, &pSource.getModule(),
-                                mode, &error) != 0) {
-    ALOGE("Failed to link source `%s' with `%s' (%s)!",
-          getIdentifier().c_str(),
-          pSource.getIdentifier().c_str(),
-          error.c_str());
+bool Source::merge(Source &pSource) {
+  // TODO(srhines): Add back logging of actual diagnostics from linking.
+  if (llvm::Linker::LinkModules(mModule, &pSource.getModule()) != 0) {
+    ALOGE("Failed to link source `%s' with `%s'!",
+          getIdentifier().c_str(), pSource.getIdentifier().c_str());
     return false;
-  }
-
-  if (!pPreserveSource) {
-    pSource.mNoDelete = true;
-    delete &pSource;
   }
 
   return true;

@@ -314,12 +314,12 @@ int main(int argc, char** argv) {
 
     std::unique_ptr<llvm::MemoryBuffer> mem;
 
-    mem.reset(llvm::MemoryBuffer::getMemBuffer(
+    mem = llvm::MemoryBuffer::getMemBuffer(
         llvm::StringRef(translatedBitcode, translatedBitcodeSize),
-        inFile.c_str(), false));
+        inFile.c_str(), false);
 
     std::unique_ptr<llvm::Module> module;
-    llvm::ErrorOr<llvm::Module*> moduleOrError = llvm::parseBitcodeFile(mem.get(), ctx);
+    llvm::ErrorOr<llvm::Module*> moduleOrError = llvm::parseBitcodeFile(mem.get()->getMemBufferRef(), ctx);
     std::error_code ec = moduleOrError.getError();
     if (!ec) {
         module.reset(moduleOrError.get());
@@ -338,7 +338,7 @@ int main(int argc, char** argv) {
     }
 
     std::unique_ptr<llvm::tool_output_file> tof(
-        new llvm::tool_output_file(outFile.c_str(), errmsg,
+        new llvm::tool_output_file(outFile.c_str(), ec,
                                    llvm::sys::fs::F_None));
     std::unique_ptr<llvm::AssemblyAnnotationWriter> ann;
     module->print(tof->os(), ann.get());

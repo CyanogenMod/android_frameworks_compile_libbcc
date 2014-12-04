@@ -193,7 +193,7 @@ public:
     return changed;
   }
 
-  virtual const char *getPassName() const {
+  virtual const char *getPassName() const override {
     return ".helper method expansion for large RS objects";
   }
 }; // end RSInvokeHelperPass class

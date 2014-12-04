@@ -22,27 +22,34 @@
 #include "llvm/IR/OperandTraits.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/ValueHandle.h"
+#include "llvm/Support/ErrorOr.h"
 #include <string>
 
 namespace llvm {
-  class MemoryBuffer;
   class LLVMContext;
+  class MemoryBuffer;
+  class MemoryBufferRef;
   class Module;
 } // End llvm namespace
 
 namespace llvm_3_0 {
 
-llvm::Module *ParseBitcodeFile(llvm::MemoryBuffer *Buffer,
-                               llvm::LLVMContext& Context,
-                               std::string *ErrMsg);
+  /// Read the specified bitcode file, returning the module.
+  llvm::ErrorOr<llvm::Module *> parseBitcodeFile(llvm::MemoryBufferRef Buffer,
+                                                 llvm::LLVMContext &Context);
 
-std::string getBitcodeTargetTriple(llvm::MemoryBuffer *Buffer,
-                                   llvm::LLVMContext& Context,
-                                   std::string *ErrMsg);
 
-llvm::Module *getLazyBitcodeModule(llvm::MemoryBuffer *Buffer,
-                                   llvm::LLVMContext& Context,
-                                  std::string *ErrMsg);
+  /// Read the header of the specified bitcode buffer and extract just the
+  /// triple information. If successful, this returns a string. On error, this
+  /// returns "".
+  std::string getBitcodeTargetTriple(llvm::MemoryBufferRef Buffer,
+                                     llvm::LLVMContext &Context);
+
+  /// Read the header of the specified bitcode buffer and prepare for lazy
+  /// deserialization of function bodies.  If successful, this moves Buffer. On
+  /// error, this *does not* move Buffer.
+  llvm::ErrorOr<llvm::Module *> getLazyBitcodeModule(std::unique_ptr<llvm::MemoryBuffer> &&Buffer,
+                                                     llvm::LLVMContext &Context);
 } // End llvm_3_0 namespace
 
 #endif

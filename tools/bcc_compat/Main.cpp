@@ -129,7 +129,7 @@ RSScript *PrepareRSScript(BCCContext &pContext,
     }
 
     if (result != nullptr) {
-      if (!result->mergeSource(*source, /* pPreserveSource */false)) {
+      if (!result->mergeSource(*source)) {
         llvm::errs() << "Failed to merge the llvm module `" << input_bitcode
                      << "' to compile!\n";
         delete source;
