@@ -40,8 +40,7 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *core_lib) {
         &pScript.getSource().getModule(), &libclcore_source->getModule());
   }
 
-  if (!pScript.getSource().merge(*libclcore_source,
-                                 /* pPreserveSource */false)) {
+  if (!pScript.getSource().merge(*libclcore_source)) {
     ALOGE("Failed to link Renderscript library '%s'!", core_lib);
     delete libclcore_source;
     return false;

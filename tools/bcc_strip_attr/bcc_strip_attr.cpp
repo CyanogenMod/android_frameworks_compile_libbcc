@@ -93,9 +93,9 @@ static inline std::unique_ptr<Module> LoadFile(const char *argv0,
                                                const std::string &FN,
                                                LLVMContext& Context) {
   SMDiagnostic Err;
-  Module* Result = ParseIRFile(FN, Err, Context);
+  std::unique_ptr<Module> Result = parseIRFile(FN, Err, Context);
   if (Result) {
-    return std::unique_ptr<Module>(Result);   // Load successful!
+    return Result;   // Load successful!
   }
 
   Err.print(argv0, errs());
@@ -126,11 +126,11 @@ int main(int argc, char **argv) {
   PM.add(createStripAttributePass());
   PM.run(*M.get());
 
-  std::string ErrorInfo;
-  tool_output_file Out(OutputFilename.c_str(), ErrorInfo,
+  std::error_code EC;
+  tool_output_file Out(OutputFilename.c_str(), EC,
                        sys::fs::F_None);
-  if (!ErrorInfo.empty()) {
-    errs() << ErrorInfo << '\n';
+  if (EC) {
+    errs() << EC.message() << '\n';
     return 1;
   }
 

@@ -55,9 +55,8 @@ public:
 
   static Source *CreateEmpty(BCCContext &pContext, const std::string &pName);
 
-  // Merge the current source with pSource. If pPreserveSource is false, pSource
-  // will be destroyed after successfully merged. Return false on error.
-  bool merge(Source &pSource, bool pPreserveSource = false);
+  // Merge the current source with pSource. Return false on error.
+  bool merge(Source &pSource);
 
   inline BCCContext &getContext()
   { return mContext; }
