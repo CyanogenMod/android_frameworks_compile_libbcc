@@ -441,7 +441,7 @@ bool MetadataExtractor::extract() {
     std::string error;
 
     // Module ownership is handled by the context, so we don't need to free it.
-    llvm::ErrorOr<llvm::Module* > errval = llvm::parseBitcodeFile(MEM.get(),
+    llvm::ErrorOr<llvm::Module* > errval = llvm::parseBitcodeFile(MEM.get()->getMemBufferRef(),
                                                                   *mContext);
     if (std::error_code ec = errval.getError()) {
         ALOGE("Could not parse bitcode file");
