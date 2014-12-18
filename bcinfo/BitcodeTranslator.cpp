@@ -154,7 +154,7 @@ bool BitcodeTranslator::translate() {
 
   AndroidBitcodeWrapper wrapper;
   size_t actualWrapperLen = writeAndroidBitcodeWrapper(
-      &wrapper, Buffer.size(), BCWrapper.getTargetAPI(),
+      &wrapper, Buffer.size(), kMinimumUntranslatedVersion,
       BCWrapper.getCompilerVersion(), BCWrapper.getOptimizationLevel());
   if (!actualWrapperLen) {
     ALOGE("Couldn't produce bitcode wrapper!");
