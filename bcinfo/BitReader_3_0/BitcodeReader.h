@@ -228,7 +228,6 @@ public:
     Buffer = nullptr;
   }
 
-  virtual bool isMaterializable(const GlobalValue *GV) const;
   virtual bool isDematerializable(const GlobalValue *GV) const;
   virtual std::error_code materialize(GlobalValue *GV);
   virtual std::error_code MaterializeModule(Module *M);
