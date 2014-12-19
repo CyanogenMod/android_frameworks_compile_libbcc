@@ -421,7 +421,7 @@ Value *BitcodeReaderMDValueList::getValueFwdRef(unsigned Idx) {
 Type *BitcodeReader::getTypeByID(unsigned ID) {
   // The type table size is always specified correctly.
   if (ID >= TypeList.size())
-    return 0;
+    return nullptr;
 
   if (Type *Ty = TypeList[ID])
     return Ty;
@@ -1915,6 +1915,7 @@ std::error_code BitcodeReader::ParseModule(bool Resume) {
       // If this is a function with a body, remember the prototype we are
       // creating now, so that we can match up the body with them later.
       if (!isProto) {
+        Func->setIsMaterializable(true);
         FunctionsWithBodies.push_back(Func);
         if (LazyStreamer) DeferredFunctionInfo[Func] = 0;
       }
@@ -2917,14 +2918,6 @@ std::error_code BitcodeReader::ParseFunctionBody(Function *F) {
 //===----------------------------------------------------------------------===//
 
 
-bool BitcodeReader::isMaterializable(const GlobalValue *GV) const {
-  if (const Function *F = dyn_cast<Function>(GV)) {
-    return F->isDeclaration() &&
-      DeferredFunctionInfo.count(const_cast<Function*>(F));
-  }
-  return false;
-}
-
 std::error_code BitcodeReader::materialize(GlobalValue *GV) {
   Function *F = dyn_cast<Function>(GV);
   // If it's not a function or is already material, ignore the request.
@@ -2939,6 +2932,7 @@ std::error_code BitcodeReader::materialize(GlobalValue *GV) {
 
   if (std::error_code EC = ParseFunctionBody(F))
     return EC;
+  F->setIsMaterializable(false);
 
   // Upgrade any old intrinsic calls in the function.
   for (UpgradedIntrinsicMap::iterator I = UpgradedIntrinsics.begin(),
@@ -2972,6 +2966,7 @@ void BitcodeReader::Dematerialize(GlobalValue *GV) {
 
   // Just forget the function body, we can remat it later.
   F->deleteBody();
+  F->setIsMaterializable(true);
 }
 
 
@@ -2982,11 +2977,14 @@ std::error_code BitcodeReader::MaterializeModule(Module *M) {
   // disk.
   for (Module::iterator F = TheModule->begin(), E = TheModule->end();
        F != E; ++F) {
-    if (F->isMaterializable()) {
-      if (std::error_code EC = materialize(F))
-        return EC;
-    }
+    if (std::error_code EC = materialize(F))
+      return EC;
   }
+  // At this point, if there are any function bodies, the current bit is
+  // pointing to the END_BLOCK record after them. Now make sure the rest
+  // of the bits in the module have been read.
+  if (NextUnreadBit)
+    ParseModule(true);
 
   // Upgrade any intrinsic calls that slipped through (should not happen!) and
   // delete the old functions to clean up. We can't do this unless the entire
