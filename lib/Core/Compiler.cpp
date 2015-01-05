@@ -72,6 +72,8 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
     return "Error occurred while adding custom passes.";
   case kErrInvalidSource:
     return "Error loading input bitcode";
+  case kIllegalGlobalFunction:
+    return "Use of undefined external function";
   }
 
   // This assert should never be reached as the compiler verifies that the
@@ -138,6 +140,21 @@ enum Compiler::ErrorCode Compiler::config(const CompilerConfig &pConfig) {
 
 Compiler::~Compiler() {
   delete mTarget;
+}
+
+enum Compiler::ErrorCode Compiler::screenGlobals(Script &pScript) {
+  // Separate pass manager for screening globals
+  llvm::PassManager pm;
+
+  ScreenFunctionStatus status;
+  status.failed = false;
+  pm.add(createRSScreenFunctionsPass(&status));
+
+  pm.run(pScript.getSource().getModule());
+  if (status.failed) {
+    return kIllegalGlobalFunction;
+  }
+  return kSuccess;
 }
 
 enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
@@ -225,6 +242,10 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
             module.getModuleIdentifier().c_str(), ec.message().c_str());
       return kErrMaterialization;
     }
+  }
+
+  if ((err = screenGlobals(pScript)) != kSuccess) {
+    return err;
   }
 
   if ((err = runPasses(pScript, pResult)) != kSuccess) {

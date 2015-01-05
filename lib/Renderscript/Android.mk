@@ -31,7 +31,9 @@ libbcc_renderscript_SRC_FILES := \
   RSInfoReader.cpp \
   RSInfoWriter.cpp \
   RSScript.cpp \
-  RSInvokeHelperPass.cpp
+  RSInvokeHelperPass.cpp \
+  RSScreenFunctionsPass.cpp \
+  RSStubsWhiteList.cpp
 
 #=====================================================================
 # Device Static Library: libbccRenderscript

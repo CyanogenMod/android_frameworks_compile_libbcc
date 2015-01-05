@@ -26,6 +26,7 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/PluginLoader.h>
 #include <llvm/Support/raw_ostream.h>
 
@@ -94,6 +95,17 @@ OptRSDebugContext("rs-debug-ctx",
 //===----------------------------------------------------------------------===//
 // Compiler Options
 //===----------------------------------------------------------------------===//
+llvm::cl::opt<bool>
+OptPIC("fPIC", llvm::cl::desc("Generate fully relocatable, position independent"
+                              " code"));
+
+// If set, use buildForCompatLib to embed RS symbol information into the object
+// file.  The information is stored in the .rs.info variable.  This option is
+// to be used in tandem with -fPIC.
+llvm::cl::opt<bool>
+OptEmbedRSInfo("embedRSInfo",
+    llvm::cl::desc("Embed RS Info into the object file instead of generating"
+                   " a separate .o.info file"));
 
 // RenderScript uses -O3 by default
 llvm::cl::opt<char>
@@ -149,6 +161,15 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
     }
   }
 
+  if (OptPIC) {
+    config->setRelocationModel(llvm::Reloc::PIC_);
+
+    // For x86_64, CodeModel needs to be small if PIC_ reloc is used.
+    // Otherwise, we end up with TEXTRELs in the shared library.
+    if (config->getTriple().find("x86_64") != std::string::npos) {
+        config->setCodeModel(llvm::CodeModel::Small);
+    }
+  }
   switch (OptOptLevel) {
     case '0': config->setOptimizationLevel(llvm::CodeGenOpt::None); break;
     case '1': config->setOptimizationLevel(llvm::CodeGenOpt::Less); break;
@@ -215,12 +236,36 @@ int main(int argc, char **argv) {
     rscdi(&RSCD);
   }
 
-  bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
-                          bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), nullptr,
-                          OptEmitLLVM);
+  if (!OptEmbedRSInfo) {
+    bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
+                            bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), nullptr,
+                            OptEmitLLVM);
 
-  if (!built) {
-    return EXIT_FAILURE;
+    if (!built) {
+      return EXIT_FAILURE;
+    }
+  }
+  else {
+    // embedRSInfo is set.  Use buildForCompatLib to embed RS symbol information
+    // into the .rs.info symbol.
+    Source *source = Source::CreateFromBuffer(context, OptInputFilename.c_str(),
+                                              bitcode, bitcodeSize);
+    RSScript *s = new (std::nothrow) RSScript(*source);
+    if (s == nullptr) {
+      llvm::errs() << "Out of memory when creating script for file `"
+                   << OptInputFilename << "'!\n";
+      delete source;
+      return EXIT_FAILURE;
+    }
+
+    llvm::SmallString<80> output(OptOutputPath);
+    llvm::sys::path::append(output, "/", OptOutputFilename);
+    llvm::sys::path::replace_extension(output, ".o");
+
+    if (!RSCD.buildForCompatLib(*s, output.c_str(), OptBCLibFilename.c_str())) {
+      fprintf(stderr, "Failed to compile script!");
+      return EXIT_FAILURE;
+    }
   }
 
   return EXIT_SUCCESS;
