@@ -33,9 +33,8 @@ createRSInvokeHelperPass();
 llvm::ModulePass * createRSEmbedInfoPass();
 
 
-typedef struct { bool failed; } ScreenFunctionStatus;
 llvm::ModulePass *
-createRSScreenFunctionsPass(ScreenFunctionStatus *pStatus);
+createRSScreenFunctionsPass();
 
 } // end namespace bcc
 
