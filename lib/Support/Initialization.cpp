@@ -28,7 +28,7 @@ namespace {
 
 void llvm_error_handler(void *pUserData, const std::string &pMessage,
                         bool pGenCrashDiag) {
-  ALOGE("%s", pMessage.c_str());
+  ALOGE("bcc: Internal Error - %s", pMessage.c_str());
   ::exit(1);
 }
 

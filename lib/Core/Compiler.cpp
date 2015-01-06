@@ -142,20 +142,6 @@ Compiler::~Compiler() {
   delete mTarget;
 }
 
-enum Compiler::ErrorCode Compiler::screenGlobals(Script &pScript) {
-  // Separate pass manager for screening globals
-  llvm::PassManager pm;
-
-  ScreenFunctionStatus status;
-  status.failed = false;
-  pm.add(createRSScreenFunctionsPass(&status));
-
-  pm.run(pScript.getSource().getModule());
-  if (status.failed) {
-    return kIllegalGlobalFunction;
-  }
-  return kSuccess;
-}
 
 enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
                                              llvm::raw_ostream &pResult) {
@@ -193,6 +179,11 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
     Builder.Inliner = llvm::createFunctionInliningPass();
     Builder.populateLTOPassManager(passes, mTarget);
   }
+
+  // Add our pass to check for illegal function calls.
+  // This has to come after LTO, since we don't want to examine functions that
+  // are never actually called.
+  passes.add(createRSScreenFunctionsPass());
 
   // Add passes to the pass manager to emit machine code through MC layer.
   if (mTarget->addPassesToEmitMC(passes, mc_context, pResult,
@@ -242,10 +233,6 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
             module.getModuleIdentifier().c_str(), ec.message().c_str());
       return kErrMaterialization;
     }
-  }
-
-  if ((err = screenGlobals(pScript)) != kSuccess) {
-    return err;
   }
 
   if ((err = runPasses(pScript, pResult)) != kSuccess) {
