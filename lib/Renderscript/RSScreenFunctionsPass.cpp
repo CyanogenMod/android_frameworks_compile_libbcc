@@ -34,7 +34,6 @@ class RSScreenFunctionsPass : public llvm::ModulePass {
 private:
   static char ID;
 
-  bcc::ScreenFunctionStatus *mStatus;
   std::vector<std::string> &whiteList = stubList;
 
   bool isPresent(std::vector<std::string> &list, std::string name) {
@@ -67,20 +66,25 @@ private:
   }
 
 public:
-  RSScreenFunctionsPass(bcc::ScreenFunctionStatus *pStatus)
-    : ModulePass (ID), mStatus(pStatus) {
+  RSScreenFunctionsPass()
+    : ModulePass (ID) {
       std::sort(whiteList.begin(), whiteList.end());
   }
 
   bool runOnModule(llvm::Module &M) override {
+    bool failed = false;
 
     auto &FunctionList(M.getFunctionList());
     for(auto &F: FunctionList) {
       if (!isLegal(F)) {
         ALOGE("Call to function %s from RenderScript is disallowed\n",
               F.getName().str().c_str());
-        mStatus->failed = true;
+        failed = true;
       }
+    }
+
+    if (failed) {
+      llvm::report_fatal_error("Use of undefined external function");
     }
 
     return false;
@@ -95,8 +99,8 @@ char RSScreenFunctionsPass::ID = 0;
 namespace bcc {
 
 llvm::ModulePass *
-createRSScreenFunctionsPass(ScreenFunctionStatus *pStatus) {
-  return new RSScreenFunctionsPass(pStatus);
+createRSScreenFunctionsPass() {
+  return new RSScreenFunctionsPass();
 }
 
 }
