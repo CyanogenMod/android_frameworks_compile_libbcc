@@ -178,6 +178,11 @@ bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
   // Setup the config according to the value of command line option.
   if (OptPIC) {
     config->setRelocationModel(llvm::Reloc::PIC_);
+    // For x86_64, CodeModel needs to be small if PIC_ reloc is used.
+    // Otherwise, we end up with TEXTRELs in the shared library.
+    if (config->getTriple().find("x86_64") != std::string::npos) {
+        config->setCodeModel(llvm::CodeModel::Small);
+    }
   }
   switch (OptOptLevel) {
     case '0': config->setOptimizationLevel(llvm::CodeGenOpt::None); break;
