@@ -25,6 +25,7 @@
 #include <llvm/Config/config.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/ManagedStatic.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/PluginLoader.h>
@@ -198,10 +199,12 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
 }
 
 int main(int argc, char **argv) {
+
+  llvm::llvm_shutdown_obj Y;
+  init::Initialize();
   llvm::cl::SetVersionPrinter(BCCVersionPrinter);
   llvm::cl::ParseCommandLineOptions(argc, argv);
   std::string commandLine = bcc::getCommandLine(argc, argv);
-  init::Initialize();
 
   BCCContext context;
   RSCompilerDriver RSCD;
