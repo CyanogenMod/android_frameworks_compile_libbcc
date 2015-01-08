@@ -553,6 +553,10 @@ public:
                                                     TBAARenderScript);
     TBAAPointer = MDHelper.createTBAAStructTagNode(TBAAPointer, TBAAPointer, 0);
 
+    llvm::MDNode *AliasingDomain, *AliasingScope;
+    AliasingDomain = MDHelper.createAnonymousAliasScopeDomain("RS argument scope domain");
+    AliasingScope = MDHelper.createAnonymousAliasScope(AliasingDomain, "RS argument scope");
+
     /*
      * Collect and construct the arguments for the kernel().
      *
@@ -608,6 +612,9 @@ public:
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
       }
+
+      OutBasePtr->setMetadata("alias.scope", AliasingScope);
+
       CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
     }
 
@@ -665,6 +672,8 @@ public:
             InBasePtr->setMetadata("tbaa", TBAAPointer);
           }
 
+          InBasePtr->setMetadata("alias.scope", AliasingScope);
+
           InTypes.push_back(InType);
           InSteps.push_back(InStep);
           InBasePtrs.push_back(CastInBasePtr);
@@ -720,6 +729,8 @@ public:
             InputLoad->setMetadata("tbaa", TBAAAllocation);
           }
 
+          InputLoad->setMetadata("alias.scope", AliasingScope);
+
           Input = InputLoad;
         }
 
@@ -743,6 +754,7 @@ public:
       if (gEnableRsTbaa) {
         Store->setMetadata("tbaa", TBAAAllocation);
       }
+      Store->setMetadata("alias.scope", AliasingScope);
     }
 
     return true;
