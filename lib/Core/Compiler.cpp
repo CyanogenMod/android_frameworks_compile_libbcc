@@ -28,6 +28,7 @@
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Vectorize.h>
 
 #include "bcc/Assert.h"
 #include "bcc/Renderscript/RSExecutable.h"
@@ -178,6 +179,19 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
     llvm::PassManagerBuilder Builder;
     Builder.Inliner = llvm::createFunctionInliningPass();
     Builder.populateLTOPassManager(passes, mTarget);
+
+    // Add vectorization passes after LTO passes are in
+    // additional flag: -unroll-runtime
+    passes.add(llvm::createLoopUnrollPass(-1, 16, 0, 1));
+    // Need to pass appropriate flags here: -scalarize-load-store
+    passes.add(llvm::createScalarizerPass());
+    passes.add(llvm::createCFGSimplificationPass());
+    passes.add(llvm::createScopedNoAliasAAPass());
+    passes.add(llvm::createScalarEvolutionAliasAnalysisPass());
+    // additional flags: -slp-vectorize-hor -slp-vectorize-hor-store (unnecessary?)
+    passes.add(llvm::createSLPVectorizerPass());
+    passes.add(llvm::createDeadCodeEliminationPass());
+    passes.add(llvm::createInstructionCombiningPass());
   }
 
   // Add our pass to check for illegal function calls.
