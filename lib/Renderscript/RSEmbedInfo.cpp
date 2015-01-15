@@ -57,6 +57,10 @@ public:
         M(nullptr) {
   }
 
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+  }
+
   static std::string getRSInfoString(const llvm::Module *module) {
     std::string str;
     llvm::raw_string_ostream s(str);
