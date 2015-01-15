@@ -348,6 +348,11 @@ public:
 
   }
 
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    // This pass does not use any other analysis passes, but it does
+    // add/wrap the existing functions in the module (thus altering the CFG).
+  }
+
   /* Performs the actual optimization on a selected function. On success, the
    * Module will contain a new function of the name "<NAME>.expand" that
    * invokes <NAME>() in a loop with the appropriate parameters.

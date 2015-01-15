@@ -63,6 +63,11 @@ public:
 
     }
 
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    // This pass does not use any other analysis passes, but it does
+    // modify the existing functions in the module (thus altering the CFG).
+  }
+
   virtual bool doInitialization(llvm::Module &M) override {
     llvm::FunctionType * SetObjType = nullptr;
     llvm::SmallVector<llvm::Type*, 4> rsBaseObj;
