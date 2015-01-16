@@ -51,6 +51,10 @@ namespace {
     StripAttributes() : ModulePass(ID) {
     }
 
+    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+      AU.setPreservesAll();
+    }
+
     bool runOnFunction(Function &F) {
       // Remove any target-cpu and/or target-features attributes from each
       // Function or Function declaration.

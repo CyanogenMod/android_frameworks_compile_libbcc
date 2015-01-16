@@ -71,6 +71,10 @@ public:
       std::sort(whiteList.begin(), whiteList.end());
   }
 
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+  }
+
   bool runOnModule(llvm::Module &M) override {
     bool failed = false;
 
