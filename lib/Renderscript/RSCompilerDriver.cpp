@@ -27,7 +27,6 @@
 
 #include "bcc/Compiler.h"
 #include "bcc/Config/Config.h"
-#include "bcc/Renderscript/RSExecutable.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Support/CompilerConfig.h"
@@ -67,109 +66,6 @@ RSCompilerDriver::~RSCompilerDriver() {
   delete mConfig;
 }
 
-RSExecutable* RSCompilerDriver::loadScript(const char* pCacheDir, const char* pResName,
-                                           const char* pBitcode, size_t pBitcodeSize,
-                                           const char* expectedCompileCommandLine,
-                                           SymbolResolverProxy& pResolver) {
-  // android::StopWatch load_time("bcc: RSCompilerDriver::loadScript time");
-  if ((pCacheDir == nullptr) || (pResName == nullptr)) {
-    ALOGE("Missing pCacheDir and/or pResName");
-    return nullptr;
-  }
-
-  if ((pBitcode == nullptr) || (pBitcodeSize <= 0)) {
-    ALOGE("No bitcode supplied! (bitcode: %p, size of bitcode: %zu)",
-          pBitcode, pBitcodeSize);
-    return nullptr;
-  }
-
-  // {pCacheDir}/{pResName}.o
-  llvm::SmallString<80> output_path(pCacheDir);
-  llvm::sys::path::append(output_path, pResName);
-  llvm::sys::path::replace_extension(output_path, ".o");
-
-  //===--------------------------------------------------------------------===//
-  // Acquire the read lock for reading the Script object file.
-  //===--------------------------------------------------------------------===//
-  FileMutex<FileBase::kReadLock> read_output_mutex(output_path.c_str());
-
-  if (read_output_mutex.hasError() || !read_output_mutex.lock()) {
-    ALOGE("Unable to acquire the read lock for %s! (%s)", output_path.c_str(),
-          read_output_mutex.getErrorMessage().c_str());
-    return nullptr;
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Read the output object file.
-  //===--------------------------------------------------------------------===//
-  InputFile *object_file = new (std::nothrow) InputFile(output_path.c_str());
-
-  if ((object_file == nullptr) || object_file->hasError()) {
-      //      ALOGE("Unable to open the %s for read! (%s)", output_path.c_str(),
-      //            object_file->getErrorMessage().c_str());
-    delete object_file;
-    return nullptr;
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Acquire the read lock on object_file for reading its RS info file.
-  //===--------------------------------------------------------------------===//
-  std::string info_path = RSInfo::GetPath(output_path.c_str());
-
-  if (!object_file->lock()) {
-    ALOGE("Unable to acquire the read lock on %s for reading %s! (%s)",
-          output_path.c_str(), info_path.c_str(),
-          object_file->getErrorMessage().c_str());
-    delete object_file;
-    return nullptr;
-  }
-
-  //===---------------------------------------------------------------------===//
-  // Open and load the RS info file.
-  //===--------------------------------------------------------------------===//
-  InputFile info_file(info_path.c_str());
-  RSInfo *info = RSInfo::ReadFromFile(info_file);
-
-  // Release the lock on object_file.
-  object_file->unlock();
-
-  if (info == nullptr) {
-    delete object_file;
-    return nullptr;
-  }
-
-  //===---------------------------------------------------------------------===//
-  // Check that the info in the RS info file is consistent we what we want.
-  //===--------------------------------------------------------------------===//
-
-  uint8_t expectedSourceHash[SHA1_DIGEST_LENGTH];
-  Sha1Util::GetSHA1DigestFromBuffer(expectedSourceHash, pBitcode, pBitcodeSize);
-
-  std::string expectedBuildFingerprint = getBuildFingerPrint();
-
-  // If the info file contains different hash for the source than what we are
-  // looking for, bail.  Do the same if the command line used when compiling or the
-  // build fingerprint of Android has changed.  The compiled code found on disk is
-  // out of date and needs to be recompiled first.
-  if (!info->IsConsistent(output_path.c_str(), expectedSourceHash, expectedCompileCommandLine,
-                          expectedBuildFingerprint.c_str())) {
-      delete object_file;
-      delete info;
-      return nullptr;
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Create the RSExecutable.
-  //===--------------------------------------------------------------------===//
-  RSExecutable *executable = RSExecutable::Create(*info, *object_file, pResolver);
-  if (executable == nullptr) {
-    delete object_file;
-    delete info;
-    return nullptr;
-  }
-
-  return executable;
-}
 
 #if defined(PROVIDE_ARM_CODEGEN)
 extern llvm::cl::opt<bool> EnableGlobalMerge;

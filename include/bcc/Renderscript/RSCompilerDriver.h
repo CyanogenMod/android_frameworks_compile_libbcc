@@ -18,9 +18,6 @@
 #define BCC_RS_COMPILER_DRIVER_H
 
 #include "bcc/Compiler.h"
-#include "bcc/ExecutionEngine/CompilerRTSymbolResolver.h"
-#include "bcc/ExecutionEngine/SymbolResolvers.h"
-#include "bcc/ExecutionEngine/SymbolResolverProxy.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
 
@@ -29,7 +26,6 @@ namespace bcc {
 class BCCContext;
 class CompilerConfig;
 class RSCompilerDriver;
-class RSExecutable;
 
 // Type signature for dynamically loaded initialization of an RSCompilerDriver.
 typedef void (*RSCompilerDriverInit_t) (bcc::RSCompilerDriver *);
@@ -116,13 +112,6 @@ public:
 
   // Returns true if script is successfully compiled.
   bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath);
-
-  // Tries to load the the compiled bit code at pCacheDir of the given name.
-  // It checks that the file has been compiled from the same bit code and with
-  // the same compile arguments as provided.
-  static RSExecutable* loadScript(const char* pCacheDir, const char* pResName, const char* pBitcode,
-                                  size_t pBitcodeSize, const char* expectedCompileCommandLine,
-                                  SymbolResolverProxy& pResolver);
 };
 
 } // end namespace bcc
