@@ -30,8 +30,6 @@
 #include <bcc/BCCContext.h>
 #include <bcc/Compiler.h>
 #include <bcc/Config/Config.h>
-#include <bcc/ExecutionEngine/SymbolResolverProxy.h>
-#include <bcc/ExecutionEngine/SymbolResolvers.h>
 #include <bcc/Renderscript/RSCompilerDriver.h>
 #include <bcc/Script.h>
 #include <bcc/Source.h>
