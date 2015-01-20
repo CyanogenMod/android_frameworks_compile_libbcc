@@ -26,7 +26,6 @@ include frameworks/compile/slang/rs_version.mk
 
 libbcc_WHOLE_STATIC_LIBRARIES += \
   libbccRenderscript \
-  libbccExecutionEngine \
   libbccCore \
   libbccSupport
 
@@ -45,8 +44,6 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 LOCAL_WHOLE_STATIC_LIBRARIES := $(libbcc_WHOLE_STATIC_LIBRARIES)
-
-LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
 LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libc++
 
@@ -85,8 +82,6 @@ LOCAL_CLANG := true
 endif
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
-
-LOCAL_WHOLE_STATIC_LIBRARIES += librsloader
 
 LOCAL_STATIC_LIBRARIES += \
   libutils \

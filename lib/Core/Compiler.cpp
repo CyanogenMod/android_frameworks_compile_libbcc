@@ -31,7 +31,6 @@
 #include <llvm/Transforms/Vectorize.h>
 
 #include "bcc/Assert.h"
-#include "bcc/Renderscript/RSExecutable.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Renderscript/RSTransforms.h"
 #include "bcc/Script.h"
@@ -297,8 +296,15 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM
   // The vector contains the symbols that should not be internalized.
   std::vector<const char *> export_symbols;
 
+  const char *sf[] = {
+    "root",      // Graphics drawing function or compute kernel.
+    "init",      // Initialization routine called implicitly on startup.
+    ".rs.dtor",  // Static global destructor for a script instance.
+    ".rs.info",  // Variable containing string of RS metadata info.
+    nullptr         // Must be nullptr-terminated.
+  };
+  const char **special_functions = sf;
   // Special RS functions should always be global symbols.
-  const char **special_functions = RSExecutable::SpecialFunctionNames;
   while (*special_functions != nullptr) {
     export_symbols.push_back(*special_functions);
     special_functions++;
