@@ -52,9 +52,13 @@ using namespace bcc;
 //===----------------------------------------------------------------------===//
 namespace {
 
-llvm::cl::opt<std::string>
-OptInputFilename(llvm::cl::Positional, llvm::cl::ValueRequired,
-                 llvm::cl::desc("<input bitcode file>"));
+llvm::cl::list<std::string>
+OptInputFilenames(llvm::cl::Positional, llvm::cl::OneOrMore,
+                  llvm::cl::desc("<input bitcode files>"));
+
+llvm::cl::list<int>
+OptKernelSlots("k", llvm::cl::ZeroOrMore,
+               llvm::cl::desc("kernel function slot numbers"));
 
 llvm::cl::opt<std::string>
 OptOutputFilename("o", llvm::cl::desc("Specify the output filename"),
@@ -119,6 +123,39 @@ void BCCVersionPrinter() {
      << "LLVM (http://llvm.org/):\n"
      << "  Version: " << PACKAGE_VERSION << "\n";
   return;
+}
+
+bool fuseKernels(BCCContext& Context, RSCompilerDriver& RSCD) {
+  if (OptInputFilenames.size() != OptKernelSlots.size()) {
+    llvm::errs() << "Mismatching number of input files and kernel slots.\n";
+    return false;
+  }
+
+  std::vector<const bcc::Source*> sources;
+  std::vector<int> slots;
+
+  for (unsigned i = 0; i < OptInputFilenames.size(); ++i) {
+    const bcc::Source* source =
+        bcc::Source::CreateFromFile(Context, OptInputFilenames[i]);
+    if (!source) {
+      llvm::errs() << "Error loading file '" << OptInputFilenames[i]<< "'\n";
+      return false;
+    }
+    int slot = OptKernelSlots[i];
+
+    sources.push_back(source);
+    slots.push_back(slot);
+  }
+
+  std::string outputFilepath(OptOutputPath);
+  outputFilepath.append("/");
+  outputFilepath.append(OptOutputFilename);
+
+  bool success = RSCD.buildScriptGroup(
+      Context, outputFilepath.c_str(), OptBCLibFilename.c_str(), sources,
+      slots, true);
+
+  return success;
 }
 
 } // end anonymous namespace
@@ -206,21 +243,9 @@ int main(int argc, char **argv) {
   RSCompilerDriver RSCD;
 
   if (OptBCLibFilename.empty()) {
-    ALOGE("Failed to compile bit code, -bclib was not specified");
+    ALOGE("Failed to compile bitcode, -bclib was not specified");
     return EXIT_FAILURE;
   }
-
-  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> mb_or_error =
-      llvm::MemoryBuffer::getFile(OptInputFilename.c_str());
-  if (mb_or_error.getError()) {
-    ALOGE("Failed to load bitcode from path %s! (%s)",
-          OptInputFilename.c_str(), mb_or_error.getError().message().c_str());
-    return EXIT_FAILURE;
-  }
-  std::unique_ptr<llvm::MemoryBuffer> input_data = std::move(mb_or_error.get());
-
-  const char *bitcode = input_data->getBufferStart();
-  size_t bitcodeSize = input_data->getBufferSize();
 
   if (!ConfigCompiler(RSCD)) {
     ALOGE("Failed to configure compiler");
@@ -235,6 +260,26 @@ int main(int argc, char **argv) {
     rscdi(&RSCD);
   }
 
+  if (OptInputFilenames.size() > 1) {
+    bool success = fuseKernels(context, RSCD);
+    if (!success) {
+      return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+  }
+
+  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> mb_or_error =
+      llvm::MemoryBuffer::getFile(OptInputFilenames[0].c_str());
+  if (mb_or_error.getError()) {
+    ALOGE("Failed to load bitcode from path %s! (%s)",
+          OptInputFilenames[0].c_str(), mb_or_error.getError().message().c_str());
+    return EXIT_FAILURE;
+  }
+  std::unique_ptr<llvm::MemoryBuffer> input_data = std::move(mb_or_error.get());
+
+  const char *bitcode = input_data->getBufferStart();
+  size_t bitcodeSize = input_data->getBufferSize();
+
   if (!OptEmbedRSInfo) {
     bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
                             bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), nullptr,
@@ -247,12 +292,12 @@ int main(int argc, char **argv) {
   else {
     // embedRSInfo is set.  Use buildForCompatLib to embed RS symbol information
     // into the .rs.info symbol.
-    Source *source = Source::CreateFromBuffer(context, OptInputFilename.c_str(),
+    Source *source = Source::CreateFromBuffer(context, OptInputFilenames[0].c_str(),
                                               bitcode, bitcodeSize);
     RSScript *s = new (std::nothrow) RSScript(*source);
     if (s == nullptr) {
       llvm::errs() << "Out of memory when creating script for file `"
-                   << OptInputFilename << "'!\n";
+                   << OptInputFilenames[0] << "'!\n";
       delete source;
       return EXIT_FAILURE;
     }

@@ -29,6 +29,7 @@ class BCCContext;
 
 class Source {
 private:
+  const std::string mName; // A unique name
   BCCContext &mContext;
   llvm::Module *mModule;
 
@@ -36,7 +37,8 @@ private:
   bool mNoDelete;
 
 private:
-  Source(BCCContext &pContext, llvm::Module &pModule, bool pNoDelete = false);
+  Source(const char* name, BCCContext &pContext, llvm::Module &pModule,
+         bool pNoDelete = false);
 
 public:
   static Source *CreateFromBuffer(BCCContext &pContext,
@@ -50,12 +52,16 @@ public:
   // Create a Source object from an existing module. If pNoDelete
   // is true, destructor won't call delete on the given module.
   static Source *CreateFromModule(BCCContext &pContext,
+                                  const char* name,
                                   llvm::Module &pModule,
                                   bool pNoDelete = false);
 
   static Source *CreateEmpty(BCCContext &pContext, const std::string &pName);
 
-  // Merge the current source with pSource. Return false on error.
+  const std::string& getName() const { return mName; }
+
+  // Merge the current source with pSource. pSource
+  // will be destroyed after successfully merged. Return false on error.
   bool merge(Source &pSource);
 
   inline BCCContext &getContext()
