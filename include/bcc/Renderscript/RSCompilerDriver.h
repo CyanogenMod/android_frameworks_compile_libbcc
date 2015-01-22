@@ -21,11 +21,16 @@
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
 
+#include "bcinfo/MetadataExtractor.h"
+
+#include <vector>
+
 namespace bcc {
 
 class BCCContext;
 class CompilerConfig;
 class RSCompilerDriver;
+class Source;
 
 // Type signature for dynamically loaded initialization of an RSCompilerDriver.
 typedef void (*RSCompilerDriverInit_t) (bcc::RSCompilerDriver *);
@@ -109,6 +114,11 @@ public:
              const char* pRuntimePath,
              RSLinkRuntimeCallback pLinkRuntimeCallback = nullptr,
              bool pDumpIR = false);
+
+  bool buildScriptGroup(
+      BCCContext& Context, const char* pOutputFilepath, const char* pRuntimePath,
+      const std::vector<const Source*>& sources, const std::vector<int>& slots,
+      bool dumpIR);
 
   // Returns true if script is successfully compiled.
   bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath);
