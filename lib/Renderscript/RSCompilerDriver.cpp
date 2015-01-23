@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#include <string>
-
 #include "bcc/Renderscript/RSCompilerDriver.h"
 
+#include "llvm/IR/AssemblyAnnotationWriter.h"
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "bcinfo/BitcodeWrapper.h"
-
+#include "bcc/BCCContext.h"
 #include "bcc/Compiler.h"
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
+#include "bcc/Renderscript/RSScriptGroupFusion.h"
 #include "bcc/Support/CompilerConfig.h"
 #include "bcc/Source.h"
 #include "bcc/Support/FileMutex.h"
@@ -37,6 +37,8 @@
 #include "bcc/Support/Initialization.h"
 #include "bcc/Support/Sha1Util.h"
 #include "bcc/Support/OutputFile.h"
+
+#include <string>
 
 #ifdef HAVE_ANDROID_OS
 #include <cutils/properties.h>
@@ -316,6 +318,30 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   return status == Compiler::kSuccess;
 }
 
+bool RSCompilerDriver::buildScriptGroup(
+    BCCContext& Context, const char* pOutputFilepath, const char*pRuntimePath,
+    const std::vector<const Source*>& sources, const std::vector<int>& slots,
+    bool dumpIR) {
+  llvm::Module* module = fuseKernels(Context, sources, slots);
+  if (module == nullptr) {
+    return false;
+  }
+
+  const std::unique_ptr<Source> source(
+      Source::CreateFromModule(Context, pOutputFilepath, *module));
+  RSScript script(*source);
+
+  uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
+  const char* compileCommandLineToEmbed = "";
+
+  llvm::SmallString<80> output_path(pOutputFilepath);
+  llvm::sys::path::replace_extension(output_path, ".o");
+
+  compileScript(script, pOutputFilepath, output_path.c_str(), pRuntimePath,
+                bitcode_sha1, compileCommandLineToEmbed, true, dumpIR);
+
+  return true;
+}
 
 bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
                                          const char *pRuntimePath) {

@@ -76,7 +76,7 @@ Source *Source::CreateFromBuffer(BCCContext &pContext,
     return nullptr;
   }
 
-  Source *result = CreateFromModule(pContext, *module, /* pNoDelete */false);
+  Source *result = CreateFromModule(pContext, pName, *module, /* pNoDelete */false);
   if (result == nullptr) {
     delete module;
   }
@@ -102,7 +102,7 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
     return nullptr;
   }
 
-  Source *result = CreateFromModule(pContext, *module, /* pNoDelete */false);
+  Source *result = CreateFromModule(pContext, pPath.c_str(), *module, /* pNoDelete */false);
   if (result == nullptr) {
     delete module;
   }
@@ -110,7 +110,7 @@ Source *Source::CreateFromFile(BCCContext &pContext, const std::string &pPath) {
   return result;
 }
 
-Source *Source::CreateFromModule(BCCContext &pContext, llvm::Module &pModule,
+Source *Source::CreateFromModule(BCCContext &pContext, const char* name, llvm::Module &pModule,
                                  bool pNoDelete) {
   std::string ErrorInfo;
   llvm::raw_string_ostream ErrorStream(ErrorInfo);
@@ -120,7 +120,7 @@ Source *Source::CreateFromModule(BCCContext &pContext, llvm::Module &pModule,
     return nullptr;
   }
 
-  Source *result = new (std::nothrow) Source(pContext, pModule, pNoDelete);
+  Source *result = new (std::nothrow) Source(name, pContext, pModule, pNoDelete);
   if (result == nullptr) {
     ALOGE("Out of memory during Source object allocation for `%s'!",
           pModule.getModuleIdentifier().c_str());
@@ -128,8 +128,9 @@ Source *Source::CreateFromModule(BCCContext &pContext, llvm::Module &pModule,
   return result;
 }
 
-Source::Source(BCCContext &pContext, llvm::Module &pModule, bool pNoDelete)
-  : mContext(pContext), mModule(&pModule), mNoDelete(pNoDelete) {
+Source::Source(const char* name, BCCContext &pContext, llvm::Module &pModule,
+               bool pNoDelete)
+    : mName(name), mContext(pContext), mModule(&pModule), mNoDelete(pNoDelete) {
     pContext.addSource(*this);
 }
 
@@ -160,7 +161,7 @@ Source *Source::CreateEmpty(BCCContext &pContext, const std::string &pName) {
     return nullptr;
   }
 
-  Source *result = CreateFromModule(pContext, *module, /* pNoDelete */false);
+  Source *result = CreateFromModule(pContext, pName.c_str(), *module, /* pNoDelete */false);
   if (result == nullptr) {
     delete module;
   }
