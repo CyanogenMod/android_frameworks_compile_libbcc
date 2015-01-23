@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
 
   RSScript *s = nullptr;
   s = PrepareRSScript(context, OptInputFilenames);
-  if (!rscd.buildForCompatLib(*s, OutputFilename.c_str(), OptRuntimePath.c_str())) {
+  if (!rscd.buildForCompatLib(*s, OutputFilename.c_str(), OptRuntimePath.c_str(), false)) {
     fprintf(stderr, "Failed to compile script!");
     return EXIT_FAILURE;
   }

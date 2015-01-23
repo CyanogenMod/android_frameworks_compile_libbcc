@@ -306,7 +306,7 @@ int main(int argc, char **argv) {
     llvm::sys::path::append(output, "/", OptOutputFilename);
     llvm::sys::path::replace_extension(output, ".o");
 
-    if (!RSCD.buildForCompatLib(*s, output.c_str(), OptBCLibFilename.c_str())) {
+    if (!RSCD.buildForCompatLib(*s, output.c_str(), OptBCLibFilename.c_str(), OptEmitLLVM)) {
       fprintf(stderr, "Failed to compile script!");
       return EXIT_FAILURE;
     }

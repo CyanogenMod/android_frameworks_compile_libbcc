@@ -344,7 +344,8 @@ bool RSCompilerDriver::buildScriptGroup(
 }
 
 bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
-                                         const char *pRuntimePath) {
+                                         const char *pRuntimePath,
+                                         bool pDumpIR) {
   // For compat lib, we don't check the RS info file so we don't need the source hash,
   // compile command, and build fingerprint.
   // TODO We may want to make them optional or embed real values.
@@ -364,7 +365,7 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
   pScript.setEmbedInfo(true);
 
   Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath, bitcode_sha1,
-                                             compileCommandLineToEmbed, false, false);
+                                             compileCommandLineToEmbed, false, pDumpIR);
   if (status != Compiler::kSuccess) {
     return false;
   }

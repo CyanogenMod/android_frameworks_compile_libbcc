@@ -121,7 +121,7 @@ public:
       bool dumpIR);
 
   // Returns true if script is successfully compiled.
-  bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath);
+  bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath, bool pDumpIR);
 };
 
 } // end namespace bcc
