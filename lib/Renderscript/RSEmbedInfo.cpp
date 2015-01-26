@@ -74,12 +74,15 @@ public:
     size_t exportFuncCount = me.getExportFuncCount();
     size_t exportForEachCount = me.getExportForEachSignatureCount();
     size_t objectSlotCount = me.getObjectSlotCount();
+    size_t pragmaCount = me.getPragmaCount();
     const char **exportVarNameList = me.getExportVarNameList();
     const char **exportFuncNameList = me.getExportFuncNameList();
     const char **exportForEachNameList = me.getExportForEachNameList();
     const uint32_t *exportForEachSignatureList =
         me.getExportForEachSignatureList();
     const uint32_t *objectSlotList = me.getObjectSlotList();
+    const char **pragmaKeyList = me.getPragmaKeyList();
+    const char **pragmaValueList = me.getPragmaValueList();
     size_t i;
 
     // We use a simple text format here that the compatibility library can
@@ -108,6 +111,12 @@ public:
     s << "objectSlotCount: " << objectSlotCount << "\n";
     for (i = 0; i < objectSlotCount; ++i) {
       s << objectSlotList[i] << "\n";
+    }
+
+    s << "pragmaCount: " << pragmaCount << "\n";
+    for (i = 0; i < pragmaCount; ++i) {
+      s << pragmaKeyList[i] << " - "
+        << pragmaValueList[i] << "\n";
     }
 
     s.flush();
