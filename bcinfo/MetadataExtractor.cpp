@@ -60,6 +60,7 @@ static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
 
+static const llvm::StringRef ThreadableMetadataName = "#rs_is_threadable";
 
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mModule(nullptr), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
@@ -68,7 +69,8 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mExportForEachNameList(nullptr), mExportForEachSignatureList(nullptr),
       mExportForEachInputCountList(nullptr), mPragmaCount(0),
       mPragmaKeyList(nullptr), mPragmaValueList(nullptr), mObjectSlotCount(0),
-      mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full) {
+      mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
+      mIsThreadable(true) {
   BitcodeWrapper wrapper(bitcode, bitcodeSize);
   mCompilerVersion = wrapper.getCompilerVersion();
   mOptimizationLevel = wrapper.getOptimizationLevel();
@@ -82,7 +84,8 @@ MetadataExtractor::MetadataExtractor(const llvm::Module *module)
       mExportForEachNameList(nullptr), mExportForEachSignatureList(nullptr),
       mExportForEachInputCountList(nullptr), mPragmaCount(0),
       mPragmaKeyList(nullptr), mPragmaValueList(nullptr), mObjectSlotCount(0),
-      mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full) {
+      mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
+      mIsThreadable(true) {
   mCompilerVersion = RS_VERSION;  // Default to the actual current version.
   mOptimizationLevel = 3;
 }
@@ -425,6 +428,36 @@ bool MetadataExtractor::populateForEachMetadata(
 }
 
 
+void MetadataExtractor::readThreadableFlag(
+    const llvm::NamedMDNode *ThreadableMetadata) {
+
+  // Scripts are threadable by default.  If we read a valid metadata value for
+  // 'ThreadableMetadataName' and it is set to 'no', we mark script as non
+  // threadable.  All other exception paths retain the default value.
+
+  mIsThreadable = true;
+  if (ThreadableMetadata == nullptr)
+    return;
+
+  llvm::MDNode *mdNode = ThreadableMetadata->getOperand(0);
+  if (mdNode == nullptr)
+    return;
+
+  llvm::Value *mdValue = mdNode->getOperand(0);
+  if (mdValue == nullptr)
+    return;
+
+  const char *value = createStringFromValue(mdValue);
+  if (value == nullptr)
+    return;
+
+  if (strcmp(value, "no") == 0)
+    mIsThreadable = false;
+  return;
+
+}
+
+
 bool MetadataExtractor::extract() {
   if (!(mBitcode && mBitcodeSize) && !mModule) {
     ALOGE("Invalid/empty bitcode/module");
@@ -463,6 +496,8 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
       mModule->getNamedMetadata(ObjectSlotMetadataName);
+  const llvm::NamedMDNode *ThreadableMetadata =
+      mModule->getNamedMetadata(ThreadableMetadataName);
 
 
   if (!populateVarNameMetadata(ExportVarMetadata)) {
@@ -487,6 +522,8 @@ bool MetadataExtractor::extract() {
     ALOGE("Could not populate object slot metadata");
     return false;
   }
+
+  readThreadableFlag(ThreadableMetadata);
 
   return true;
 }

@@ -197,6 +197,14 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
   // This has to come after LTO, since we don't want to examine functions that
   // are never actually called.
   passes.add(createRSScreenFunctionsPass());
+  passes.add(createRSIsThreadablePass());
+
+  // RSEmbedInfoPass needs to come after we have scanned for non-threadable
+  // functions.
+  // Script passed to RSCompiler must be a RSScript.
+  RSScript &script = static_cast<RSScript &>(pScript);
+  if (script.getEmbedInfo())
+    passes.add(createRSEmbedInfoPass());
 
   // Add passes to the pass manager to emit machine code through MC layer.
   if (mTarget->addPassesToEmitMC(passes, mc_context, pResult,
@@ -356,14 +364,9 @@ bool Compiler::addInvokeHelperPass(llvm::PassManager &pPM) {
 }
 
 bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
-  // Script passed to RSCompiler must be a RSScript.
-  RSScript &script = static_cast<RSScript &>(pScript);
-
   // Expand ForEach on CPU path to reduce launch overhead.
   bool pEnableStepOpt = true;
   pPM.add(createRSForEachExpandPass(pEnableStepOpt));
-  if (script.getEmbedInfo())
-    pPM.add(createRSEmbedInfoPass());
 
   return true;
 }
