@@ -83,6 +83,7 @@ public:
     const uint32_t *objectSlotList = me.getObjectSlotList();
     const char **pragmaKeyList = me.getPragmaKeyList();
     const char **pragmaValueList = me.getPragmaValueList();
+    bool isThreadable = me.isThreadable();
     size_t i;
 
     // We use a simple text format here that the compatibility library can
@@ -118,6 +119,7 @@ public:
       s << pragmaKeyList[i] << " - "
         << pragmaValueList[i] << "\n";
     }
+    s << "isThreadable: " << ((isThreadable) ? "yes" : "no") << "\n";
 
     s.flush();
     return str;
