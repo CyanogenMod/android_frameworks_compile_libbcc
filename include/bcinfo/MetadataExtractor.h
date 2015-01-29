@@ -61,6 +61,9 @@ class MetadataExtractor {
 
   enum RSFloatPrecision mRSFloatPrecision;
 
+  // Flag to mark that script is threadable.  True by default.
+  bool mIsThreadable;
+
   // Helper functions for extraction
   bool populateVarNameMetadata(const llvm::NamedMDNode *VarNameMetadata);
   bool populateFuncNameMetadata(const llvm::NamedMDNode *FuncNameMetadata);
@@ -68,6 +71,7 @@ class MetadataExtractor {
                                const llvm::NamedMDNode *Signatures);
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
   void populatePragmaMetadata(const llvm::NamedMDNode *PragmaMetadata);
+  void readThreadableFlag(const llvm::NamedMDNode *ThreadableMetadata);
 
   uint32_t calculateNumInputs(const llvm::Function *Function,
                               uint32_t Signature);
@@ -269,6 +273,11 @@ class MetadataExtractor {
   static bool hasForEachSignatureKernel(uint32_t sig) {
     return sig & 0x20;
   }
+
+  bool isThreadable() {
+    return mIsThreadable;
+  }
+
 };
 
 }  // namespace bcinfo
