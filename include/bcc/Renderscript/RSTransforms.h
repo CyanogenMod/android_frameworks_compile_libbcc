@@ -32,9 +32,9 @@ createRSInvokeHelperPass();
 
 llvm::ModulePass * createRSEmbedInfoPass();
 
+llvm::ModulePass * createRSScreenFunctionsPass();
 
-llvm::ModulePass *
-createRSScreenFunctionsPass();
+llvm::ModulePass * createRSIsThreadablePass();
 
 } // end namespace bcc
 

@@ -32,6 +32,7 @@ libbcc_renderscript_SRC_FILES := \
   RSMetadata.cpp \
   RSScript.cpp \
   RSInvokeHelperPass.cpp \
+  RSIsThreadablePass.cpp \
   RSScreenFunctionsPass.cpp \
   RSStubsWhiteList.cpp \
   RSScriptGroupFusion.cpp
