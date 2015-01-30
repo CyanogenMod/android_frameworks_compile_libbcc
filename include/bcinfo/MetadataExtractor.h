@@ -33,6 +33,18 @@ enum RSFloatPrecision {
   RS_FP_Relaxed = 1,
 };
 
+enum MetadataSignatureBitval {
+  MD_SIG_None        = 0,
+  MD_SIG_In          = 0x000001,
+  MD_SIG_Out         = 0x000002,
+  MD_SIG_Usr         = 0x000004,
+  MD_SIG_X           = 0x000008,
+  MD_SIG_Y           = 0x000010,
+  MD_SIG_Kernel      = 0x000020,
+  MD_SIG_Z           = 0x000040,
+  MD_SIG_Ctxt        = 0x000080,
+};
+
 class MetadataExtractor {
  private:
   const llvm::Module *mModule;
@@ -221,7 +233,7 @@ class MetadataExtractor {
    * \param sig - ForEach function signature to check.
    */
   static bool hasForEachSignatureIn(uint32_t sig) {
-    return sig & 0x01;
+    return sig & MD_SIG_In;
   }
 
   /**
@@ -231,7 +243,7 @@ class MetadataExtractor {
    * \param sig - ForEach function signature to check.
    */
   static bool hasForEachSignatureOut(uint32_t sig) {
-    return sig & 0x02;
+    return sig & MD_SIG_Out;
   }
 
   /**
@@ -241,7 +253,7 @@ class MetadataExtractor {
    * \param sig - ForEach function signature to check.
    */
   static bool hasForEachSignatureUsrData(uint32_t sig) {
-    return sig & 0x04;
+    return sig & MD_SIG_Usr;
   }
 
   /**
@@ -251,7 +263,7 @@ class MetadataExtractor {
    * \param sig - ForEach function signature to check.
    */
   static bool hasForEachSignatureX(uint32_t sig) {
-    return sig & 0x08;
+    return sig & MD_SIG_X;
   }
 
   /**
@@ -261,7 +273,7 @@ class MetadataExtractor {
    * \param sig - ForEach function signature to check.
    */
   static bool hasForEachSignatureY(uint32_t sig) {
-    return sig & 0x10;
+    return sig & MD_SIG_Y;
   }
 
   /**
@@ -271,7 +283,27 @@ class MetadataExtractor {
    * \param sig - ForEach function signature to check.
    */
   static bool hasForEachSignatureKernel(uint32_t sig) {
-    return sig & 0x20;
+    return sig & MD_SIG_Kernel;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature has a "Z"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureZ(uint32_t sig) {
+    return sig & MD_SIG_Z;
+  }
+
+  /**
+   * \return whether or not this ForEach function signature has a "Ctxt"
+   * parameter.
+   *
+   * \param sig - ForEach function signature to check.
+   */
+  static bool hasForEachSignatureCtxt(uint32_t sig) {
+    return sig & MD_SIG_Ctxt;
   }
 
   /**
