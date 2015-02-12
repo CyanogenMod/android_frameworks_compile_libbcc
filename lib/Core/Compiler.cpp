@@ -179,6 +179,8 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
     Builder.Inliner = llvm::createFunctionInliningPass();
     Builder.populateLTOPassManager(passes, mTarget);
 
+    /* FIXME: Reenable autovectorization after rebase.
+       bug 19324423
     // Add vectorization passes after LTO passes are in
     // additional flag: -unroll-runtime
     passes.add(llvm::createLoopUnrollPass(-1, 16, 0, 1));
@@ -191,6 +193,7 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
     passes.add(llvm::createSLPVectorizerPass());
     passes.add(llvm::createDeadCodeEliminationPass());
     passes.add(llvm::createInstructionCombiningPass());
+    */
   }
 
   // Add our pass to check for illegal function calls.
