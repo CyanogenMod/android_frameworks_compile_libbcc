@@ -274,7 +274,12 @@ class MetadataExtractor {
     return sig & 0x20;
   }
 
-  bool isThreadable() {
+  /**
+   * \return whether "Kernels" in this script can be processed
+   * by multiple threads
+   */
+
+  bool isThreadable() const {
     return mIsThreadable;
   }
 
