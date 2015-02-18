@@ -509,4 +509,7 @@ std::vector<std::string> stubList = {
 "_Z9rsForEach9rs_script13rs_allocationS0_PKvjPK14rs_script_call",
 "_Z9rsForEach9rs_script13rs_allocationS0_PKvPK14rs_script_call",
 "_Z9rsgFinishv",
+"exp2f",
+"sqrtf",
+"fabsf",
 };
