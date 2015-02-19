@@ -41,6 +41,7 @@
 #include <bcc/Renderscript/RSCompilerDriver.h>
 #include <bcc/Script.h>
 #include <bcc/Source.h>
+#include <bcc/Support/Log.h>
 #include <bcc/Support/CompilerConfig.h>
 #include <bcc/Support/Initialization.h>
 #include <bcc/Support/InputFile.h>
@@ -288,7 +289,6 @@ int main(int argc, char **argv) {
   init::Initialize();
   llvm::cl::SetVersionPrinter(BCCVersionPrinter);
   llvm::cl::ParseCommandLineOptions(argc, argv);
-  std::string commandLine = bcc::getCommandLine(argc, argv);
 
   BCCContext context;
   RSCompilerDriver RSCD;
@@ -334,9 +334,11 @@ int main(int argc, char **argv) {
   size_t bitcodeSize = input_data->getBufferSize();
 
   if (!OptEmbedRSInfo) {
-    bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
-                            bitcodeSize, commandLine.c_str(), OptChecksum.c_str(), OptBCLibFilename.c_str(), nullptr,
-                            OptEmitLLVM);
+    bool built = RSCD.build(context, OptOutputPath.c_str(),
+                            OptOutputFilename.c_str(),
+                            bitcode, bitcodeSize,
+                            OptChecksum.c_str(), OptBCLibFilename.c_str(),
+                            nullptr, OptEmitLLVM);
 
     if (!built) {
       return EXIT_FAILURE;
