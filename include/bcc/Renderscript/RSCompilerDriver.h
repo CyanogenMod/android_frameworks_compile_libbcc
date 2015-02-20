@@ -66,9 +66,12 @@ private:
   //   invalidation decision.
   // - If pDumpIR is true, a ".ll" file will also be created.
   Compiler::ErrorCode compileScript(RSScript& pScript, const char* pScriptName,
-                                    const char* pOutputPath, const char* pRuntimePath,
+                                    const char* pOutputPath,
+                                    const char *pRuntimePath,
                                     const RSInfo::DependencyHashTy& pSourceHash,
-                                    const char* commandLineToEmbed, bool saveInfoFile, bool pDumpIR);
+                                    const char* commandLineToEmbed,
+                                    const char* pBuildChecksum,
+                                    bool saveInfoFile, bool pDumpIR);
 
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
@@ -111,7 +114,7 @@ public:
   // Returns true if script is successfully compiled.
   bool build(BCCContext& pContext, const char* pCacheDir, const char* pResName,
              const char* pBitcode, size_t pBitcodeSize, const char* commandLine,
-             const char* pRuntimePath,
+             const char *pBuildChecksum, const char* pRuntimePath,
              RSLinkRuntimeCallback pLinkRuntimeCallback = nullptr,
              bool pDumpIR = false);
 
@@ -121,7 +124,9 @@ public:
       bool dumpIR);
 
   // Returns true if script is successfully compiled.
-  bool buildForCompatLib(RSScript &pScript, const char *pOut, const char *pRuntimePath, bool pDumpIR);
+  bool buildForCompatLib(RSScript &pScript, const char *pOut,
+                         const char *pBuildChecksum, const char *pRuntimePath,
+                         bool pDumpIR);
 };
 
 } // end namespace bcc

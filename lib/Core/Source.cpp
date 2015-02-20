@@ -173,4 +173,12 @@ const std::string &Source::getIdentifier() const {
   return mModule->getModuleIdentifier();
 }
 
+void Source::addBuildChecksumMetadata(const char *buildChecksum) const {
+    llvm::LLVMContext &context = mContext.mImpl->mLLVMContext;
+    llvm::MDString *val = llvm::MDString::get(context, buildChecksum);
+    llvm::NamedMDNode *node =
+        mModule->getOrInsertNamedMetadata("#rs_build_checksum");
+    node->addOperand(llvm::MDNode::get(context, val));
+}
+
 } // namespace bcc

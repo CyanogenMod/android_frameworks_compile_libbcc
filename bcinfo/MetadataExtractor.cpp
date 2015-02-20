@@ -62,6 +62,10 @@ static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
 
 static const llvm::StringRef ThreadableMetadataName = "#rs_is_threadable";
 
+// Name of metadata node where the checksum for this build is stored.  (should
+// be synced with libbcc/lib/Core/Source.cpp)
+static const llvm::StringRef ChecksumMetadataName = "#rs_build_checksum";
+
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mModule(nullptr), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
       mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
@@ -70,7 +74,7 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mExportForEachInputCountList(nullptr), mPragmaCount(0),
       mPragmaKeyList(nullptr), mPragmaValueList(nullptr), mObjectSlotCount(0),
       mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
-      mIsThreadable(true) {
+      mIsThreadable(true), mBuildChecksum(nullptr) {
   BitcodeWrapper wrapper(bitcode, bitcodeSize);
   mCompilerVersion = wrapper.getCompilerVersion();
   mOptimizationLevel = wrapper.getOptimizationLevel();
@@ -85,7 +89,7 @@ MetadataExtractor::MetadataExtractor(const llvm::Module *module)
       mExportForEachInputCountList(nullptr), mPragmaCount(0),
       mPragmaKeyList(nullptr), mPragmaValueList(nullptr), mObjectSlotCount(0),
       mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
-      mIsThreadable(true) {
+      mIsThreadable(true), mBuildChecksum(nullptr) {
   mCompilerVersion = RS_VERSION;  // Default to the actual current version.
   mOptimizationLevel = 3;
 }
@@ -139,6 +143,8 @@ MetadataExtractor::~MetadataExtractor() {
 
   delete [] mObjectSlotList;
   mObjectSlotList = nullptr;
+
+  delete [] mBuildChecksum;
 
   return;
 }
@@ -457,6 +463,22 @@ void MetadataExtractor::readThreadableFlag(
 
 }
 
+void MetadataExtractor::readBuildChecksumMetadata(
+    const llvm::NamedMDNode *ChecksumMetadata) {
+
+  if (ChecksumMetadata == nullptr)
+    return;
+
+  llvm::MDNode *mdNode = ChecksumMetadata ->getOperand(0);
+  if (mdNode == nullptr)
+    return;
+
+  llvm::Value *mdValue = mdNode->getOperand(0);
+  if (mdValue == nullptr)
+    return;
+
+  mBuildChecksum = createStringFromValue(mdValue);
+}
 
 bool MetadataExtractor::extract() {
   if (!(mBitcode && mBitcodeSize) && !mModule) {
@@ -498,6 +520,8 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(ObjectSlotMetadataName);
   const llvm::NamedMDNode *ThreadableMetadata =
       mModule->getNamedMetadata(ThreadableMetadataName);
+  const llvm::NamedMDNode *ChecksumMetadata =
+      mModule->getNamedMetadata(ChecksumMetadataName);
 
 
   if (!populateVarNameMetadata(ExportVarMetadata)) {
@@ -524,6 +548,7 @@ bool MetadataExtractor::extract() {
   }
 
   readThreadableFlag(ThreadableMetadata);
+  readBuildChecksumMetadata(ChecksumMetadata);
 
   return true;
 }

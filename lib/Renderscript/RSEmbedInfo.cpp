@@ -84,6 +84,8 @@ public:
     const char **pragmaKeyList = me.getPragmaKeyList();
     const char **pragmaValueList = me.getPragmaValueList();
     bool isThreadable = me.isThreadable();
+    const char *buildChecksum = me.getBuildChecksum();
+
     size_t i;
 
     // We use a simple text format here that the compatibility library can
@@ -120,6 +122,10 @@ public:
         << pragmaValueList[i] << "\n";
     }
     s << "isThreadable: " << ((isThreadable) ? "yes" : "no") << "\n";
+
+    if (buildChecksum != nullptr) {
+      s << "buildChecksum: " << buildChecksum << "\n";
+    }
 
     s.flush();
     return str;
