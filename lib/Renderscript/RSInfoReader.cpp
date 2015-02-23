@@ -295,14 +295,12 @@ RSInfo *RSInfo::ReadFromFile(InputFile &pInput) {
   }
 
   // Clean up.
-  map->release();
+  delete map;
 
   return result;
 
 bail:
-  if (map != nullptr) {
-    map->release();
-  }
+  delete map;
 
   delete result;
 
