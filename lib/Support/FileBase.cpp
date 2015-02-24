@@ -236,7 +236,7 @@ android::FileMap *FileBase::createMap(off_t pOffset, size_t pLength,
 
   if (!map->create(nullptr, mFD, pOffset, pLength, pIsReadOnly)) {
     detectError();
-    map->release();
+    delete map;
     return nullptr;
   }
 
