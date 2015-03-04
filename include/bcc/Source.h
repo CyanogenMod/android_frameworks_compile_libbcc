@@ -80,6 +80,8 @@ public:
   // when it's created using CreateFromBuffer and pPath if CreateFromFile().
   const std::string &getIdentifier() const;
 
+  void addBuildChecksumMetadata(const char *) const;
+
   ~Source();
 };
 

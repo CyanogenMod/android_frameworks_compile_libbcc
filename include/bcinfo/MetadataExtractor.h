@@ -64,6 +64,8 @@ class MetadataExtractor {
   // Flag to mark that script is threadable.  True by default.
   bool mIsThreadable;
 
+  const char *mBuildChecksum;
+
   // Helper functions for extraction
   bool populateVarNameMetadata(const llvm::NamedMDNode *VarNameMetadata);
   bool populateFuncNameMetadata(const llvm::NamedMDNode *FuncNameMetadata);
@@ -72,6 +74,7 @@ class MetadataExtractor {
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
   void populatePragmaMetadata(const llvm::NamedMDNode *PragmaMetadata);
   void readThreadableFlag(const llvm::NamedMDNode *ThreadableMetadata);
+  void readBuildChecksumMetadata(const llvm::NamedMDNode *ChecksumMetadata);
 
   uint32_t calculateNumInputs(const llvm::Function *Function,
                               uint32_t Signature);
@@ -283,6 +286,12 @@ class MetadataExtractor {
     return mIsThreadable;
   }
 
+  /**
+   * \return the build checksum extracted from the LLVM metadata
+   */
+  const char *getBuildChecksum() const {
+    return mBuildChecksum;
+  }
 };
 
 }  // namespace bcinfo
