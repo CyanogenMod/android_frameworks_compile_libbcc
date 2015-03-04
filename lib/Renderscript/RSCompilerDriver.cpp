@@ -119,8 +119,15 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
                                                     const char* pRuntimePath,
                                                     const RSInfo::DependencyHashTy& pSourceHash,
                                                     const char* compileCommandLineToEmbed,
+                                                    const char* pBuildChecksum,
                                                     bool saveInfoFile, bool pDumpIR) {
   // android::StopWatch compile_time("bcc: RSCompilerDriver::compileScript time");
+
+  // embed build checksum metadata into the source
+  if (pBuildChecksum != nullptr && strlen(pBuildChecksum) > 0) {
+    pScript.getSource().addBuildChecksumMetadata(pBuildChecksum);
+  }
+
   RSInfo *info = nullptr;
 
   //===--------------------------------------------------------------------===//
@@ -251,6 +258,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
                              const char *pBitcode,
                              size_t pBitcodeSize,
                              const char *commandLine,
+                             const char *pBuildChecksum,
                              const char *pRuntimePath,
                              RSLinkRuntimeCallback pLinkRuntimeCallback,
                              bool pDumpIR) {
@@ -313,7 +321,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   Compiler::ErrorCode status = compileScript(script, pResName,
                                              output_path.c_str(),
                                              pRuntimePath, bitcode_sha1, commandLine,
-                                             true, pDumpIR);
+                                             pBuildChecksum, true, pDumpIR);
 
   return status == Compiler::kSuccess;
 }
@@ -333,17 +341,20 @@ bool RSCompilerDriver::buildScriptGroup(
 
   uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
   const char* compileCommandLineToEmbed = "";
+  const char* buildChecksum = nullptr;
 
   llvm::SmallString<80> output_path(pOutputFilepath);
   llvm::sys::path::replace_extension(output_path, ".o");
 
   compileScript(script, pOutputFilepath, output_path.c_str(), pRuntimePath,
-                bitcode_sha1, compileCommandLineToEmbed, true, dumpIR);
+                bitcode_sha1, compileCommandLineToEmbed, buildChecksum,
+                true, dumpIR);
 
   return true;
 }
 
 bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
+                                         const char *pBuildChecksum,
                                          const char *pRuntimePath,
                                          bool pDumpIR) {
   // For compat lib, we don't check the RS info file so we don't need the source hash,
@@ -365,7 +376,7 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
   pScript.setEmbedInfo(true);
 
   Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath, bitcode_sha1,
-                                             compileCommandLineToEmbed, false, pDumpIR);
+                                             compileCommandLineToEmbed, pBuildChecksum, false, pDumpIR);
   if (status != Compiler::kSuccess) {
     return false;
   }
