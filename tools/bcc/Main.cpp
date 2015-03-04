@@ -93,6 +93,12 @@ llvm::cl::opt<bool>
 OptRSDebugContext("rs-debug-ctx",
     llvm::cl::desc("Enable build to work with a RenderScript debug context"));
 
+llvm::cl::opt<std::string>
+OptChecksum("build-checksum",
+            llvm::cl::desc("Embed a checksum of this compiler invocation for"
+                           " cache invalidation at a later time"),
+            llvm::cl::value_desc("checksum"));
+
 //===----------------------------------------------------------------------===//
 // Compiler Options
 //===----------------------------------------------------------------------===//
@@ -282,7 +288,7 @@ int main(int argc, char **argv) {
 
   if (!OptEmbedRSInfo) {
     bool built = RSCD.build(context, OptOutputPath.c_str(), OptOutputFilename.c_str(), bitcode,
-                            bitcodeSize, commandLine.c_str(), OptBCLibFilename.c_str(), nullptr,
+                            bitcodeSize, commandLine.c_str(), OptChecksum.c_str(), OptBCLibFilename.c_str(), nullptr,
                             OptEmitLLVM);
 
     if (!built) {
@@ -306,7 +312,8 @@ int main(int argc, char **argv) {
     llvm::sys::path::append(output, "/", OptOutputFilename);
     llvm::sys::path::replace_extension(output, ".o");
 
-    if (!RSCD.buildForCompatLib(*s, output.c_str(), OptBCLibFilename.c_str(), OptEmitLLVM)) {
+    if (!RSCD.buildForCompatLib(*s, output.c_str(), OptChecksum.c_str(),
+                                OptBCLibFilename.c_str(), OptEmitLLVM)) {
       fprintf(stderr, "Failed to compile script!");
       return EXIT_FAILURE;
     }
