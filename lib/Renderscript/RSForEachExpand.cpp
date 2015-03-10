@@ -18,6 +18,7 @@
 #include "bcc/Renderscript/RSTransforms.h"
 
 #include <cstdlib>
+#include <functional>
 
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
@@ -54,8 +55,10 @@ static const bool gEnableRsTbaa = true;
  * still generate code for the original function.
  */
 class RSForEachExpandPass : public llvm::ModulePass {
-private:
+public:
   static char ID;
+
+private:
 
   llvm::Module *Module;
   llvm::LLVMContext *Context;
@@ -207,13 +210,12 @@ private:
     /* Defined in frameworks/base/libs/rs/cpu_ref/rsCpuCore.h:
      *
      * struct RsForEachKernelStruct{
-     *   const void *in;
+     *   const void **ins;
+     *   uint32_t *inEStrides;
      *   void *out;
      *   uint32_t y;
      *   uint32_t z;
      *   uint32_t lid;
-     *   const void **ins;
-     *   uint32_t *inEStrides;
      *   const void *usr;
      *   uint32_t dimX;
      *   uint32_t dimY;
@@ -342,7 +344,7 @@ private:
   }
 
 public:
-  RSForEachExpandPass(bool pEnableStepOpt)
+  RSForEachExpandPass(bool pEnableStepOpt = true)
       : ModulePass(ID), Module(nullptr), Context(nullptr),
         mEnableStepOpt(pEnableStepOpt) {
 
@@ -351,6 +353,47 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     // This pass does not use any other analysis passes, but it does
     // add/wrap the existing functions in the module (thus altering the CFG).
+  }
+
+  // Build contribution to outgoing argument list for calling a
+  // ForEach-able function, based on the special parameters of that
+  // function.
+  //
+  // Signature - metadata bits for the signature of the ForEach-able function
+  // X, Arg_p - values derived directly from expanded function,
+  //            suitable for computing arguments for the ForEach-able function
+  // CalleeArgs - contribution is accumulated here
+  // Bump - invoked once for each contributed outgoing argument
+  void ExpandSpecialArguments(uint32_t Signature,
+                              llvm::Value *X,
+                              llvm::Value *Arg_p,
+                              llvm::IRBuilder<> &Builder,
+                              llvm::SmallVector<llvm::Value*, 8> &CalleeArgs,
+                              std::function<void ()> Bump) {
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureCtxt(Signature)) {
+      CalleeArgs.push_back(Arg_p);
+      Bump();
+    }
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
+      CalleeArgs.push_back(X);
+      Bump();
+    }
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
+      llvm::Value *Y = Builder.CreateLoad(
+                         Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
+      CalleeArgs.push_back(Y);
+      Bump();
+    }
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
+      llvm::Value *Z = Builder.CreateLoad(
+                         Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Z), "Z");
+      CalleeArgs.push_back(Z);
+      Bump();
+    }
   }
 
   /* Performs the actual optimization on a selected function. On success, the
@@ -375,12 +418,13 @@ public:
     llvm::Function *ExpandedFunction =
       createEmptyExpandedFunction(Function->getName());
 
-    bccAssert(ExpandedFunction->arg_size() == NUM_EXPANDED_FUNCTION_PARAMS);
-
     /*
      * Extract the expanded function's parameters.  It is guaranteed by
      * createEmptyExpandedFunction that there will be five parameters.
      */
+
+    bccAssert(ExpandedFunction->arg_size() == NUM_EXPANDED_FUNCTION_PARAMS);
+
     llvm::Function::arg_iterator ExpandedFunctionArgIter =
       ExpandedFunction->arg_begin();
 
@@ -444,22 +488,14 @@ public:
       UsrData->setName("UsrData");
     }
 
-    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
-      FunctionArgIter++;
-    }
-
-    llvm::Value *Y = nullptr;
-    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-      Y = Builder.CreateLoad(
-            Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
-
-      FunctionArgIter++;
-    }
-
-    bccAssert(FunctionArgIter == Function->arg_end());
-
     llvm::PHINode *IV;
     createLoop(Builder, Arg_x1, Arg_x2, &IV);
+
+    llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
+    ExpandSpecialArguments(Signature, IV, Arg_p, Builder, CalleeArgs,
+                           [&FunctionArgIter]() { FunctionArgIter++; });
+
+    bccAssert(FunctionArgIter == Function->arg_end());
 
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
@@ -501,14 +537,7 @@ public:
       RootArgs.push_back(UsrData);
     }
 
-    llvm::Value *X = IV;
-    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
-      RootArgs.push_back(X);
-    }
-
-    if (Y) {
-      RootArgs.push_back(Y);
-    }
+    RootArgs.append(CalleeArgs.begin(), CalleeArgs.end());
 
     Builder.CreateCall(Function, RootArgs);
 
@@ -569,18 +598,6 @@ public:
      */
     size_t NumInputs = Function->arg_size();
 
-    llvm::Value *Y = nullptr;
-    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-      Y = Builder.CreateLoad(
-            Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
-
-      --NumInputs;
-    }
-
-    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
-      --NumInputs;
-    }
-
     // No usrData parameter on kernels.
     bccAssert(
         !bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature));
@@ -622,6 +639,13 @@ public:
 
       CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
     }
+
+    llvm::PHINode *IV;
+    createLoop(Builder, Arg_x1, Arg_x2, &IV);
+
+    llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
+    ExpandSpecialArguments(Signature, IV, Arg_p, Builder, CalleeArgs,
+                           [&NumInputs]() { --NumInputs; });
 
     llvm::SmallVector<llvm::Type*,  8> InTypes;
     llvm::SmallVector<llvm::Value*, 8> InSteps;
@@ -685,9 +709,6 @@ public:
       }
     }
 
-    llvm::PHINode *IV;
-    createLoop(Builder, Arg_x1, Arg_x2, &IV);
-
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
@@ -743,14 +764,7 @@ public:
       }
     }
 
-    llvm::Value *X = IV;
-    if (bcinfo::MetadataExtractor::hasForEachSignatureX(Signature)) {
-      RootArgs.push_back(X);
-    }
-
-    if (Y) {
-      RootArgs.push_back(Y);
-    }
+    RootArgs.append(CalleeArgs.begin(), CalleeArgs.end());
 
     llvm::Value *RetVal = Builder.CreateCall(Function, RootArgs);
 
@@ -899,6 +913,7 @@ public:
 } // end anonymous namespace
 
 char RSForEachExpandPass::ID = 0;
+static llvm::RegisterPass<RSForEachExpandPass> X("foreachexp", "ForEach Expand Pass");
 
 namespace bcc {
 
