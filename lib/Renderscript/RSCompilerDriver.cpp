@@ -18,11 +18,13 @@
 
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include <llvm/IR/Module.h>
+#include "llvm/Linker/Linker.h"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "bcinfo/BitcodeWrapper.h"
+#include "bcc/Assert.h"
 #include "bcc/BCCContext.h"
 #include "bcc/Compiler.h"
 #include "bcc/Config/Config.h"
@@ -38,6 +40,7 @@
 #include "bcc/Support/Sha1Util.h"
 #include "bcc/Support/OutputFile.h"
 
+#include <sstream>
 #include <string>
 
 #ifdef HAVE_ANDROID_OS
@@ -327,21 +330,86 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 }
 
 bool RSCompilerDriver::buildScriptGroup(
-    BCCContext& Context, const char* pOutputFilepath, const char*pRuntimePath,
-    const std::vector<const Source*>& sources, const std::vector<int>& slots,
-    bool dumpIR) {
-  llvm::Module* module = fuseKernels(Context, sources, slots);
-  if (module == nullptr) {
-    return false;
+    BCCContext& Context, const char* pOutputFilepath, const char* pRuntimePath,
+    bool dumpIR, const std::vector<Source*>& sources,
+    const std::list<std::list<std::pair<int, int>>>& toFuse,
+    const std::list<std::string>& fused,
+    const std::list<std::list<std::pair<int, int>>>& invokes,
+    const std::list<std::string>& invokeBatchNames) {
+  // ---------------------------------------------------------------------------
+  // Link all input modules into a single module
+  // ---------------------------------------------------------------------------
+
+  llvm::LLVMContext& context = Context.getLLVMContext();
+  llvm::Module module("Merged Script Group", context);
+
+  llvm::Linker linker(&module);
+  for (Source* source : sources) {
+    if (linker.linkInModule(&source->getModule())) {
+      ALOGE("Linking for module in source failed.");
+      return false;
+    }
   }
 
+  // ---------------------------------------------------------------------------
+  // Create fused kernels
+  // ---------------------------------------------------------------------------
+
+  auto inputIter = toFuse.begin();
+  for (const std::string& nameOfFused : fused) {
+    auto inputKernels = *inputIter++;
+    std::vector<Source*> sourcesToFuse;
+    std::vector<int> slots;
+
+    for (auto p : inputKernels) {
+      sourcesToFuse.push_back(sources[p.first]);
+      slots.push_back(p.second);
+    }
+
+    if (!fuseKernels(Context, sourcesToFuse, slots, nameOfFused, &module)) {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rename invokes
+  // ---------------------------------------------------------------------------
+
+  auto invokeIter = invokes.begin();
+  for (const std::string& newName : invokeBatchNames) {
+    auto inputInvoke = *invokeIter++;
+    auto p = inputInvoke.front();
+    Source* source = sources[p.first];
+    int slot = p.second;
+
+    if (!renameInvoke(Context, source, slot, newName, &module)) {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Compile the new module with fused kernels
+  // ---------------------------------------------------------------------------
+
   const std::unique_ptr<Source> source(
-      Source::CreateFromModule(Context, pOutputFilepath, *module));
+      Source::CreateFromModule(Context, pOutputFilepath, module, true));
   RSScript script(*source);
 
   uint8_t bitcode_sha1[SHA1_DIGEST_LENGTH];
   const char* compileCommandLineToEmbed = "";
-  const char* buildChecksum = nullptr;
+  const char* buildChecksum = "DummyChecksumForScriptGroup";
+  const char* buildFingerprintToEmbed = "";
+
+  RSInfo* info = RSInfo::ExtractFromSource(*source, bitcode_sha1,
+                                           compileCommandLineToEmbed, buildFingerprintToEmbed);
+  if (info == nullptr) {
+    return false;
+  }
+  script.setInfo(info);
+
+  // Embed the info string directly in the ELF
+  script.setEmbedInfo(true);
+  script.setOptimizationLevel(RSScript::kOptLvl3);
 
   llvm::SmallString<80> output_path(pOutputFilepath);
   llvm::sys::path::replace_extension(output_path, ".o");
