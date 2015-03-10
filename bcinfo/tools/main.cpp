@@ -192,7 +192,7 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
   const uint32_t *sigList = ME->getExportForEachSignatureList();
   const uint32_t *inputCountList = ME->getExportForEachInputCountList();
   for (size_t i = 0; i < ME->getExportForEachSignatureCount(); i++) {
-    printf("exportForEachSignatureList[%zu]: %s - %u - %u\n", i, nameList[i],
+    printf("exportForEachSignatureList[%zu]: %s - 0x%08x - %u\n", i, nameList[i],
            sigList[i], inputCountList[i]);
   }
   printf("\n");
