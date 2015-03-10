@@ -32,16 +32,6 @@ class RSMetadata{
 
 public:
 
-  /// @brief The properties a ForEach call can have.
-  enum ForEachProperties {
-    FOREACH_IN = 1 << 0,
-    FOREACH_OUT = 1 << 1,
-    FOREACH_USER_DATA = 1 << 2,
-    FOREACH_X = 1 << 3,
-    FOREACH_Y = 1 << 4,
-    FOREACH_KERNEL = 1 << 5,
-  };
-
   /// @brief Create a metadata manager for a specific LLVM module.
   ///
   /// @param Module The module to work on.
