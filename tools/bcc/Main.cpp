@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <iostream>
+#include <list>
+#include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -56,9 +60,14 @@ llvm::cl::list<std::string>
 OptInputFilenames(llvm::cl::Positional, llvm::cl::OneOrMore,
                   llvm::cl::desc("<input bitcode files>"));
 
-llvm::cl::list<int>
-OptKernelSlots("k", llvm::cl::ZeroOrMore,
-               llvm::cl::desc("kernel function slot numbers"));
+llvm::cl::list<std::string>
+OptMergePlans("merge", llvm::cl::ZeroOrMore,
+               llvm::cl::desc("Lists of kernels to merge (as source-and-slot "
+                              "pairs) and names for the final merged kernels"));
+
+llvm::cl::list<std::string>
+OptInvokes("invoke", llvm::cl::ZeroOrMore,
+           llvm::cl::desc("Invocable functions"));
 
 llvm::cl::opt<std::string>
 OptOutputFilename("o", llvm::cl::desc("Specify the output filename"),
@@ -131,35 +140,64 @@ void BCCVersionPrinter() {
   return;
 }
 
-bool fuseKernels(BCCContext& Context, RSCompilerDriver& RSCD) {
-  if (OptInputFilenames.size() != OptKernelSlots.size()) {
-    llvm::errs() << "Mismatching number of input files and kernel slots.\n";
-    return false;
+void extractSourcesAndSlots(const llvm::cl::list<std::string>& optList,
+                            std::list<std::string>* batchNames,
+                            std::list<std::list<std::pair<int, int>>>* sourcesAndSlots) {
+  for (unsigned i = 0; i < optList.size(); ++i) {
+    std::string plan = optList[i];
+    unsigned found = plan.find(":");
+
+    std::string name = plan.substr(0, found);
+    std::cerr << "new kernel name: " << name << std::endl;
+    batchNames->push_back(name);
+
+    std::istringstream iss(plan.substr(found + 1));
+    std::string s;
+    std::list<std::pair<int, int>> planList;
+    while (getline(iss, s, '.')) {
+      found = s.find(",");
+      std::string sourceStr = s.substr(0, found);
+      std::string slotStr = s.substr(found + 1);
+
+      std::cerr << "source " << sourceStr << ", slot " << slotStr << std::endl;
+
+      int source = std::stoi(sourceStr);
+      int slot = std::stoi(slotStr);
+      planList.push_back(std::make_pair(source, slot));
+    }
+
+    sourcesAndSlots->push_back(planList);
   }
+}
 
-  std::vector<const bcc::Source*> sources;
-  std::vector<int> slots;
-
+bool compileScriptGroup(BCCContext& Context, RSCompilerDriver& RSCD) {
+  std::vector<bcc::Source*> sources;
   for (unsigned i = 0; i < OptInputFilenames.size(); ++i) {
-    const bcc::Source* source =
+    bcc::Source* source =
         bcc::Source::CreateFromFile(Context, OptInputFilenames[i]);
     if (!source) {
       llvm::errs() << "Error loading file '" << OptInputFilenames[i]<< "'\n";
       return false;
     }
-    int slot = OptKernelSlots[i];
-
     sources.push_back(source);
-    slots.push_back(slot);
   }
+
+  std::list<std::string> fusedKernelNames;
+  std::list<std::list<std::pair<int, int>>> sourcesAndSlots;
+  extractSourcesAndSlots(OptMergePlans, &fusedKernelNames, &sourcesAndSlots);
+
+  std::list<std::string> invokeBatchNames;
+  std::list<std::list<std::pair<int, int>>> invokeSourcesAndSlots;
+  extractSourcesAndSlots(OptInvokes, &invokeBatchNames, &invokeSourcesAndSlots);
 
   std::string outputFilepath(OptOutputPath);
   outputFilepath.append("/");
   outputFilepath.append(OptOutputFilename);
 
   bool success = RSCD.buildScriptGroup(
-      Context, outputFilepath.c_str(), OptBCLibFilename.c_str(), sources,
-      slots, true);
+    Context, outputFilepath.c_str(), OptBCLibFilename.c_str(), true,
+    sources, sourcesAndSlots, fusedKernelNames,
+    invokeSourcesAndSlots, invokeBatchNames);
 
   return success;
 }
@@ -266,11 +304,13 @@ int main(int argc, char **argv) {
     rscdi(&RSCD);
   }
 
-  if (OptInputFilenames.size() > 1) {
-    bool success = fuseKernels(context, RSCD);
+  if (OptMergePlans.size() > 0) {
+    bool success = compileScriptGroup(context, RSCD);
+
     if (!success) {
       return EXIT_FAILURE;
     }
+
     return EXIT_SUCCESS;
   }
 
@@ -294,8 +334,7 @@ int main(int argc, char **argv) {
     if (!built) {
       return EXIT_FAILURE;
     }
-  }
-  else {
+  } else {
     // embedRSInfo is set.  Use buildForCompatLib to embed RS symbol information
     // into the .rs.info symbol.
     Source *source = Source::CreateFromBuffer(context, OptInputFilenames[0].c_str(),
