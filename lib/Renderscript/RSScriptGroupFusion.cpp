@@ -18,192 +18,298 @@
 
 #include "bcc/Assert.h"
 #include "bcc/BCCContext.h"
-#include "bcc/Renderscript/RSMetadata.h"
-#include "bcc/Renderscript/RSScript.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 #include "bcinfo/MetadataExtractor.h"
-#include "llvm/IR/AssemblyAnnotationWriter.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Linker/Linker.h"
-#include "llvm/PassManager.h"
-#include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include <map>
-#include <string>
 
 using llvm::Function;
+using llvm::Module;
 
-using std::map;
-using std::pair;
 using std::string;
 
 namespace bcc {
 
 namespace {
 
-struct SourceCompare {
-  bool operator()(const Source* lhs, const Source* rhs) const {
-    return lhs->getName().compare(rhs->getName()) < 0;
-  }
-};
-
-typedef map<const Source*,
-            map<int, pair<const Function*, int>>, SourceCompare> SlotMap;
-
-const Function* getFunction(const Source* source, const int slot) {
-  const llvm::Module* module = &source->getModule();
+const Function* getInvokeFunction(const Source& source, const int slot,
+                                  Module* newModule) {
+  Module* module = const_cast<Module*>(&source.getModule());
   bcinfo::MetadataExtractor metadata(module);
   if (!metadata.extract()) {
     return nullptr;
   }
+  const char* functionName = metadata.getExportFuncNameList()[slot];
+  Function* func = newModule->getFunction(functionName);
+  // Materialize the function so that later the caller can inspect its argument
+  // and return types.
+  newModule->materialize(func);
+  return func;
+}
+
+const Function*
+getFunction(Module* mergedModule, const Source* source, const int slot,
+            uint32_t* signature) {
+  bcinfo::MetadataExtractor metadata(&source->getModule());
+  metadata.extract();
+
   const char* functionName = metadata.getExportForEachNameList()[slot];
-  return module->getFunction(functionName);
-}
-
-llvm::Type* getArgType(const Source* source, const int slot) {
-  const Function* func = getFunction(source, slot);
-  if (func == nullptr) {
+  if (functionName == nullptr) {
     return nullptr;
   }
-  auto argIter = func->getArgumentList().begin();
-  return argIter->getType();
-}
 
-llvm::Type* getReturnType(const Source* source, const int slot) {
-  const Function* func = getFunction(source, slot);
-  if (func == nullptr) {
+  if (metadata.getExportForEachInputCountList()[slot] > 1) {
+    // TODO: Handle multiple inputs.
+    ALOGW("Kernel %s has multiple inputs", functionName);
     return nullptr;
   }
-  return func->getReturnType();
+
+  if (signature != nullptr) {
+    *signature = metadata.getExportForEachSignatureList()[slot];
+  }
+
+  const Function* function = mergedModule->getFunction(functionName);
+
+  return function;
 }
 
-pair<const Function*, int> getFunction(
-    SlotMap& slotMap, llvm::Linker& linker, const Source* source,
-    const int slot) {
-  auto it1 = slotMap.find(source);
-  if (it1 == slotMap.end()) {
-    llvm::Module* module = (llvm::Module*)&source->getModule();
-    if (linker.linkInModule(module)) {
-      ALOGE("Linking for module in source %s failed.",
-            source->getName().c_str());
-      return std::make_pair(nullptr, 0);
-    }
-  }
-  auto &functions = slotMap[source];
+// TODO: Handle the context argument
+constexpr uint32_t ExpectedSignatureBits =
+        bcinfo::MD_SIG_In |
+        bcinfo::MD_SIG_Out |
+        bcinfo::MD_SIG_X |
+        bcinfo::MD_SIG_Y |
+        bcinfo::MD_SIG_Z |
+        bcinfo::MD_SIG_Kernel;
 
-  auto it2 = functions.find(slot);
-  if (it2 == functions.end()) {
+int getFusedFuncSig(const std::vector<Source*>& sources,
+                    const std::vector<int>& slots,
+                    uint32_t* retSig) {
+  *retSig = 0;
+  uint32_t firstSignature = 0;
+  uint32_t signature = 0;
+  auto slotIter = slots.begin();
+  for (const Source* source : sources) {
+    const int slot = *slotIter++;
     bcinfo::MetadataExtractor metadata(&source->getModule());
     metadata.extract();
-    const char* functionName = metadata.getExportForEachNameList()[slot];
-    if (functionName == nullptr) {
-      return std::make_pair(nullptr, 0);
-    }
 
     if (metadata.getExportForEachInputCountList()[slot] > 1) {
-      // TODO: Handle multiple inputs.
-      ALOGW("Kernel %s has multiple inputs", functionName);
-      return std::make_pair(nullptr, 0);
+      // TODO: Handle multiple inputs in kernel fusion.
+      ALOGW("Kernel %d in source %p has multiple inputs", slot, source);
+      return -1;
     }
 
-    const uint32_t signature = metadata.getExportForEachSignatureList()[slot];
-    int dim = 0;
-    if (metadata.hasForEachSignatureX(signature)) {
-      dim++;
-    }
-    if (metadata.hasForEachSignatureY(signature)) {
-      dim++;
+    signature = metadata.getExportForEachSignatureList()[slot];
+    if (signature & ~ExpectedSignatureBits) {
+      ALOGW("Unexpected signature %x seen while fusing kernels", signature);
+      return -1;
     }
 
-    const Function* function = linker.getModule()->getFunction(functionName);
-    it2 = functions.emplace(slot, std::make_pair(function, dim)).first;
+    if (firstSignature == 0) {
+      firstSignature = signature;
+    }
+
+    *retSig |= signature;
   }
-  return it2->second;
+
+  if (!bcinfo::MetadataExtractor::hasForEachSignatureIn(firstSignature)) {
+    *retSig &= ~bcinfo::MD_SIG_In;
+  }
+
+  if (!bcinfo::MetadataExtractor::hasForEachSignatureOut(signature)) {
+    *retSig &= ~bcinfo::MD_SIG_Out;
+  }
+
+  return 0;
+}
+
+llvm::FunctionType* getFusedFuncType(bcc::BCCContext& Context,
+                                     const std::vector<Source*>& sources,
+                                     const std::vector<int>& slots,
+                                     Module* M,
+                                     uint32_t* signature) {
+  int error = getFusedFuncSig(sources, slots, signature);
+
+  if (error < 0) {
+    return nullptr;
+  }
+
+  const Function* firstF = getFunction(M, sources.front(), slots.front(), nullptr);
+
+  bccAssert (firstF != nullptr);
+
+  llvm::SmallVector<llvm::Type*, 8> ArgTys;
+
+  if (bcinfo::MetadataExtractor::hasForEachSignatureIn(*signature)) {
+    ArgTys.push_back(firstF->arg_begin()->getType());
+  }
+
+  llvm::Type* I32Ty = llvm::IntegerType::get(Context.getLLVMContext(), 32);
+  if (bcinfo::MetadataExtractor::hasForEachSignatureX(*signature)) {
+    ArgTys.push_back(I32Ty);
+  }
+  if (bcinfo::MetadataExtractor::hasForEachSignatureY(*signature)) {
+    ArgTys.push_back(I32Ty);
+  }
+  if (bcinfo::MetadataExtractor::hasForEachSignatureZ(*signature)) {
+    ArgTys.push_back(I32Ty);
+  }
+
+  const Function* lastF = getFunction(M, sources.back(), slots.back(), nullptr);
+
+  bccAssert (lastF != nullptr);
+
+  llvm::Type* retTy = lastF->getReturnType();
+
+  return llvm::FunctionType::get(retTy, ArgTys, false);
 }
 
 }  // anonymous namespace
 
-llvm::Module*
-fuseKernels(bcc::BCCContext& Context,
-            const std::vector<const Source *>& sources,
-            const std::vector<int>& slots) {
-  bccAssert(sources.size() > 1 && "Need at least two kernels for kernel merging");
+bool fuseKernels(bcc::BCCContext& Context,
+                 const std::vector<Source *>& sources,
+                 const std::vector<int>& slots,
+                 const std::string& fusedName,
+                 Module* mergedModule) {
   bccAssert(sources.size() == slots.size() && "sources and slots differ in size");
 
-  llvm::LLVMContext& context = Context.getLLVMContext();
-  std::unique_ptr<llvm::Module> module(
-      new llvm::Module("Merged ScriptGroup", context));
-  if (module == nullptr) {
-    ALOGE("out of memory while creating module for fused kernels");
-    return nullptr;
-  }
-  llvm::Linker linker(module.get());
-  SlotMap slotMap;
+  uint32_t signature;
 
-  llvm::Type* inputType = getArgType(sources.front(), slots.front());
-  if (inputType == nullptr) {
-    return nullptr;
+  llvm::FunctionType* fusedType =
+          getFusedFuncType(Context, sources, slots, mergedModule, &signature);
+
+  if (fusedType == nullptr) {
+    return false;
   }
-  llvm::Type* returnType = getReturnType(sources.back(), slots.back());
-  if (returnType == nullptr) {
-    return nullptr;
-  }
-  llvm::Type* I32Ty = llvm::IntegerType::get(context, 32);
+
   Function* fusedKernel =
-      (Function*)(module->getOrInsertFunction(
-          "__rs_fused_kernels", returnType, inputType, I32Ty, I32Ty, nullptr));
+          (Function*)(mergedModule->getOrInsertFunction(fusedName, fusedType));
 
-  llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry",
-                                                     fusedKernel);
+  llvm::LLVMContext& ctxt = Context.getLLVMContext();
+
+  llvm::BasicBlock* block = llvm::BasicBlock::Create(ctxt, "entry", fusedKernel);
   llvm::IRBuilder<> builder(block);
 
   Function::arg_iterator argIter = fusedKernel->arg_begin();
-  llvm::Value* dataElement = argIter++;
-  dataElement->setName("DataIn");
-  llvm::Value* X = argIter++;
-  X->setName("x");
-  llvm::Value* Y = argIter++;
-  Y->setName("y");
+
+  llvm::Value* dataElement = nullptr;
+  if (bcinfo::MetadataExtractor::hasForEachSignatureIn(signature)) {
+    dataElement = argIter++;
+    dataElement->setName("DataIn");
+  }
+
+  llvm::Value* X = nullptr;
+  if (bcinfo::MetadataExtractor::hasForEachSignatureX(signature)) {
+      X = argIter++;
+      X->setName("x");
+  }
+
+  llvm::Value* Y = nullptr;
+  if (bcinfo::MetadataExtractor::hasForEachSignatureY(signature)) {
+      Y = argIter++;
+      Y->setName("y");
+  }
+
+  llvm::Value* Z = nullptr;
+  if (bcinfo::MetadataExtractor::hasForEachSignatureZ(signature)) {
+      Z = argIter++;
+      Z->setName("z");
+  }
 
   auto slotIter = slots.begin();
   for (const Source* source : sources) {
     int slot = *slotIter++;
 
-    const auto& p = getFunction(slotMap, linker, source, slot);
-    const Function* function = p.first;
+    uint32_t signature;
+    const Function* function = getFunction(mergedModule, source, slot, &signature);
+
     if (function == nullptr) {
-      return nullptr;
+      return false;
     }
-    const int dim = p.second;
 
     std::vector<llvm::Value*> args;
-    args.push_back(dataElement);
-    if (dim > 0) {
+    if (dataElement != nullptr) {
+      args.push_back(dataElement);
+    }
+
+    // TODO: Handle the context argument
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureX(signature)) {
       args.push_back(X);
-      if (dim > 1) {
-        args.push_back(Y);
-      }
+    }
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(signature)) {
+      args.push_back(Y);
+    }
+
+    if (bcinfo::MetadataExtractor::hasForEachSignatureZ(signature)) {
+      args.push_back(Z);
     }
 
     dataElement = builder.CreateCall((llvm::Value*)function, args);
   }
 
-  builder.CreateRet(dataElement);
+  if (fusedKernel->getReturnType()->isVoidTy()) {
+    builder.CreateRetVoid();
+  } else {
+    builder.CreateRet(dataElement);
+  }
 
-  bcc::RSMetadata metadata(*module);
-  metadata.deleteAll();
-  metadata.markForEachFunction(*fusedKernel, bcinfo::MD_SIG_Kernel
-                               | bcinfo::MD_SIG_In
-                               | bcinfo::MD_SIG_Out
-                               | bcinfo::MD_SIG_X
-                               | bcinfo::MD_SIG_Y);
+  llvm::NamedMDNode* ExportForEachNameMD =
+    mergedModule->getOrInsertNamedMetadata("#rs_export_foreach_name");
 
-  return module.release();
+  llvm::MDString* nameMDStr = llvm::MDString::get(ctxt, fusedName);
+  llvm::MDNode* nameMDNode = llvm::MDNode::get(ctxt, nameMDStr);
+  ExportForEachNameMD->addOperand(nameMDNode);
+
+  llvm::NamedMDNode* ExportForEachMD =
+    mergedModule->getOrInsertNamedMetadata("#rs_export_foreach");
+  llvm::MDString* sigMDStr = llvm::MDString::get(ctxt,
+                                                 llvm::utostr_32(signature));
+  llvm::MDNode* sigMDNode = llvm::MDNode::get(ctxt, sigMDStr);
+  ExportForEachMD->addOperand(sigMDNode);
+
+  return true;
+}
+
+bool renameInvoke(BCCContext& Context, const Source* source, const int slot,
+                  const std::string& newName, Module* module) {
+  const llvm::Function* F = getInvokeFunction(*source, slot, module);
+  std::vector<llvm::Type*> params;
+  for (auto I = F->arg_begin(), E = F->arg_end(); I != E; ++I) {
+    params.push_back(I->getType());
+  }
+  llvm::Type* returnTy = F->getReturnType();
+
+  llvm::FunctionType* batchFuncTy =
+          llvm::FunctionType::get(returnTy, params, false);
+
+  llvm::Function* newF =
+          llvm::Function::Create(batchFuncTy,
+                                 llvm::GlobalValue::ExternalLinkage, newName,
+                                 module);
+
+  llvm::BasicBlock* block = llvm::BasicBlock::Create(Context.getLLVMContext(),
+                                                     "entry", newF);
+  llvm::IRBuilder<> builder(block);
+
+  llvm::Function::arg_iterator argIter = newF->arg_begin();
+  llvm::Value* arg1 = argIter++;
+  builder.CreateCall((llvm::Value*)F, arg1);
+
+  builder.CreateRetVoid();
+
+  llvm::NamedMDNode* ExportFuncNameMD =
+          module->getOrInsertNamedMetadata("#rs_export_func");
+  llvm::MDString* strMD = llvm::MDString::get(module->getContext(), newName);
+  llvm::MDNode* nodeMD = llvm::MDNode::get(module->getContext(), strMD);
+  ExportFuncNameMD->addOperand(nodeMD);
+
+  return true;
 }
 
 }  // namespace bcc

@@ -29,7 +29,6 @@ libbcc_renderscript_SRC_FILES := \
   RSInfoExtractor.cpp \
   RSInfoReader.cpp \
   RSInfoWriter.cpp \
-  RSMetadata.cpp \
   RSScript.cpp \
   RSInvokeHelperPass.cpp \
   RSIsThreadablePass.cpp \

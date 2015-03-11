@@ -18,6 +18,7 @@
 #define BCC_RS_SCRIPT_GROUP_FUSION_H
 
 #include <vector>
+#include <string>
 
 namespace llvm {
 class Module;
@@ -26,18 +27,23 @@ class Module;
 namespace bcc {
 
 class Source;
-class RSScript;
 class BCCContext;
 
 /// @brief Fuse kernels
 ///
-/// @param Sources The Sources containing the kernels.
-/// @param Slots The slots where the kernels are located.
-/// @return A script that containing the fused kernels.
-// TODO(yangni): Check FP precision. (http://b/19098612)
-llvm::Module* fuseKernels(BCCContext& Context,
-                          const std::vector<const Source *>& sources,
-                          const std::vector<int>& slots);
+/// @param Context bcc context.
+/// @param sources The Sources containing the kernels.
+/// @param slots The slots where the kernels are located.
+/// @param fusedName
+/// @return True, if kernels are successfully merged. False, otherwise.
+bool fuseKernels(BCCContext& Context,
+                 const std::vector<Source *>& sources,
+                 const std::vector<int>& slots,
+                 const std::string& fusedName,
+                 llvm::Module* mergedModule);
+
+bool renameInvoke(BCCContext& Context, const Source* source, const int slot,
+                  const std::string& newName, llvm::Module* mergedModule);
 }
 
 #endif /* BCC_RS_SCRIPT_GROUP_FUSION_H */

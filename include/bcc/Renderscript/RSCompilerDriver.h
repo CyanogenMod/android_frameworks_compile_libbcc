@@ -23,6 +23,7 @@
 
 #include "bcinfo/MetadataExtractor.h"
 
+#include <list>
 #include <vector>
 
 namespace bcc {
@@ -120,8 +121,11 @@ public:
 
   bool buildScriptGroup(
       BCCContext& Context, const char* pOutputFilepath, const char* pRuntimePath,
-      const std::vector<const Source*>& sources, const std::vector<int>& slots,
-      bool dumpIR);
+      bool dumpIR, const std::vector<Source*>& sources,
+      const std::list<std::list<std::pair<int, int>>>& toFuse,
+      const std::list<std::string>& fused,
+      const std::list<std::list<std::pair<int, int>>>& invokes,
+      const std::list<std::string>& invokeBatchNames);
 
   // Returns true if script is successfully compiled.
   bool buildForCompatLib(RSScript &pScript, const char *pOut,
