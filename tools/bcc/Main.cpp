@@ -79,6 +79,12 @@ OptBCLibFilename("bclib", llvm::cl::desc("Specify the bclib filename"),
                  llvm::cl::value_desc("bclib"));
 
 llvm::cl::opt<std::string>
+OptBCLibRelaxedFilename("bclib_relaxed", llvm::cl::desc("Specify the bclib filename optimized for "
+                                                        "relaxed precision floating point maths"),
+                        llvm::cl::init(""),
+                        llvm::cl::value_desc("bclib_relaxed"));
+
+llvm::cl::opt<std::string>
 OptOutputPath("output_path", llvm::cl::desc("Specify the output path"),
               llvm::cl::value_desc("output path"),
               llvm::cl::init("."));
@@ -195,7 +201,8 @@ bool compileScriptGroup(BCCContext& Context, RSCompilerDriver& RSCD) {
   outputFilepath.append(OptOutputFilename);
 
   bool success = RSCD.buildScriptGroup(
-    Context, outputFilepath.c_str(), OptBCLibFilename.c_str(), true,
+    Context, outputFilepath.c_str(), OptBCLibFilename.c_str(),
+    OptBCLibRelaxedFilename.c_str(), true,
     sources, sourcesAndSlots, fusedKernelNames,
     invokeSourcesAndSlots, invokeBatchNames);
 

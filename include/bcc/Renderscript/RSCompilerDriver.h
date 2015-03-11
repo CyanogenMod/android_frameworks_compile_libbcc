@@ -121,7 +121,8 @@ public:
 
   bool buildScriptGroup(
       BCCContext& Context, const char* pOutputFilepath, const char* pRuntimePath,
-      bool dumpIR, const std::vector<Source*>& sources,
+      const char* pRuntimeRelaxedPath, bool dumpIR,
+      const std::vector<Source*>& sources,
       const std::list<std::list<std::pair<int, int>>>& toFuse,
       const std::list<std::string>& fused,
       const std::list<std::list<std::pair<int, int>>>& invokes,
