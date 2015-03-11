@@ -340,6 +340,8 @@ uint32_t MetadataExtractor::calculateNumInputs(const llvm::Function *Function,
     OtherCount += hasForEachSignatureUsrData(Signature);
     OtherCount += hasForEachSignatureX(Signature);
     OtherCount += hasForEachSignatureY(Signature);
+    OtherCount += hasForEachSignatureZ(Signature);
+    OtherCount += hasForEachSignatureCtxt(Signature);
     OtherCount += hasForEachSignatureOut(Signature) &&
                   Function->getReturnType()->isVoidTy();
 

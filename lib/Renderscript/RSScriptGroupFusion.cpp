@@ -197,11 +197,11 @@ fuseKernels(bcc::BCCContext& Context,
 
   bcc::RSMetadata metadata(*module);
   metadata.deleteAll();
-  metadata.markForEachFunction(*fusedKernel, bcc::RSMetadata::FOREACH_KERNEL
-                               | bcc::RSMetadata::FOREACH_IN
-                               | bcc::RSMetadata::FOREACH_OUT
-                               | bcc::RSMetadata::FOREACH_X
-                               | bcc::RSMetadata::FOREACH_Y);
+  metadata.markForEachFunction(*fusedKernel, bcinfo::MD_SIG_Kernel
+                               | bcinfo::MD_SIG_In
+                               | bcinfo::MD_SIG_Out
+                               | bcinfo::MD_SIG_X
+                               | bcinfo::MD_SIG_Y);
 
   return module.release();
 }
