@@ -155,7 +155,8 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
   // Link RS script with Renderscript runtime.
   //===--------------------------------------------------------------------===//
   if (!RSScript::LinkRuntime(pScript, pRuntimePath)) {
-    ALOGE("Failed to link script '%s' with Renderscript runtime!", pScriptName);
+    ALOGE("Failed to link script '%s' with Renderscript runtime %s!",
+          pScriptName, pRuntimePath);
     return Compiler::kErrInvalidSource;
   }
 
@@ -331,7 +332,8 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 
 bool RSCompilerDriver::buildScriptGroup(
     BCCContext& Context, const char* pOutputFilepath, const char* pRuntimePath,
-    bool dumpIR, const std::vector<Source*>& sources,
+    const char* pRuntimeRelaxedPath, bool dumpIR,
+    const std::vector<Source*>& sources,
     const std::list<std::list<std::pair<int, int>>>& toFuse,
     const std::list<std::string>& fused,
     const std::list<std::list<std::pair<int, int>>>& invokes,
@@ -414,7 +416,17 @@ bool RSCompilerDriver::buildScriptGroup(
   llvm::SmallString<80> output_path(pOutputFilepath);
   llvm::sys::path::replace_extension(output_path, ".o");
 
-  compileScript(script, pOutputFilepath, output_path.c_str(), pRuntimePath,
+  // Pick the right runtime lib
+  const char* coreLibPath = pRuntimePath;
+  if (strcmp(pRuntimeRelaxedPath, "")) {
+      bcinfo::MetadataExtractor me(&module);
+      me.extract();
+      if (me.getRSFloatPrecision() == bcinfo::RS_FP_Relaxed) {
+          coreLibPath = pRuntimeRelaxedPath;
+      }
+  }
+
+  compileScript(script, pOutputFilepath, output_path.c_str(), coreLibPath,
                 bitcode_sha1, compileCommandLineToEmbed, buildChecksum,
                 true, dumpIR);
 
@@ -443,8 +455,10 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
   // offline (host) compilation.
   pScript.setEmbedInfo(true);
 
-  Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath, bitcode_sha1,
-                                             compileCommandLineToEmbed, pBuildChecksum, false, pDumpIR);
+  Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath,
+                                             bitcode_sha1,
+                                             compileCommandLineToEmbed,
+                                             pBuildChecksum, false, pDumpIR);
   if (status != Compiler::kSuccess) {
     return false;
   }
