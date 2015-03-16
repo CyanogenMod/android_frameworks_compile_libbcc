@@ -59,16 +59,42 @@ public:
   static char ID;
 
 private:
+  static const size_t RS_KERNEL_INPUT_LIMIT = 8; // see frameworks/base/libs/rs/cpu_ref/rsCpuCoreRuntime.h
+
+  enum RsLaunchDimensionsField {
+    RsLaunchDimensionsFieldX,
+    RsLaunchDimensionsFieldY,
+    RsLaunchDimensionsFieldZ,
+    RsLaunchDimensionsFieldLod,
+    RsLaunchDimensionsFieldFace,
+    RsLaunchDimensionsFieldArray,
+
+    RsLaunchDimensionsFieldCount
+  };
+
+  enum RsExpandKernelDriverInfoPfxField {
+    RsExpandKernelDriverInfoPfxFieldInPtr,
+    RsExpandKernelDriverInfoPfxFieldInStride,
+    RsExpandKernelDriverInfoPfxFieldInLen,
+    RsExpandKernelDriverInfoPfxFieldOutPtr,
+    RsExpandKernelDriverInfoPfxFieldOutStride,
+    RsExpandKernelDriverInfoPfxFieldOutLen,
+    RsExpandKernelDriverInfoPfxFieldDim,
+    RsExpandKernelDriverInfoPfxFieldCurrent,
+    RsExpandKernelDriverInfoPfxFieldUsr,
+    RsExpandKernelDriverInfoPfxFieldUsLenr,
+
+    RsExpandKernelDriverInfoPfxFieldCount
+  };
 
   llvm::Module *Module;
   llvm::LLVMContext *Context;
 
   /*
-   * Pointer to LLVM type information for the ForEachStubType and the function
-   * signature for expanded kernels.  These must be re-calculated for each
+   * Pointer to LLVM type information for the the function signature
+   * for expanded kernels.  This must be re-calculated for each
    * module the pass is run on.
    */
-  llvm::StructType   *ForEachStubType;
   llvm::FunctionType *ExpandedFunctionType;
 
   uint32_t mExportForEachCount;
@@ -186,68 +212,87 @@ private:
     }
   }
 
-#define PARAM_FIELD_INS         0
-#define PARAM_FIELD_INESTRIDES  1
-#define PARAM_FIELD_OUT         2
-#define PARAM_FIELD_Y           3
-#define PARAM_FIELD_Z           4
-#define PARAM_FIELD_LID         5
-#define PARAM_FIELD_USR         6
-#define PARAM_FIELD_DIMX        7
-#define PARAM_FIELD_DIMY        8
-#define PARAM_FIELD_DIMZ        9
-#define PARAM_FIELD_SLOT       10
-
   /// Builds the types required by the pass for the given context.
   void buildTypes(void) {
-    // Create the RsForEachStubParam struct.
+    // Create the RsLaunchDimensionsTy and RsExpandKernelDriverInfoPfxTy structs.
 
-    llvm::Type *VoidPtrTy    = llvm::Type::getInt8PtrTy(*Context);
-    llvm::Type *VoidPtrPtrTy = VoidPtrTy->getPointerTo();
-    llvm::Type *Int32Ty      = llvm::Type::getInt32Ty(*Context);
-    llvm::Type *Int32PtrTy   = Int32Ty->getPointerTo();
+    llvm::Type *Int8Ty                   = llvm::Type::getInt8Ty(*Context);
+    llvm::Type *Int8PtrTy                = Int8Ty->getPointerTo();
+    llvm::Type *Int8PtrArrayInputLimitTy = llvm::ArrayType::get(Int8PtrTy, RS_KERNEL_INPUT_LIMIT);
+    llvm::Type *Int32Ty                  = llvm::Type::getInt32Ty(*Context);
+    llvm::Type *Int32ArrayInputLimitTy   = llvm::ArrayType::get(Int32Ty, RS_KERNEL_INPUT_LIMIT);
+    llvm::Type *VoidPtrTy                = llvm::Type::getInt8PtrTy(*Context);
+    llvm::Type *Int32Array4Ty            = llvm::ArrayType::get(Int32Ty, 4);
 
     /* Defined in frameworks/base/libs/rs/cpu_ref/rsCpuCore.h:
      *
-     * struct RsForEachKernelStruct{
-     *   const void **ins;
-     *   uint32_t *inEStrides;
-     *   void *out;
+     * struct RsLaunchDimensions {
+     *   uint32_t x;
      *   uint32_t y;
      *   uint32_t z;
-     *   uint32_t lid;
-     *   const void *usr;
-     *   uint32_t dimX;
-     *   uint32_t dimY;
-     *   uint32_t dimZ;
-     *   uint32_t slot;
+     *   uint32_t lod;
+     *   uint32_t face;
+     *   uint32_t array[4];
      * };
      */
-    llvm::SmallVector<llvm::Type*, 12> StructTypes;
-    StructTypes.push_back(VoidPtrPtrTy); // const void **ins
-    StructTypes.push_back(Int32PtrTy);   // uint32_t *inEStrides
-    StructTypes.push_back(VoidPtrTy);    // void *out
-    StructTypes.push_back(Int32Ty);      // uint32_t y
-    StructTypes.push_back(Int32Ty);      // uint32_t z
-    StructTypes.push_back(Int32Ty);      // uint32_t lid
-    StructTypes.push_back(VoidPtrTy);    // const void *usr
-    StructTypes.push_back(Int32Ty);      // uint32_t dimX
-    StructTypes.push_back(Int32Ty);      // uint32_t dimY
-    StructTypes.push_back(Int32Ty);      // uint32_t dimZ
-    StructTypes.push_back(Int32Ty);      // uint32_t slot
+    llvm::SmallVector<llvm::Type*, RsLaunchDimensionsFieldCount> RsLaunchDimensionsTypes;
+    RsLaunchDimensionsTypes.push_back(Int32Ty);       // uint32_t x
+    RsLaunchDimensionsTypes.push_back(Int32Ty);       // uint32_t y
+    RsLaunchDimensionsTypes.push_back(Int32Ty);       // uint32_t z
+    RsLaunchDimensionsTypes.push_back(Int32Ty);       // uint32_t lod
+    RsLaunchDimensionsTypes.push_back(Int32Ty);       // uint32_t face
+    RsLaunchDimensionsTypes.push_back(Int32Array4Ty); // uint32_t array[4]
+    llvm::StructType *RsLaunchDimensionsTy =
+        llvm::StructType::create(RsLaunchDimensionsTypes, "RsLaunchDimensions");
 
-    ForEachStubType =
-      llvm::StructType::create(StructTypes, "RsForEachStubParamStruct");
+    /* Defined in frameworks/base/libs/rs/cpu_ref/rsCpuCoreRuntime.h:
+     *
+     * struct RsExpandKernelDriverInfoPfx {
+     *     const uint8_t *inPtr[RS_KERNEL_INPUT_LIMIT];
+     *     uint32_t inStride[RS_KERNEL_INPUT_LIMIT];
+     *     uint32_t inLen;
+     *
+     *     uint8_t *outPtr[RS_KERNEL_INPUT_LIMIT];
+     *     uint32_t outStride[RS_KERNEL_INPUT_LIMIT];
+     *     uint32_t outLen;
+     *
+     *     // Dimension of the launch
+     *     RsLaunchDimensions dim;
+     *
+     *     // The walking iterator of the launch
+     *     RsLaunchDimensions current;
+     *
+     *     const void *usr;
+     *     uint32_t usrLen;
+     *
+     *     // Items below this line are not used by the compiler and can be change in the driver.
+     *     // So the compiler must assume there are an unknown number of fields of unknown type
+     *     // beginning here.
+     * };
+     */
+    llvm::SmallVector<llvm::Type*, RsExpandKernelDriverInfoPfxFieldCount> RsExpandKernelDriverInfoPfxTypes;
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int8PtrArrayInputLimitTy); // const uint8_t *inPtr[RS_KERNEL_INPUT_LIMIT]
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int32ArrayInputLimitTy);   // uint32_t inStride[RS_KERNEL_INPUT_LIMIT]
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int32Ty);                  // uint32_t inLen
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int8PtrArrayInputLimitTy); // uint8_t *outPtr[RS_KERNEL_INPUT_LIMIT]
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int32ArrayInputLimitTy);   // uint32_t outStride[RS_KERNEL_INPUT_LIMIT]
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int32Ty);                  // uint32_t outLen
+    RsExpandKernelDriverInfoPfxTypes.push_back(RsLaunchDimensionsTy);     // RsLaunchDimensions dim
+    RsExpandKernelDriverInfoPfxTypes.push_back(RsLaunchDimensionsTy);     // RsLaunchDimensions current
+    RsExpandKernelDriverInfoPfxTypes.push_back(VoidPtrTy);                // const void *usr
+    RsExpandKernelDriverInfoPfxTypes.push_back(Int32Ty);                  // uint32_t usrLen
+    llvm::StructType *RsExpandKernelDriverInfoPfxTy =
+        llvm::StructType::create(RsExpandKernelDriverInfoPfxTypes, "RsExpandKernelDriverInfoPfx");
 
     // Create the function type for expanded kernels.
 
-    llvm::Type *ForEachStubPtrTy = ForEachStubType->getPointerTo();
+    llvm::Type *RsExpandKernelDriverInfoPfxPtrTy = RsExpandKernelDriverInfoPfxTy->getPointerTo();
 
     llvm::SmallVector<llvm::Type*, 8> ParamTypes;
-    ParamTypes.push_back(ForEachStubPtrTy); // const RsForEachStubParamStruct *p
-    ParamTypes.push_back(Int32Ty);          // uint32_t x1
-    ParamTypes.push_back(Int32Ty);          // uint32_t x2
-    ParamTypes.push_back(Int32Ty);          // uint32_t outstep
+    ParamTypes.push_back(RsExpandKernelDriverInfoPfxPtrTy); // const RsExpandKernelDriverInfoPfx *p
+    ParamTypes.push_back(Int32Ty);                          // uint32_t x1
+    ParamTypes.push_back(Int32Ty);                          // uint32_t x2
+    ParamTypes.push_back(Int32Ty);                          // uint32_t outstep
 
     ExpandedFunctionType =
         llvm::FunctionType::get(llvm::Type::getVoidTy(*Context), ParamTypes,
@@ -381,18 +426,24 @@ public:
       Bump();
     }
 
-    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-      llvm::Value *Y = Builder.CreateLoad(
-                         Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Y), "Y");
-      CalleeArgs.push_back(Y);
-      Bump();
-    }
+    if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature) ||
+        bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
 
-    if (bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
-      llvm::Value *Z = Builder.CreateLoad(
-                         Builder.CreateStructGEP(Arg_p, PARAM_FIELD_Z), "Z");
-      CalleeArgs.push_back(Z);
-      Bump();
+      llvm::Value *Current = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldCurrent);
+
+      if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
+        llvm::Value *Y = Builder.CreateLoad(
+            Builder.CreateStructGEP(Current, RsLaunchDimensionsFieldY), "Y");
+        CalleeArgs.push_back(Y);
+        Bump();
+      }
+
+      if (bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
+        llvm::Value *Z = Builder.CreateLoad(
+            Builder.CreateStructGEP(Current, RsLaunchDimensionsFieldZ), "Z");
+        CalleeArgs.push_back(Z);
+        Bump();
+      }
     }
   }
 
@@ -446,18 +497,11 @@ public:
     llvm::Type  *InTy      = nullptr;
     llvm::Value *InBasePtr = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
-      llvm::Value    *InsMember  = Builder.CreateStructGEP(Arg_p,
-                                                           PARAM_FIELD_INS);
-      llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember, "inputs_base");
+      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
 
-      llvm::Value *InStepsMember =
-        Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INESTRIDES);
-      llvm::LoadInst *InStepsBase = Builder.CreateLoad(InStepsMember,
-                                                       "insteps_base");
+      llvm::Value *InStepsBase = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
 
-      llvm::Value *IndexVal = Builder.getInt32(0);
-
-      llvm::Value    *InStepAddr = Builder.CreateGEP(InStepsBase, IndexVal);
+      llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(InStepsBase, 0, 0);
       llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
                                                       "instep_addr");
 
@@ -466,7 +510,7 @@ public:
 
       InStep->setName("instep");
 
-      llvm::Value *InputAddr = Builder.CreateGEP(InsBasePtr, IndexVal);
+      llvm::Value *InputAddr = Builder.CreateConstInBoundsGEP2_32(InsBasePtr, 0, 0);
       InBasePtr = Builder.CreateLoad(InputAddr, "input_base");
     }
 
@@ -477,14 +521,15 @@ public:
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(
-                     Builder.CreateStructGEP(Arg_p, PARAM_FIELD_OUT));
+                     Builder.CreateConstInBoundsGEP2_32(
+                         Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr), 0, 0));
     }
 
     llvm::Value *UsrData = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = (FunctionArgIter++)->getType();
       UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p, PARAM_FIELD_USR)), UsrDataTy);
+          Builder.CreateStructGEP(Arg_p,  RsExpandKernelDriverInfoPfxFieldUsr)), UsrDataTy);
       UsrData->setName("UsrData");
     }
 
@@ -629,7 +674,8 @@ public:
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(
-                     Builder.CreateStructGEP(Arg_p, PARAM_FIELD_OUT));
+                     Builder.CreateConstInBoundsGEP2_32(
+                         Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr), 0, 0));
 
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
@@ -652,21 +698,17 @@ public:
     llvm::SmallVector<llvm::Value*, 8> InBasePtrs;
     llvm::SmallVector<bool,         8> InIsStructPointer;
 
-    if (NumInputs > 0) {
-      llvm::Value *InsMember = Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INS);
-      llvm::LoadInst *InsBasePtr = Builder.CreateLoad(InsMember, "inputs_base");
+    bccAssert(NumInputs <= RS_KERNEL_INPUT_LIMIT);
 
-      llvm::Value *InStepsMember =
-        Builder.CreateStructGEP(Arg_p, PARAM_FIELD_INESTRIDES);
-      llvm::LoadInst *InStepsBase = Builder.CreateLoad(InStepsMember,
-                                                         "insteps_base");
+    if (NumInputs > 0) {
+      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
+
+      llvm::Value *InStepsBase = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
 
       for (size_t InputIndex = 0; InputIndex < NumInputs;
            ++InputIndex, ArgIter++) {
 
-          llvm::Value *IndexVal = Builder.getInt32(InputIndex);
-
-          llvm::Value    *InStepAddr = Builder.CreateGEP(InStepsBase, IndexVal);
+          llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(InStepsBase, 0, InputIndex);
           llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
                                                           "instep_addr");
 
@@ -692,7 +734,7 @@ public:
 
           InStep->setName("instep");
 
-          llvm::Value    *InputAddr = Builder.CreateGEP(InsBasePtr, IndexVal);
+          llvm::Value    *InputAddr = Builder.CreateConstInBoundsGEP2_32(InsBasePtr, 0, InputIndex);
           llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
                                                          "input_base");
           llvm::Value    *CastInBasePtr = Builder.CreatePointerCast(InBasePtr,
