@@ -44,7 +44,7 @@ using namespace bcc;
 
 namespace {
 
-static const bool gEnableRsTbaa = true;
+static const bool gEnableRsTbaa = false;
 
 /* RSForEachExpandPass - This pass operates on functions that are able to be
  * called via rsForEach() or "foreach_<NAME>". We create an inner loop for the
@@ -133,10 +133,9 @@ private:
     // hard-coded to look at only the first such function.
     llvm::MDNode *SigNode = ExportForEachMetadata->getOperand(0);
     if (SigNode != nullptr && SigNode->getNumOperands() == 1) {
-      llvm::Value *SigVal = SigNode->getOperand(0);
-      if (SigVal->getValueID() == llvm::Value::MDStringVal) {
-        llvm::StringRef SigString =
-            static_cast<llvm::MDString*>(SigVal)->getString();
+      llvm::Metadata *SigMD = SigNode->getOperand(0);
+      if (llvm::MDString *SigS = llvm::dyn_cast<llvm::MDString>(SigMD)) {
+        llvm::StringRef SigString = SigS->getString();
         uint32_t Signature = 0;
         if (SigString.getAsInteger(10, Signature)) {
           ALOGE("Non-integer signature value '%s'", SigString.str().c_str());
@@ -359,7 +358,9 @@ private:
     llvm::PHINode *IV;
 
     CondBB = Builder.GetInsertBlock();
-    AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), this);
+    // DT = &getAnalysis<DominatorTree>();
+    // LI = &getAnalysis<LoopInfo>();
+    AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), nullptr, nullptr);
     HeaderBB = llvm::BasicBlock::Create(*Context, "Loop", CondBB->getParent());
 
     // if (LowerBound < Upperbound)
