@@ -17,7 +17,6 @@
 #include "bcc/Renderscript/RSScript.h"
 
 #include "bcc/Assert.h"
-#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Source.h"
 #include "bcc/Support/Log.h"
 
@@ -50,12 +49,11 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *core_lib) {
 }
 
 RSScript::RSScript(Source &pSource)
-  : Script(pSource), mInfo(nullptr), mCompilerVersion(0),
+  : Script(pSource), mCompilerVersion(0),
     mOptimizationLevel(kOptLvl3), mLinkRuntimeCallback(nullptr),
     mEmbedInfo(false) { }
 
 bool RSScript::doReset() {
-  mInfo = nullptr;
   mCompilerVersion = 0;
   mOptimizationLevel = kOptLvl3;
   return true;
