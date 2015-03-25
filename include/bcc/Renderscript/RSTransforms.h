@@ -28,6 +28,9 @@ llvm::ModulePass *
 createRSForEachExpandPass(bool pEnableStepOpt);
 
 llvm::FunctionPass *
+createRSInvariantPass();
+
+llvm::FunctionPass *
 createRSInvokeHelperPass();
 
 llvm::ModulePass * createRSEmbedInfoPass();

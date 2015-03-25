@@ -25,6 +25,7 @@ libbcc_renderscript_SRC_FILES := \
   RSCompilerDriver.cpp \
   RSEmbedInfo.cpp \
   RSForEachExpand.cpp \
+  RSInvariant.cpp \
   RSScript.cpp \
   RSInvokeHelperPass.cpp \
   RSIsThreadablePass.cpp \
