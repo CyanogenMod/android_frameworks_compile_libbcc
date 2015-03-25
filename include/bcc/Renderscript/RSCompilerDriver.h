@@ -18,7 +18,6 @@
 #define BCC_RS_COMPILER_DRIVER_H
 
 #include "bcc/Compiler.h"
-#include "bcc/Renderscript/RSInfo.h"
 #include "bcc/Renderscript/RSScript.h"
 
 #include "bcinfo/MetadataExtractor.h"
@@ -61,18 +60,12 @@ private:
   bool setupConfig(const RSScript &pScript);
 
   // Compiles the provided bitcode, placing the binary at pOutputPath.
-  // - If saveInfoFile is true, it also stores the RSInfo data in a file with a path derived from
-  //   pOutputPath.
-  // - pSourceHash and commandLineToEmbed are values to embed in the RSInfo for future cache
-  //   invalidation decision.
   // - If pDumpIR is true, a ".ll" file will also be created.
   Compiler::ErrorCode compileScript(RSScript& pScript, const char* pScriptName,
                                     const char* pOutputPath,
-                                    const char *pRuntimePath,
-                                    const RSInfo::DependencyHashTy& pSourceHash,
-                                    const char* commandLineToEmbed,
+                                    const char* pRuntimePath,
                                     const char* pBuildChecksum,
-                                    bool saveInfoFile, bool pDumpIR);
+                                    bool pDumpIR);
 
 public:
   RSCompilerDriver(bool pUseCompilerRT = true);
@@ -114,7 +107,7 @@ public:
   //        SymbolResolverInterface is not a const-method.
   // Returns true if script is successfully compiled.
   bool build(BCCContext& pContext, const char* pCacheDir, const char* pResName,
-             const char* pBitcode, size_t pBitcodeSize, const char* commandLine,
+             const char* pBitcode, size_t pBitcodeSize,
              const char *pBuildChecksum, const char* pRuntimePath,
              RSLinkRuntimeCallback pLinkRuntimeCallback = nullptr,
              bool pDumpIR = false);
