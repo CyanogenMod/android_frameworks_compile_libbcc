@@ -245,7 +245,7 @@ private:
     llvm::StructType *RsLaunchDimensionsTy =
         llvm::StructType::create(RsLaunchDimensionsTypes, "RsLaunchDimensions");
 
-    /* Defined in frameworks/base/libs/rs/cpu_ref/rsCpuCoreRuntime.h:
+    /* Defined as the beginning of RsExpandKernelDriverInfo in frameworks/base/libs/rs/cpu_ref/rsCpuCoreRuntime.h:
      *
      * struct RsExpandKernelDriverInfoPfx {
      *     const uint8_t *inPtr[RS_KERNEL_INPUT_LIMIT];
@@ -269,6 +269,8 @@ private:
      *     // So the compiler must assume there are an unknown number of fields of unknown type
      *     // beginning here.
      * };
+     *
+     * The name "RsExpandKernelDriverInfoPfx" is known to RSInvariantPass (RSInvariant.cpp).
      */
     llvm::SmallVector<llvm::Type*, RsExpandKernelDriverInfoPfxFieldCount> RsExpandKernelDriverInfoPfxTypes;
     RsExpandKernelDriverInfoPfxTypes.push_back(Int8PtrArrayInputLimitTy); // const uint8_t *inPtr[RS_KERNEL_INPUT_LIMIT]
