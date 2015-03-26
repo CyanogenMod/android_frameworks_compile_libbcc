@@ -374,11 +374,22 @@ bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   return true;
 }
 
+bool Compiler::addInvariantPass(llvm::PassManager &pPM) {
+  // Mark Loads from RsExpandKernelDriverInfo as "load.invariant".
+  // Should run after ExpandForEach and before inlining.
+  pPM.add(createRSInvariantPass());
+
+  return true;
+}
+
 bool Compiler::addCustomPasses(Script &pScript, llvm::PassManager &pPM) {
   if (!addInvokeHelperPass(pPM))
     return false;
 
   if (!addExpandForEachPass(pScript, pPM))
+    return false;
+
+  if (!addInvariantPass(pPM))
     return false;
 
   if (!addInternalizeSymbolsPass(pScript, pPM))
