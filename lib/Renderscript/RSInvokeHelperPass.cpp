@@ -119,25 +119,36 @@ public:
 
   bool insertSetObjectHelper(llvm::CallInst *Call, llvm::Value *V, llvm::StringRef StructName) {
     llvm::Constant *SetObj = nullptr;
+    llvm::StructType *RSStructType = nullptr;
     if (StructName.equals(rsAllocationType->getName())) {
       SetObj = rsAllocationSetObj;
+      RSStructType = rsAllocationType;
     } else if (StructName.equals(rsElementType->getName())) {
       SetObj = rsElementSetObj;
+      RSStructType = rsElementType;
     } else if (StructName.equals(rsSamplerType->getName())) {
       SetObj = rsSamplerSetObj;
+      RSStructType = rsSamplerType;
     } else if (StructName.equals(rsScriptType->getName())) {
       SetObj = rsScriptSetObj;
+      RSStructType = rsScriptType;
     } else if (StructName.equals(rsTypeType->getName())) {
       SetObj = rsTypeSetObj;
+      RSStructType = rsTypeType;
     } else {
       return false; // this is for graphics types and matrices; do nothing
     }
 
+
+    llvm::CastInst* CastedValue = llvm::CastInst::CreatePointerCast(V, RSStructType->getPointerTo(), "", Call);
+
     llvm::SmallVector<llvm::Value*, 2> SetObjParams;
-    SetObjParams.push_back(V);
-    SetObjParams.push_back(V);
+    SetObjParams.push_back(CastedValue);
+    SetObjParams.push_back(CastedValue);
 
     llvm::CallInst::Create(SetObj, SetObjParams, "", Call);
+
+
     return true;
   }
 
