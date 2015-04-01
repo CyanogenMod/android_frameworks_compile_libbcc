@@ -17,9 +17,10 @@
 #include "bcc/Compiler.h"
 
 #include <llvm/Analysis/Passes.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/CodeGen/RegAllocRegistry.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
-#include <llvm/PassManager.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/DataLayout.h>
@@ -146,12 +147,13 @@ Compiler::~Compiler() {
 enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
                                              llvm::raw_ostream &pResult) {
   // Pass manager for link-time optimization
-  llvm::PassManager passes;
+  llvm::legacy::PassManager passes;
 
   // Empty MCContext.
   llvm::MCContext *mc_context = nullptr;
 
-  mTarget->addAnalysisPasses(passes);
+  passes.add(createTargetTransformInfoWrapperPass(mTarget->getTargetIRAnalysis()));
+  //mTarget->addAnalysisPasses(passes);
 
   // Prepare DataLayout target data from Module
   llvm::DataLayoutPass *data_layout_pass =
@@ -177,7 +179,7 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
     // FIXME: Figure out which passes should be executed.
     llvm::PassManagerBuilder Builder;
     Builder.Inliner = llvm::createFunctionInliningPass();
-    Builder.populateLTOPassManager(passes, mTarget);
+    Builder.populateLTOPassManager(passes);
 
     /* FIXME: Reenable autovectorization after rebase.
        bug 19324423
@@ -232,7 +234,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   const std::string &triple = module.getTargetTriple();
-  const llvm::DataLayout *dl = getTargetMachine().getSubtargetImpl()->getDataLayout();
+  const llvm::DataLayout *dl = getTargetMachine().getDataLayout();
   unsigned int pointerSize = dl->getPointerSizeInBits();
   if (triple == "armv7-none-linux-gnueabi") {
     if (pointerSize != 32) {
@@ -293,7 +295,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   return err;
 }
 
-bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM) {
+bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassManager &pPM) {
   // Add a pass to internalize the symbols that don't need to have global
   // visibility.
   RSScript &script = static_cast<RSScript &>(pScript);
@@ -358,7 +360,7 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM
   return true;
 }
 
-bool Compiler::addInvokeHelperPass(llvm::PassManager &pPM) {
+bool Compiler::addInvokeHelperPass(llvm::legacy::PassManager &pPM) {
   llvm::Triple arch(getTargetMachine().getTargetTriple());
   if (arch.isArch64Bit()) {
     pPM.add(createRSInvokeHelperPass());
@@ -366,7 +368,7 @@ bool Compiler::addInvokeHelperPass(llvm::PassManager &pPM) {
   return true;
 }
 
-bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
+bool Compiler::addExpandForEachPass(Script &pScript, llvm::legacy::PassManager &pPM) {
   // Expand ForEach on CPU path to reduce launch overhead.
   bool pEnableStepOpt = true;
   pPM.add(createRSForEachExpandPass(pEnableStepOpt));
@@ -374,7 +376,7 @@ bool Compiler::addExpandForEachPass(Script &pScript, llvm::PassManager &pPM) {
   return true;
 }
 
-bool Compiler::addInvariantPass(llvm::PassManager &pPM) {
+bool Compiler::addInvariantPass(llvm::legacy::PassManager &pPM) {
   // Mark Loads from RsExpandKernelDriverInfo as "load.invariant".
   // Should run after ExpandForEach and before inlining.
   pPM.add(createRSInvariantPass());
@@ -382,7 +384,7 @@ bool Compiler::addInvariantPass(llvm::PassManager &pPM) {
   return true;
 }
 
-bool Compiler::addCustomPasses(Script &pScript, llvm::PassManager &pPM) {
+bool Compiler::addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM) {
   if (!addInvokeHelperPass(pPM))
     return false;
 

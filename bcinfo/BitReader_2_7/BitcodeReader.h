@@ -19,7 +19,9 @@
 #include "llvm/Bitcode/LLVMBitCodes.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/GVMaterializer.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/IR/OperandTraits.h"
+#include "llvm/IR/TrackingMDRef.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/ValueHandle.h"
 #include <vector>
@@ -97,22 +99,25 @@ public:
 //===----------------------------------------------------------------------===//
 
 class BitcodeReaderMDValueList {
-  std::vector<WeakVH> MDValuePtrs;
+  unsigned NumFwdRefs;
+  bool AnyFwdRefs;
+  std::vector<TrackingMDRef> MDValuePtrs;
 
   LLVMContext &Context;
 public:
-  BitcodeReaderMDValueList(LLVMContext& C) : Context(C) {}
+  BitcodeReaderMDValueList(LLVMContext &C)
+      : NumFwdRefs(0), AnyFwdRefs(false), Context(C) {}
 
   // vector compatibility methods
   unsigned size() const       { return MDValuePtrs.size(); }
   void resize(unsigned N)     { MDValuePtrs.resize(N); }
-  void push_back(Value *V)    { MDValuePtrs.push_back(V);  }
+  void push_back(Metadata *MD) { MDValuePtrs.emplace_back(MD); }
   void clear()                { MDValuePtrs.clear();  }
-  Value *back() const         { return MDValuePtrs.back(); }
+  Metadata *back() const      { return MDValuePtrs.back(); }
   void pop_back()             { MDValuePtrs.pop_back(); }
   bool empty() const          { return MDValuePtrs.empty(); }
 
-  Value *operator[](unsigned i) const {
+  Metadata *operator[](unsigned i) const {
     assert(i < MDValuePtrs.size());
     return MDValuePtrs[i];
   }
@@ -122,12 +127,14 @@ public:
     MDValuePtrs.resize(N);
   }
 
-  Value *getValueFwdRef(unsigned Idx);
-  void AssignValue(Value *V, unsigned Idx);
+  Metadata *getValueFwdRef(unsigned Idx);
+  void AssignValue(Metadata *MD, unsigned Idx);
+  void tryToResolveCycles();
 };
 
 class BitcodeReader : public GVMaterializer {
   LLVMContext &Context;
+  DiagnosticHandlerFunction DiagnosticHandler;
   Module *TheModule;
   std::unique_ptr<MemoryBuffer> Buffer;
   std::unique_ptr<BitstreamReader> StreamFile;
@@ -191,52 +198,23 @@ class BitcodeReader : public GVMaterializer {
   static const std::error_category &BitcodeErrorCategory();
 
 public:
-  enum ErrorType {
-    ConflictingMETADATA_KINDRecords,
-    CouldNotFindFunctionInStream,
-    ExpectedConstant,
-    InsufficientFunctionProtos,
-    InvalidBitcodeSignature,
-    InvalidBitcodeWrapperHeader,
-    InvalidConstantReference,
-    InvalidID, // A read identifier is not found in the table it should be in.
-    InvalidInstructionWithNoBB,
-    InvalidRecord, // A read record doesn't have the expected size or structure
-    InvalidTypeForValue, // Type read OK, but is invalid for its use
-    InvalidTYPETable,
-    InvalidType, // We were unable to read a type
-    MalformedBlock, // We are unable to advance in the stream.
-    MalformedGlobalInitializerSet,
-    InvalidMultipleBlocks, // We found multiple blocks of a kind that should
-                           // have only one
-    NeverResolvedValueFoundInFunction,
-    InvalidValue // Invalid version, inst number, attr number, etc
-  };
+  std::error_code Error(BitcodeError E, const Twine &Message);
+  std::error_code Error(BitcodeError E);
+  std::error_code Error(const Twine &Message);
 
-  std::error_code Error(BitcodeError E) {
-    return make_error_code(E);
-  }
-
-  explicit BitcodeReader(MemoryBuffer *buffer, LLVMContext &C)
-    : Context(C), TheModule(0), Buffer(buffer),
-      LazyStreamer(0), NextUnreadBit(0), SeenValueSymbolTable(false),
-      ValueList(C), MDValueList(C),
-      SeenFirstFunctionBody(false), LLVM2_7MetadataDetected(false) {
-  }
-  ~BitcodeReader() {
-    FreeState();
-  }
+  explicit BitcodeReader(MemoryBuffer *buffer, LLVMContext &C,
+                         DiagnosticHandlerFunction DiagnosticHandler);
+  ~BitcodeReader() { FreeState(); }
 
   void FreeState();
 
-  void releaseBuffer() {
-    Buffer = nullptr;
-  }
+  void releaseBuffer();
 
-  virtual bool isDematerializable(const GlobalValue *GV) const;
-  virtual std::error_code materialize(GlobalValue *GV);
-  virtual std::error_code MaterializeModule(Module *M);
-  virtual void Dematerialize(GlobalValue *GV);
+  bool isDematerializable(const GlobalValue *GV) const override;
+  std::error_code materialize(GlobalValue *GV) override;
+  std::error_code MaterializeModule(Module *M) override;
+  std::vector<StructType *> getIdentifiedStructTypes() const override;
+  void Dematerialize(GlobalValue *GV) override;
 
   /// @brief Main interface to parsing a bitcode buffer.
   /// @returns true if an error occurred.
@@ -249,15 +227,22 @@ public:
   static uint64_t decodeSignRotatedValue(uint64_t V);
 
 private:
+  std::vector<StructType *> IdentifiedStructTypes;
+  StructType *createIdentifiedStructType(LLVMContext &Context, StringRef Name);
+  StructType *createIdentifiedStructType(LLVMContext &Context);
+
   Type *getTypeByID(unsigned ID);
   Type *getTypeByIDOrNull(unsigned ID);
   Value *getFnValueByID(unsigned ID, Type *Ty) {
     if (Ty && Ty->isMetadataTy())
-      return MDValueList.getValueFwdRef(ID);
+      return MetadataAsValue::get(Ty->getContext(), getFnMetadataByID(ID));
     return ValueList.getValueFwdRef(ID, Ty);
   }
+  Metadata *getFnMetadataByID(unsigned ID) {
+    return MDValueList.getValueFwdRef(ID);
+  }
   BasicBlock *getBasicBlock(unsigned ID) const {
-    if (ID >= FunctionBBs.size()) return 0; // Invalid ID
+    if (ID >= FunctionBBs.size()) return nullptr; // Invalid ID
     return FunctionBBs[ID];
   }
   AttributeSet getAttributes(unsigned i) const {
@@ -269,22 +254,22 @@ private:
   /// getValueTypePair - Read a value/type pair out of the specified record from
   /// slot 'Slot'.  Increment Slot past the number of slots used in the record.
   /// Return true on failure.
-  bool getValueTypePair(SmallVector<uint64_t, 64> &Record, unsigned &Slot,
+  bool getValueTypePair(SmallVectorImpl<uint64_t> &Record, unsigned &Slot,
                         unsigned InstNum, Value *&ResVal) {
     if (Slot == Record.size()) return true;
     unsigned ValNo = (unsigned)Record[Slot++];
     if (ValNo < InstNum) {
       // If this is not a forward reference, just return the value we already
       // have.
-      ResVal = getFnValueByID(ValNo, 0);
-      return ResVal == 0;
+      ResVal = getFnValueByID(ValNo, nullptr);
+      return ResVal == nullptr;
     } else if (Slot == Record.size()) {
       return true;
     }
 
     unsigned TypeNo = (unsigned)Record[Slot++];
     ResVal = getFnValueByID(ValNo, getTypeByID(TypeNo));
-    return ResVal == 0;
+    return ResVal == nullptr;
   }
   bool getValue(SmallVector<uint64_t, 64> &Record, unsigned &Slot,
                 Type *Ty, Value *&ResVal) {
