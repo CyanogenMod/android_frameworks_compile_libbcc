@@ -54,7 +54,6 @@ void bcc::init::Initialize() {
   
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeCore(Registry);
-  llvm::initializeDebugIRPass(Registry);
   llvm::initializeScalarOpts(Registry);
   llvm::initializeVectorization(Registry);
   llvm::initializeIPO(Registry);

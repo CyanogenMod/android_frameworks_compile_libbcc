@@ -35,6 +35,17 @@
 
 namespace bcinfo {
 
+namespace {
+
+static llvm::StringRef getStringOperand(const llvm::MDNode *node, unsigned operand) {
+  if (llvm::MDString *mds = llvm::dyn_cast_or_null<llvm::MDString>(
+        node->getOperand(operand))) {
+    return mds->getString();
+  }
+  return llvm::StringRef();
+}
+}
+
 // Name of metadata node where pragma info resides (should be synced with
 // slang.cpp)
 static const llvm::StringRef PragmaMetadataName = "#pragma";
@@ -168,10 +179,8 @@ bool MetadataExtractor::populateObjectSlotMetadata(
   for (size_t i = 0; i < mObjectSlotCount; i++) {
     llvm::MDNode *ObjectSlot = ObjectSlotMetadata->getOperand(i);
     if (ObjectSlot != nullptr && ObjectSlot->getNumOperands() == 1) {
-      llvm::Value *SlotMDS = ObjectSlot->getOperand(0);
-      if (SlotMDS->getValueID() == llvm::Value::MDStringVal) {
-        llvm::StringRef Slot =
-            static_cast<llvm::MDString*>(SlotMDS)->getString();
+      llvm::StringRef Slot = getStringOperand(ObjectSlot, 0);
+      if (Slot != "") {
         uint32_t USlot = 0;
         if (Slot.getAsInteger(10, USlot)) {
           ALOGE("Non-integer object slot value '%s'", Slot.str().c_str());
@@ -188,18 +197,17 @@ bool MetadataExtractor::populateObjectSlotMetadata(
 }
 
 
-static const char *createStringFromValue(llvm::Value *v) {
-  if (v->getValueID() != llvm::Value::MDStringVal) {
-    return nullptr;
+static const char *createStringFromValue(llvm::Metadata *m) {
+  if (llvm::MDString *mds = llvm::dyn_cast_or_null<llvm::MDString>(m)) {
+    llvm::StringRef ref = mds->getString();
+    char *c = new char[ref.size() + 1];
+    memcpy(c, ref.data(), ref.size());
+    c[ref.size()] = '\0';
+
+    return c;
   }
 
-  llvm::StringRef ref = static_cast<llvm::MDString*>(v)->getString();
-
-  char *c = new char[ref.size() + 1];
-  memcpy(c, ref.data(), ref.size());
-  c[ref.size()] = '\0';
-
-  return c;
+  return nullptr;
 }
 
 
@@ -220,9 +228,9 @@ void MetadataExtractor::populatePragmaMetadata(
   for (size_t i = 0; i < mPragmaCount; i++) {
     llvm::MDNode *Pragma = PragmaMetadata->getOperand(i);
     if (Pragma != nullptr && Pragma->getNumOperands() == 2) {
-      llvm::Value *PragmaKeyMDS = Pragma->getOperand(0);
+      llvm::Metadata *PragmaKeyMDS = Pragma->getOperand(0);
       TmpKeyList[i] = createStringFromValue(PragmaKeyMDS);
-      llvm::Value *PragmaValueMDS = Pragma->getOperand(1);
+      llvm::Metadata *PragmaValueMDS = Pragma->getOperand(1);
       TmpValueList[i] = createStringFromValue(PragmaValueMDS);
     }
   }
@@ -391,10 +399,8 @@ bool MetadataExtractor::populateForEachMetadata(
   for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
     llvm::MDNode *SigNode = Signatures->getOperand(i);
     if (SigNode != nullptr && SigNode->getNumOperands() == 1) {
-      llvm::Value *SigVal = SigNode->getOperand(0);
-      if (SigVal->getValueID() == llvm::Value::MDStringVal) {
-        llvm::StringRef SigString =
-            static_cast<llvm::MDString*>(SigVal)->getString();
+      llvm::StringRef SigString = getStringOperand(SigNode, 0);
+      if (SigString != "") {
         uint32_t Signature = 0;
         if (SigString.getAsInteger(10, Signature)) {
           ALOGE("Non-integer signature value '%s'", SigString.str().c_str());
@@ -451,7 +457,7 @@ void MetadataExtractor::readThreadableFlag(
   if (mdNode == nullptr)
     return;
 
-  llvm::Value *mdValue = mdNode->getOperand(0);
+  llvm::Metadata *mdValue = mdNode->getOperand(0);
   if (mdValue == nullptr)
     return;
 
@@ -471,11 +477,11 @@ void MetadataExtractor::readBuildChecksumMetadata(
   if (ChecksumMetadata == nullptr)
     return;
 
-  llvm::MDNode *mdNode = ChecksumMetadata ->getOperand(0);
+  llvm::MDNode *mdNode = ChecksumMetadata->getOperand(0);
   if (mdNode == nullptr)
     return;
 
-  llvm::Value *mdValue = mdNode->getOperand(0);
+  llvm::Metadata *mdValue = mdNode->getOperand(0);
   if (mdValue == nullptr)
     return;
 

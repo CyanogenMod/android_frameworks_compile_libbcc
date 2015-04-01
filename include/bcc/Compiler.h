@@ -81,11 +81,11 @@ private:
   enum ErrorCode runPasses(Script &pScript, llvm::raw_ostream &pResult);
   enum ErrorCode screenGlobals(Script &pScript);
 
-  bool addCustomPasses(Script &pScript, llvm::PassManager &pPM);
-  bool addInternalizeSymbolsPass(Script &pScript, llvm::PassManager &pPM);
-  bool addExpandForEachPass(Script &pScript, llvm::PassManager &pPM);
-  bool addInvariantPass(llvm::PassManager &pPM);
-  bool addInvokeHelperPass(llvm::PassManager &pPM);
+  bool addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM);
+  bool addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassManager &pPM);
+  bool addExpandForEachPass(Script &pScript, llvm::legacy::PassManager &pPM);
+  bool addInvariantPass(llvm::legacy::PassManager &pPM);
+  bool addInvokeHelperPass(llvm::legacy::PassManager &pPM);
 
 public:
   Compiler();
