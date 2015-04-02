@@ -68,6 +68,7 @@ class MetadataExtractor {
   size_t mObjectSlotCount;
   const uint32_t *mObjectSlotList;
 
+  uint32_t mTargetAPI;
   uint32_t mCompilerVersion;
   uint32_t mOptimizationLevel;
 
@@ -115,6 +116,16 @@ class MetadataExtractor {
    * \return true on success and false if an error occurred.
    */
   bool extract();
+
+  /**
+   * \return target API level of this bitcode.
+   *
+   * The target API is used during the SDK compilation to provide proper
+   * visibility of the RenderScript runtime API functions.
+   */
+  uint32_t getTargetAPI() const {
+    return mTargetAPI;
+  }
 
   /**
    * \return number of exported global variables (slots) in this script/module.
