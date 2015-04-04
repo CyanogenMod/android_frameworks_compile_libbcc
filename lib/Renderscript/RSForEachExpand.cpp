@@ -44,7 +44,7 @@ using namespace bcc;
 
 namespace {
 
-static const bool gEnableRsTbaa = false;
+static const bool gEnableRsTbaa = true;
 
 /* RSForEachExpandPass - This pass operates on functions that are able to be
  * called via rsForEach() or "foreach_<NAME>". We create an inner loop for the
@@ -623,10 +623,14 @@ public:
     llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
 
     // Create TBAA meta-data.
-    llvm::MDNode *TBAARenderScript, *TBAAAllocation, *TBAAPointer;
+    llvm::MDNode *TBAARenderScriptDistinct, *TBAARenderScript,
+                 *TBAAAllocation, *TBAAPointer;
     llvm::MDBuilder MDHelper(*Context);
 
-    TBAARenderScript = MDHelper.createTBAARoot("RenderScript TBAA");
+    TBAARenderScriptDistinct =
+      MDHelper.createTBAARoot("RenderScript Distinct TBAA");
+    TBAARenderScript = MDHelper.createTBAANode("RenderScript TBAA",
+        TBAARenderScriptDistinct);
     TBAAAllocation = MDHelper.createTBAAScalarTypeNode("allocation",
                                                        TBAARenderScript);
     TBAAAllocation = MDHelper.createTBAAStructTagNode(TBAAAllocation,
@@ -888,21 +892,20 @@ public:
   ///
   /// The TBAA metadata used to annotate loads/stores from RenderScript
   /// Allocations is generated in a separate TBAA tree with a
-  /// "RenderScript TBAA" root node. LLVM does assume may-alias for all nodes in
-  /// unrelated alias analysis trees. This function makes the RenderScript TBAA
+  /// "RenderScript Distinct TBAA" root node. LLVM does assume may-alias for
+  /// all nodes in unrelated alias analysis trees. This function makes the
+  /// "RenderScript TBAA" node (which is parented by the Distinct TBAA root),
   /// a subtree of the normal C/C++ TBAA tree aside of normal C/C++ types. With
   /// the connected trees every access to an Allocation is resolved to
   /// must-alias if compared to a normal C/C++ access.
   void connectRenderScriptTBAAMetadata(llvm::Module &Module) {
     llvm::MDBuilder MDHelper(*Context);
-    llvm::MDNode *TBAARenderScript =
-      MDHelper.createTBAARoot("RenderScript TBAA");
-
+    llvm::MDNode *TBAARenderScriptDistinct =
+      MDHelper.createTBAARoot("RenderScript Distinct TBAA");
+    llvm::MDNode *TBAARenderScript = MDHelper.createTBAANode(
+        "RenderScript TBAA", TBAARenderScriptDistinct);
     llvm::MDNode *TBAARoot     = MDHelper.createTBAARoot("Simple C/C++ TBAA");
-    llvm::MDNode *TBAAMergedRS = MDHelper.createTBAANode("RenderScript",
-                                                         TBAARoot);
-
-    TBAARenderScript->replaceAllUsesWith(TBAAMergedRS);
+    TBAARenderScript->replaceOperandWith(1, TBAARoot);
   }
 
   virtual bool runOnModule(llvm::Module &Module) {
