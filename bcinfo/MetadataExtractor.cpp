@@ -87,6 +87,7 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
       mIsThreadable(true), mBuildChecksum(nullptr) {
   BitcodeWrapper wrapper(bitcode, bitcodeSize);
+  mTargetAPI = wrapper.getTargetAPI();
   mCompilerVersion = wrapper.getCompilerVersion();
   mOptimizationLevel = wrapper.getOptimizationLevel();
 }
