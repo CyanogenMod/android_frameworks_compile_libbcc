@@ -203,7 +203,7 @@ bool compileScriptGroup(BCCContext& Context, RSCompilerDriver& RSCD) {
 
   bool success = RSCD.buildScriptGroup(
     Context, outputFilepath.c_str(), OptBCLibFilename.c_str(),
-    OptBCLibRelaxedFilename.c_str(), true,
+    OptBCLibRelaxedFilename.c_str(), OptEmitLLVM,
     sources, sourcesAndSlots, fusedKernelNames,
     invokeSourcesAndSlots, invokeBatchNames);
 
