@@ -27,6 +27,26 @@
 
 using namespace bcc;
 
+#if defined (PROVIDE_X86_CODEGEN) && !defined(__HOST__)
+
+namespace {
+
+// Utility function to test for f16c feature.  This function is only needed for
+// on-device bcc for x86
+bool HasF16C() {
+  llvm::StringMap<bool> features;
+  if (!llvm::sys::getHostCPUFeatures(features))
+    return false;
+
+  if (features.count("f16c") && features["f16c"])
+    return true;
+  else
+    return false;
+}
+
+}
+#endif // (PROVIDE_X86_CODEGEN) && !defined(__HOST__)
+
 CompilerConfig::CompilerConfig(const std::string &pTriple)
   : mTriple(pTriple), mFullPrecision(true), mTarget(nullptr) {
   //===--------------------------------------------------------------------===//
@@ -131,6 +151,12 @@ bool CompilerConfig::initializeArch() {
         attributes.push_back("+hwdiv");
     }
 
+    // Enable fp16 attribute if available in the feature list.  This feature
+    // will not be added in the host version of bcc or bcc_compat since
+    // 'features' would correspond to features in an x86 host.
+    if (features.count("fp16") && features["fp16"])
+      attributes.push_back("+fp16");
+
     setFeatureString(attributes);
 
 #if defined(TARGET_BUILD)
@@ -192,6 +218,14 @@ bool CompilerConfig::initializeArch() {
     // Disable frame pointer elimination optimization on x86 family.
     getTargetOptions().NoFramePointerElim = true;
     getTargetOptions().UseInitArray = true;
+
+#ifndef __HOST__
+    // If not running on the host, and f16c is available, set it in the feature
+    // string
+    if (HasF16C())
+      mFeatureString = "+f16c";
+#endif // __HOST__
+
     break;
 #endif  // PROVIDE_X86_CODEGEN
 
@@ -201,6 +235,14 @@ bool CompilerConfig::initializeArch() {
     // Disable frame pointer elimination optimization on x86 family.
     getTargetOptions().NoFramePointerElim = true;
     getTargetOptions().UseInitArray = true;
+
+#ifndef __HOST__
+    // If not running on the host, and f16c is available, set it in the feature
+    // string
+    if (HasF16C())
+      mFeatureString = "+f16c";
+#endif // __HOST__
+
     break;
 #endif  // PROVIDE_X86_CODEGEN
 
