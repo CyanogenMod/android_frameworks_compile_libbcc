@@ -58,7 +58,6 @@ public:
     kErrCreateTargetMachine,
     kErrSwitchTargetMachine,
     kErrNoTargetMachine,
-    kErrDataLayoutNoMemory,
     kErrMaterialization,
     kErrInvalidOutputFileState,
     kErrPrepareOutput,
