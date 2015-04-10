@@ -59,8 +59,6 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
   case kErrNoTargetMachine:
     return "Failed to compile the script since there's no available "
            "TargetMachine. (missing call to Compiler::config()?)";
-  case kErrDataLayoutNoMemory:
-    return "Out of memory when create DataLayout during compilation.";
   case kErrMaterialization:
     return "Failed to materialize the module.";
   case kErrInvalidOutputFileState:
@@ -154,17 +152,6 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
 
   passes.add(createTargetTransformInfoWrapperPass(mTarget->getTargetIRAnalysis()));
   //mTarget->addAnalysisPasses(passes);
-
-  // Prepare DataLayout target data from Module
-  llvm::DataLayoutPass *data_layout_pass =
-    new (std::nothrow) llvm::DataLayoutPass();
-
-  if (data_layout_pass == nullptr) {
-    return kErrDataLayoutNoMemory;
-  }
-
-  // Add DataLayout to the pass manager.
-  passes.add(data_layout_pass);
 
   // Add our custom passes.
   if (!addCustomPasses(pScript, passes)) {
