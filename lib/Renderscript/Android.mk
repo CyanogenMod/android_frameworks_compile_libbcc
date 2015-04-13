@@ -31,7 +31,8 @@ libbcc_renderscript_SRC_FILES := \
   RSIsThreadablePass.cpp \
   RSScreenFunctionsPass.cpp \
   RSStubsWhiteList.cpp \
-  RSScriptGroupFusion.cpp
+  RSScriptGroupFusion.cpp \
+  RSX86CallConvPass.cpp
 
 #=====================================================================
 # Device Static Library: libbccRenderscript
