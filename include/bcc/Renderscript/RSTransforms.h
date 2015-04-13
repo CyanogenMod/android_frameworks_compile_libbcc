@@ -39,6 +39,8 @@ llvm::ModulePass * createRSScreenFunctionsPass();
 
 llvm::ModulePass * createRSIsThreadablePass();
 
+llvm::ModulePass * createRSX86_64CallConvPass();
+
 } // end namespace bcc
 
 #endif // BCC_RS_TRANSFORMS_H
