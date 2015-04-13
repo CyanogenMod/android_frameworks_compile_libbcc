@@ -185,11 +185,11 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
     */
   }
 
-  // Add our pass to check for illegal function calls.
-  // This has to come after LTO, since we don't want to examine functions that
-  // are never actually called.
-  passes.add(createRSScreenFunctionsPass());
-  passes.add(createRSIsThreadablePass());
+  // These passes have to come after LTO, since we don't want to examine
+  // functions that are never actually called.
+  if (!addPostLTOCustomPasses(passes)) {
+    return kErrCustomPasses;
+  }
 
   // RSEmbedInfoPass needs to come after we have scanned for non-threadable
   // functions.
@@ -383,6 +383,21 @@ bool Compiler::addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM) 
 
   if (!addInternalizeSymbolsPass(pScript, pPM))
     return false;
+
+  return true;
+}
+
+bool Compiler::addPostLTOCustomPasses(llvm::legacy::PassManager &pPM) {
+  // Add pass to correct calling convention for X86-64.
+  llvm::Triple arch(getTargetMachine().getTargetTriple());
+  if (arch.getArch() == llvm::Triple::x86_64)
+    pPM.add(createRSX86_64CallConvPass());
+
+  // Add pass to check for illegal function calls.
+  pPM.add(createRSScreenFunctionsPass());
+
+  // Add pass to mark script as threadable.
+  pPM.add(createRSIsThreadablePass());
 
   return true;
 }

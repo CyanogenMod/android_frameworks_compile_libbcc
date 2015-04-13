@@ -85,6 +85,7 @@ private:
   bool addExpandForEachPass(Script &pScript, llvm::legacy::PassManager &pPM);
   bool addInvariantPass(llvm::legacy::PassManager &pPM);
   bool addInvokeHelperPass(llvm::legacy::PassManager &pPM);
+  bool addPostLTOCustomPasses(llvm::legacy::PassManager &pPM);
 
 public:
   Compiler();
