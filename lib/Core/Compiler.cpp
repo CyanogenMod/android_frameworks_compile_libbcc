@@ -151,7 +151,6 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
   llvm::MCContext *mc_context = nullptr;
 
   passes.add(createTargetTransformInfoWrapperPass(mTarget->getTargetIRAnalysis()));
-  //mTarget->addAnalysisPasses(passes);
 
   // Add our custom passes.
   if (!addCustomPasses(pScript, passes)) {
