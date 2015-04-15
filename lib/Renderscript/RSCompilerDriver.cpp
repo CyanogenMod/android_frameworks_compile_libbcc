@@ -269,7 +269,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 
 bool RSCompilerDriver::buildScriptGroup(
     BCCContext& Context, const char* pOutputFilepath, const char* pRuntimePath,
-    const char* pRuntimeRelaxedPath, bool dumpIR,
+    const char* pRuntimeRelaxedPath, bool dumpIR, const char* buildChecksum,
     const std::vector<Source*>& sources,
     const std::list<std::list<std::pair<int, int>>>& toFuse,
     const std::list<std::string>& fused,
@@ -333,8 +333,6 @@ bool RSCompilerDriver::buildScriptGroup(
   const std::unique_ptr<Source> source(
       Source::CreateFromModule(Context, pOutputFilepath, module, true));
   RSScript script(*source);
-
-  const char* buildChecksum = "DummyChecksumForScriptGroup";
 
   // Embed the info string directly in the ELF
   script.setEmbedInfo(true);
