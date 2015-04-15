@@ -37,13 +37,24 @@ namespace bcinfo {
 
 namespace {
 
-static llvm::StringRef getStringOperand(const llvm::MDNode *node, unsigned operand) {
-  if (llvm::MDString *mds = llvm::dyn_cast_or_null<llvm::MDString>(
-        node->getOperand(operand))) {
+llvm::StringRef getStringOperand(const llvm::Metadata *node) {
+  if (auto *mds = llvm::dyn_cast_or_null<const llvm::MDString>(node)) {
     return mds->getString();
   }
   return llvm::StringRef();
 }
+
+bool extractUIntFromMetadataString(uint32_t *value,
+    const llvm::Metadata *m) {
+  llvm::StringRef SigString = getStringOperand(m);
+  if (SigString != "") {
+    if (!SigString.getAsInteger(10, *value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }
 
 // Name of metadata node where pragma info resides (should be synced with
@@ -180,15 +191,13 @@ bool MetadataExtractor::populateObjectSlotMetadata(
   for (size_t i = 0; i < mObjectSlotCount; i++) {
     llvm::MDNode *ObjectSlot = ObjectSlotMetadata->getOperand(i);
     if (ObjectSlot != nullptr && ObjectSlot->getNumOperands() == 1) {
-      llvm::StringRef Slot = getStringOperand(ObjectSlot, 0);
-      if (Slot != "") {
-        uint32_t USlot = 0;
-        if (Slot.getAsInteger(10, USlot)) {
-          ALOGE("Non-integer object slot value '%s'", Slot.str().c_str());
-          return false;
-        }
-        TmpSlotList[i] = USlot;
+      if (!extractUIntFromMetadataString(&TmpSlotList[i], ObjectSlot->getOperand(0))) {
+        ALOGE("Non-integer object slot value");
+        return false;
       }
+    } else {
+      ALOGE("Corrupt object slot information");
+      return false;
     }
   }
 
@@ -199,16 +208,11 @@ bool MetadataExtractor::populateObjectSlotMetadata(
 
 
 static const char *createStringFromValue(llvm::Metadata *m) {
-  if (llvm::MDString *mds = llvm::dyn_cast_or_null<llvm::MDString>(m)) {
-    llvm::StringRef ref = mds->getString();
-    char *c = new char[ref.size() + 1];
-    memcpy(c, ref.data(), ref.size());
-    c[ref.size()] = '\0';
-
-    return c;
-  }
-
-  return nullptr;
+  auto ref = getStringOperand(m);
+  char *c = new char[ref.size() + 1];
+  memcpy(c, ref.data(), ref.size());
+  c[ref.size()] = '\0';
+  return c;
 }
 
 
@@ -400,15 +404,13 @@ bool MetadataExtractor::populateForEachMetadata(
   for (size_t i = 0; i < mExportForEachSignatureCount; i++) {
     llvm::MDNode *SigNode = Signatures->getOperand(i);
     if (SigNode != nullptr && SigNode->getNumOperands() == 1) {
-      llvm::StringRef SigString = getStringOperand(SigNode, 0);
-      if (SigString != "") {
-        uint32_t Signature = 0;
-        if (SigString.getAsInteger(10, Signature)) {
-          ALOGE("Non-integer signature value '%s'", SigString.str().c_str());
-          return false;
-        }
-        TmpSigList[i] = Signature;
+      if (!extractUIntFromMetadataString(&TmpSigList[i], SigNode->getOperand(0))) {
+        ALOGE("Non-integer signature value");
+        return false;
       }
+    } else {
+      ALOGE("Corrupt signature information");
+      return false;
     }
   }
 
@@ -462,14 +464,8 @@ void MetadataExtractor::readThreadableFlag(
   if (mdValue == nullptr)
     return;
 
-  const char *value = createStringFromValue(mdValue);
-  if (value == nullptr)
-    return;
-
-  if (strcmp(value, "no") == 0)
+  if (getStringOperand(mdValue) == "no")
     mIsThreadable = false;
-  return;
-
 }
 
 void MetadataExtractor::readBuildChecksumMetadata(

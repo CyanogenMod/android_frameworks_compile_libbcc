@@ -57,7 +57,7 @@ getFunction(Module* mergedModule, const Source* source, const int slot,
   metadata.extract();
 
   const char* functionName = metadata.getExportForEachNameList()[slot];
-  if (functionName == nullptr) {
+  if (functionName == nullptr || !functionName[0]) {
     return nullptr;
   }
 

@@ -51,7 +51,7 @@ void bcc::init::Initialize() {
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllAsmPrinters();
-  
+
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeCore(Registry);
   llvm::initializeScalarOpts(Registry);
