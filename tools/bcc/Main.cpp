@@ -109,6 +109,15 @@ llvm::cl::opt<bool>
 OptRSDebugContext("rs-debug-ctx",
     llvm::cl::desc("Enable build to work with a RenderScript debug context"));
 
+llvm::cl::opt<bool>
+OptRSGlobalInfo("rs-global-info",
+    llvm::cl::desc("Embed information about global variables in the code"));
+
+llvm::cl::opt<bool>
+OptRSGlobalInfoSkipConstant("rs-global-info-skip-constant",
+    llvm::cl::desc("Skip embedding information about constant global "
+                   "variables in the code"));
+
 llvm::cl::opt<std::string>
 OptChecksum("build-checksum",
             llvm::cl::desc("Embed a checksum of this compiler invocation for"
@@ -272,6 +281,14 @@ bool ConfigCompiler(RSCompilerDriver &pRSCD) {
 
   if (OptRSDebugContext) {
     pRSCD.setDebugContext(true);
+  }
+
+  if (OptRSGlobalInfo) {
+    pRSCD.setEmbedGlobalInfo(true);
+  }
+
+  if (OptRSGlobalInfoSkipConstant) {
+    pRSCD.setEmbedGlobalInfoSkipConstant(true);
   }
 
   if (result != Compiler::kSuccess) {
