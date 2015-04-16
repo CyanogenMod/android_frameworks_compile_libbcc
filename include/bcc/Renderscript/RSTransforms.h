@@ -35,6 +35,8 @@ createRSInvokeHelperPass();
 
 llvm::ModulePass * createRSEmbedInfoPass();
 
+llvm::ModulePass * createRSGlobalInfoPass(bool pSkipConstants);
+
 llvm::ModulePass * createRSScreenFunctionsPass();
 
 llvm::ModulePass * createRSIsThreadablePass();
