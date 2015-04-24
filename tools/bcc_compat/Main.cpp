@@ -168,6 +168,14 @@ bool ConfigCompiler(RSCompilerDriver &pCompilerDriver) {
     config->setFeatureString(fv);
   }
 
+  // Explicitly set X86 feature vector
+  if ((config->getTriple().find("i686") != std::string::npos) ||
+    (config->getTriple().find("x86_64") != std::string::npos)) {
+    std::vector<std::string> fv;
+    fv.push_back("+sse3");
+    config->setFeatureString(fv);
+  }
+
   // Compatibility mode on x86 requires atom code generation.
   if (config->getTriple().find("i686") != std::string::npos) {
     config->setCPU("atom");
