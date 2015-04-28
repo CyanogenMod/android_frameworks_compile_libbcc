@@ -358,8 +358,6 @@ private:
     llvm::PHINode *IV;
 
     CondBB = Builder.GetInsertBlock();
-    // DT = &getAnalysis<DominatorTree>();
-    // LI = &getAnalysis<LoopInfo>();
     AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), nullptr, nullptr);
     HeaderBB = llvm::BasicBlock::Create(*Context, "Loop", CondBB->getParent());
 
