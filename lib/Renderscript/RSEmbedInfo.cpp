@@ -123,7 +123,7 @@ public:
     }
     s << "isThreadable: " << ((isThreadable) ? "yes" : "no") << "\n";
 
-    if (buildChecksum != nullptr) {
+    if (buildChecksum != nullptr && buildChecksum[0]) {
       s << "buildChecksum: " << buildChecksum << "\n";
     }
 
