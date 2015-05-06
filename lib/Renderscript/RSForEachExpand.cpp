@@ -430,18 +430,19 @@ public:
     if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature) ||
         bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
 
-      llvm::Value *Current = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldCurrent);
+      llvm::Value *Current = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldCurrent);
 
       if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
         llvm::Value *Y = Builder.CreateLoad(
-            Builder.CreateStructGEP(Current, RsLaunchDimensionsFieldY), "Y");
+            Builder.CreateStructGEP(nullptr, Current, RsLaunchDimensionsFieldY), "Y");
+
         CalleeArgs.push_back(Y);
         Bump();
       }
 
       if (bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
         llvm::Value *Z = Builder.CreateLoad(
-            Builder.CreateStructGEP(Current, RsLaunchDimensionsFieldZ), "Z");
+            Builder.CreateStructGEP(nullptr, Current, RsLaunchDimensionsFieldZ), "Z");
         CalleeArgs.push_back(Z);
         Bump();
       }
@@ -498,11 +499,11 @@ public:
     llvm::Type  *InTy      = nullptr;
     llvm::Value *InBasePtr = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
-      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
+      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
 
-      llvm::Value *InStepsBase = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
+      llvm::Value *InStepsBase = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
 
-      llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(InStepsBase, 0, 0);
+      llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InStepsBase, 0, 0);
       llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
                                                       "instep_addr");
 
@@ -511,7 +512,7 @@ public:
 
       InStep->setName("instep");
 
-      llvm::Value *InputAddr = Builder.CreateConstInBoundsGEP2_32(InsBasePtr, 0, 0);
+      llvm::Value *InputAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InsBasePtr, 0, 0);
       InBasePtr = Builder.CreateLoad(InputAddr, "input_base");
     }
 
@@ -522,15 +523,16 @@ public:
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(
-                     Builder.CreateConstInBoundsGEP2_32(
-                         Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr), 0, 0));
+                     Builder.CreateConstInBoundsGEP2_32(nullptr,
+                         Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr),
+                         0, 0));
     }
 
     llvm::Value *UsrData = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = (FunctionArgIter++)->getType();
       UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(Arg_p,  RsExpandKernelDriverInfoPfxFieldUsr)), UsrDataTy);
+          Builder.CreateStructGEP(nullptr, Arg_p,  RsExpandKernelDriverInfoPfxFieldUsr)), UsrDataTy);
       UsrData->setName("UsrData");
     }
 
@@ -679,8 +681,9 @@ public:
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
       OutBasePtr = Builder.CreateLoad(
-                     Builder.CreateConstInBoundsGEP2_32(
-                         Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr), 0, 0));
+                     Builder.CreateConstInBoundsGEP2_32(nullptr,
+                         Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr),
+                         0, 0));
 
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
@@ -706,14 +709,14 @@ public:
     bccAssert(NumInputs <= RS_KERNEL_INPUT_LIMIT);
 
     if (NumInputs > 0) {
-      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
+      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
 
-      llvm::Value *InStepsBase = Builder.CreateStructGEP(Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
+      llvm::Value *InStepsBase = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
 
       for (size_t InputIndex = 0; InputIndex < NumInputs;
            ++InputIndex, ArgIter++) {
 
-          llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(InStepsBase, 0, InputIndex);
+          llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InStepsBase, 0, InputIndex);
           llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
                                                           "instep_addr");
 
@@ -739,7 +742,7 @@ public:
 
           InStep->setName("instep");
 
-          llvm::Value    *InputAddr = Builder.CreateConstInBoundsGEP2_32(InsBasePtr, 0, InputIndex);
+          llvm::Value    *InputAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InsBasePtr, 0, InputIndex);
           llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
                                                          "input_base");
           llvm::Value    *CastInBasePtr = Builder.CreatePointerCast(InBasePtr,

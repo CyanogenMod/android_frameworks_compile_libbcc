@@ -143,7 +143,7 @@ Compiler::~Compiler() {
 
 
 enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
-                                             llvm::raw_ostream &pResult) {
+                                             llvm::raw_pwrite_stream &pResult) {
   // Pass manager for link-time optimization
   llvm::legacy::PassManager passes;
 
@@ -210,7 +210,7 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
 }
 
 enum Compiler::ErrorCode Compiler::compile(Script &pScript,
-                                           llvm::raw_ostream &pResult,
+                                           llvm::raw_pwrite_stream &pResult,
                                            llvm::raw_ostream *IRStream) {
   llvm::Module &module = pScript.getSource().getModule();
   enum ErrorCode err;
@@ -267,7 +267,7 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   // Open the output file decorated in llvm::raw_ostream.
-  llvm::raw_ostream *out = pResult.dup();
+  llvm::raw_pwrite_stream *out = pResult.dup();
   if (out == nullptr) {
     return kErrPrepareOutput;
   }

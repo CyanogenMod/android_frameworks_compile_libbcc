@@ -20,6 +20,7 @@
 namespace llvm {
 
 class raw_ostream;
+class raw_pwrite_stream;
 class DataLayout;
 class TargetMachine;
 
@@ -77,7 +78,7 @@ private:
   // Optimization is enabled by default.
   bool mEnableOpt;
 
-  enum ErrorCode runPasses(Script &pScript, llvm::raw_ostream &pResult);
+  enum ErrorCode runPasses(Script &pScript, llvm::raw_pwrite_stream &pResult);
   enum ErrorCode screenGlobals(Script &pScript);
 
   bool addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM);
@@ -97,7 +98,7 @@ public:
   //
   // @param IRStream If not NULL, the LLVM-IR that is fed to code generation
   //                 will be written to IRStream.
-  enum ErrorCode compile(Script &pScript, llvm::raw_ostream &pResult,
+  enum ErrorCode compile(Script &pScript, llvm::raw_pwrite_stream &pResult,
                          llvm::raw_ostream *IRStream);
 
   // Compile a script and output the result to a file.
