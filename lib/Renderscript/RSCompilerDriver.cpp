@@ -51,7 +51,8 @@ using namespace bcc;
 
 RSCompilerDriver::RSCompilerDriver(bool pUseCompilerRT) :
     mConfig(nullptr), mCompiler(), mDebugContext(false),
-    mLinkRuntimeCallback(nullptr), mEnableGlobalMerge(true) {
+    mLinkRuntimeCallback(nullptr), mEnableGlobalMerge(true),
+    mEmbedGlobalInfo(false), mEmbedGlobalInfoSkipConstant(false) {
   init::Initialize();
 }
 
@@ -249,6 +250,9 @@ bool RSCompilerDriver::build(BCCContext &pContext,
 
   script.setLinkRuntimeCallback(getLinkRuntimeCallback());
 
+  script.setEmbedGlobalInfo(mEmbedGlobalInfo);
+  script.setEmbedGlobalInfoSkipConstant(mEmbedGlobalInfoSkipConstant);
+
   // Read information from bitcode wrapper.
   bcinfo::BitcodeWrapper wrapper(pBitcode, pBitcodeSize);
   script.setCompilerVersion(wrapper.getCompilerVersion());
@@ -337,6 +341,8 @@ bool RSCompilerDriver::buildScriptGroup(
   // Embed the info string directly in the ELF
   script.setEmbedInfo(true);
   script.setOptimizationLevel(RSScript::kOptLvl3);
+  script.setEmbedGlobalInfo(mEmbedGlobalInfo);
+  script.setEmbedGlobalInfoSkipConstant(mEmbedGlobalInfoSkipConstant);
 
   llvm::SmallString<80> output_path(pOutputFilepath);
   llvm::sys::path::replace_extension(output_path, ".o");
@@ -364,6 +370,9 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
   // Embed the info string directly in the ELF, since this path is for an
   // offline (host) compilation.
   pScript.setEmbedInfo(true);
+
+  pScript.setEmbedGlobalInfo(mEmbedGlobalInfo);
+  pScript.setEmbedGlobalInfoSkipConstant(mEmbedGlobalInfoSkipConstant);
 
   Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath,
                                              pBuildChecksum, pDumpIR);
