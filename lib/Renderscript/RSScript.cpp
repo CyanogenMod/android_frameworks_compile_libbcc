@@ -51,7 +51,8 @@ bool RSScript::LinkRuntime(RSScript &pScript, const char *core_lib) {
 RSScript::RSScript(Source &pSource)
   : Script(pSource), mCompilerVersion(0),
     mOptimizationLevel(kOptLvl3), mLinkRuntimeCallback(nullptr),
-    mEmbedInfo(false) { }
+    mEmbedInfo(false), mEmbedGlobalInfo(false),
+    mEmbedGlobalInfoSkipConstant(false) { }
 
 bool RSScript::doReset() {
   mCompilerVersion = 0;

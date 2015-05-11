@@ -300,6 +300,10 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
     "init",      // Initialization routine called implicitly on startup.
     ".rs.dtor",  // Static global destructor for a script instance.
     ".rs.info",  // Variable containing string of RS metadata info.
+    ".rs.global_entries",    // Optional number of global variables.
+    ".rs.global_names",      // Optional global variable name info.
+    ".rs.global_addresses",  // Optional global variable address info.
+    ".rs.global_sizes",      // Optional global variable size info.
     nullptr         // Must be nullptr-terminated.
   };
   const char **special_functions = sf;
@@ -362,6 +366,16 @@ bool Compiler::addExpandForEachPass(Script &pScript, llvm::legacy::PassManager &
   return true;
 }
 
+bool Compiler::addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM) {
+  // Add additional information about RS global variables inside the Module.
+  RSScript &script = static_cast<RSScript &>(pScript);
+  if (script.getEmbedGlobalInfo()) {
+    pPM.add(createRSGlobalInfoPass(script.getEmbedGlobalInfoSkipConstant()));
+  }
+
+  return true;
+}
+
 bool Compiler::addInvariantPass(llvm::legacy::PassManager &pPM) {
   // Mark Loads from RsExpandKernelDriverInfo as "load.invariant".
   // Should run after ExpandForEach and before inlining.
@@ -381,6 +395,9 @@ bool Compiler::addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM) 
     return false;
 
   if (!addInternalizeSymbolsPass(pScript, pPM))
+    return false;
+
+  if (!addGlobalInfoPass(pScript, pPM))
     return false;
 
   return true;
