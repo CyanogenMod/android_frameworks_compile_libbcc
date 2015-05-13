@@ -48,14 +48,6 @@ endif
 
 LOCAL_MODULE_TARGET_ARCH := $(LLVM_SUPPORTED_ARCH)
 
-ifeq ($(TARGET_ARCH),arm64)
-$(info TODOArm64: $(LOCAL_PATH)/Android.mk Add Arm64 define to LOCAL_CFLAGS)
-endif
-
-ifeq ($(TARGET_ARCH),mips64)
-$(info TODOMips64: $(LOCAL_PATH)/Android.mk Add Mips64 define to LOCAL_CFLAGS)
-endif
-
 include frameworks/compile/libbcc/libbcc-targets.mk
 
 LOCAL_C_INCLUDES := \
