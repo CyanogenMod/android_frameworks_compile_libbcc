@@ -41,14 +41,6 @@ libbcinfo_STATIC_LIBRARIES := \
 
 LLVM_ROOT_PATH := external/llvm
 
-ifeq ($(TARGET_ARCH),arm64)
-$(info TODOArm64: $(LOCAL_PATH)/Android.mk Enable build of libbcinfo device shared library)
-endif
-
-ifeq ($(TARGET_ARCH),mips64)
-$(info TODOMips64: $(LOCAL_PATH)/Android.mk Enable build of libbcinfo device shared library)
-endif
-
 ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 

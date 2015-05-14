@@ -33,9 +33,6 @@ libbcc_WHOLE_STATIC_LIBRARIES += \
 # Device Shared Library libbcc
 #=====================================================================
 ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
-ifeq ($(TARGET_ARCH),mips64)
-$(info TODOMips64: $(LOCAL_PATH)/Android.mk Enable libbcc build)
-endif
 
 include $(CLEAR_VARS)
 
