@@ -517,6 +517,8 @@ public:
   /// Materialize any deferred Metadata block.
   std::error_code materializeMetadata() override;
 
+  void setStripDebugInfo() override;
+
 private:
   std::vector<StructType *> IdentifiedStructTypes;
   StructType *createIdentifiedStructType(LLVMContext &Context, StringRef Name);
@@ -2099,6 +2101,7 @@ std::error_code BitcodeReader::ParseConstants() {
     }
     case bitc::CST_CODE_CE_INBOUNDS_GEP:
     case bitc::CST_CODE_CE_GEP: {  // CE_GEP:        [n x operands]
+      Type *PointeeType = nullptr;
       if (Record.size() & 1)
         return Error("Invalid record");
       SmallVector<Constant*, 16> Elts;
@@ -2109,7 +2112,7 @@ std::error_code BitcodeReader::ParseConstants() {
         Elts.push_back(ValueList.getConstantFwdRef(Record[i+1], ElTy));
       }
       ArrayRef<Constant *> Indices(Elts.begin() + 1, Elts.end());
-      V = ConstantExpr::getGetElementPtr(Elts[0], Indices,
+      V = ConstantExpr::getGetElementPtr(PointeeType, Elts[0], Indices,
                                          BitCode ==
                                            bitc::CST_CODE_CE_INBOUNDS_GEP);
       break;
@@ -2249,6 +2252,8 @@ std::error_code BitcodeReader::ParseConstants() {
 std::error_code BitcodeReader::materializeMetadata() {
   return std::error_code();
 }
+
+void BitcodeReader::setStripDebugInfo() { }
 
 /// RememberAndSkipFunctionBody - When we see the block for a function body,
 /// remember where it is and then skip it.  This lets us lazily deserialize the
