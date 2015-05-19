@@ -51,9 +51,8 @@ LOCAL_MODULE_TARGET_ARCH := $(LLVM_SUPPORTED_ARCH)
 include frameworks/compile/libbcc/libbcc-targets.mk
 
 LOCAL_C_INCLUDES := \
-  bionic \
-  external/libcxx/include \
   $(LIBBCC_ROOT_PATH)/include \
+  $(RS_ROOT_PATH) \
   $(LLVM_ROOT_PATH)/include \
   $(LLVM_ROOT_PATH)/device/include \
   $(LOCAL_C_INCLUDES)

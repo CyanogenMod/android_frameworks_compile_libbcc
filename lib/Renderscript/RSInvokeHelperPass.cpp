@@ -16,6 +16,8 @@
 
 #include "bcc/Assert.h"
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Renderscript/RSUtils.h"
+#include "rsDefines.h"
 
 #include <cstdlib>
 
@@ -73,11 +75,11 @@ public:
     llvm::SmallVector<llvm::Type*, 4> rsBaseObj;
     rsBaseObj.append(4, llvm::Type::getInt64PtrTy(M.getContext()));
 
-    rsAllocationType = llvm::StructType::create(rsBaseObj, "struct.rs_allocation");
-    rsElementType = llvm::StructType::create(rsBaseObj, "struct.rs_element");
-    rsSamplerType = llvm::StructType::create(rsBaseObj, "struct.rs_sampler");
-    rsScriptType = llvm::StructType::create(rsBaseObj, "struct.rs_script");
-    rsTypeType = llvm::StructType::create(rsBaseObj, "struct.rs_type");
+    rsAllocationType = llvm::StructType::create(rsBaseObj, kAllocationTypeName);
+    rsElementType = llvm::StructType::create(rsBaseObj, kElementTypeName);
+    rsSamplerType = llvm::StructType::create(rsBaseObj, kSamplerTypeName);
+    rsScriptType = llvm::StructType::create(rsBaseObj, kScriptTypeName);
+    rsTypeType = llvm::StructType::create(rsBaseObj, kTypeTypeName);
 
     llvm::SmallVector<llvm::Value*, 1> SetObjParams;
     llvm::SmallVector<llvm::Type*, 2> SetObjTypeParams;
@@ -117,25 +119,31 @@ public:
     return true;
   }
 
-  bool insertSetObjectHelper(llvm::CallInst *Call, llvm::Value *V, llvm::StringRef StructName) {
+  bool insertSetObjectHelper(llvm::CallInst *Call, llvm::Value *V, enum RsDataType DT) {
     llvm::Constant *SetObj = nullptr;
     llvm::StructType *RSStructType = nullptr;
-    if (StructName.equals(rsAllocationType->getName())) {
+    switch (DT) {
+    case RS_TYPE_ALLOCATION:
       SetObj = rsAllocationSetObj;
       RSStructType = rsAllocationType;
-    } else if (StructName.equals(rsElementType->getName())) {
+      break;
+    case RS_TYPE_ELEMENT:
       SetObj = rsElementSetObj;
       RSStructType = rsElementType;
-    } else if (StructName.equals(rsSamplerType->getName())) {
+      break;
+    case RS_TYPE_SAMPLER:
       SetObj = rsSamplerSetObj;
       RSStructType = rsSamplerType;
-    } else if (StructName.equals(rsScriptType->getName())) {
+      break;
+    case RS_TYPE_SCRIPT:
       SetObj = rsScriptSetObj;
       RSStructType = rsScriptType;
-    } else if (StructName.equals(rsTypeType->getName())) {
+      break;
+    case RS_TYPE_TYPE:
       SetObj = rsTypeSetObj;
       RSStructType = rsTypeType;
-    } else {
+      break;
+    default:
       return false; // this is for graphics types and matrices; do nothing
     }
 
@@ -191,14 +199,14 @@ public:
           if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(&Inst)) {
             for (unsigned int i = 0; i < call->getNumArgOperands(); i++) {
               llvm::Value *V = call->getArgOperand(i);
-              if (V->getType()->isPointerTy() && V->getType()->getPointerElementType()->isStructTy() &&
-                  V->getType()->getPointerElementType()->getStructName().startswith("struct.rs_")) {
-                // get just the object type name with no prefix or suffix
-                size_t LastDot = V->getType()->getPointerElementType()->getStructName().rfind('.');
-                llvm::StringRef StructName = V->getType()->getPointerElementType()->getStructName().slice(0, LastDot);
-
+              llvm::Type *T = V->getType();
+              enum RsDataType DT = RS_TYPE_NONE;
+              if (T->isPointerTy() && T->getPointerElementType()->isStructTy()) {
+                DT = getRsDataTypeForType(T->getPointerElementType());
+              }
+              if (DT != RS_TYPE_NONE) {
                 // generate the new call instruction and insert it
-                changed |= insertSetObjectHelper(call, V, StructName);
+                changed |= insertSetObjectHelper(call, V, DT);
               }
             }
           }

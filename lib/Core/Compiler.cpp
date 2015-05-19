@@ -40,6 +40,7 @@
 #include "bcc/Support/Log.h"
 #include "bcc/Support/OutputFile.h"
 #include "bcinfo/MetadataExtractor.h"
+#include "rsDefines.h"
 
 #include <string>
 
@@ -296,15 +297,16 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   std::vector<const char *> export_symbols;
 
   const char *sf[] = {
-    "root",      // Graphics drawing function or compute kernel.
-    "init",      // Initialization routine called implicitly on startup.
-    ".rs.dtor",  // Static global destructor for a script instance.
-    ".rs.info",  // Variable containing string of RS metadata info.
-    ".rs.global_entries",    // Optional number of global variables.
-    ".rs.global_names",      // Optional global variable name info.
-    ".rs.global_addresses",  // Optional global variable address info.
-    ".rs.global_sizes",      // Optional global variable size info.
-    nullptr         // Must be nullptr-terminated.
+    kRoot,               // Graphics drawing function or compute kernel.
+    kInit,               // Initialization routine called implicitly on startup.
+    kRsDtor,             // Static global destructor for a script instance.
+    kRsInfo,             // Variable containing string of RS metadata info.
+    kRsGlobalEntries,    // Optional number of global variables.
+    kRsGlobalNames,      // Optional global variable name info.
+    kRsGlobalAddresses,  // Optional global variable address info.
+    kRsGlobalSizes,      // Optional global variable size info.
+    kRsGlobalProperties, // Optional global variable properties.
+    nullptr              // Must be nullptr-terminated.
   };
   const char **special_functions = sf;
   // Special RS functions should always be global symbols.
