@@ -15,7 +15,11 @@
  */
 
 #include "bcc/Assert.h"
+#include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Support/Log.h"
+#include "bcinfo/MetadataExtractor.h"
+#include "rsDefines.h"
 
 #include <cstdlib>
 #include <vector>
@@ -28,10 +32,6 @@
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Type.h>
-
-#include "bcc/Config/Config.h"
-#include "bcc/Support/Log.h"
-#include "bcinfo/MetadataExtractor.h"
 
 using namespace bcc;
 
@@ -142,7 +142,7 @@ public:
     llvm::GlobalVariable *InfoGV =
         new llvm::GlobalVariable(M, Init->getType(), true,
                                  llvm::GlobalValue::ExternalLinkage, Init,
-                                 ".rs.info");
+                                 kRsInfo);
     (void) InfoGV;
 
     return true;
