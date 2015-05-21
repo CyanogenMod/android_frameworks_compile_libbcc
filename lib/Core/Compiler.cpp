@@ -234,6 +234,10 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
     return kErrInvalidSource;
   }
 
+  // Sanitize module's target information.
+  module.setTargetTriple(getTargetMachine().getTargetTriple());
+  module.setDataLayout(*getTargetMachine().getDataLayout());
+
   // Materialize the bitcode module.
   if (module.getMaterializer() != nullptr) {
     // A module with non-null materializer means that it is a lazy-load module.
