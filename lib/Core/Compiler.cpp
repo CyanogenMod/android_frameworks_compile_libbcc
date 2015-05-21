@@ -411,11 +411,32 @@ bool Compiler::addPostLTOCustomPasses(llvm::legacy::PassManager &pPM) {
   if (arch.getArch() == llvm::Triple::x86_64)
     pPM.add(createRSX86_64CallConvPass());
 
-  // Add pass to check for illegal function calls.
-  pPM.add(createRSScreenFunctionsPass());
-
   // Add pass to mark script as threadable.
   pPM.add(createRSIsThreadablePass());
 
   return true;
+}
+
+enum Compiler::ErrorCode Compiler::screenGlobalFunctions(Script &pScript) {
+  llvm::Module &module = pScript.getSource().getModule();
+
+  // Materialize the bitcode module in case this is a lazy-load module.  Do not
+  // clear the materializer by calling materializeAllPermanently since the
+  // runtime library has not been merged into the module yet.
+  if (module.getMaterializer() != nullptr) {
+    std::error_code ec = module.materializeAll();
+    if (ec) {
+      ALOGE("Failed to materialize module `%s' when screening globals! (%s)",
+            module.getModuleIdentifier().c_str(), ec.message().c_str());
+      return kErrMaterialization;
+    }
+  }
+
+  // Add pass to check for illegal function calls.
+  llvm::legacy::PassManager pPM;
+  pPM.add(createRSScreenFunctionsPass());
+  pPM.run(module);
+
+  return kSuccess;
+
 }
