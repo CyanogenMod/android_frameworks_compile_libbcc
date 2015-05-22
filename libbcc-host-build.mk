@@ -42,6 +42,7 @@ endif
 
 LOCAL_C_INCLUDES := \
   $(LIBBCC_ROOT_PATH)/include \
+  $(RS_ROOT_PATH) \
   $(LLVM_ROOT_PATH)/include \
   $(LLVM_ROOT_PATH)/host/include \
   $(LOCAL_C_INCLUDES)

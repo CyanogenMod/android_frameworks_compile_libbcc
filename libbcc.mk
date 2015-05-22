@@ -23,6 +23,7 @@ endif
 #=====================================================================
 
 LLVM_ROOT_PATH          := external/llvm
+RS_ROOT_PATH            := frameworks/rs
 
 #=====================================================================
 # Related Makefile Paths of libbcc
