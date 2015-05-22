@@ -31,6 +31,7 @@ libbcinfo_SRC_FILES := \
 
 libbcinfo_C_INCLUDES := \
   $(LOCAL_PATH)/../include \
+  $(RS_ROOT_PATH) \
   $(LOCAL_PATH)/../../slang
 
 libbcinfo_STATIC_LIBRARIES := \

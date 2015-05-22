@@ -17,6 +17,7 @@
 #include "bcinfo/MetadataExtractor.h"
 
 #include "bcinfo/BitcodeWrapper.h"
+#include "rsDefines.h"
 
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
@@ -375,8 +376,9 @@ bool MetadataExtractor::populateForEachMetadata(
     // which means that we need to set the bottom 5 bits in the mask.
     mExportForEachSignatureCount = 1;
     char **TmpNameList = new char*[mExportForEachSignatureCount];
-    TmpNameList[0] = new char[5];
-    strncpy(TmpNameList[0], "root", 5);
+    size_t RootLen = strlen(kRoot) + 1;
+    TmpNameList[0] = new char[RootLen];
+    strncpy(TmpNameList[0], kRoot, RootLen);
 
     uint32_t *TmpSigList = new uint32_t[mExportForEachSignatureCount];
     TmpSigList[0] = 0x1f;
