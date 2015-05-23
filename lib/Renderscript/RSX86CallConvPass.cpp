@@ -15,6 +15,7 @@
  */
 
 #include "bcc/Assert.h"
+#include "bcc/Renderscript/RSUtils.h"
 #include "bcc/Support/Log.h"
 
 #include <algorithm>
@@ -40,14 +41,6 @@ static const bool kDebug = false;
  */
 class RSX86_64CallConvPass: public llvm::ModulePass {
 private:
-  std::vector<std::string> Structs = {
-    "struct.rs_element.",
-    "struct.rs_type.",
-    "struct.rs_allocation.",
-    "struct.rs_sampler.",
-    "struct.rs_script.",
-  };
-
   bool IsRSFunctionOfInterest(llvm::Function &F) {
   // Only Renderscript functions that are not defined locally be considered
     if (!F.empty()) // defined locally
@@ -61,18 +54,6 @@ private:
     // All other functions need to be checked for large-object parameters.
     // Disallowed (non-Renderscript) functions are detected by a different pass.
     return true;
-  }
-
-  // Structure names can have a different integral suffix (.0, .1, etc) for
-  // multiple definitions with the same name.  So, we only match the prefix of
-  // the structure name.
-  bool IsRSStructOfInterest(llvm::Type *StructTy) {
-    llvm::StringRef StructName = StructTy->getStructName();
-    for (auto &S: Structs) {
-      if (StructName.startswith(S))
-        return true;
-    }
-    return false;
   }
 
   // Test if this argument needs to be converted to pass-by-value.
@@ -91,7 +72,7 @@ private:
 
     // Dereference needed only for certain RS struct objects.
     llvm::Type *StructTy = ArgTy->getPointerElementType();
-    if (!IsRSStructOfInterest(StructTy))
+    if (!isRsObjectType(StructTy))
       return false;
 
     // TODO Find a better way to encode exceptions
