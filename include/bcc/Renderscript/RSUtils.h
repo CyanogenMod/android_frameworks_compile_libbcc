@@ -61,6 +61,12 @@ static inline enum RsDataType getRsDataTypeForType(const llvm::Type *T) {
   return RS_TYPE_NONE;
 }
 
+// Returns true if the input type is one of our RenderScript object types
+// (allocation, element, sampler, script, type) and false if it is not.
+static inline bool isRsObjectType(const llvm::Type *T) {
+  return getRsDataTypeForType(T) != RS_TYPE_NONE;
+}
+
 }  // end namespace
 
 #endif // BCC_RS_UTILS_H
