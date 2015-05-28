@@ -197,7 +197,12 @@ bool CompilerConfig::initializeArch() {
 
 #if defined (PROVIDE_X86_CODEGEN)
   case llvm::Triple::x86_64:
-    setCodeModel(llvm::CodeModel::Medium);
+    // x86_64 needs small CodeModel if use PIC_ reloc, or else dlopen failed with TEXTREL.
+    if (getRelocationModel() == llvm::Reloc::PIC_) {
+      setCodeModel(llvm::CodeModel::Small);
+    } else {
+      setCodeModel(llvm::CodeModel::Medium);
+    }
     // Disable frame pointer elimination optimization on x86 family.
     getTargetOptions().NoFramePointerElim = true;
     getTargetOptions().UseInitArray = true;
