@@ -78,7 +78,7 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
 
   // This assert should never be reached as the compiler verifies that the
   // above switch coveres all enum values.
-  assert(false && "Unknown error code encountered");
+  bccAssert(false && "Unknown error code encountered");
   return  "";
 }
 
