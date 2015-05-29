@@ -96,7 +96,7 @@ bool RSCompilerDriver::setupConfig(const RSScript &pScript) {
 #if defined(PROVIDE_ARM_CODEGEN)
   bcinfo::MetadataExtractor me(&pScript.getSource().getModule());
   if (!me.extract()) {
-    assert("Could not extract RS pragma metadata for module!");
+    bccAssert("Could not extract RS pragma metadata for module!");
   }
 
   bool script_full_prec = (me.getRSFloatPrecision() == bcinfo::RS_FP_Full);
