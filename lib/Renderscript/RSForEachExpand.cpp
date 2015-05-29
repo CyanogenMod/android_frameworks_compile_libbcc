@@ -351,7 +351,7 @@ private:
                                llvm::Value *LowerBound,
                                llvm::Value *UpperBound,
                                llvm::PHINode **LoopIV) {
-    assert(LowerBound->getType() == UpperBound->getType());
+    bccAssert(LowerBound->getType() == UpperBound->getType());
 
     llvm::BasicBlock *CondBB, *AfterBB, *HeaderBB;
     llvm::Value *Cond, *IVNext;
