@@ -110,6 +110,7 @@ public:
   bool runOnModule(llvm::Module &M) override {
     std::vector<llvm::Constant *> GVAddresses;
     std::vector<llvm::Constant *> GVNames;
+    std::vector<std::string> GVNameStrings;
     std::vector<uint32_t> GVSizes32;
     std::vector<uint64_t> GVSizes64;
     std::vector<uint32_t> GVProperties;
@@ -121,6 +122,16 @@ public:
 
     int GlobalNumber = 0;
 
+    // i8* - LLVM uses this to represent void* and char*
+    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(M.getContext());
+
+    // i32
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(M.getContext());
+
+    // i32 or i64 depending on our actual size_t
+    llvm::Type *SizeTy = llvm::Type::getIntNTy(M.getContext(),
+                                               PointerSizeInBits);
+
     for (auto &GV : M.globals()) {
       // Skip constant variables if we were configured to do so.
       if (mSkipConstants && GV.isConstant()) {
@@ -129,7 +140,8 @@ public:
 
       // In LLVM, an instance of GlobalVariable is actually a Value
       // corresponding to the address of it.
-      GVAddresses.push_back(&GV);
+      GVAddresses.push_back(llvm::ConstantExpr::getBitCast(&GV, VoidPtrTy));
+      GVNameStrings.push_back(GV.getName());
 
       // Since these are all global variables, their type is actually a
       // pointer to the underlying data. We can extract the total underlying
@@ -148,9 +160,9 @@ public:
     // Create the new strings for storing the names of the global variables.
     // This has to be done as a separate pass (over the original global
     // variables), because these strings are new global variables themselves.
-    for (auto GVA : GVAddresses) {
+    for (auto GVN : GVNameStrings) {
       llvm::Constant *C =
-          llvm::ConstantDataArray::getString(M.getContext(), GVA->getName());
+          llvm::ConstantDataArray::getString(M.getContext(), GVN);
       std::stringstream VarName;
       VarName << ".rs.name_str_" << GlobalNumber++;
       llvm::Value *V = M.getOrInsertGlobal(VarName.str(), C->getType());
@@ -159,7 +171,9 @@ public:
       VarAsStr->setConstant(true);
       VarAsStr->setLinkage(llvm::GlobalValue::PrivateLinkage);
       VarAsStr->setUnnamedAddr(true);
-      GVNames.push_back(VarAsStr);
+      // VarAsStr has type [_ x i8]*. Cast to i8* for storing in
+      // .rs.global_names.
+      GVNames.push_back(llvm::ConstantExpr::getBitCast(VarAsStr, VoidPtrTy));
     }
 
     if (PointerSizeInBits == 32) {
@@ -171,17 +185,8 @@ public:
       bccAssert(GVAddresses.size() == GVSizes64.size());
       bccAssert(GVAddresses.size() == GVProperties.size());
     }
+
     size_t NumGlobals = GVAddresses.size();
-
-    // i32
-    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(M.getContext());
-
-    // i32 or i64 depending on our actual size_t
-    llvm::Type *SizeTy = llvm::Type::getIntNTy(M.getContext(),
-                                               PointerSizeInBits);
-
-    // i8* - LLVM uses this to represent void* and char*
-    llvm::Type *VoidPtrTy = llvm::Type::getInt8PtrTy(M.getContext());
 
     // [NumGlobals * i8*]
     llvm::ArrayType *VoidPtrArrayTy = llvm::ArrayType::get(VoidPtrTy,
