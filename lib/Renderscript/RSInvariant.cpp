@@ -78,10 +78,12 @@ public:
       const llvm::Type *ArgType = Arg.getType();
       if (ArgType->isPointerTy()) {
         const llvm::Type *ArgPtrDomainType =  ArgType->getPointerElementType();
-        if (ArgPtrDomainType->isStructTy()) {
-          const llvm::StringRef StructName = ArgPtrDomainType->getStructName();
-          if (StructName.equals("struct.rs_kernel_context_t") || StructName.equals("RsExpandKernelDriverInfoPfx")) {
-            Changed |= markInvariantUserLoads(&Arg);
+        if (auto ArgPtrDomainStructType = llvm::dyn_cast<llvm::StructType>(ArgPtrDomainType)) {
+          if (ArgPtrDomainStructType->isLiteral()) {
+            const llvm::StringRef StructName = ArgPtrDomainStructType->getName();
+            if (StructName.equals("struct.rs_kernel_context_t") || StructName.equals("RsExpandKernelDriverInfoPfx")) {
+              Changed |= markInvariantUserLoads(&Arg);
+            }
           }
         }
       }
