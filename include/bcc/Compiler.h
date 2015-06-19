@@ -79,7 +79,6 @@ private:
   bool mEnableOpt;
 
   enum ErrorCode runPasses(Script &pScript, llvm::raw_pwrite_stream &pResult);
-  enum ErrorCode screenGlobals(Script &pScript);
 
   bool addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM);
   bool addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassManager &pPM);
@@ -113,6 +112,11 @@ public:
   { mEnableOpt = pEnable; }
 
   ~Compiler();
+
+  // Compare undefined external functions in pScript against a 'whitelist' of
+  // all RenderScript functions.  Returns error if any external function that is
+  // not in this whitelist is callable from the script.
+  enum ErrorCode screenGlobalFunctions(Script &pScript);
 };
 
 } // end namespace bcc

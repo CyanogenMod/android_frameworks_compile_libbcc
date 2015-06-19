@@ -119,6 +119,12 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
     pScript.getSource().addBuildChecksumMetadata(pBuildChecksum);
   }
 
+  // Verify that the only external functions in pScript are Renderscript
+  // functions.  Fail if verification returns an error.
+  if (mCompiler.screenGlobalFunctions(pScript) != Compiler::kSuccess) {
+    return Compiler::kErrInvalidSource;
+  }
+
   //===--------------------------------------------------------------------===//
   // Link RS script with Renderscript runtime.
   //===--------------------------------------------------------------------===//
