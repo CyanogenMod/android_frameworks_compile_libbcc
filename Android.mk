@@ -16,6 +16,19 @@
 
 LOCAL_PATH := $(call my-dir)
 LIBBCC_ROOT_PATH := $(LOCAL_PATH)
+
+FORCE_BUILD_LLVM_DISABLE_NDEBUG ?= false
+# Legality check: FORCE_BUILD_LLVM_DISABLE_NDEBUG should consist of one word -- either "true" or "false".
+ifneq "$(words $(FORCE_BUILD_LLVM_DISABLE_NDEBUG))$(words $(filter-out true false,$(FORCE_BUILD_LLVM_DISABLE_NDEBUG)))" "10"
+  $(error FORCE_BUILD_LLVM_DISABLE_NDEBUG may only be true, false, or unset)
+endif
+
+FORCE_BUILD_LLVM_DEBUG ?= false
+# Legality check: FORCE_BUILD_LLVM_DEBUG should consist of one word -- either "true" or "false".
+ifneq "$(words $(FORCE_BUILD_LLVM_DEBUG))$(words $(filter-out true false,$(FORCE_BUILD_LLVM_DEBUG)))" "10"
+  $(error FORCE_BUILD_LLVM_DEBUG may only be true, false, or unset)
+endif
+
 include $(LIBBCC_ROOT_PATH)/libbcc.mk
 
 include frameworks/compile/slang/rs_version.mk
