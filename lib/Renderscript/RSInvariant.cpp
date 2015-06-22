@@ -15,6 +15,7 @@
  */
 
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Renderscript/RSUtils.h"
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -80,7 +81,7 @@ public:
         const llvm::Type *ArgPtrDomainType =  ArgType->getPointerElementType();
         if (auto ArgPtrDomainStructType = llvm::dyn_cast<llvm::StructType>(ArgPtrDomainType)) {
           if (!ArgPtrDomainStructType->isLiteral()) {
-            const llvm::StringRef StructName = ArgPtrDomainStructType->getName();
+            const llvm::StringRef StructName = getUnsuffixedStructName(ArgPtrDomainStructType);
             if (StructName.equals("struct.rs_kernel_context_t") || StructName.equals("RsExpandKernelDriverInfoPfx")) {
               Changed |= markInvariantUserLoads(&Arg);
             }

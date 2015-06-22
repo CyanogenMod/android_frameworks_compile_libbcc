@@ -20,8 +20,22 @@
 #include "rsDefines.h"
 
 #include <llvm/IR/Type.h>
+#include <llvm/IR/DerivedTypes.h>
 
 namespace {
+
+static inline llvm::StringRef getUnsuffixedStructName(const llvm::StructType *T) {
+  // Get just the object type name with no suffix.
+  size_t LastDot = T->getName().rfind('.');
+  if (LastDot == strlen("struct")) {
+    // If we get back to just the "struct" part, we know that we had a
+    // raw typename (i.e. struct.rs_element with no ".[0-9]+" suffix on it.
+    // In that case, we will want to create our slice such that it contains
+    // the entire name.
+    LastDot = T->getName().size();
+  }
+  return T->getStructName().slice(0, LastDot);
+}
 
 const char kAllocationTypeName[] = "struct.rs_allocation";
 const char kElementTypeName[]    = "struct.rs_element";
@@ -36,16 +50,7 @@ const char kTypeTypeName[]       = "struct.rs_type";
 // handling would be necessary.
 static inline enum RsDataType getRsDataTypeForType(const llvm::Type *T) {
   if (T->isStructTy()) {
-    // Get just the object type name with no suffix.
-    size_t LastDot = T->getStructName().rfind('.');
-    if (LastDot == strlen("struct")) {
-      // If we get back to just the "struct" part, we know that we had a
-      // raw typename (i.e. struct.rs_element with no ".[0-9]+" suffix on it.
-      // In that case, we will want to create our slice such that it contains
-      // the entire name.
-      LastDot = T->getStructName().size();
-    }
-    const llvm::StringRef StructName = T->getStructName().slice(0, LastDot);
+    const llvm::StringRef StructName = getUnsuffixedStructName(llvm::dyn_cast<const llvm::StructType>(T));
     if (StructName.equals(kAllocationTypeName)) {
       return RS_TYPE_ALLOCATION;
     } else if (StructName.equals(kElementTypeName)) {
