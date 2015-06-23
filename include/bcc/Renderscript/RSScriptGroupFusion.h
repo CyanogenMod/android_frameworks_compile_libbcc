@@ -35,7 +35,9 @@ class BCCContext;
 /// @param sources The Sources containing the kernels.
 /// @param slots The slots where the kernels are located.
 /// @param fusedName
-/// @return True, if kernels are successfully merged. False, otherwise.
+/// @return True, if kernels are successfully fused. False, otherwise. It's up to
+/// the caller on how to deal with unsuccessful fusion. A script group can
+/// execute with either fused kernels or individual kernels.
 bool fuseKernels(BCCContext& Context,
                  const std::vector<Source *>& sources,
                  const std::vector<int>& slots,
