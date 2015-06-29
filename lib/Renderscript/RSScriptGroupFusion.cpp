@@ -25,6 +25,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/raw_ostream.h"
 
 using llvm::Function;
 using llvm::Module;
@@ -40,6 +41,8 @@ const Function* getInvokeFunction(const Source& source, const int slot,
   Module* module = const_cast<Module*>(&source.getModule());
   bcinfo::MetadataExtractor metadata(module);
   if (!metadata.extract()) {
+    ALOGE("Kernel fusion (module %s slot %d): failed to extract metadata",
+          source.getName().c_str(), slot);
     return nullptr;
   }
   const char* functionName = metadata.getExportFuncNameList()[slot];
@@ -58,12 +61,14 @@ getFunction(Module* mergedModule, const Source* source, const int slot,
 
   const char* functionName = metadata.getExportForEachNameList()[slot];
   if (functionName == nullptr || !functionName[0]) {
+    ALOGE("Kernel fusion (module %s slot %d): failed to find kernel function",
+          source->getName().c_str(), slot);
     return nullptr;
   }
 
   if (metadata.getExportForEachInputCountList()[slot] > 1) {
-    // TODO: Handle multiple inputs.
-    ALOGW("Kernel %s has multiple inputs", functionName);
+    ALOGE("Kernel fusion (module %s function %s): cannot handle multiple inputs",
+          source->getName().c_str(), functionName);
     return nullptr;
   }
 
@@ -102,14 +107,15 @@ int getFusedFuncSig(const std::vector<Source*>& sources,
     metadata.extract();
 
     if (metadata.getExportForEachInputCountList()[slot] > 1) {
-      // TODO: Handle multiple inputs in kernel fusion.
-      ALOGW("Kernel %d in source %p has multiple inputs", slot, source);
+      ALOGE("Kernel fusion (module %s slot %d): cannot handle multiple inputs",
+            source->getName().c_str(), slot);
       return -1;
     }
 
     signature = metadata.getExportForEachSignatureList()[slot];
     if (signature & ~ExpectedSignatureBits) {
-      ALOGW("Unexpected signature %x seen while fusing kernels", signature);
+      ALOGE("Kernel fusion (module %s slot %d): Unexpected signature %x",
+            source->getName().c_str(), slot, signature);
       return -1;
     }
 
@@ -226,17 +232,20 @@ bool fuseKernels(bcc::BCCContext& Context,
 
   auto slotIter = slots.begin();
   for (const Source* source : sources) {
-    int slot = *slotIter++;
+    int slot = *slotIter;
 
     uint32_t inputFunctionSignature;
     const Function* inputFunction =
             getFunction(mergedModule, source, slot, &inputFunctionSignature);
     if (inputFunction == nullptr) {
+      // Either failed to find the kernel function, or the function has multiple inputs.
       return false;
     }
 
     // Don't try to fuse a non-kernel
     if (!bcinfo::MetadataExtractor::hasForEachSignatureKernel(inputFunctionSignature)) {
+      ALOGE("Kernel fusion (module %s function %s): not a kernel",
+            source->getName().c_str(), inputFunction->getName().str().c_str());
       return false;
     }
 
@@ -244,13 +253,23 @@ bool fuseKernels(bcc::BCCContext& Context,
 
     if (bcinfo::MetadataExtractor::hasForEachSignatureIn(inputFunctionSignature)) {
       if (dataElement == nullptr) {
+        ALOGE("Kernel fusion (module %s function %s): expected input, but got null",
+              source->getName().c_str(), inputFunction->getName().str().c_str());
         return false;
       }
 
       const llvm::FunctionType* funcTy = inputFunction->getFunctionType();
       llvm::Type* firstArgType = funcTy->getParamType(0);
 
-      if (!dataElement->getType()->canLosslesslyBitCastTo(firstArgType)) {
+      if (dataElement->getType() != firstArgType) {
+        std::string msg;
+        llvm::raw_string_ostream rso(msg);
+        rso << "Mismatching argument type, expected ";
+        firstArgType->print(rso);
+        rso << ", received ";
+        dataElement->getType()->print(rso);
+        ALOGE("Kernel fusion (module %s function %s): %s", source->getName().c_str(),
+              inputFunction->getName().str().c_str(), rso.str().c_str());
         return false;
       }
 
@@ -258,6 +277,8 @@ bool fuseKernels(bcc::BCCContext& Context,
     } else {
       // Only the first kernel in a batch is allowed to have no input
       if (slotIter != slots.begin()) {
+        ALOGE("Kernel fusion (module %s function %s): function not first in batch takes no input",
+              source->getName().c_str(), inputFunction->getName().str().c_str());
         return false;
       }
     }
@@ -275,6 +296,8 @@ bool fuseKernels(bcc::BCCContext& Context,
     }
 
     dataElement = builder.CreateCall((llvm::Value*)inputFunction, args);
+
+    slotIter++;
   }
 
   if (fusedKernel->getReturnType()->isVoidTy()) {
