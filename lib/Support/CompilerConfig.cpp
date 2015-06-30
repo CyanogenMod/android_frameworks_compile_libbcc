@@ -67,9 +67,6 @@ CompilerConfig::CompilerConfig(const std::string &pTriple)
   mTargetOpts.FloatABIType = llvm::FloatABI::Soft;
   mTargetOpts.UseSoftFloat = false;
 
-  // Enable frame pointer elimination optimization by default.
-  mTargetOpts.NoFramePointerElim = false;
-
   //===--------------------------------------------------------------------===//
   // Default setting for code model
   //===--------------------------------------------------------------------===//
@@ -215,8 +212,6 @@ bool CompilerConfig::initializeArch() {
 
 #if defined (PROVIDE_X86_CODEGEN)
   case llvm::Triple::x86:
-    // Disable frame pointer elimination optimization on x86 family.
-    getTargetOptions().NoFramePointerElim = true;
     getTargetOptions().UseInitArray = true;
 
 #ifndef __HOST__
@@ -237,8 +232,6 @@ bool CompilerConfig::initializeArch() {
     } else {
       setCodeModel(llvm::CodeModel::Medium);
     }
-    // Disable frame pointer elimination optimization on x86 family.
-    getTargetOptions().NoFramePointerElim = true;
     getTargetOptions().UseInitArray = true;
 
 #ifndef __HOST__
