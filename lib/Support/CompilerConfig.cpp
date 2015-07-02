@@ -57,15 +57,11 @@ CompilerConfig::CompilerConfig(const std::string &pTriple)
   //===--------------------------------------------------------------------===//
   // Default setting of target options
   //===--------------------------------------------------------------------===//
-  // Use hardfloat ABI by default.
-  //
-  // TODO(all): Need to detect the CPU capability and decide whether to use
-  // softfp. To use softfp, change the following 2 lines to
-  //
-  // options.FloatABIType = llvm::FloatABI::Soft;
-  // options.UseSoftFloat = true;
+
+  // Use soft-float ABI.  This only selects the ABI (and is applicable only to
+  // ARM targets).  Codegen still uses hardware FPU by default.  To use software
+  // floating point, add 'soft-float' feature to mFeatureString below.
   mTargetOpts.FloatABIType = llvm::FloatABI::Soft;
-  mTargetOpts.UseSoftFloat = false;
 
   // Enable frame pointer elimination optimization by default.
   mTargetOpts.NoFramePointerElim = false;
