@@ -854,30 +854,32 @@ public:
 
     // Check for library functions that expose a pointer to an Allocation or
     // that are not yet annotated with RenderScript-specific tbaa information.
-    static std::vector<std::string> Funcs;
+    static const std::vector<const char *> Funcs{
+      // rsGetElementAt(...)
+      "_Z14rsGetElementAt13rs_allocationj",
+      "_Z14rsGetElementAt13rs_allocationjj",
+      "_Z14rsGetElementAt13rs_allocationjjj",
 
-    // rsGetElementAt(...)
-    Funcs.push_back("_Z14rsGetElementAt13rs_allocationj");
-    Funcs.push_back("_Z14rsGetElementAt13rs_allocationjj");
-    Funcs.push_back("_Z14rsGetElementAt13rs_allocationjjj");
-    // rsSetElementAt()
-    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvj");
-    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvjj");
-    Funcs.push_back("_Z14rsSetElementAt13rs_allocationPvjjj");
-    // rsGetElementAtYuv_uchar_Y()
-    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_Y13rs_allocationjj");
-    // rsGetElementAtYuv_uchar_U()
-    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_U13rs_allocationjj");
-    // rsGetElementAtYuv_uchar_V()
-    Funcs.push_back("_Z25rsGetElementAtYuv_uchar_V13rs_allocationjj");
+      // rsSetElementAt()
+      "_Z14rsSetElementAt13rs_allocationPvj",
+      "_Z14rsSetElementAt13rs_allocationPvjj",
+      "_Z14rsSetElementAt13rs_allocationPvjjj",
 
-    for (std::vector<std::string>::iterator FI = Funcs.begin(),
-                                            FE = Funcs.end();
-         FI != FE; ++FI) {
-      llvm::Function *Function = Module.getFunction(*FI);
+      // rsGetElementAtYuv_uchar_Y()
+      "_Z25rsGetElementAtYuv_uchar_Y13rs_allocationjj",
+
+      // rsGetElementAtYuv_uchar_U()
+      "_Z25rsGetElementAtYuv_uchar_U13rs_allocationjj",
+
+      // rsGetElementAtYuv_uchar_V()
+      "_Z25rsGetElementAtYuv_uchar_V13rs_allocationjj",
+    };
+
+    for (auto FI : Funcs) {
+      llvm::Function *Function = Module.getFunction(FI);
 
       if (!Function) {
-        ALOGE("Missing run-time function '%s'", FI->c_str());
+        ALOGE("Missing run-time function '%s'", FI);
         return true;
       }
 
