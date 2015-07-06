@@ -704,7 +704,7 @@ public:
     llvm::SmallVector<llvm::Type*,  8> InTypes;
     llvm::SmallVector<llvm::Value*, 8> InSteps;
     llvm::SmallVector<llvm::Value*, 8> InBasePtrs;
-    llvm::SmallVector<bool,         8> InIsStructPointer;
+    llvm::SmallVector<llvm::Value*, 8> InStructTempSlots;
 
     bccAssert(NumInputs <= RS_KERNEL_INPUT_LIMIT);
 
@@ -713,49 +713,58 @@ public:
 
       llvm::Value *InStepsBase = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
 
+      llvm::Instruction *AllocaInsertionPoint = &*ExpandedFunction->getEntryBlock().begin();
       for (size_t InputIndex = 0; InputIndex < NumInputs;
            ++InputIndex, ArgIter++) {
 
-          llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InStepsBase, 0, InputIndex);
-          llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
+        llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InStepsBase, 0, InputIndex);
+        llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
                                                           "instep_addr");
 
-          llvm::Type *InType = ArgIter->getType();
+        llvm::Type *InType = ArgIter->getType();
 
         /*
-         * AArch64 calling dictate that structs of sufficient size get passed by
-         * pointer instead of passed by value.  This, combined with the fact
-         * that we don't allow kernels to operate on pointer data means that if
-         * we see a kernel with a pointer parameter we know that it is struct
-         * input that has been promoted.  As such we don't need to convert its
-         * type to a pointer.  Later we will need to know to avoid a load, so we
-         * save this information in InIsStructPointer.
+         * AArch64 calling conventions dictate that structs of sufficient size
+         * get passed by pointer instead of passed by value.  This, combined
+         * with the fact that we don't allow kernels to operate on pointer
+         * data means that if we see a kernel with a pointer parameter we know
+         * that it is struct input that has been promoted.  As such we don't
+         * need to convert its type to a pointer.  Later we will need to know
+         * to create a temporary copy on the stack, so we save this information
+         * in InStructTempSlots.
          */
-          if (!InType->isPointerTy()) {
-            InType = InType->getPointerTo();
-            InIsStructPointer.push_back(false);
-          } else {
-            InIsStructPointer.push_back(true);
-          }
+        if (auto PtrType = llvm::dyn_cast<llvm::PointerType>(InType)) {
+          llvm::Type *ElementType = PtrType->getElementType();
+          uint64_t Alignment = DL.getABITypeAlignment(ElementType);
+          llvm::Value *Slot = new llvm::AllocaInst(ElementType,
+                                                   nullptr,
+                                                   Alignment,
+                                                   "input_struct_slot",
+                                                   AllocaInsertionPoint);
+          InStructTempSlots.push_back(Slot);
+        } else {
+          InType = InType->getPointerTo();
+          InStructTempSlots.push_back(nullptr);
+        }
 
-          llvm::Value *InStep = getStepValue(&DL, InType, InStepArg);
+        llvm::Value *InStep = getStepValue(&DL, InType, InStepArg);
 
-          InStep->setName("instep");
+        InStep->setName("instep");
 
-          llvm::Value    *InputAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InsBasePtr, 0, InputIndex);
-          llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
+        llvm::Value    *InputAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InsBasePtr, 0, InputIndex);
+        llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
                                                          "input_base");
-          llvm::Value    *CastInBasePtr = Builder.CreatePointerCast(InBasePtr,
+        llvm::Value    *CastInBasePtr = Builder.CreatePointerCast(InBasePtr,
                                                                     InType, "casted_in");
-          if (gEnableRsTbaa) {
-            InBasePtr->setMetadata("tbaa", TBAAPointer);
-          }
+        if (gEnableRsTbaa) {
+          InBasePtr->setMetadata("tbaa", TBAAPointer);
+        }
 
-          InBasePtr->setMetadata("alias.scope", AliasingScope);
+        InBasePtr->setMetadata("alias.scope", AliasingScope);
 
-          InTypes.push_back(InType);
-          InSteps.push_back(InStep);
-          InBasePtrs.push_back(CastInBasePtr);
+        InTypes.push_back(InType);
+        InSteps.push_back(InStep);
+        InBasePtrs.push_back(CastInBasePtr);
       }
     }
 
@@ -795,9 +804,22 @@ public:
         llvm::Value *InPtr    = Builder.CreateGEP(InBasePtrs[Index], Offset);
         llvm::Value *Input;
 
-        if (InIsStructPointer[Index]) {
-          Input = InPtr;
+        if (llvm::Value *TemporarySlot = InStructTempSlots[Index]) {
+          // Pass a pointer to a temporary on the stack, rather than
+          // passing a pointer to the original value. We do not want
+          // the kernel to potentially modify the input data.
 
+          llvm::Type *ElementType = llvm::cast<llvm::PointerType>(
+                                        InPtr->getType())->getElementType();
+          uint64_t StoreSize = DL.getTypeStoreSize(ElementType);
+          uint64_t Alignment = DL.getABITypeAlignment(ElementType);
+
+          Builder.CreateMemCpy(TemporarySlot, InPtr, StoreSize, Alignment,
+                               /* isVolatile = */ false,
+                               /* !tbaa = */ gEnableRsTbaa ? TBAAAllocation : nullptr,
+                               /* !tbaa.struct = */ nullptr,
+                               /* !alias.scope = */ AliasingScope);
+          Input = TemporarySlot;
         } else {
           llvm::LoadInst *InputLoad = Builder.CreateLoad(InPtr, "input");
 
