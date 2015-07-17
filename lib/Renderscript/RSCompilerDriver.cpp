@@ -249,7 +249,7 @@ bool RSCompilerDriver::build(BCCContext &pContext,
     return false;
   }
 
-  RSScript script(*source);
+  RSScript script(*source, getConfig());
   if (pLinkRuntimeCallback) {
     setLinkRuntimeCallback(pLinkRuntimeCallback);
   }
