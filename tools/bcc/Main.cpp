@@ -365,7 +365,14 @@ int main(int argc, char **argv) {
     // into the .rs.info symbol.
     Source *source = Source::CreateFromBuffer(context, OptInputFilenames[0].c_str(),
                                               bitcode, bitcodeSize);
-    RSScript *s = new (std::nothrow) RSScript(*source);
+
+    // If the bitcode fails verification in the bitcode loader, the returned Source is set to NULL.
+    if (!source) {
+      ALOGE("Failed to load source from file %s", OptInputFilenames[0].c_str());
+      return EXIT_FAILURE;
+    }
+
+    RSScript *s = new (std::nothrow) RSScript(*source, RSCD.getConfig());
     if (s == nullptr) {
       llvm::errs() << "Out of memory when creating script for file `"
                    << OptInputFilenames[0] << "'!\n";
