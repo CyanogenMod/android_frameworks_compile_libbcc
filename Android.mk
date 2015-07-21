@@ -98,7 +98,15 @@ LOCAL_STATIC_LIBRARIES += \
   libcutils \
   liblog
 
-LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM
+LOCAL_SHARED_LIBRARIES := libbcinfo
+
+ifeq (true,$(FORCE_BUILD_LLVM_COMPONENTS))
+# This line allows libbcc to be used as an LLVM loadable module with
+# opt. We don't build unless we have libLLVMLinker, which is not
+# provided as a prebuilt. libLLVMLinker is needed because it is not
+# pulled into opt.
+LOCAL_STATIC_LIBRARIES += libLLVMLinker
+endif
 
 ifndef USE_MINGW
 LOCAL_LDLIBS := -ldl -lpthread
