@@ -56,7 +56,74 @@ bool extractUIntFromMetadataString(uint32_t *value,
   return false;
 }
 
+const char *createStringFromValue(llvm::Metadata *m) {
+  auto ref = getStringOperand(m);
+  char *c = new char[ref.size() + 1];
+  memcpy(c, ref.data(), ref.size());
+  c[ref.size()] = '\0';
+  return c;
 }
+
+// Collect metadata from NamedMDNodes that contain a list of names
+// (strings).
+//
+// Inputs:
+//
+// NamedMetadata - An LLVM metadata node, each of whose operands have
+// a string as their first entry
+//
+// NameList - A reference that will hold an allocated array of strings
+//
+// Count - A reference that will hold the length of the allocated
+// array of strings
+//
+// Return value:
+//
+// Return true on success, false on error.
+//
+// Upon success, the function sets NameList to an array of strings
+// corresponding the names found in the metadata. The function sets
+// Count to the number of entries in NameList.
+//
+// An error occurs if one of the metadata operands doesn't have a
+// first entry.
+bool populateNameMetadata(const llvm::NamedMDNode *NameMetadata,
+                          const char **&NameList, size_t &Count) {
+  if (!NameMetadata) {
+    NameList = nullptr;
+    Count = 0;
+    return true;
+  }
+
+  Count = NameMetadata->getNumOperands();
+  if (!Count) {
+    NameList = nullptr;
+    return true;
+  }
+
+  NameList = new const char *[Count];
+
+  for (size_t i = 0; i < Count; i++) {
+    llvm::MDNode *Name = NameMetadata->getOperand(i);
+    if (Name && Name->getNumOperands() > 0) {
+      NameList[i] = createStringFromValue(Name->getOperand(0));
+    } else {
+      ALOGE("Metadata operand does not contain a name string");
+      for (size_t AllocatedIndex = 0; AllocatedIndex < i; AllocatedIndex++) {
+        delete [] NameList[AllocatedIndex];
+      }
+      delete [] NameList;
+      NameList = nullptr;
+      Count = 0;
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
+} // end anonymous namespace
 
 // Name of metadata node where pragma info resides (should be synced with
 // slang.cpp)
@@ -79,6 +146,10 @@ static const llvm::StringRef ExportForEachNameMetadataName =
 // (should be synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
 
+// Name of metadata node where exported reduce name information resides
+// (should be synced with slang_rs_metadata.h)
+static const llvm::StringRef ExportReduceMetadataName = "#rs_export_reduce";
+
 // Name of metadata node where RS object slot info resides (should be
 // synced with slang_rs_metadata.h)
 static const llvm::StringRef ObjectSlotMetadataName = "#rs_object_slots";
@@ -92,28 +163,31 @@ static const llvm::StringRef ChecksumMetadataName = "#rs_build_checksum";
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mModule(nullptr), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
       mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
-      mExportVarNameList(nullptr), mExportFuncNameList(nullptr),
-      mExportForEachNameList(nullptr), mExportForEachSignatureList(nullptr),
-      mExportForEachInputCountList(nullptr), mPragmaCount(0),
-      mPragmaKeyList(nullptr), mPragmaValueList(nullptr), mObjectSlotCount(0),
-      mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
-      mIsThreadable(true), mBuildChecksum(nullptr) {
+      mExportReduceCount(0), mExportVarNameList(nullptr),
+      mExportFuncNameList(nullptr), mExportForEachNameList(nullptr),
+      mExportForEachSignatureList(nullptr),
+      mExportForEachInputCountList(nullptr), mExportReduceNameList(nullptr),
+      mPragmaCount(0), mPragmaKeyList(nullptr), mPragmaValueList(nullptr),
+      mObjectSlotCount(0), mObjectSlotList(nullptr),
+      mRSFloatPrecision(RS_FP_Full), mIsThreadable(true),
+      mBuildChecksum(nullptr) {
   BitcodeWrapper wrapper(bitcode, bitcodeSize);
   mTargetAPI = wrapper.getTargetAPI();
   mCompilerVersion = wrapper.getCompilerVersion();
   mOptimizationLevel = wrapper.getOptimizationLevel();
 }
 
-
 MetadataExtractor::MetadataExtractor(const llvm::Module *module)
-    : mModule(module), mBitcode(nullptr), mBitcodeSize(0), mExportVarCount(0),
-      mExportFuncCount(0), mExportForEachSignatureCount(0),
-      mExportVarNameList(nullptr), mExportFuncNameList(nullptr),
-      mExportForEachNameList(nullptr), mExportForEachSignatureList(nullptr),
-      mExportForEachInputCountList(nullptr), mPragmaCount(0),
-      mPragmaKeyList(nullptr), mPragmaValueList(nullptr), mObjectSlotCount(0),
-      mObjectSlotList(nullptr), mRSFloatPrecision(RS_FP_Full),
-      mIsThreadable(true), mBuildChecksum(nullptr) {
+    : mModule(module), mBitcode(nullptr), mBitcodeSize(0),
+      mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
+      mExportReduceCount(0), mExportVarNameList(nullptr),
+      mExportFuncNameList(nullptr), mExportForEachNameList(nullptr),
+      mExportForEachSignatureList(nullptr),
+      mExportForEachInputCountList(nullptr), mExportReduceNameList(nullptr),
+      mPragmaCount(0), mPragmaKeyList(nullptr), mPragmaValueList(nullptr),
+      mObjectSlotCount(0), mObjectSlotList(nullptr),
+      mRSFloatPrecision(RS_FP_Full), mIsThreadable(true),
+      mBuildChecksum(nullptr) {
   mCompilerVersion = RS_VERSION;  // Default to the actual current version.
   mOptimizationLevel = 3;
 }
@@ -149,6 +223,15 @@ MetadataExtractor::~MetadataExtractor() {
 
   delete [] mExportForEachSignatureList;
   mExportForEachSignatureList = nullptr;
+
+  if (mExportReduceNameList) {
+    for (size_t i = 0; i < mExportReduceCount; i++) {
+      delete [] mExportReduceNameList[i];
+      mExportReduceNameList[i] = nullptr;
+    }
+  }
+  delete [] mExportReduceNameList;
+  mExportReduceNameList = nullptr;
 
   for (size_t i = 0; i < mPragmaCount; i++) {
     if (mPragmaKeyList) {
@@ -205,15 +288,6 @@ bool MetadataExtractor::populateObjectSlotMetadata(
   mObjectSlotList = TmpSlotList;
 
   return true;
-}
-
-
-static const char *createStringFromValue(llvm::Metadata *m) {
-  auto ref = getStringOperand(m);
-  char *c = new char[ref.size() + 1];
-  memcpy(c, ref.data(), ref.size());
-  c[ref.size()] = '\0';
-  return c;
 }
 
 
@@ -291,59 +365,6 @@ void MetadataExtractor::populatePragmaMetadata(
   }
 #endif
 }
-
-
-bool MetadataExtractor::populateVarNameMetadata(
-    const llvm::NamedMDNode *VarNameMetadata) {
-  if (!VarNameMetadata) {
-    return true;
-  }
-
-  mExportVarCount = VarNameMetadata->getNumOperands();
-  if (!mExportVarCount) {
-    return true;
-  }
-
-  const char **TmpNameList = new const char *[mExportVarCount];
-
-  for (size_t i = 0; i < mExportVarCount; i++) {
-    llvm::MDNode *Name = VarNameMetadata->getOperand(i);
-    if (Name != nullptr && Name->getNumOperands() > 1) {
-      TmpNameList[i] = createStringFromValue(Name->getOperand(0));
-    }
-  }
-
-  mExportVarNameList = TmpNameList;
-
-  return true;
-}
-
-
-bool MetadataExtractor::populateFuncNameMetadata(
-    const llvm::NamedMDNode *FuncNameMetadata) {
-  if (!FuncNameMetadata) {
-    return true;
-  }
-
-  mExportFuncCount = FuncNameMetadata->getNumOperands();
-  if (!mExportFuncCount) {
-    return true;
-  }
-
-  const char **TmpNameList = new const char*[mExportFuncCount];
-
-  for (size_t i = 0; i < mExportFuncCount; i++) {
-    llvm::MDNode *Name = FuncNameMetadata->getOperand(i);
-    if (Name != nullptr && Name->getNumOperands() == 1) {
-      TmpNameList[i] = createStringFromValue(Name->getOperand(0));
-    }
-  }
-
-  mExportFuncNameList = TmpNameList;
-
-  return true;
-}
-
 
 uint32_t MetadataExtractor::calculateNumInputs(const llvm::Function *Function,
                                                uint32_t Signature) {
@@ -521,6 +542,8 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(ExportForEachNameMetadataName);
   const llvm::NamedMDNode *ExportForEachMetadata =
       mModule->getNamedMetadata(ExportForEachMetadataName);
+  const llvm::NamedMDNode *ExportReduceMetadata =
+      mModule->getNamedMetadata(ExportReduceMetadataName);
   const llvm::NamedMDNode *PragmaMetadata =
       mModule->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
@@ -530,14 +553,21 @@ bool MetadataExtractor::extract() {
   const llvm::NamedMDNode *ChecksumMetadata =
       mModule->getNamedMetadata(ChecksumMetadataName);
 
-
-  if (!populateVarNameMetadata(ExportVarMetadata)) {
+  if (!populateNameMetadata(ExportVarMetadata, mExportVarNameList,
+                            mExportVarCount)) {
     ALOGE("Could not populate export variable metadata");
     return false;
   }
 
-  if (!populateFuncNameMetadata(ExportFuncMetadata)) {
+  if (!populateNameMetadata(ExportFuncMetadata, mExportFuncNameList,
+                            mExportFuncCount)) {
     ALOGE("Could not populate export function metadata");
+    return false;
+  }
+
+  if (!populateNameMetadata(ExportReduceMetadata, mExportReduceNameList,
+                            mExportReduceCount)) {
+    ALOGE("Could not populate export reduce metadata");
     return false;
   }
 
