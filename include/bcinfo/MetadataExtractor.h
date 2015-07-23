@@ -54,12 +54,13 @@ class MetadataExtractor {
   size_t mExportVarCount;
   size_t mExportFuncCount;
   size_t mExportForEachSignatureCount;
+  size_t mExportReduceCount;
   const char **mExportVarNameList;
   const char **mExportFuncNameList;
   const char **mExportForEachNameList;
   const uint32_t *mExportForEachSignatureList;
-
   const uint32_t *mExportForEachInputCountList;
+  const char **mExportReduceNameList;
 
   size_t mPragmaCount;
   const char **mPragmaKeyList;
@@ -80,8 +81,6 @@ class MetadataExtractor {
   const char *mBuildChecksum;
 
   // Helper functions for extraction
-  bool populateVarNameMetadata(const llvm::NamedMDNode *VarNameMetadata);
-  bool populateFuncNameMetadata(const llvm::NamedMDNode *FuncNameMetadata);
   bool populateForEachMetadata(const llvm::NamedMDNode *Names,
                                const llvm::NamedMDNode *Signatures);
   bool populateObjectSlotMetadata(const llvm::NamedMDNode *ObjectSlotMetadata);
@@ -181,6 +180,20 @@ class MetadataExtractor {
    */
   const uint32_t *getExportForEachInputCountList() const {
     return mExportForEachInputCountList;
+  }
+
+  /**
+   * \return number of exported reduce kernels (slots) in this script/module.
+   */
+  size_t getExportReduceCount() const {
+    return mExportReduceCount;
+  }
+
+  /**
+   * \return array of exported reduce kernel names.
+   */
+  const char **getExportReduceNameList() const {
+    return mExportReduceNameList;
   }
 
   /**
