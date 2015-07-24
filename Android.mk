@@ -98,22 +98,11 @@ LOCAL_STATIC_LIBRARIES += \
   libcutils \
   liblog
 
-LOCAL_SHARED_LIBRARIES := libbcinfo
+LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM
 
-ifdef USE_MINGW
-# Windows needs libLLVM, since DLLs must really have fully resolved their
-# symbolic dependencies.
-LOCAL_SHARED_LIBRARIES += libLLVM
-else
-LOCAL_LDLIBS := -ldl -lpthread -lLLVM
-ifeq (true,$(FORCE_BUILD_LLVM_COMPONENTS))
-# This line allows libbcc to be used as an LLVM loadable module with
-# opt. We don't build unless we have libLLVMLinker, which is not
-# provided as a prebuilt. libLLVMLinker is needed because it is not
-# pulled into opt.
-LOCAL_STATIC_LIBRARIES += libLLVMLinker
-endif  # FORCE_BUILD_LLVM_COMPONENTS
-endif  # USE_MINGW
+ifndef USE_MINGW
+LOCAL_LDLIBS := -ldl -lpthread
+endif
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LLVM_HOST_BUILD_MK)
