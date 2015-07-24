@@ -80,9 +80,12 @@ LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_STATIC_LIBRARIES += libcutils liblog
-LOCAL_SHARED_LIBRARIES += libLLVM
 
-ifndef USE_MINGW
+ifdef USE_MINGW
+# Windows needs libLLVM, since DLLs must really have fully resolved their
+# symbolic dependencies.
+LOCAL_SHARED_LIBRARIES += libLLVM
+else
 LOCAL_LDLIBS := -ldl -lpthread
 endif
 
