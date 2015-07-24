@@ -86,7 +86,7 @@ ifdef USE_MINGW
 # symbolic dependencies.
 LOCAL_SHARED_LIBRARIES += libLLVM
 else
-LOCAL_LDLIBS := -ldl -lpthread
+LOCAL_LDLIBS := -ldl -lpthread -lLLVM
 endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk

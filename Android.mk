@@ -105,7 +105,7 @@ ifdef USE_MINGW
 # symbolic dependencies.
 LOCAL_SHARED_LIBRARIES += libLLVM
 else
-LOCAL_LDLIBS := -ldl -lpthread
+LOCAL_LDLIBS := -ldl -lpthread -lLLVM
 ifeq (true,$(FORCE_BUILD_LLVM_COMPONENTS))
 # This line allows libbcc to be used as an LLVM loadable module with
 # opt. We don't build unless we have libLLVMLinker, which is not
