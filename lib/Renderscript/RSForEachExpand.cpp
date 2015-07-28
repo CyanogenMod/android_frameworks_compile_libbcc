@@ -427,6 +427,31 @@ private:
     }
   }
 
+  // GEPHelper() returns a SmallVector of values suitable for passing
+  // to IRBuilder::CreateGEP(), and SmallGEPIndices is a typedef for
+  // the returned data type. It is sized so that the SmallVector
+  // returned by GEPHelper() never needs to do a heap allocation for
+  // any list of GEP indices it encounters in the code.
+  typedef llvm::SmallVector<llvm::Value *, 3> SmallGEPIndices;
+
+  // Helper for turning a list of constant integer GEP indices into a
+  // SmallVector of llvm::Value*. The return value is suitable for
+  // passing to a GetElementPtrInst constructor or IRBuilder::CreateGEP().
+  //
+  // Inputs:
+  //   I32Args should be integers which represent the index arguments
+  //   to a GEP instruction.
+  //
+  // Returns:
+  //   Returns a SmallVector of ConstantInts.
+  SmallGEPIndices GEPHelper(std::initializer_list<int32_t> I32Args) {
+    SmallGEPIndices Out(I32Args.size());
+    llvm::IntegerType *I32Ty = llvm::Type::getInt32Ty(*Context);
+    std::transform(I32Args.begin(), I32Args.end(), Out.begin(),
+                   [I32Ty](int32_t Arg) { return llvm::ConstantInt::get(I32Ty, Arg); });
+    return Out;
+  }
+
 public:
   RSForEachExpandPass(bool pEnableStepOpt = true)
       : ModulePass(ID), Module(nullptr), Context(nullptr),
@@ -448,6 +473,8 @@ public:
   //            suitable for computing arguments for the ForEach-able function
   // CalleeArgs - contribution is accumulated here
   // Bump - invoked once for each contributed outgoing argument
+  // LoopHeaderInsertionPoint - an Instruction in the loop header, before which
+  //                            this function can insert loop-invariant loads
   //
   // Return value is the (zero-based) position of the context (Arg_p)
   // argument in the CalleeArgs vector, or a negative value if the
@@ -457,7 +484,8 @@ public:
                              llvm::Value *Arg_p,
                              llvm::IRBuilder<> &Builder,
                              llvm::SmallVector<llvm::Value*, 8> &CalleeArgs,
-                             std::function<void ()> Bump) {
+                             std::function<void ()> Bump,
+                             llvm::Instruction *LoopHeaderInsertionPoint) {
 
     bccAssert(CalleeArgs.empty());
 
@@ -475,23 +503,30 @@ public:
 
     if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature) ||
         bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
+      bccAssert(LoopHeaderInsertionPoint);
 
-      llvm::Value *Current = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldCurrent);
+      // Y and Z are loop invariant, so they can be hoisted out of the
+      // loop. Set the IRBuilder insertion point to the loop header.
+      auto OldInsertionPoint = Builder.saveIP();
+      Builder.SetInsertPoint(LoopHeaderInsertionPoint);
 
       if (bcinfo::MetadataExtractor::hasForEachSignatureY(Signature)) {
-        llvm::Value *Y = Builder.CreateLoad(
-            Builder.CreateStructGEP(nullptr, Current, RsLaunchDimensionsFieldY), "Y");
-
-        CalleeArgs.push_back(Y);
+        SmallGEPIndices YValueGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldCurrent,
+          RsLaunchDimensionsFieldY}));
+        llvm::Value *YAddr = Builder.CreateInBoundsGEP(Arg_p, YValueGEP, "Y.gep");
+        CalleeArgs.push_back(Builder.CreateLoad(YAddr, "Y"));
         Bump();
       }
 
       if (bcinfo::MetadataExtractor::hasForEachSignatureZ(Signature)) {
-        llvm::Value *Z = Builder.CreateLoad(
-            Builder.CreateStructGEP(nullptr, Current, RsLaunchDimensionsFieldZ), "Z");
-        CalleeArgs.push_back(Z);
+        SmallGEPIndices ZValueGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldCurrent,
+          RsLaunchDimensionsFieldZ}));
+        llvm::Value *ZAddr = Builder.CreateInBoundsGEP(Arg_p, ZValueGEP, "Z.gep");
+        CalleeArgs.push_back(Builder.CreateLoad(ZAddr, "Z"));
         Bump();
       }
+
+      Builder.restoreIP(OldInsertionPoint);
     }
 
     return Return;
@@ -545,23 +580,20 @@ public:
     llvm::Function::arg_iterator FunctionArgIter = Function->arg_begin();
 
     llvm::Type  *InTy      = nullptr;
-    llvm::Value *InBasePtr = nullptr;
+    llvm::Value *InBufPtr = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureIn(Signature)) {
-      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
-
-      llvm::Value *InStepsBase = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
-
-      llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InStepsBase, 0, 0);
-      llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
-                                                      "instep_addr");
+      SmallGEPIndices InStepGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldInStride, 0}));
+      llvm::LoadInst *InStepArg  = Builder.CreateLoad(
+        Builder.CreateInBoundsGEP(Arg_p, InStepGEP, "instep_addr.gep"), "instep_addr");
 
       InTy = (FunctionArgIter++)->getType();
       InStep = getStepValue(&DL, InTy, InStepArg);
 
       InStep->setName("instep");
 
-      llvm::Value *InputAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InsBasePtr, 0, 0);
-      InBasePtr = Builder.CreateLoad(InputAddr, "input_base");
+      SmallGEPIndices InputAddrGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldInPtr, 0}));
+      InBufPtr = Builder.CreateLoad(
+        Builder.CreateInBoundsGEP(Arg_p, InputAddrGEP, "input_buf.gep"), "input_buf");
     }
 
     llvm::Type *OutTy = nullptr;
@@ -570,26 +602,26 @@ public:
       OutTy = (FunctionArgIter++)->getType();
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      OutBasePtr = Builder.CreateLoad(
-                     Builder.CreateConstInBoundsGEP2_32(nullptr,
-                         Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr),
-                         0, 0));
+      SmallGEPIndices OutBaseGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldOutPtr, 0}));
+      OutBasePtr = Builder.CreateLoad(Builder.CreateInBoundsGEP(Arg_p, OutBaseGEP, "out_buf.gep"));
     }
 
     llvm::Value *UsrData = nullptr;
     if (bcinfo::MetadataExtractor::hasForEachSignatureUsrData(Signature)) {
       llvm::Type *UsrDataTy = (FunctionArgIter++)->getType();
-      UsrData = Builder.CreatePointerCast(Builder.CreateLoad(
-          Builder.CreateStructGEP(nullptr, Arg_p,  RsExpandKernelDriverInfoPfxFieldUsr)), UsrDataTy);
+      llvm::Value *UsrDataPointerAddr = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldUsr);
+      UsrData = Builder.CreatePointerCast(Builder.CreateLoad(UsrDataPointerAddr), UsrDataTy);
       UsrData->setName("UsrData");
     }
 
+    llvm::BasicBlock *LoopHeader = Builder.GetInsertBlock();
     llvm::PHINode *IV;
     createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
     const int CalleeArgsContextIdx = ExpandSpecialArguments(Signature, IV, Arg_p, Builder, CalleeArgs,
-                                                            [&FunctionArgIter]() { FunctionArgIter++; });
+                                                            [&FunctionArgIter]() { FunctionArgIter++; },
+                                                            LoopHeader->getTerminator());
 
     bccAssert(FunctionArgIter == Function->arg_end());
 
@@ -610,14 +642,14 @@ public:
     if (OutBasePtr) {
       llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
       OutOffset = Builder.CreateMul(OutOffset, OutStep);
-      OutPtr = Builder.CreateGEP(OutBasePtr, OutOffset);
+      OutPtr = Builder.CreateInBoundsGEP(OutBasePtr, OutOffset);
       OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
     }
 
-    if (InBasePtr) {
+    if (InBufPtr) {
       llvm::Value *InOffset = Builder.CreateSub(IV, Arg_x1);
       InOffset = Builder.CreateMul(InOffset, InStep);
-      InPtr = Builder.CreateGEP(InBasePtr, InOffset);
+      InPtr = Builder.CreateInBoundsGEP(InBufPtr, InOffset);
       InPtr = Builder.CreatePointerCast(InPtr, InTy);
     }
 
@@ -696,7 +728,7 @@ public:
      *
      * Note that we load any loop-invariant arguments before entering the Loop.
      */
-    size_t NumInputs = Function->arg_size();
+    size_t NumRemainingInputs = Function->arg_size();
 
     // No usrData parameter on kernels.
     bccAssert(
@@ -720,7 +752,7 @@ public:
         OutTy = ArgIter->getType();
 
         ArgIter++;
-        --NumInputs;
+        --NumRemainingInputs;
       } else {
         // We don't increment Args, since we are using the actual return type.
         OutTy = OutBaseTy->getPointerTo();
@@ -728,10 +760,8 @@ public:
 
       OutStep = getStepValue(&DL, OutTy, Arg_outstep);
       OutStep->setName("outstep");
-      OutBasePtr = Builder.CreateLoad(
-                     Builder.CreateConstInBoundsGEP2_32(nullptr,
-                         Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldOutPtr),
-                         0, 0));
+      SmallGEPIndices OutBaseGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldOutPtr, 0}));
+      OutBasePtr = Builder.CreateLoad(Builder.CreateInBoundsGEP(Arg_p, OutBaseGEP, "out_buf.gep"));
 
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
@@ -742,32 +772,41 @@ public:
       CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
     }
 
+    llvm::SmallVector<llvm::Type*,  8> InTypes;
+    llvm::SmallVector<llvm::Value*, 8> InSteps;
+    llvm::SmallVector<llvm::Value*, 8> InBufPtrs;
+    llvm::SmallVector<llvm::Value*, 8> InStructTempSlots;
+
+    bccAssert(NumRemainingInputs <= RS_KERNEL_INPUT_LIMIT);
+
+    // Create the loop structure.
+    llvm::BasicBlock *LoopHeader = Builder.GetInsertBlock();
     llvm::PHINode *IV;
     createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
-    const int CalleeArgsContextIdx = ExpandSpecialArguments(Signature, IV, Arg_p, Builder, CalleeArgs,
-                                                            [&NumInputs]() { --NumInputs; });
+    const int CalleeArgsContextIdx =
+      ExpandSpecialArguments(Signature, IV, Arg_p, Builder, CalleeArgs,
+                             [&NumRemainingInputs]() { --NumRemainingInputs; },
+                             LoopHeader->getTerminator());
 
-    llvm::SmallVector<llvm::Type*,  8> InTypes;
-    llvm::SmallVector<llvm::Value*, 8> InSteps;
-    llvm::SmallVector<llvm::Value*, 8> InBasePtrs;
-    llvm::SmallVector<llvm::Value*, 8> InStructTempSlots;
+    // After ExpandSpecialArguments() gets called, NumRemainingInputs
+    // counts the number of arguments to the kernel that correspond to
+    // an array entry from the InPtr field of the DriverInfo
+    // structure.
+    const size_t NumInPtrArguments = NumRemainingInputs;
 
-    bccAssert(NumInputs <= RS_KERNEL_INPUT_LIMIT);
+    if (NumInPtrArguments > 0) {
+      // Extract information about input slots and step sizes. The work done
+      // here is loop-invariant, so we can hoist the operations out of the loop.
+      auto OldInsertionPoint = Builder.saveIP();
+      Builder.SetInsertPoint(LoopHeader->getTerminator());
 
-    if (NumInputs > 0) {
-      llvm::Value *InsBasePtr  = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInPtr, "inputs_base");
-
-      llvm::Value *InStepsBase = Builder.CreateStructGEP(nullptr, Arg_p, RsExpandKernelDriverInfoPfxFieldInStride, "insteps_base");
-
-      llvm::Instruction *AllocaInsertionPoint = &*ExpandedFunction->getEntryBlock().begin();
-      for (size_t InputIndex = 0; InputIndex < NumInputs;
-           ++InputIndex, ArgIter++) {
-
-        llvm::Value    *InStepAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InStepsBase, 0, InputIndex);
-        llvm::LoadInst *InStepArg  = Builder.CreateLoad(InStepAddr,
-                                                          "instep_addr");
+      for (size_t InputIndex = 0; InputIndex < NumInPtrArguments; ++InputIndex, ArgIter++) {
+        SmallGEPIndices InStepGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldInStride,
+          static_cast<int32_t>(InputIndex)}));
+        llvm::Value *InStepAddr = Builder.CreateInBoundsGEP(Arg_p, InStepGEP, "instep_addr.gep");
+        llvm::LoadInst *InStepArg = Builder.CreateLoad(InStepAddr, "instep_addr");
 
         llvm::Type *InType = ArgIter->getType();
 
@@ -776,20 +815,15 @@ public:
          * get passed by pointer instead of passed by value.  This, combined
          * with the fact that we don't allow kernels to operate on pointer
          * data means that if we see a kernel with a pointer parameter we know
-         * that it is struct input that has been promoted.  As such we don't
+         * that it is a struct input that has been promoted.  As such we don't
          * need to convert its type to a pointer.  Later we will need to know
          * to create a temporary copy on the stack, so we save this information
          * in InStructTempSlots.
          */
         if (auto PtrType = llvm::dyn_cast<llvm::PointerType>(InType)) {
           llvm::Type *ElementType = PtrType->getElementType();
-          uint64_t Alignment = DL.getABITypeAlignment(ElementType);
-          llvm::Value *Slot = new llvm::AllocaInst(ElementType,
-                                                   nullptr,
-                                                   Alignment,
-                                                   "input_struct_slot",
-                                                   AllocaInsertionPoint);
-          InStructTempSlots.push_back(Slot);
+          InStructTempSlots.push_back(Builder.CreateAlloca(ElementType, nullptr,
+                                                           "input_struct_slot"));
         } else {
           InType = InType->getPointerTo();
           InStructTempSlots.push_back(nullptr);
@@ -799,21 +833,23 @@ public:
 
         InStep->setName("instep");
 
-        llvm::Value    *InputAddr = Builder.CreateConstInBoundsGEP2_32(nullptr, InsBasePtr, 0, InputIndex);
-        llvm::LoadInst *InBasePtr = Builder.CreateLoad(InputAddr,
-                                                         "input_base");
-        llvm::Value    *CastInBasePtr = Builder.CreatePointerCast(InBasePtr,
-                                                                    InType, "casted_in");
+        SmallGEPIndices InBufPtrGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldInPtr,
+          static_cast<int32_t>(InputIndex)}));
+        llvm::Value    *InBufPtrAddr = Builder.CreateInBoundsGEP(Arg_p, InBufPtrGEP, "input_buf.gep");
+        llvm::LoadInst *InBufPtr = Builder.CreateLoad(InBufPtrAddr, "input_buf");
+        llvm::Value    *CastInBufPtr = Builder.CreatePointerCast(InBufPtr, InType, "casted_in");
         if (gEnableRsTbaa) {
-          InBasePtr->setMetadata("tbaa", TBAAPointer);
+          InBufPtr->setMetadata("tbaa", TBAAPointer);
         }
 
-        InBasePtr->setMetadata("alias.scope", AliasingScope);
+        InBufPtr->setMetadata("alias.scope", AliasingScope);
 
         InTypes.push_back(InType);
         InSteps.push_back(InStep);
-        InBasePtrs.push_back(CastInBasePtr);
+        InBufPtrs.push_back(CastInBufPtr);
       }
+
+      Builder.restoreIP(OldInsertionPoint);
     }
 
     // Populate the actual call to kernel().
@@ -836,7 +872,7 @@ public:
     if (CastedOutBasePtr) {
       llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
 
-      OutPtr    = Builder.CreateGEP(CastedOutBasePtr, OutOffset);
+      OutPtr = Builder.CreateInBoundsGEP(CastedOutBasePtr, OutOffset);
 
       if (PassOutByPointer) {
         RootArgs.push_back(OutPtr);
@@ -845,11 +881,11 @@ public:
 
     // Inputs
 
-    if (NumInputs > 0) {
+    if (NumInPtrArguments > 0) {
       llvm::Value *Offset = Builder.CreateSub(IV, Arg_x1);
 
-      for (size_t Index = 0; Index < NumInputs; ++Index) {
-        llvm::Value *InPtr    = Builder.CreateGEP(InBasePtrs[Index], Offset);
+      for (size_t Index = 0; Index < NumInPtrArguments; ++Index) {
+        llvm::Value *InPtr = Builder.CreateInBoundsGEP(InBufPtrs[Index], Offset);
         llvm::Value *Input;
 
         if (llvm::Value *TemporarySlot = InStructTempSlots[Index]) {
