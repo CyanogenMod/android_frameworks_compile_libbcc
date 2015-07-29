@@ -379,6 +379,7 @@ bool RSCompilerDriver::buildForCompatLib(RSScript &pScript, const char *pOut,
 
   pScript.setEmbedGlobalInfo(mEmbedGlobalInfo);
   pScript.setEmbedGlobalInfoSkipConstant(mEmbedGlobalInfoSkipConstant);
+  pScript.setLinkRuntimeCallback(getLinkRuntimeCallback());
 
   Compiler::ErrorCode status = compileScript(pScript, pOut, pOut, pRuntimePath,
                                              pBuildChecksum, pDumpIR);
