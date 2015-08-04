@@ -80,10 +80,15 @@ LOCAL_C_INCLUDES := $(libbcinfo_C_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES += $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_STATIC_LIBRARIES += libcutils liblog
-LOCAL_SHARED_LIBRARIES += libLLVM
 
 ifndef USE_MINGW
 LOCAL_LDLIBS := -ldl -lpthread
+endif
+
+include $(LOCAL_PATH)/../llvm-loadable-libbcc.mk
+
+ifneq ($(CAN_BUILD_HOST_LLVM_LOADABLE_MODULE),true)
+LOCAL_SHARED_LIBRARIES += libLLVM
 endif
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk

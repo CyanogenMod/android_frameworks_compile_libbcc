@@ -98,10 +98,18 @@ LOCAL_STATIC_LIBRARIES += \
   libcutils \
   liblog
 
-LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM
+LOCAL_SHARED_LIBRARIES := libbcinfo
 
 ifndef USE_MINGW
 LOCAL_LDLIBS := -ldl -lpthread
+endif
+
+include $(LIBBCC_ROOT_PATH)/llvm-loadable-libbcc.mk
+
+ifeq ($(CAN_BUILD_HOST_LLVM_LOADABLE_MODULE),true)
+LOCAL_STATIC_LIBRARIES += libLLVMLinker
+else
+LOCAL_SHARED_LIBRARIES += libLLVM
 endif
 
 include $(LIBBCC_HOST_BUILD_MK)
