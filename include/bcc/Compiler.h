@@ -80,13 +80,11 @@ private:
 
   enum ErrorCode runPasses(Script &pScript, llvm::raw_pwrite_stream &pResult);
 
-  bool addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM);
   bool addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassManager &pPM);
-  bool addExpandForEachPass(Script &pScript, llvm::legacy::PassManager &pPM);
-  bool addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM);
-  bool addInvariantPass(llvm::legacy::PassManager &pPM);
-  bool addInvokeHelperPass(llvm::legacy::PassManager &pPM);
-  bool addPostLTOCustomPasses(llvm::legacy::PassManager &pPM);
+  void addExpandForEachPass(llvm::legacy::PassManager &pPM);
+  void addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM);
+  void addInvariantPass(llvm::legacy::PassManager &pPM);
+  void addInvokeHelperPass(llvm::legacy::PassManager &pPM);
 
 public:
   Compiler();
