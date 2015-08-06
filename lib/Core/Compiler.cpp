@@ -143,6 +143,8 @@ Compiler::~Compiler() {
 }
 
 
+// This function has complete responsibility for creating and executing the
+// exact list of compiler passes.
 enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
                                              llvm::raw_pwrite_stream &pResult) {
   // Pass manager for link-time optimization
@@ -153,10 +155,13 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
 
   passes.add(createTargetTransformInfoWrapperPass(mTarget->getTargetIRAnalysis()));
 
-  // Add our custom passes.
-  if (!addCustomPasses(pScript, passes)) {
+  // Add some initial custom passes.
+  addInvokeHelperPass(passes);
+  addExpandForEachPass(passes);
+  addInvariantPass(passes);
+  if (!addInternalizeSymbolsPass(pScript, passes))
     return kErrCustomPasses;
-  }
+  addGlobalInfoPass(pScript, passes);
 
   if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
     passes.add(llvm::createGlobalOptimizerPass());
@@ -187,9 +192,9 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
 
   // These passes have to come after LTO, since we don't want to examine
   // functions that are never actually called.
-  if (!addPostLTOCustomPasses(passes)) {
-    return kErrCustomPasses;
-  }
+  if (llvm::Triple(getTargetMachine().getTargetTriple()).getArch() == llvm::Triple::x86_64)
+    passes.add(createRSX86_64CallConvPass());  // Add pass to correct calling convention for X86-64.
+  passes.add(createRSIsThreadablePass());      // Add pass to mark script as threadable.
 
   // RSEmbedInfoPass needs to come after we have scanned for non-threadable
   // functions.
@@ -356,69 +361,31 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   return true;
 }
 
-bool Compiler::addInvokeHelperPass(llvm::legacy::PassManager &pPM) {
+void Compiler::addInvokeHelperPass(llvm::legacy::PassManager &pPM) {
   llvm::Triple arch(getTargetMachine().getTargetTriple());
   if (arch.isArch64Bit()) {
     pPM.add(createRSInvokeHelperPass());
   }
-  return true;
 }
 
-bool Compiler::addExpandForEachPass(Script &pScript, llvm::legacy::PassManager &pPM) {
+void Compiler::addExpandForEachPass(llvm::legacy::PassManager &pPM) {
   // Expand ForEach on CPU path to reduce launch overhead.
   bool pEnableStepOpt = true;
   pPM.add(createRSForEachExpandPass(pEnableStepOpt));
-
-  return true;
 }
 
-bool Compiler::addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM) {
+void Compiler::addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM) {
   // Add additional information about RS global variables inside the Module.
   RSScript &script = static_cast<RSScript &>(pScript);
   if (script.getEmbedGlobalInfo()) {
     pPM.add(createRSGlobalInfoPass(script.getEmbedGlobalInfoSkipConstant()));
   }
-
-  return true;
 }
 
-bool Compiler::addInvariantPass(llvm::legacy::PassManager &pPM) {
+void Compiler::addInvariantPass(llvm::legacy::PassManager &pPM) {
   // Mark Loads from RsExpandKernelDriverInfo as "load.invariant".
   // Should run after ExpandForEach and before inlining.
   pPM.add(createRSInvariantPass());
-
-  return true;
-}
-
-bool Compiler::addCustomPasses(Script &pScript, llvm::legacy::PassManager &pPM) {
-  if (!addInvokeHelperPass(pPM))
-    return false;
-
-  if (!addExpandForEachPass(pScript, pPM))
-    return false;
-
-  if (!addInvariantPass(pPM))
-    return false;
-
-  if (!addInternalizeSymbolsPass(pScript, pPM))
-    return false;
-
-  if (!addGlobalInfoPass(pScript, pPM))
-    return false;
-
-  return true;
-}
-
-bool Compiler::addPostLTOCustomPasses(llvm::legacy::PassManager &pPM) {
-  // Add pass to correct calling convention for X86-64.
-  llvm::Triple arch(getTargetMachine().getTargetTriple());
-  if (arch.getArch() == llvm::Triple::x86_64)
-    pPM.add(createRSX86_64CallConvPass());
-
-  // Add pass to mark script as threadable.
-  pPM.add(createRSIsThreadablePass());
-
-  return true;
 }
 
 enum Compiler::ErrorCode Compiler::screenGlobalFunctions(Script &pScript) {
