@@ -16,7 +16,7 @@
 
 LOCAL_PATH:= $(call my-dir)
 
-LLVM_ROOT_PATH := $(LOCAL_PATH)/../../../../../external/llvm
+LLVM_ROOT_PATH := external/llvm
 include $(LLVM_ROOT_PATH)/llvm.mk
 
 llvm_wrap_SRC_FILES := \
