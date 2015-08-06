@@ -719,10 +719,6 @@ public:
                                                     TBAARenderScript);
     TBAAPointer = MDHelper.createTBAAStructTagNode(TBAAPointer, TBAAPointer, 0);
 
-    llvm::MDNode *AliasingDomain, *AliasingScope;
-    AliasingDomain = MDHelper.createAnonymousAliasScopeDomain("RS argument scope domain");
-    AliasingScope = MDHelper.createAnonymousAliasScope(AliasingDomain, "RS argument scope");
-
     /*
      * Collect and construct the arguments for the kernel().
      *
@@ -766,8 +762,6 @@ public:
       if (gEnableRsTbaa) {
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
       }
-
-      OutBasePtr->setMetadata("alias.scope", AliasingScope);
 
       CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
     }
@@ -842,8 +836,6 @@ public:
           InBufPtr->setMetadata("tbaa", TBAAPointer);
         }
 
-        InBufPtr->setMetadata("alias.scope", AliasingScope);
-
         InTypes.push_back(InType);
         InSteps.push_back(InStep);
         InBufPtrs.push_back(CastInBufPtr);
@@ -855,16 +847,7 @@ public:
     // Populate the actual call to kernel().
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
 
-    // Calculate the current input and output pointers
-    //
-    //
-    // We always calculate the input/output pointers with a GEP operating on i8
-    // values combined with a multiplication and only cast at the very end to
-    // OutTy.  This is to account for dynamic stepping sizes when the value
-    // isn't apparent at compile time.  In the (very common) case when we know
-    // the step size at compile time, due to haveing complete type information
-    // this multiplication will optmized out and produces code equivalent to a
-    // a GEP on a pointer of the correct type.
+    // Calculate the current input and output pointers.
 
     // Output
 
@@ -888,31 +871,22 @@ public:
         llvm::Value *InPtr = Builder.CreateInBoundsGEP(InBufPtrs[Index], Offset);
         llvm::Value *Input;
 
+        llvm::LoadInst *InputLoad = Builder.CreateLoad(InPtr, "input");
+
+        if (gEnableRsTbaa) {
+          InputLoad->setMetadata("tbaa", TBAAAllocation);
+        }
+
         if (llvm::Value *TemporarySlot = InStructTempSlots[Index]) {
           // Pass a pointer to a temporary on the stack, rather than
           // passing a pointer to the original value. We do not want
           // the kernel to potentially modify the input data.
 
-          llvm::Type *ElementType = llvm::cast<llvm::PointerType>(
-                                        InPtr->getType())->getElementType();
-          uint64_t StoreSize = DL.getTypeStoreSize(ElementType);
-          uint64_t Alignment = DL.getABITypeAlignment(ElementType);
-
-          Builder.CreateMemCpy(TemporarySlot, InPtr, StoreSize, Alignment,
-                               /* isVolatile = */ false,
-                               /* !tbaa = */ gEnableRsTbaa ? TBAAAllocation : nullptr,
-                               /* !tbaa.struct = */ nullptr,
-                               /* !alias.scope = */ AliasingScope);
+          // Note: don't annotate with TBAA, since the kernel might
+          // have its own TBAA annotations for the pointer argument.
+          Builder.CreateStore(InputLoad, TemporarySlot);
           Input = TemporarySlot;
         } else {
-          llvm::LoadInst *InputLoad = Builder.CreateLoad(InPtr, "input");
-
-          if (gEnableRsTbaa) {
-            InputLoad->setMetadata("tbaa", TBAAAllocation);
-          }
-
-          InputLoad->setMetadata("alias.scope", AliasingScope);
-
           Input = InputLoad;
         }
 
@@ -925,11 +899,11 @@ public:
     llvm::Value *RetVal = Builder.CreateCall(Function, RootArgs);
 
     if (OutPtr && !PassOutByPointer) {
+      RetVal->setName("call.result");
       llvm::StoreInst *Store = Builder.CreateStore(RetVal, OutPtr);
       if (gEnableRsTbaa) {
         Store->setMetadata("tbaa", TBAAAllocation);
       }
-      Store->setMetadata("alias.scope", AliasingScope);
     }
 
     return true;
