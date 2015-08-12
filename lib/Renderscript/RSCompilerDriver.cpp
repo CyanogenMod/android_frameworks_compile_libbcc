@@ -42,7 +42,7 @@
 #include <sstream>
 #include <string>
 
-#ifdef HAVE_ANDROID_OS
+#ifdef __ANDROID__
 #include <cutils/properties.h>
 #endif
 #include <utils/StopWatch.h>
