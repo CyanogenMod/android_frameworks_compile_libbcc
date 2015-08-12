@@ -21,7 +21,7 @@
 
 #define LOG_TAG "bcinfo"
 #include <cutils/log.h>
-#ifdef HAVE_ANDROID_OS
+#ifdef __ANDROID__
 #include <cutils/properties.h>
 #endif
 
@@ -340,7 +340,7 @@ void MetadataExtractor::populatePragmaMetadata(
   }
   mRSFloatPrecision = RelaxedPragmaSeen ? RS_FP_Relaxed : RS_FP_Full;
 
-#ifdef HAVE_ANDROID_OS
+#ifdef __ANDROID__
   // Provide an override for precsiion via adb shell setprop
   // adb shell setprop debug.rs.precision rs_fp_full
   // adb shell setprop debug.rs.precision rs_fp_relaxed
