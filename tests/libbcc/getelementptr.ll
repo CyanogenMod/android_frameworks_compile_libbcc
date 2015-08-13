@@ -41,7 +41,7 @@ define void @root(i32* nocapture %ain, i32* nocapture %out, i32 %x, i32 %y, i32 
 ; New style kernel with multiple inputs
 define i32 @foo(i32 %in0, i32 %in1, i32 %x, i32 %y, i32 %z) {
   ret i32 0
-; CHECK: define void @foo.expand(%RsExpandKernelDriverInfoPfx* %p, i32 %x1, i32 %x2, i32 %outstep)
+; CHECK: define void @foo.expand(%RsExpandKernelDriverInfoPfx* %p, i32 %x1, i32 %x2, i32 %arg_outstep)
 ; CHECK: Begin:
 ; CHECK: %out_buf.gep = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 3, i32 0
 ; CHECK: load i8*, i8** %out_buf.gep
@@ -49,14 +49,10 @@ define i32 @foo(i32 %in0, i32 %in1, i32 %x, i32 %y, i32 %z) {
 ; CHECK: load i32, i32* %Y.gep
 ; CHECK: %Z.gep = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 7, i32 2
 ; CHECK: load i32, i32* %Z.gep
-; CHECK: %instep_addr.gep = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 1, i32 0
-; CHECK: load i32, i32* %instep_addr.gep
 ; CHECK: %input_buf.gep = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 0, i32 0
 ; CHECK: load i8*, i8** %input_buf.gep
-; CHECK: %instep_addr.gep1 = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 1, i32 1
-; CHECK: load i32, i32* %instep_addr.gep1
-; CHECK: %input_buf.gep3 = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 0, i32 1
-; CHECK: load i8*, i8** %input_buf.gep3
+; CHECK: %input_buf.gep1 = getelementptr inbounds %RsExpandKernelDriverInfoPfx, %RsExpandKernelDriverInfoPfx* %p, i32 0, i32 0, i32 1
+; CHECK: load i8*, i8** %input_buf.gep1
 ; CHECK: Loop:
 }
 
