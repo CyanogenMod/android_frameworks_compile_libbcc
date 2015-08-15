@@ -262,9 +262,9 @@ public:
 
   bool isDematerializable(const GlobalValue *GV) const override;
   std::error_code materialize(GlobalValue *GV) override;
-  std::error_code MaterializeModule(Module *M) override;
+  std::error_code materializeModule(Module *M) override;
   std::vector<StructType *> getIdentifiedStructTypes() const override;
-  void Dematerialize(GlobalValue *GV) override;
+  void dematerialize(GlobalValue *GV) override;
 
   /// @brief Main interface to parsing a bitcode buffer.
   /// @returns true if an error occurred.
@@ -2302,8 +2302,7 @@ std::error_code BitcodeReader::ParseModule(bool Resume) {
         return Error("Invalid type for value");
 
       auto *NewGA =
-          GlobalAlias::create(PTy->getElementType(), PTy->getAddressSpace(),
-                              getDecodedLinkage(Record[2]), "", TheModule);
+          GlobalAlias::create(PTy, getDecodedLinkage(Record[2]), "", TheModule);
       // Old bitcode files didn't have visibility field.
       if (Record.size() > 3)
         NewGA->setVisibility(GetDecodedVisibility(Record[3]));
@@ -3141,7 +3140,7 @@ std::error_code BitcodeReader::ParseFunctionBody(Function *F) {
       InstructionList.push_back(I);
       break;
     }
-    case bitc::FUNC_CODE_INST_STORE: { // STORE2:[ptrty, ptr, val, align, vol]
+    case bitc::FUNC_CODE_INST_STORE_OLD: { // STORE2:[ptrty, ptr, val, align, vol]
       unsigned OpNum = 0;
       Value *Val, *Ptr;
       if (getValueTypePair(Record, OpNum, NextValueNo, Ptr) ||
@@ -3349,7 +3348,7 @@ bool BitcodeReader::isDematerializable(const GlobalValue *GV) const {
   return DeferredFunctionInfo.count(const_cast<Function*>(F));
 }
 
-void BitcodeReader::Dematerialize(GlobalValue *GV) {
+void BitcodeReader::dematerialize(GlobalValue *GV) {
   Function *F = dyn_cast<Function>(GV);
   // If this function isn't dematerializable, this is a noop.
   if (!F || !isDematerializable(F))
@@ -3362,7 +3361,7 @@ void BitcodeReader::Dematerialize(GlobalValue *GV) {
   F->setIsMaterializable(true);
 }
 
-std::error_code BitcodeReader::MaterializeModule(Module *M) {
+std::error_code BitcodeReader::materializeModule(Module *M) {
   assert(M == TheModule &&
          "Can only Materialize the Module this BitcodeReader is attached to.");
   // Iterate over the module, deserializing any functions that are still on
