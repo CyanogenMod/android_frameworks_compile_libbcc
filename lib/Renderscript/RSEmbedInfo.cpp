@@ -73,11 +73,13 @@ public:
     size_t exportVarCount = me.getExportVarCount();
     size_t exportFuncCount = me.getExportFuncCount();
     size_t exportForEachCount = me.getExportForEachSignatureCount();
+    size_t exportReduceCount = me.getExportReduceCount();
     size_t objectSlotCount = me.getObjectSlotCount();
     size_t pragmaCount = me.getPragmaCount();
     const char **exportVarNameList = me.getExportVarNameList();
     const char **exportFuncNameList = me.getExportFuncNameList();
     const char **exportForEachNameList = me.getExportForEachNameList();
+    const char **exportReduceNameList = me.getExportReduceNameList();
     const uint32_t *exportForEachSignatureList =
         me.getExportForEachSignatureList();
     const uint32_t *objectSlotList = me.getObjectSlotList();
@@ -109,6 +111,11 @@ public:
     for (i = 0; i < exportForEachCount; ++i) {
       s << exportForEachSignatureList[i] << " - "
         << exportForEachNameList[i] << "\n";
+    }
+
+    s << "exportReduceCount: " << exportReduceCount << "\n";
+    for (i = 0; i < exportReduceCount; ++i) {
+      s << exportReduceNameList[i] << "\n";
     }
 
     s << "objectSlotCount: " << objectSlotCount << "\n";
