@@ -25,7 +25,7 @@ namespace llvm {
 namespace bcc {
 
 llvm::ModulePass *
-createRSForEachExpandPass(bool pEnableStepOpt);
+createRSKernelExpandPass(bool pEnableStepOpt);
 
 llvm::FunctionPass *
 createRSInvariantPass();
