@@ -3,7 +3,7 @@
 ; that they index into the right positions of the structure and that
 ; the instructions that are generated are in the loop header.
 
-; RUN: opt -load libbcc.so -foreachexp -S < %s | FileCheck %s
+; RUN: opt -load libbcc.so -kernelexp -S < %s | FileCheck %s
 
 ; ModuleID = 'test_getelementptr.bc'
 target datalayout = "e-m:e-i64:64-i128:128-n32:64-S128"

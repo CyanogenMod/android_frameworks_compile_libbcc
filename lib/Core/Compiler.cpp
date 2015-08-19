@@ -157,7 +157,7 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
 
   // Add some initial custom passes.
   addInvokeHelperPass(passes);
-  addExpandForEachPass(passes);
+  addExpandKernelPass(passes);
   addInvariantPass(passes);
   if (!addInternalizeSymbolsPass(pScript, passes))
     return kErrCustomPasses;
@@ -329,9 +329,11 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   size_t exportVarCount = me.getExportVarCount();
   size_t exportFuncCount = me.getExportFuncCount();
   size_t exportForEachCount = me.getExportForEachSignatureCount();
+  size_t exportReduceCount = me.getExportReduceCount();
   const char **exportVarNameList = me.getExportVarNameList();
   const char **exportFuncNameList = me.getExportFuncNameList();
   const char **exportForEachNameList = me.getExportForEachNameList();
+  const char **exportReduceNameList = me.getExportReduceNameList();
   size_t i;
 
   for (i = 0; i < exportVarCount; ++i) {
@@ -342,18 +344,22 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
     export_symbols.push_back(exportFuncNameList[i]);
   }
 
-  // Expanded foreach functions should not be internalized, too.
-  // expanded_foreach_funcs keeps the .expand version of the kernel names
-  // around until createInternalizePass() is finished making its own
-  // copy of the visible symbols.
-  std::vector<std::string> expanded_foreach_funcs;
+  // Expanded foreach and reduce functions should not be
+  // internalized. expanded_funcs keeps the names of the expanded
+  // functions around until createInternalizePass() is finished making
+  // its own copy of the visible symbols.
+  std::vector<std::string> expanded_funcs;
+  expanded_funcs.reserve(exportForEachCount + exportReduceCount);
+
   for (i = 0; i < exportForEachCount; ++i) {
-    expanded_foreach_funcs.push_back(
-        std::string(exportForEachNameList[i]) + ".expand");
+    expanded_funcs.push_back(std::string(exportForEachNameList[i]) + ".expand");
+  }
+  for (i = 0; i < exportReduceCount; ++i) {
+    expanded_funcs.push_back(std::string(exportReduceNameList[i]) + ".expand");
   }
 
-  for (i = 0; i < exportForEachCount; i++) {
-      export_symbols.push_back(expanded_foreach_funcs[i].c_str());
+  for (auto &symbol_name : expanded_funcs) {
+    export_symbols.push_back(symbol_name.c_str());
   }
 
   pPM.add(llvm::createInternalizePass(export_symbols));
@@ -368,10 +374,10 @@ void Compiler::addInvokeHelperPass(llvm::legacy::PassManager &pPM) {
   }
 }
 
-void Compiler::addExpandForEachPass(llvm::legacy::PassManager &pPM) {
-  // Expand ForEach on CPU path to reduce launch overhead.
+void Compiler::addExpandKernelPass(llvm::legacy::PassManager &pPM) {
+  // Expand ForEach and reduce on CPU path to reduce launch overhead.
   bool pEnableStepOpt = true;
-  pPM.add(createRSForEachExpandPass(pEnableStepOpt));
+  pPM.add(createRSKernelExpandPass(pEnableStepOpt));
 }
 
 void Compiler::addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM) {

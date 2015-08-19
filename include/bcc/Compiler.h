@@ -81,7 +81,7 @@ private:
   enum ErrorCode runPasses(Script &pScript, llvm::raw_pwrite_stream &pResult);
 
   bool addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassManager &pPM);
-  void addExpandForEachPass(llvm::legacy::PassManager &pPM);
+  void addExpandKernelPass(llvm::legacy::PassManager &pPM);
   void addGlobalInfoPass(Script &pScript, llvm::legacy::PassManager &pPM);
   void addInvariantPass(llvm::legacy::PassManager &pPM);
   void addInvokeHelperPass(llvm::legacy::PassManager &pPM);

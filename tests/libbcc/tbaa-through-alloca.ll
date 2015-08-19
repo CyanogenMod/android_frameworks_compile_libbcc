@@ -1,7 +1,7 @@
 ; This test checks that the code doesn't aggressively apply TBAA
 ; metadata to temporaries that are passed by pointer to kernels.
 
-; RUN: opt -load libbcc.so -foreachexp -inline -tbaa -aa-eval -print-may-aliases -evaluate-aa-metadata < %s -S -o - 2>&1 | FileCheck %s
+; RUN: opt -load libbcc.so -kernelexp -inline -tbaa -aa-eval -print-may-aliases -evaluate-aa-metadata < %s -S -o - 2>&1 | FileCheck %s
 
 ; ModuleID = 'kernel.bc'
 target datalayout = "e-m:e-i64:64-i128:128-n32:64-S128"

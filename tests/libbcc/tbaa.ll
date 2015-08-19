@@ -1,7 +1,7 @@
 ; Basic test of TBAA that should report that pointer loads do not
 ; alias with stores to allocations.
 
-; RUN: opt -load libbcc.so -foreachexp -tbaa -aa-eval -print-no-aliases -evaluate-aa-metadata < %s -S -o - 2>&1 | FileCheck %s
+; RUN: opt -load libbcc.so -kernelexp -tbaa -aa-eval -print-no-aliases -evaluate-aa-metadata < %s -S -o - 2>&1 | FileCheck %s
 
 ; ModuleID = 'kernel.bc'
 target datalayout = "e-m:e-i64:64-i128:128-n32:64-S128"
