@@ -353,11 +353,11 @@ private:
 
     llvm::Argument *InBuf = &(*AI++);
     InBuf->setName("inBuf");
-    InBuf->addAttr(llvm::AttributeSet::get(*Context, InBuf->getArgNo() + 1, {Attribute::NoCapture}));
+    InBuf->addAttr(llvm::AttributeSet::get(*Context, InBuf->getArgNo() + 1, llvm::makeArrayRef(Attribute::NoCapture)));
 
     llvm::Argument *OutBuf = &(*AI++);
     OutBuf->setName("outBuf");
-    OutBuf->addAttr(llvm::AttributeSet::get(*Context, OutBuf->getArgNo() + 1, {Attribute::NoCapture}));
+    OutBuf->addAttr(llvm::AttributeSet::get(*Context, OutBuf->getArgNo() + 1, llvm::makeArrayRef(Attribute::NoCapture)));
 
     (AI++)->setName("len");
 
