@@ -595,7 +595,7 @@ public:
 
     /*
      * Extract the expanded function's parameters.  It is guaranteed by
-     * createEmptyExpandedFunction that there will be five parameters.
+     * createEmptyExpandedFunction that there will be four parameters.
      */
 
     bccAssert(ExpandedFunction->arg_size() == kNumExpandedForeachParams);
@@ -725,7 +725,7 @@ public:
 
     /*
      * Extract the expanded function's parameters.  It is guaranteed by
-     * createEmptyExpandedFunction that there will be five parameters.
+     * createEmptyExpandedFunction that there will be four parameters.
      */
 
     bccAssert(ExpandedFunction->arg_size() == kNumExpandedForeachParams);
@@ -736,7 +736,7 @@ public:
     llvm::Value *Arg_p       = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x1      = &*(ExpandedFunctionArgIter++);
     llvm::Value *Arg_x2      = &*(ExpandedFunctionArgIter++);
-    llvm::Value *Arg_outstep = &*(ExpandedFunctionArgIter);
+    // Arg_outstep is not used by expanded new-style forEach kernels.
 
     // Construct the actual function body.
     llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
@@ -773,7 +773,6 @@ public:
 
     // Check the return type
     llvm::Type     *OutTy            = nullptr;
-    llvm::Value    *OutStep          = nullptr;
     llvm::LoadInst *OutBasePtr       = nullptr;
     llvm::Value    *CastedOutBasePtr = nullptr;
 
@@ -793,8 +792,6 @@ public:
         OutTy = OutBaseTy->getPointerTo();
       }
 
-      OutStep = getStepValue(&DL, OutTy, Arg_outstep);
-      OutStep->setName("outstep");
       SmallGEPIndices OutBaseGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldOutPtr, 0}));
       OutBasePtr = Builder.CreateLoad(Builder.CreateInBoundsGEP(Arg_p, OutBaseGEP, "out_buf.gep"));
 
@@ -806,7 +803,6 @@ public:
     }
 
     llvm::SmallVector<llvm::Type*,  8> InTypes;
-    llvm::SmallVector<llvm::Value*, 8> InSteps;
     llvm::SmallVector<llvm::Value*, 8> InBufPtrs;
     llvm::SmallVector<llvm::Value*, 8> InStructTempSlots;
 
@@ -836,11 +832,6 @@ public:
       Builder.SetInsertPoint(LoopHeader->getTerminator());
 
       for (size_t InputIndex = 0; InputIndex < NumInPtrArguments; ++InputIndex, ArgIter++) {
-        SmallGEPIndices InStepGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldInStride,
-          static_cast<int32_t>(InputIndex)}));
-        llvm::Value *InStepAddr = Builder.CreateInBoundsGEP(Arg_p, InStepGEP, "instep_addr.gep");
-        llvm::LoadInst *InStepArg = Builder.CreateLoad(InStepAddr, "instep_addr");
-
         llvm::Type *InType = ArgIter->getType();
 
         /*
@@ -862,10 +853,6 @@ public:
           InStructTempSlots.push_back(nullptr);
         }
 
-        llvm::Value *InStep = getStepValue(&DL, InType, InStepArg);
-
-        InStep->setName("instep");
-
         SmallGEPIndices InBufPtrGEP(GEPHelper({0, RsExpandKernelDriverInfoPfxFieldInPtr,
           static_cast<int32_t>(InputIndex)}));
         llvm::Value    *InBufPtrAddr = Builder.CreateInBoundsGEP(Arg_p, InBufPtrGEP, "input_buf.gep");
@@ -876,7 +863,6 @@ public:
         }
 
         InTypes.push_back(InType);
-        InSteps.push_back(InStep);
         InBufPtrs.push_back(CastInBufPtr);
       }
 
