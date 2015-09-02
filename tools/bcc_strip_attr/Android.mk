@@ -29,9 +29,8 @@ LOCAL_C_INCLUDES := \
   $(LOCAL_PATH)/../../include
 
 LOCAL_LDLIBS += -lm
-ifndef USE_MINGW
-LOCAL_LDLIBS += -lpthread -ldl
-endif
+LOCAL_LDLIBS_darwin += -lpthread -ldl
+LOCAL_LDLIBS_linux += -lpthread -ldl
 LOCAL_SRC_FILES := bcc_strip_attr.cpp
 
 include $(LIBBCC_HOST_BUILD_MK)
