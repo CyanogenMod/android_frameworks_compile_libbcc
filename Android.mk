@@ -83,13 +83,9 @@ ifeq (,$(TARGET_BUILD_APPS))
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbcc
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_HOST_OS := darwin linux windows
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_IS_HOST_MODULE := true
-
-ifneq ($(HOST_OS),windows)
-LOCAL_CLANG := true
-endif
 
 LOCAL_WHOLE_STATIC_LIBRARIES += $(libbcc_WHOLE_STATIC_LIBRARIES)
 
@@ -100,17 +96,18 @@ LOCAL_STATIC_LIBRARIES += \
 
 LOCAL_SHARED_LIBRARIES := libbcinfo
 
-ifndef USE_MINGW
-LOCAL_LDLIBS := -ldl -lpthread
-endif
+LOCAL_LDLIBS_darwin := -ldl -lpthread
+LOCAL_LDLIBS_linux := -ldl -lpthread
 
 include $(LIBBCC_ROOT_PATH)/llvm-loadable-libbcc.mk
 
 ifeq ($(CAN_BUILD_HOST_LLVM_LOADABLE_MODULE),true)
-LOCAL_STATIC_LIBRARIES += libLLVMLinker
+LOCAL_STATIC_LIBRARIES_linux += libLLVMLinker
 else
-LOCAL_SHARED_LIBRARIES += libLLVM
+LOCAL_SHARED_LIBRARIES_linux += libLLVM
 endif
+LOCAL_SHARED_LIBRARIES_darwin += libLLVM
+LOCAL_SHARED_LIBRARIES_windows += libLLVM
 
 include $(LIBBCC_HOST_BUILD_MK)
 include $(LLVM_HOST_BUILD_MK)

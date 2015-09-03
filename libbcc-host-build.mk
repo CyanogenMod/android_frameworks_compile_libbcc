@@ -14,10 +14,6 @@
 # limitations under the License.
 #
 
-ifneq ($(HOST_OS),windows)
-LOCAL_CLANG := true
-endif
-
 LOCAL_CFLAGS := \
   -Wall \
   -Wno-unused-parameter \
