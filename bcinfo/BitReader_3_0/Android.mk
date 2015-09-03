@@ -11,7 +11,7 @@ bitcode_reader_3_0_SRC_FILES := \
 include $(CLEAR_VARS)
 
 LOCAL_MODULE:= libLLVMBitReader_3_0
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_HOST_OS := darwin linux windows
 
 LOCAL_SRC_FILES := $(bitcode_reader_3_0_SRC_FILES)
 LOCAL_CFLAGS += -D__HOST__
@@ -26,7 +26,6 @@ ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
 LOCAL_MODULE:= libLLVMBitReader_3_0
-LOCAL_MODULE_TAGS := optional
 
 LOCAL_SRC_FILES := $(bitcode_reader_3_0_SRC_FILES)
 

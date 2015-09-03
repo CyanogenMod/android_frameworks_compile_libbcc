@@ -42,7 +42,6 @@ ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbccRenderscript
-LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(libbcc_renderscript_SRC_FILES)
@@ -59,7 +58,7 @@ endif
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libbccRenderscript
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_HOST_OS := darwin linux windows
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_IS_HOST_MODULE := true
 
