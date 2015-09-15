@@ -25,6 +25,34 @@
 namespace {
 
 static inline llvm::StringRef getUnsuffixedStructName(const llvm::StructType *T) {
+#ifdef FORCE_BUILD_LLVM_DISABLE_NDEBUG
+  // Bug: 22926131
+  // When building with assertions enabled, LLVM cannot read the name of a
+  // literal (anonymous) structure, because they shouldn't actually ever have
+  // a name. Unfortunately, due to past definitions of RenderScript object
+  // types as anonymous structures typedef-ed to their proper typename,
+  // we had been relying on accessing this information. LLVM bitcode retains
+  // the typedef-ed name for such anonymous structures. There is a
+  // corresponding (safe) fix to the RenderScript headers to actually name
+  // these types the same as their typedef name to simplify things. That
+  // fixes this issue going forward, but it won't allow us to compile legacy
+  // code properly. In that case, we just have non-assert builds ignore the
+  // fact that anonymous structures shouldn't have their name read, and do it
+  // anyway. Note that RSCompilerDriver.cpp checks the compiler version
+  // number (from llvm-rs-cc) to ensure that we are only ever building modern
+  // code when we have assertions enabled. Legacy code can only be compiled
+  // correctly with a non-asserting compiler.
+  //
+  // Note that the whole reason for looking at the "unsuffixed" name of the
+  // type is because LLVM suffixes duplicate typedefs of the same anonymous
+  // structure. In the new case, where all of the RS object types have a
+  // proper name, they won't have a dotted suffix at all. We still need
+  // to look at the old unsuffixed version to handle legacy code properly.
+  if (T->isLiteral()) {
+    return "";
+  }
+#endif
+
   // Get just the object type name with no suffix.
   size_t LastDot = T->getName().rfind('.');
   if (LastDot == strlen("struct")) {

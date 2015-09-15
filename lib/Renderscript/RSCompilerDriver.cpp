@@ -265,6 +265,20 @@ bool RSCompilerDriver::build(BCCContext &pContext,
   script.setOptimizationLevel(static_cast<RSScript::OptimizationLevel>(
                               wrapper.getOptimizationLevel()));
 
+// Assertion-enabled builds can't compile legacy bitcode (due to the use of
+// getName() with anonymous structure definitions).
+#ifdef FORCE_BUILD_LLVM_DISABLE_NDEBUG
+  static const uint32_t kSlangMinimumFixedStructureNames = 2310;
+  uint32_t version = wrapper.getCompilerVersion();
+  if (version < kSlangMinimumFixedStructureNames) {
+    ALOGE("Found invalid legacy bitcode compiled with a version %u llvm-rs-cc "
+          "used with an assertion build", version);
+    ALOGE("Please recompile this apk with a more recent llvm-rs-cc "
+          "(at least %u)", kSlangMinimumFixedStructureNames);
+    return false;
+  }
+#endif
+
   //===--------------------------------------------------------------------===//
   // Compile the script
   //===--------------------------------------------------------------------===//
