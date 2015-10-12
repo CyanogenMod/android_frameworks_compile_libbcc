@@ -625,6 +625,7 @@ std::vector<std::string> stubList = {
 "_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv2_f",
 "_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv3_f",
 "_Z16rsMatrixMultiplyPK12rs_matrix4x4Dv4_f",
+"_Z17rsForEachInternali13rs_allocationS_",
 "_Z17rsMatrixLoadOrthoP12rs_matrix4x4ffffff",
 "_Z17rsMatrixLoadScaleP12rs_matrix4x4fff",
 "_Z17rsMatrixTranslateP12rs_matrix4x4fff",
