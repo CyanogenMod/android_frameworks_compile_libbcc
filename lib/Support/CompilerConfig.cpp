@@ -110,12 +110,12 @@ bool CompilerConfig::initializeArch() {
   }
 
   // Configure each architecture for any necessary additional flags.
+  std::vector<std::string> attributes;
   switch (mArchType) {
 #if defined(PROVIDE_ARM_CODEGEN)
   case llvm::Triple::arm: {
     llvm::StringMap<bool> features;
     llvm::sys::getHostCPUFeatures(features);
-    std::vector<std::string> attributes;
 
 #if defined(__HOST__) || defined(ARCH_ARM_HAVE_VFP)
     attributes.push_back("+vfp3");
@@ -150,7 +150,6 @@ bool CompilerConfig::initializeArch() {
     if (features.count("fp16") && features["fp16"])
       attributes.push_back("+fp16");
 
-    setFeatureString(attributes);
 
 #if defined(TARGET_BUILD)
     if (!getProperty("debug.rs.arm-no-tune-for-cpu")) {
@@ -213,19 +212,41 @@ bool CompilerConfig::initializeArch() {
 #if defined (PROVIDE_X86_CODEGEN)
   case llvm::Triple::x86:
     getTargetOptions().UseInitArray = true;
+#if defined (DEFAULT_X86_CODEGEN) && !defined (DEFAULT_X86_64_CODEGEN)
+    setCPU(llvm::sys::getHostCPUName());
+#else
+    // generic fallback for 32bit x86 targets
+    setCPU("atom");
+#endif // DEFAULT_X86_CODEGEN && !DEFAULT_X86_64_CODEGEN
 
 #ifndef __HOST__
     // If not running on the host, and f16c is available, set it in the feature
     // string
     if (HasF16C())
-      mFeatureString = "+f16c";
+      attributes.push_back("+f16c");
+#if defined(__SSE3__)
+    attributes.push_back("+sse3");
+    attributes.push_back("+ssse3");
+#endif
+#if defined(__SSE4_1__)
+    attributes.push_back("+sse4.1");
+#endif
+#if defined(__SSE4_2__)
+    attributes.push_back("+sse4.2");
+#endif
 #endif // __HOST__
-
     break;
 #endif  // PROVIDE_X86_CODEGEN
 
 #if defined (PROVIDE_X86_CODEGEN)
+// PROVIDE_X86_CODEGEN is defined for both x86 and x86_64
   case llvm::Triple::x86_64:
+#if defined(DEFAULT_X86_64_CODEGEN)
+    setCPU(llvm::sys::getHostCPUName());
+#else
+    // generic fallback for 64bit x86 targets
+    setCPU("core2");
+#endif
     // x86_64 needs small CodeModel if use PIC_ reloc, or else dlopen failed with TEXTREL.
     if (getRelocationModel() == llvm::Reloc::PIC_) {
       setCodeModel(llvm::CodeModel::Small);
@@ -238,7 +259,7 @@ bool CompilerConfig::initializeArch() {
     // If not running on the host, and f16c is available, set it in the feature
     // string
     if (HasF16C())
-      mFeatureString = "+f16c";
+      attributes.push_back("+f16c");
 #endif // __HOST__
 
     break;
@@ -249,6 +270,7 @@ bool CompilerConfig::initializeArch() {
     return false;
   }
 
+  setFeatureString(attributes);
   return true;
 }
 
