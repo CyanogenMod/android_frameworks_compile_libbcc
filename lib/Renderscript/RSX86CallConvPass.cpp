@@ -83,6 +83,9 @@ private:
     // rsClearObject's first parameter is a pointer
     if (FName.find("rsClearObject") != std::string::npos && ArgNo == 0)
       return false;
+    // rsForEachInternal's fifth parameter is a pointer
+    if (FName.find("rsForEachInternal") != std::string::npos && ArgNo == 4)
+      return false;
 
     return true;
   }
