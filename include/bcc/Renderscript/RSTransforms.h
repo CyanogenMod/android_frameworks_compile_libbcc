@@ -24,6 +24,8 @@ namespace llvm {
 
 namespace bcc {
 
+extern const char BCC_INDEX_VAR_NAME[];
+
 llvm::ModulePass *
 createRSKernelExpandPass(bool pEnableStepOpt);
 

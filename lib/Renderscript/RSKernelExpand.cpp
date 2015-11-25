@@ -443,41 +443,51 @@ private:
   llvm::BasicBlock *createLoop(llvm::IRBuilder<> &Builder,
                                llvm::Value *LowerBound,
                                llvm::Value *UpperBound,
-                               llvm::PHINode **LoopIV) {
+                               llvm::Value **LoopIV) {
     bccAssert(LowerBound->getType() == UpperBound->getType());
 
     llvm::BasicBlock *CondBB, *AfterBB, *HeaderBB;
-    llvm::Value *Cond, *IVNext;
-    llvm::PHINode *IV;
+    llvm::Value *Cond, *IVNext, *IV, *IVVar;
 
     CondBB = Builder.GetInsertBlock();
     AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), nullptr, nullptr);
     HeaderBB = llvm::BasicBlock::Create(*Context, "Loop", CondBB->getParent());
 
+    CondBB->getTerminator()->eraseFromParent();
+    Builder.SetInsertPoint(CondBB);
+
+    // decltype(LowerBound) *ivvar = alloca(sizeof(int))
+    // *ivvar = LowerBound
+    IVVar = Builder.CreateAlloca(LowerBound->getType(), nullptr, BCC_INDEX_VAR_NAME);
+    Builder.CreateStore(LowerBound, IVVar);
+
     // if (LowerBound < Upperbound)
     //   goto LoopHeader
     // else
     //   goto AfterBB
-    CondBB->getTerminator()->eraseFromParent();
-    Builder.SetInsertPoint(CondBB);
     Cond = Builder.CreateICmpULT(LowerBound, UpperBound);
     Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
 
-    // iv = PHI [CondBB -> LowerBound], [LoopHeader -> NextIV ]
-    // iv.next = iv + 1
-    // if (iv.next < Upperbound)
-    //   goto LoopHeader
-    // else
-    //   goto AfterBB
+    // LoopHeader:
+    //   iv = *ivvar
+    //   <insertion point here>
+    //   iv.next = iv + 1
+    //   *ivvar = iv.next
+    //   if (iv.next < Upperbound)
+    //     goto LoopHeader
+    //   else
+    //     goto AfterBB
+    // AfterBB:
     Builder.SetInsertPoint(HeaderBB);
-    IV = Builder.CreatePHI(LowerBound->getType(), 2, "X");
-    IV->addIncoming(LowerBound, CondBB);
+    IV = Builder.CreateLoad(IVVar, "X");
     IVNext = Builder.CreateNUWAdd(IV, Builder.getInt32(1));
-    IV->addIncoming(IVNext, HeaderBB);
+    Builder.CreateStore(IVNext, IVVar);
     Cond = Builder.CreateICmpULT(IVNext, UpperBound);
     Builder.CreateCondBr(Cond, HeaderBB, AfterBB);
     AfterBB->setName("Exit");
-    Builder.SetInsertPoint(HeaderBB->getFirstNonPHI());
+    Builder.SetInsertPoint(llvm::cast<llvm::Instruction>(IVNext));
+
+    // Record information about this loop.
     *LoopIV = IV;
     return AfterBB;
   }
@@ -828,7 +838,7 @@ public:
     }
 
     llvm::BasicBlock *LoopHeader = Builder.GetInsertBlock();
-    llvm::PHINode *IV;
+    llvm::Value *IV;
     createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
@@ -983,7 +993,7 @@ public:
 
     // Create the loop structure.
     llvm::BasicBlock *LoopHeader = Builder.GetInsertBlock();
-    llvm::PHINode *IV;
+    llvm::Value *IV;
     createLoop(Builder, Arg_x1, Arg_x2, &IV);
 
     llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
@@ -1234,7 +1244,7 @@ public:
 
     // Create the loop structure. Note that the first input in the input buffer
     // has already been accumulated, so that we start at index 1.
-    llvm::PHINode *IndVar;
+    llvm::Value *IndVar;
     llvm::Value *Start = llvm::ConstantInt::get(Arg_len->getType(), 1);
     llvm::BasicBlock *Exit = createLoop(Builder, Start, Arg_len, &IndVar);
 
@@ -1393,7 +1403,7 @@ public:
 
     // Create the loop structure.
     llvm::BasicBlock *LoopHeader = Builder.GetInsertBlock();
-    llvm::PHINode *IndVar;
+    llvm::Value *IndVar;
     createLoop(Builder, Arg_x1, Arg_x2, &IndVar);
 
     llvm::SmallVector<llvm::Value*, 8> CalleeArgs;
@@ -1585,6 +1595,8 @@ char RSKernelExpandPass::ID = 0;
 static llvm::RegisterPass<RSKernelExpandPass> X("kernelexp", "Kernel Expand Pass");
 
 namespace bcc {
+
+const char BCC_INDEX_VAR_NAME[] = "rsIndex";
 
 llvm::ModulePass *
 createRSKernelExpandPass(bool pEnableStepOpt) {
