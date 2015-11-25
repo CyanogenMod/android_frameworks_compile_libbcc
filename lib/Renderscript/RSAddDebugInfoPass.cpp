@@ -16,23 +16,23 @@
 
 #include "bcc/Assert.h"
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Support/Log.h"
+#include "bcinfo/MetadataExtractor.h"
 
 #include <llvm/Pass.h>
-#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DIBuilder.h>
-#include <llvm/IR/Function.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/MDBuilder.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 namespace {
 
 const char DEBUG_SOURCE_PATH[] = "/opt/renderscriptdebugger/1";
 const char DEBUG_GENERATED_FILE[] = "generated.rs";
+const char DEBUG_PROTOTYPE_VAR_NAME[] = "rsDebugOuterForeachT";
+const char DEBUG_COMPILE_UNIT_MDNAME[] = "llvm.dbg.cu";
 
 /*
  * LLVM pass to attach debug information to the bits of code
@@ -44,57 +44,219 @@ public:
   // Pass ID
   static char ID;
 
-  RSAddDebugInfoPass() : ModulePass(ID) {
+  RSAddDebugInfoPass() : ModulePass(ID), kernelTypeMD(nullptr),
+      sourceFileName(nullptr), emptyExpr(nullptr), abiMetaCU(nullptr),
+      indexVarType(nullptr) {
   }
 
   virtual bool runOnModule(llvm::Module &Module) {
+    // Gather information about this bcc module.
+    bcinfo::MetadataExtractor me(&Module);
+    if (!me.extract()) {
+      ALOGE("Could not extract metadata from module!");
+      return false;
+    }
+
+    size_t nForEachKernels = me.getExportForEachSignatureCount();
+    const char **forEachKernels = me.getExportForEachNameList();
+
     // Set up the debug info builder.
     llvm::DIBuilder DebugInfo(Module);
-    DebugInfo.createCompileUnit(llvm::dwarf::DW_LANG_C99,
-                                DEBUG_GENERATED_FILE, DEBUG_SOURCE_PATH,
-                                "RS", false, "", 0);
+
+    initializeDebugInfo(DebugInfo, Module);
 
     // Attach DI metadata to each generated function.
-    for (llvm::Function &Func : Module)
-      if (Func.getName().endswith(".expand"))
-        attachDebugInfo(DebugInfo, Func);
+    for (size_t i = 0; i < nForEachKernels; ++i) {
+      std::string expandedName = forEachKernels[i];
+      expandedName += ".expand";
+
+      if (llvm::Function *kernelFunc = Module.getFunction(expandedName))
+        attachDebugInfo(DebugInfo, *kernelFunc);
+    }
 
     DebugInfo.finalize();
+
+    cleanupDebugInfo(Module);
 
     return true;
   }
 
 private:
 
+  // @brief Initialize the debug info generation.
+  //
+  // This method does a couple of things:
+  // * Look up debug metadata for kernel ABI and store it if present.
+  // * Store a couple of useful pieces of debug metadata in member
+  //   variables so they do not have to be created multiple times.
+  void initializeDebugInfo(llvm::DIBuilder &DebugInfo,
+                           const llvm::Module &Module) {
+    llvm::LLVMContext &ctx = Module.getContext();
+
+    // Start generating debug information for bcc-generated code.
+    DebugInfo.createCompileUnit(llvm::dwarf::DW_LANG_C99,
+                                DEBUG_GENERATED_FILE, DEBUG_SOURCE_PATH,
+                                "RS", false, "", 0);
+
+    // Pre-generate and save useful pieces of debug metadata.
+    sourceFileName = DebugInfo.createFile(DEBUG_GENERATED_FILE, DEBUG_SOURCE_PATH);
+    emptyExpr = DebugInfo.createExpression();
+
+    // Lookup compile unit with kernel ABI debug metadata.
+    llvm::NamedMDNode *mdCompileUnitList =
+        Module.getNamedMetadata(DEBUG_COMPILE_UNIT_MDNAME);
+    bccAssert(mdCompileUnitList != nullptr &&
+        "DebugInfo pass could not find any existing compile units.");
+
+    llvm::DIGlobalVariable *kernelPrototypeVarMD = nullptr;
+    for (llvm::MDNode* CUNode : mdCompileUnitList->operands()) {
+      if (auto *CU = llvm::dyn_cast<llvm::DICompileUnit>(CUNode)) {
+        for (llvm::DIGlobalVariable* GV : CU->getGlobalVariables()) {
+          if (GV->getDisplayName() == DEBUG_PROTOTYPE_VAR_NAME) {
+            kernelPrototypeVarMD = GV;
+            abiMetaCU = CU;
+            break;
+          }
+        }
+        if (kernelPrototypeVarMD != nullptr)
+          break;
+      }
+    }
+
+    // Lookup the expanded function interface type metadata.
+    llvm::MDTuple *kernelPrototypeMD = nullptr;
+    if (kernelPrototypeVarMD != nullptr) {
+      // Dig into the metadata to look for function prototype.
+      llvm::DIDerivedType *DT = nullptr;
+      DT = llvm::cast<llvm::DIDerivedType>(kernelPrototypeVarMD->getType());
+      DT = llvm::cast<llvm::DIDerivedType>(DT->getBaseType());
+      llvm::DISubroutineType *ST = llvm::cast<llvm::DISubroutineType>(DT->getBaseType());
+      kernelPrototypeMD = llvm::cast<llvm::MDTuple>(ST->getRawTypeArray());
+
+      indexVarType = llvm::dyn_cast_or_null<llvm::DIType>(
+          kernelPrototypeMD->getOperand(2));
+    }
+    // Fall back to the function type of void() if there is no proper debug info.
+    if (kernelPrototypeMD == nullptr)
+      kernelPrototypeMD = llvm::MDTuple::get(ctx, {nullptr});
+    // Fall back to unspecified type if we don't have a proper index type.
+    if (indexVarType == nullptr)
+      indexVarType = DebugInfo.createBasicType("uint32_t", 32, 32,
+          llvm::dwarf::DW_ATE_unsigned);
+
+    // Capture the expanded kernel type debug info.
+    kernelTypeMD = DebugInfo.createSubroutineType(sourceFileName, kernelPrototypeMD);
+  }
+
   /// @brief Add debug information to a generated function.
   ///
-  /// This function is used to attach source file and line information
-  /// to the generated function code.
+  /// This procedure adds the following pieces of debug information
+  /// to the function specified by Func:
+  /// * Entry for the function to the current compile unit.
+  /// * Adds debug info entries for each function argument.
+  /// * Adds debug info entry for the rsIndex local variable.
+  /// * File/line information to each instruction set to generates.rs:1.
   void attachDebugInfo(llvm::DIBuilder &DebugInfo, llvm::Function &Func) {
-    llvm::DIFile *sourceFileName =
-      DebugInfo.createFile(DEBUG_GENERATED_FILE, DEBUG_SOURCE_PATH);
-
-    // Fabricated function type
-    llvm::MDTuple *nullMD = llvm::MDTuple::get(Func.getParent()->getContext(),
-                        { DebugInfo.createUnspecifiedType("void") });
+    // Lookup the current thread coordinate variable.
+    llvm::AllocaInst* indexVar = nullptr;
+    for (llvm::Instruction &inst : llvm::inst_range(Func)) {
+      if (auto *allocaInst = llvm::dyn_cast<llvm::AllocaInst>(&inst)) {
+        if (allocaInst->getName() == bcc::BCC_INDEX_VAR_NAME) {
+          indexVar = allocaInst;
+          break;
+        }
+      }
+    }
 
     // Create function-level debug metadata.
-    llvm::DIScope *GeneratedScope = DebugInfo.createFunction(
+    llvm::DISubprogram *ExpandedFunc = DebugInfo.createFunction(
         sourceFileName, // scope
         Func.getName(), Func.getName(),
-        sourceFileName, 1,
-        DebugInfo.createSubroutineType(sourceFileName, nullMD),
+        sourceFileName, 1, kernelTypeMD,
         false, true, 1, 0, false, &Func
     );
 
-    // Attach location inforamtion to each instruction in the function
-    for (llvm::inst_iterator Inst    = llvm::inst_begin(Func),
-                             InstEnd = llvm::inst_end(Func);
-                             Inst != InstEnd;
-                             ++Inst) {
-      Inst->setDebugLoc(llvm::DebugLoc::get(1, 1, GeneratedScope));
+    // IRBuilder for allocating variables for arguments.
+    llvm::IRBuilder<> ir(Func.getEntryBlock().begin());
+
+    // Walk through the argument list and expanded function prototype
+    // debuginfo in lockstep to create debug entries for
+    // the expanded function arguments.
+    unsigned argIdx = 1;
+    llvm::MDTuple *argTypes = kernelTypeMD->getTypeArray().get();
+    for (llvm::Argument &arg : Func.getArgumentList()) {
+      // Stop processing arguments if we run out of debug info.
+      if (argIdx >= argTypes->getNumOperands())
+        break;
+
+      // Create debuginfo entry for the argument and advance.
+      llvm::DILocalVariable *argVarDI = DebugInfo.createLocalVariable(
+          llvm::dwarf::DW_TAG_arg_variable,
+          ExpandedFunc, arg.getName(), sourceFileName, 1,
+          llvm::cast<llvm::DIType>(argTypes->getOperand(argIdx).get()),
+          true, 0, argIdx);
+
+      // Annotate the argument variable in the IR.
+      llvm::AllocaInst *argVar =
+          ir.CreateAlloca(arg.getType(), nullptr, arg.getName() + ".var");
+      llvm::StoreInst *argStore = ir.CreateStore(&arg, argVar);
+      llvm::LoadInst *loadedVar = ir.CreateLoad(argVar, arg.getName() + ".l");
+      DebugInfo.insertDeclare(argVar, argVarDI, emptyExpr,
+          llvm::DebugLoc::get(1, 1, ExpandedFunc), loadedVar);
+      for (llvm::Use &u : arg.uses())
+        if (u.getUser() != argStore)
+          u.set(loadedVar);
+      argIdx++;
+    }
+
+    // Annotate the index variable with metadata.
+    if (indexVar) {
+      // Debug information for loop index variable.
+      llvm::DILocalVariable *indexVarDI = DebugInfo.createLocalVariable(
+          llvm::dwarf::DW_TAG_auto_variable, ExpandedFunc,
+          bcc::BCC_INDEX_VAR_NAME, sourceFileName, 1, indexVarType, true);
+
+      // Insert declaration annotation in the instruction stream.
+      llvm::Instruction *decl = DebugInfo.insertDeclare(
+          indexVar, indexVarDI, emptyExpr,
+          llvm::DebugLoc::get(1, 1, ExpandedFunc), indexVar);
+      indexVar->moveBefore(decl);
+    }
+
+    // Attach location information to each instruction in the function.
+    for (llvm::Instruction &inst : llvm::inst_range(Func)) {
+      inst.setDebugLoc(llvm::DebugLoc::get(1, 1, ExpandedFunc));
     }
   }
+
+  // @brief Clean up the debug info.
+  //
+  // At the moment, it only finds the compile unit for the expanded function
+  // metadata generated by clang and removes it.
+  void cleanupDebugInfo(llvm::Module& Module) {
+    if (abiMetaCU == nullptr)
+      return;
+
+    // Remove the compile unit with the runtime interface DI.
+    llvm::SmallVector<llvm::MDNode*, 4> unitsTmp;
+    llvm::NamedMDNode *debugMD =
+        Module.getNamedMetadata(DEBUG_COMPILE_UNIT_MDNAME);
+    for (llvm::MDNode *cu : debugMD->operands())
+      if (cu != abiMetaCU)
+        unitsTmp.push_back(cu);
+    debugMD->eraseFromParent();
+    debugMD = Module.getOrInsertNamedMetadata(DEBUG_COMPILE_UNIT_MDNAME);
+    for (llvm::MDNode *cu : unitsTmp)
+      debugMD->addOperand(cu);
+  }
+
+private:
+  // private attributes
+  llvm::DISubroutineType* kernelTypeMD;
+  llvm::DIFile *sourceFileName;
+  llvm::DIExpression *emptyExpr;
+  llvm::DICompileUnit *abiMetaCU;
+  llvm::DIType *indexVarType;
 
 }; // end class RSAddDebugInfoPass
 
