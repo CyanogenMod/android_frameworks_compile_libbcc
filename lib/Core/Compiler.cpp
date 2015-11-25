@@ -161,8 +161,10 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
   addExpandKernelPass(transformPasses);
   addDebugInfoPass(pScript, transformPasses);
   addInvariantPass(transformPasses);
-  if (!addInternalizeSymbolsPass(pScript, transformPasses))
-    return kErrCustomPasses;
+  if (mTarget->getOptLevel() != llvm::CodeGenOpt::None) {
+    if (!addInternalizeSymbolsPass(pScript, transformPasses))
+      return kErrCustomPasses;
+  }
   addGlobalInfoPass(pScript, transformPasses);
 
   if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
