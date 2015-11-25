@@ -148,69 +148,77 @@ Compiler::~Compiler() {
 enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
                                              llvm::raw_pwrite_stream &pResult) {
   // Pass manager for link-time optimization
-  llvm::legacy::PassManager passes;
+  llvm::legacy::PassManager transformPasses;
 
   // Empty MCContext.
   llvm::MCContext *mc_context = nullptr;
 
-  passes.add(createTargetTransformInfoWrapperPass(mTarget->getTargetIRAnalysis()));
+  transformPasses.add(
+      createTargetTransformInfoWrapperPass(mTarget->getTargetIRAnalysis()));
 
   // Add some initial custom passes.
-  addInvokeHelperPass(passes);
-  addExpandKernelPass(passes);
-  addInvariantPass(passes);
-  if (!addInternalizeSymbolsPass(pScript, passes))
+  addInvokeHelperPass(transformPasses);
+  addExpandKernelPass(transformPasses);
+  addInvariantPass(transformPasses);
+  if (!addInternalizeSymbolsPass(pScript, transformPasses))
     return kErrCustomPasses;
-  addGlobalInfoPass(pScript, passes);
+  addGlobalInfoPass(pScript, transformPasses);
 
   if (mTarget->getOptLevel() == llvm::CodeGenOpt::None) {
-    passes.add(llvm::createGlobalOptimizerPass());
-    passes.add(llvm::createConstantMergePass());
+    transformPasses.add(llvm::createGlobalOptimizerPass());
+    transformPasses.add(llvm::createConstantMergePass());
 
   } else {
     // FIXME: Figure out which passes should be executed.
     llvm::PassManagerBuilder Builder;
     Builder.Inliner = llvm::createFunctionInliningPass();
-    Builder.populateLTOPassManager(passes);
+    Builder.populateLTOPassManager(transformPasses);
 
     /* FIXME: Reenable autovectorization after rebase.
        bug 19324423
     // Add vectorization passes after LTO passes are in
     // additional flag: -unroll-runtime
-    passes.add(llvm::createLoopUnrollPass(-1, 16, 0, 1));
+    transformPasses.add(llvm::createLoopUnrollPass(-1, 16, 0, 1));
     // Need to pass appropriate flags here: -scalarize-load-store
-    passes.add(llvm::createScalarizerPass());
-    passes.add(llvm::createCFGSimplificationPass());
-    passes.add(llvm::createScopedNoAliasAAPass());
-    passes.add(llvm::createScalarEvolutionAliasAnalysisPass());
+    transformPasses.add(llvm::createScalarizerPass());
+    transformPasses.add(llvm::createCFGSimplificationPass());
+    transformPasses.add(llvm::createScopedNoAliasAAPass());
+    transformPasses.add(llvm::createScalarEvolutionAliasAnalysisPass());
     // additional flags: -slp-vectorize-hor -slp-vectorize-hor-store (unnecessary?)
-    passes.add(llvm::createSLPVectorizerPass());
-    passes.add(llvm::createDeadCodeEliminationPass());
-    passes.add(llvm::createInstructionCombiningPass());
+    transformPasses.add(llvm::createSLPVectorizerPass());
+    transformPasses.add(llvm::createDeadCodeEliminationPass());
+    transformPasses.add(llvm::createInstructionCombiningPass());
     */
   }
 
   // These passes have to come after LTO, since we don't want to examine
   // functions that are never actually called.
   if (llvm::Triple(getTargetMachine().getTargetTriple()).getArch() == llvm::Triple::x86_64)
-    passes.add(createRSX86_64CallConvPass());  // Add pass to correct calling convention for X86-64.
-  passes.add(createRSIsThreadablePass());      // Add pass to mark script as threadable.
+    transformPasses.add(createRSX86_64CallConvPass());  // Add pass to correct calling convention for X86-64.
+  transformPasses.add(createRSIsThreadablePass());      // Add pass to mark script as threadable.
 
   // RSEmbedInfoPass needs to come after we have scanned for non-threadable
   // functions.
   // Script passed to RSCompiler must be a RSScript.
   RSScript &script = static_cast<RSScript &>(pScript);
   if (script.getEmbedInfo())
-    passes.add(createRSEmbedInfoPass());
+    transformPasses.add(createRSEmbedInfoPass());
+
+  // Execute the passes.
+  transformPasses.run(pScript.getSource().getModule());
+
+  // Run backend separately to avoid interference between debug metadata
+  // generation and backend initialization.
+  llvm::legacy::PassManager codeGenPasses;
 
   // Add passes to the pass manager to emit machine code through MC layer.
-  if (mTarget->addPassesToEmitMC(passes, mc_context, pResult,
+  if (mTarget->addPassesToEmitMC(codeGenPasses, mc_context, pResult,
                                  /* DisableVerify */false)) {
     return kPrepareCodeGenPass;
   }
 
   // Execute the passes.
-  passes.run(pScript.getSource().getModule());
+  codeGenPasses.run(pScript.getSource().getModule());
 
   return kSuccess;
 }
