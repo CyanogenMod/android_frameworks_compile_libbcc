@@ -82,6 +82,10 @@ public:
 
   void addBuildChecksumMetadata(const char *) const;
 
+  // Get whether debugging has been enabled for this module by checking
+  // for presence of debug info in the module.
+  bool getDebugInfoEnabled() const;
+
   ~Source();
 };
 

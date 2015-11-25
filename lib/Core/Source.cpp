@@ -181,4 +181,8 @@ void Source::addBuildChecksumMetadata(const char *buildChecksum) const {
     node->addOperand(llvm::MDNode::get(context, val));
 }
 
+bool Source::getDebugInfoEnabled() const {
+  return mModule->getNamedMetadata("llvm.dbg.cu") != nullptr;
+}
+
 } // namespace bcc
