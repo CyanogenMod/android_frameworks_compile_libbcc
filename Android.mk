@@ -59,7 +59,7 @@ LOCAL_SHARED_LIBRARIES := libbcinfo libLLVM libdl libutils libcutils liblog libc
 
 # Modules that need get installed if and only if the target libbcc.so is
 # installed.
-LOCAL_REQUIRED_MODULES := libclcore.bc libclcore_debug.bc libcompiler_rt
+LOCAL_REQUIRED_MODULES := libclcore.bc libclcore_debug.bc libclcore_g.bc libcompiler_rt
 
 LOCAL_REQUIRED_MODULES_x86 += libclcore_x86.bc
 LOCAL_REQUIRED_MODULES_x86_64 += libclcore_x86.bc
