@@ -64,6 +64,13 @@ const char *createStringFromValue(llvm::Metadata *m) {
   return c;
 }
 
+const char *createStringFromOptionalValue(llvm::MDNode *n, unsigned opndNum) {
+  llvm::Metadata *opnd;
+  if (opndNum >= n->getNumOperands() || !(opnd = n->getOperand(opndNum)))
+    return nullptr;
+  return createStringFromValue(opnd);
+}
+
 // Collect metadata from NamedMDNodes that contain a list of names
 // (strings).
 //
@@ -146,9 +153,13 @@ static const llvm::StringRef ExportForEachNameMetadataName =
 // (should be synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
 
-// Name of metadata node where exported reduce name information resides
+// Name of metadata node where exported simple reduce name information resides
 // (should be synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportReduceMetadataName = "#rs_export_reduce";
+
+// Name of metadata node where exported general reduce information resides
+// (should be synced with slang_rs_metadata.h)
+static const llvm::StringRef ExportReduceNewMetadataName = "#rs_export_reduce_new";
 
 // Name of metadata node where RS object slot info resides (should be
 // synced with slang_rs_metadata.h)
@@ -163,10 +174,11 @@ static const llvm::StringRef ChecksumMetadataName = "#rs_build_checksum";
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mModule(nullptr), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
       mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
-      mExportReduceCount(0), mExportVarNameList(nullptr),
+      mExportReduceCount(0), mExportReduceNewCount(0), mExportVarNameList(nullptr),
       mExportFuncNameList(nullptr), mExportForEachNameList(nullptr),
       mExportForEachSignatureList(nullptr),
       mExportForEachInputCountList(nullptr), mExportReduceNameList(nullptr),
+      mExportReduceNewList(nullptr),
       mPragmaCount(0), mPragmaKeyList(nullptr), mPragmaValueList(nullptr),
       mObjectSlotCount(0), mObjectSlotList(nullptr),
       mRSFloatPrecision(RS_FP_Full), mIsThreadable(true),
@@ -180,10 +192,11 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
 MetadataExtractor::MetadataExtractor(const llvm::Module *module)
     : mModule(module), mBitcode(nullptr), mBitcodeSize(0),
       mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
-      mExportReduceCount(0), mExportVarNameList(nullptr),
+      mExportReduceCount(0), mExportReduceNewCount(0), mExportVarNameList(nullptr),
       mExportFuncNameList(nullptr), mExportForEachNameList(nullptr),
       mExportForEachSignatureList(nullptr),
       mExportForEachInputCountList(nullptr), mExportReduceNameList(nullptr),
+      mExportReduceNewList(nullptr),
       mPragmaCount(0), mPragmaKeyList(nullptr), mPragmaValueList(nullptr),
       mObjectSlotCount(0), mObjectSlotList(nullptr),
       mRSFloatPrecision(RS_FP_Full), mIsThreadable(true),
@@ -224,6 +237,9 @@ MetadataExtractor::~MetadataExtractor() {
   delete [] mExportForEachSignatureList;
   mExportForEachSignatureList = nullptr;
 
+  delete [] mExportForEachInputCountList;
+  mExportForEachInputCountList = nullptr;
+
   if (mExportReduceNameList) {
     for (size_t i = 0; i < mExportReduceCount; i++) {
       delete [] mExportReduceNameList[i];
@@ -232,6 +248,9 @@ MetadataExtractor::~MetadataExtractor() {
   }
   delete [] mExportReduceNameList;
   mExportReduceNameList = nullptr;
+
+  delete [] mExportReduceNewList;
+  mExportReduceNewList = nullptr;
 
   for (size_t i = 0; i < mPragmaCount; i++) {
     if (mPragmaKeyList) {
@@ -468,6 +487,61 @@ bool MetadataExtractor::populateForEachMetadata(
 }
 
 
+bool MetadataExtractor::populateReduceNewMetadata(const llvm::NamedMDNode *ReduceNewMetadata) {
+  mExportReduceNewCount = 0;
+  mExportReduceNewList = nullptr;
+
+  if (!ReduceNewMetadata || !(mExportReduceNewCount = ReduceNewMetadata->getNumOperands()))
+    return true;
+
+  ReduceNew *TmpReduceNewList = new ReduceNew[mExportReduceNewCount];
+
+  for (size_t i = 0; i < mExportReduceNewCount; i++) {
+    llvm::MDNode *Node = ReduceNewMetadata->getOperand(i);
+    if (!Node || Node->getNumOperands() < 3) {
+      ALOGE("Missing reduce metadata");
+      return false;
+    }
+
+    TmpReduceNewList[i].mReduceName = createStringFromValue(Node->getOperand(0));
+
+    if (!extractUIntFromMetadataString(&TmpReduceNewList[i].mAccumulatorDataSize,
+                                       Node->getOperand(1))) {
+      ALOGE("Non-integer accumulator data size value in reduce metadata");
+      return false;
+    }
+
+    llvm::MDNode *AccumulatorNode = llvm::dyn_cast<llvm::MDNode>(Node->getOperand(2));
+    if (!AccumulatorNode || AccumulatorNode->getNumOperands() != 2) {
+      ALOGE("Malformed accumulator node in reduce metadata");
+      return false;
+    }
+    TmpReduceNewList[i].mAccumulatorName = createStringFromValue(AccumulatorNode->getOperand(0));
+    if (!extractUIntFromMetadataString(&TmpReduceNewList[i].mSignature,
+                                       AccumulatorNode->getOperand(1))) {
+      ALOGE("Non-integer signature value in reduce metadata");
+      return false;
+    }
+    llvm::Function *Func =
+        mModule->getFunction(llvm::StringRef(TmpReduceNewList[i].mAccumulatorName));
+    if (!Func) {
+      ALOGE("reduce metadata names missing accumulator function");
+      return false;
+    }
+    // Why calculateNumInputs() - 1?  The "-1" is because we don't
+    // want to treat the accumulator argument as an input.
+    TmpReduceNewList[i].mInputCount = calculateNumInputs(Func, TmpReduceNewList[i].mSignature) - 1;
+
+    TmpReduceNewList[i].mInitializerName = createStringFromOptionalValue(Node, 3);
+    TmpReduceNewList[i].mCombinerName = createStringFromOptionalValue(Node, 4);
+    TmpReduceNewList[i].mOutConverterName = createStringFromOptionalValue(Node, 5);
+    TmpReduceNewList[i].mHalterName = createStringFromOptionalValue(Node, 6);
+  }
+
+  mExportReduceNewList = TmpReduceNewList;
+  return true;
+}
+
 void MetadataExtractor::readThreadableFlag(
     const llvm::NamedMDNode *ThreadableMetadata) {
 
@@ -544,6 +618,8 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(ExportForEachMetadataName);
   const llvm::NamedMDNode *ExportReduceMetadata =
       mModule->getNamedMetadata(ExportReduceMetadataName);
+  const llvm::NamedMDNode *ExportReduceNewMetadata =
+      mModule->getNamedMetadata(ExportReduceNewMetadataName);
   const llvm::NamedMDNode *PragmaMetadata =
       mModule->getNamedMetadata(PragmaMetadataName);
   const llvm::NamedMDNode *ObjectSlotMetadata =
@@ -574,6 +650,11 @@ bool MetadataExtractor::extract() {
   if (!populateForEachMetadata(ExportForEachNameMetadata,
                                ExportForEachMetadata)) {
     ALOGE("Could not populate ForEach signature metadata");
+    return false;
+  }
+
+  if (!populateReduceNewMetadata(ExportReduceNewMetadata)) {
+    ALOGE("Could not populate export general reduction metadata");
     return false;
   }
 

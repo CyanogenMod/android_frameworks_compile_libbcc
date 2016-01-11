@@ -330,10 +330,12 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   size_t exportFuncCount = me.getExportFuncCount();
   size_t exportForEachCount = me.getExportForEachSignatureCount();
   size_t exportReduceCount = me.getExportReduceCount();
+  size_t exportReduceNewCount = me.getExportReduceNewCount();
   const char **exportVarNameList = me.getExportVarNameList();
   const char **exportFuncNameList = me.getExportFuncNameList();
   const char **exportForEachNameList = me.getExportForEachNameList();
   const char **exportReduceNameList = me.getExportReduceNameList();
+  const bcinfo::MetadataExtractor::ReduceNew *exportReduceNewList = me.getExportReduceNewList();
   size_t i;
 
   for (i = 0; i < exportVarCount; ++i) {
@@ -349,13 +351,16 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   // functions around until createInternalizePass() is finished making
   // its own copy of the visible symbols.
   std::vector<std::string> expanded_funcs;
-  expanded_funcs.reserve(exportForEachCount + exportReduceCount);
+  expanded_funcs.reserve(exportForEachCount + exportReduceCount + exportReduceNewCount);
 
   for (i = 0; i < exportForEachCount; ++i) {
     expanded_funcs.push_back(std::string(exportForEachNameList[i]) + ".expand");
   }
   for (i = 0; i < exportReduceCount; ++i) {
     expanded_funcs.push_back(std::string(exportReduceNameList[i]) + ".expand");
+  }
+  for (i = 0; i < exportReduceNewCount; ++i) {
+    expanded_funcs.push_back(std::string(exportReduceNewList[i].mAccumulatorName) + ".expand");
   }
 
   for (auto &symbol_name : expanded_funcs) {
