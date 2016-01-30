@@ -116,6 +116,8 @@ class MetadataExtractor {
 
   const char *mBuildChecksum;
 
+  bool mHasDebugInfo;
+
   // Helper functions for extraction
   bool populateForEachMetadata(const llvm::NamedMDNode *Names,
                                const llvm::NamedMDNode *Signatures);
@@ -398,6 +400,13 @@ class MetadataExtractor {
    */
   const char *getBuildChecksum() const {
     return mBuildChecksum;
+  }
+
+  /**
+   * \return whether the module contains debug metadata
+   */
+  bool hasDebugInfo() const {
+    return mHasDebugInfo;
   }
 };
 

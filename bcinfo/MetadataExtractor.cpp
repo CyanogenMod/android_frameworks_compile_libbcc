@@ -171,6 +171,11 @@ static const llvm::StringRef ThreadableMetadataName = "#rs_is_threadable";
 // be synced with libbcc/lib/Core/Source.cpp)
 static const llvm::StringRef ChecksumMetadataName = "#rs_build_checksum";
 
+// Name of metadata node which contains a list of compile units that have debug
+// metadata. If this is null then there is no debug metadata in the compile
+// unit.
+static const llvm::StringRef DebugInfoMetadataName = "llvm.dbg.cu";
+
 MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
     : mModule(nullptr), mBitcode(bitcode), mBitcodeSize(bitcodeSize),
       mExportVarCount(0), mExportFuncCount(0), mExportForEachSignatureCount(0),
@@ -182,7 +187,7 @@ MetadataExtractor::MetadataExtractor(const char *bitcode, size_t bitcodeSize)
       mPragmaCount(0), mPragmaKeyList(nullptr), mPragmaValueList(nullptr),
       mObjectSlotCount(0), mObjectSlotList(nullptr),
       mRSFloatPrecision(RS_FP_Full), mIsThreadable(true),
-      mBuildChecksum(nullptr) {
+      mBuildChecksum(nullptr), mHasDebugInfo(false) {
   BitcodeWrapper wrapper(bitcode, bitcodeSize);
   mTargetAPI = wrapper.getTargetAPI();
   mCompilerVersion = wrapper.getCompilerVersion();
@@ -628,6 +633,8 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(ThreadableMetadataName);
   const llvm::NamedMDNode *ChecksumMetadata =
       mModule->getNamedMetadata(ChecksumMetadataName);
+  const llvm::NamedMDNode *DebugInfoMetadata =
+      mModule->getNamedMetadata(DebugInfoMetadataName);
 
   if (!populateNameMetadata(ExportVarMetadata, mExportVarNameList,
                             mExportVarCount)) {
@@ -667,6 +674,8 @@ bool MetadataExtractor::extract() {
 
   readThreadableFlag(ThreadableMetadata);
   readBuildChecksumMetadata(ChecksumMetadata);
+
+  mHasDebugInfo = DebugInfoMetadata != nullptr;
 
   return true;
 }
