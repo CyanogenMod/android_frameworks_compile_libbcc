@@ -43,6 +43,8 @@ llvm::ModulePass * createRSIsThreadablePass();
 
 llvm::ModulePass * createRSX86_64CallConvPass();
 
+llvm::ModulePass * createRSAddDebugInfoPass();
+
 } // end namespace bcc
 
 #endif // BCC_RS_TRANSFORMS_H

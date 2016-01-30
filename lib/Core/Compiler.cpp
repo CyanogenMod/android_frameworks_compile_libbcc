@@ -159,6 +159,7 @@ enum Compiler::ErrorCode Compiler::runPasses(Script &pScript,
   // Add some initial custom passes.
   addInvokeHelperPass(transformPasses);
   addExpandKernelPass(transformPasses);
+  addDebugInfoPass(pScript, transformPasses);
   addInvariantPass(transformPasses);
   if (!addInternalizeSymbolsPass(pScript, transformPasses))
     return kErrCustomPasses;
@@ -385,6 +386,11 @@ void Compiler::addInvokeHelperPass(llvm::legacy::PassManager &pPM) {
   if (arch.isArch64Bit()) {
     pPM.add(createRSInvokeHelperPass());
   }
+}
+
+void Compiler::addDebugInfoPass(Script &pScript, llvm::legacy::PassManager &pPM) {
+  if (pScript.getSource().getDebugInfoEnabled())
+    pPM.add(createRSAddDebugInfoPass());
 }
 
 void Compiler::addExpandKernelPass(llvm::legacy::PassManager &pPM) {
