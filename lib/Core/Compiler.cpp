@@ -376,6 +376,14 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
     export_symbols.push_back(symbol_name.c_str());
   }
 
+  // http://b/26165616 - WAR for this bug defines the __truncxfhf2 function in
+  // frameworks/rs/driver/runtime.  Don't internalize this function for x86, so
+  // that a script can find and link against it.
+  llvm::Triple triple(getTargetMachine().getTargetTriple());
+  if (triple.getArch() == llvm::Triple::x86) {
+    export_symbols.push_back("__truncxfhf2");
+  }
+
   pPM.add(llvm::createInternalizePass(export_symbols));
 
   return true;
