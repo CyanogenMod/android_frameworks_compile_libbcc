@@ -1,4 +1,4 @@
-; Check that the #rs_export_reduce_new node is recognized.
+; Check that the #rs_export_reduce node is recognized.
 
 ; RUN: llvm-rs-as %s -o %t
 ; RUN: bcinfo %t | FileCheck %s
@@ -303,7 +303,7 @@ attributes #1 = { nounwind readonly }
 
 !llvm.ident = !{!0}
 !\23pragma = !{!1, !2}
-!\23rs_export_reduce_new = !{!3, !5, !7, !9, !11, !13, !15, !17}
+!\23rs_export_reduce = !{!3, !5, !7, !9, !11, !13, !15, !17}
 
 !0 = !{!"clang version 3.6 "}
 !1 = !{!"version", !"1"}

@@ -153,13 +153,9 @@ static const llvm::StringRef ExportForEachNameMetadataName =
 // (should be synced with slang_rs_metadata.h)
 static const llvm::StringRef ExportForEachMetadataName = "#rs_export_foreach";
 
-// Name of metadata node where exported simple reduce name information resides
-// (should be synced with slang_rs_metadata.h)
-static const llvm::StringRef ExportReduceMetadataName = "#rs_export_reduce";
-
 // Name of metadata node where exported general reduce information resides
 // (should be synced with slang_rs_metadata.h)
-static const llvm::StringRef ExportReduceNewMetadataName = "#rs_export_reduce_new";
+static const llvm::StringRef ExportReduceNewMetadataName = "#rs_export_reduce";
 
 // Name of metadata node where RS object slot info resides (should be
 // synced with slang_rs_metadata.h)
@@ -621,8 +617,6 @@ bool MetadataExtractor::extract() {
       mModule->getNamedMetadata(ExportForEachNameMetadataName);
   const llvm::NamedMDNode *ExportForEachMetadata =
       mModule->getNamedMetadata(ExportForEachMetadataName);
-  const llvm::NamedMDNode *ExportReduceMetadata =
-      mModule->getNamedMetadata(ExportReduceMetadataName);
   const llvm::NamedMDNode *ExportReduceNewMetadata =
       mModule->getNamedMetadata(ExportReduceNewMetadataName);
   const llvm::NamedMDNode *PragmaMetadata =
@@ -645,12 +639,6 @@ bool MetadataExtractor::extract() {
   if (!populateNameMetadata(ExportFuncMetadata, mExportFuncNameList,
                             mExportFuncCount)) {
     ALOGE("Could not populate export function metadata");
-    return false;
-  }
-
-  if (!populateNameMetadata(ExportReduceMetadata, mExportReduceNameList,
-                            mExportReduceCount)) {
-    ALOGE("Could not populate export reduce metadata");
     return false;
   }
 
