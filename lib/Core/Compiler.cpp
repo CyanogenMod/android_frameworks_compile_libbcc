@@ -355,24 +355,31 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
     export_symbols.push_back(exportFuncNameList[i]);
   }
 
-  // Expanded foreach and reduce functions should not be
-  // internalized. expanded_funcs keeps the names of the expanded
-  // functions around until createInternalizePass() is finished making
-  // its own copy of the visible symbols.
-  std::vector<std::string> expanded_funcs;
-  expanded_funcs.reserve(exportForEachCount + exportReduceCount + exportReduceNewCount);
+  // Expanded foreach and reduce functions should not be internalized;
+  // nor should general reduction initializer and outconverter
+  // functions. keep_funcs keeps the names of these functions around
+  // until createInternalizePass() is finished making its own copy of
+  // the visible symbols.
+  std::vector<std::string> keep_funcs;
+  keep_funcs.reserve(exportForEachCount + exportReduceCount + exportReduceNewCount*3);
 
   for (i = 0; i < exportForEachCount; ++i) {
-    expanded_funcs.push_back(std::string(exportForEachNameList[i]) + ".expand");
+    keep_funcs.push_back(std::string(exportForEachNameList[i]) + ".expand");
   }
   for (i = 0; i < exportReduceCount; ++i) {
-    expanded_funcs.push_back(std::string(exportReduceNameList[i]) + ".expand");
+    keep_funcs.push_back(std::string(exportReduceNameList[i]) + ".expand");
   }
+  auto keepFuncsPushBackIfPresent = [&keep_funcs](const char *Name) {
+    if (Name) keep_funcs.push_back(Name);
+  };
   for (i = 0; i < exportReduceNewCount; ++i) {
-    expanded_funcs.push_back(std::string(exportReduceNewList[i].mAccumulatorName) + ".expand");
+    keep_funcs.push_back(std::string(exportReduceNewList[i].mAccumulatorName) + ".expand");
+    // Note: driver does not currently use the combiner function
+    keepFuncsPushBackIfPresent(exportReduceNewList[i].mInitializerName);
+    keepFuncsPushBackIfPresent(exportReduceNewList[i].mOutConverterName);
   }
 
-  for (auto &symbol_name : expanded_funcs) {
+  for (auto &symbol_name : keep_funcs) {
     export_symbols.push_back(symbol_name.c_str());
   }
 
