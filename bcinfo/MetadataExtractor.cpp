@@ -463,6 +463,14 @@ bool MetadataExtractor::populateForEachMetadata(
       if (Name != nullptr && Name->getNumOperands() == 1) {
         TmpNameList[i] = createStringFromValue(Name->getOperand(0));
 
+        // Note that looking up the function by name can fail: One of
+        // the uses of MetadataExtractor is as part of the
+        // RSEmbedInfoPass, which bcc_compat runs sufficiently late in
+        // the phase order that RSKernelExpandPass has already run and
+        // the original (UNexpanded) kernel function (TmpNameList[i])
+        // may have been deleted as having no references (if it has
+        // been inlined into the expanded kernel function and is
+        // otherwise unreferenced).
         llvm::Function *Func =
             mModule->getFunction(llvm::StringRef(TmpNameList[i]));
 
@@ -523,15 +531,19 @@ bool MetadataExtractor::populateReduceNewMetadata(const llvm::NamedMDNode *Reduc
       ALOGE("Non-integer signature value in reduce metadata");
       return false;
     }
+    // Note that looking up the function by name can fail: One of the
+    // uses of MetadataExtractor is as part of the RSEmbedInfoPass,
+    // which bcc_compat runs sufficiently late in the phase order that
+    // RSKernelExpandPass has already run and the original
+    // (UNexpanded) accumulator function (mAccumulatorName) may have
+    // been deleted as having no references (if it has been inlined
+    // into the expanded accumulator function and is otherwise
+    // unreferenced).
     llvm::Function *Func =
         mModule->getFunction(llvm::StringRef(TmpReduceNewList[i].mAccumulatorName));
-    if (!Func) {
-      ALOGE("reduce metadata names missing accumulator function");
-      return false;
-    }
     // Why calculateNumInputs() - 1?  The "-1" is because we don't
     // want to treat the accumulator argument as an input.
-    TmpReduceNewList[i].mInputCount = calculateNumInputs(Func, TmpReduceNewList[i].mSignature) - 1;
+    TmpReduceNewList[i].mInputCount = (Func ? calculateNumInputs(Func, TmpReduceNewList[i].mSignature) - 1 : 0);
 
     TmpReduceNewList[i].mInitializerName = createStringFromOptionalValue(Node, 3);
     TmpReduceNewList[i].mCombinerName = createStringFromOptionalValue(Node, 4);
