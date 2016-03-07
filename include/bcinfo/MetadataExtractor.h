@@ -18,6 +18,8 @@
 #define __ANDROID_BCINFO_METADATAEXTRACTOR_H__
 
 #include <cstddef>
+#include <memory>
+
 #include <stdint.h>
 
 namespace llvm {

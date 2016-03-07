@@ -450,7 +450,7 @@ private:
     llvm::Value *Cond, *IVNext, *IV, *IVVar;
 
     CondBB = Builder.GetInsertBlock();
-    AfterBB = llvm::SplitBlock(CondBB, Builder.GetInsertPoint(), nullptr, nullptr);
+    AfterBB = llvm::SplitBlock(CondBB, &*Builder.GetInsertPoint(), nullptr, nullptr);
     HeaderBB = llvm::BasicBlock::Create(*Context, "Loop", CondBB->getParent());
 
     CondBB->getTerminator()->eraseFromParent();
@@ -796,7 +796,7 @@ public:
     llvm::Value *OutStep = nullptr;
 
     // Construct the actual function body.
-    llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
+    llvm::IRBuilder<> Builder(&*ExpandedFunction->getEntryBlock().begin());
 
     // Collect and construct the arguments for the kernel().
     // Note that we load any loop-invariant arguments before entering the Loop.
@@ -923,7 +923,7 @@ public:
     // Arg_outstep is not used by expanded new-style forEach kernels.
 
     // Construct the actual function body.
-    llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
+    llvm::IRBuilder<> Builder(&*ExpandedFunction->getEntryBlock().begin());
 
     // Create TBAA meta-data.
     llvm::MDNode *TBAARenderScriptDistinct, *TBAARenderScript,
@@ -1203,7 +1203,7 @@ public:
     bccAssert(DL.getTypeAllocSize(InTy) == DL.getTypeAllocSize(OutTy));
 
     // Construct the actual function body.
-    llvm::IRBuilder<> Builder(ExpandedFunction->getEntryBlock().begin());
+    llvm::IRBuilder<> Builder(&*ExpandedFunction->getEntryBlock().begin());
 
     // Cast input and output buffers to appropriate types.
     llvm::Value *InBuf = Builder.CreatePointerCast(Arg_inBuf, InPtrTy);
@@ -1399,7 +1399,7 @@ public:
     llvm::Value *Arg_accum = &*(ExpandedAccumulatorArgIter++);
 
     // Construct the actual function body.
-    llvm::IRBuilder<> Builder(FnExpandedAccumulator->getEntryBlock().begin());
+    llvm::IRBuilder<> Builder(&*FnExpandedAccumulator->getEntryBlock().begin());
 
     // Create the loop structure.
     llvm::BasicBlock *LoopHeader = Builder.GetInsertBlock();

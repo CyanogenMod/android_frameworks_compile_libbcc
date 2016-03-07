@@ -145,7 +145,7 @@ private:
           llvm::dwarf::DW_ATE_unsigned);
 
     // Capture the expanded kernel type debug info.
-    kernelTypeMD = DebugInfo.createSubroutineType(sourceFileName, kernelPrototypeMD);
+    kernelTypeMD = DebugInfo.createSubroutineType(kernelPrototypeMD);
   }
 
   /// @brief Add debug information to a generated function.
@@ -159,7 +159,7 @@ private:
   void attachDebugInfo(llvm::DIBuilder &DebugInfo, llvm::Function &Func) {
     // Lookup the current thread coordinate variable.
     llvm::AllocaInst* indexVar = nullptr;
-    for (llvm::Instruction &inst : llvm::inst_range(Func)) {
+    for (llvm::Instruction &inst : llvm::instructions(Func)) {
       if (auto *allocaInst = llvm::dyn_cast<llvm::AllocaInst>(&inst)) {
         if (allocaInst->getName() == bcc::BCC_INDEX_VAR_NAME) {
           indexVar = allocaInst;
@@ -173,11 +173,11 @@ private:
         sourceFileName, // scope
         Func.getName(), Func.getName(),
         sourceFileName, 1, kernelTypeMD,
-        false, true, 1, 0, false, &Func
+        false, true, 1, 0, false
     );
 
     // IRBuilder for allocating variables for arguments.
-    llvm::IRBuilder<> ir(Func.getEntryBlock().begin());
+    llvm::IRBuilder<> ir(&*Func.getEntryBlock().begin());
 
     // Walk through the argument list and expanded function prototype
     // debuginfo in lockstep to create debug entries for
@@ -190,11 +190,11 @@ private:
         break;
 
       // Create debuginfo entry for the argument and advance.
-      llvm::DILocalVariable *argVarDI = DebugInfo.createLocalVariable(
-          llvm::dwarf::DW_TAG_arg_variable,
-          ExpandedFunc, arg.getName(), sourceFileName, 1,
+      llvm::DILocalVariable *argVarDI = DebugInfo.createParameterVariable(
+          ExpandedFunc, arg.getName(), argIdx, sourceFileName, 1,
           llvm::cast<llvm::DIType>(argTypes->getOperand(argIdx).get()),
-          true, 0, argIdx);
+          true, 0
+      );
 
       // Annotate the argument variable in the IR.
       llvm::AllocaInst *argVar =
@@ -212,9 +212,10 @@ private:
     // Annotate the index variable with metadata.
     if (indexVar) {
       // Debug information for loop index variable.
-      llvm::DILocalVariable *indexVarDI = DebugInfo.createLocalVariable(
-          llvm::dwarf::DW_TAG_auto_variable, ExpandedFunc,
-          bcc::BCC_INDEX_VAR_NAME, sourceFileName, 1, indexVarType, true);
+      llvm::DILocalVariable *indexVarDI = DebugInfo.createAutoVariable(
+          ExpandedFunc, bcc::BCC_INDEX_VAR_NAME, sourceFileName, 1,
+          indexVarType, true
+      );
 
       // Insert declaration annotation in the instruction stream.
       llvm::Instruction *decl = DebugInfo.insertDeclare(
@@ -224,7 +225,7 @@ private:
     }
 
     // Attach location information to each instruction in the function.
-    for (llvm::Instruction &inst : llvm::inst_range(Func)) {
+    for (llvm::Instruction &inst : llvm::instructions(Func)) {
       inst.setDebugLoc(llvm::DebugLoc::get(1, 1, ExpandedFunc));
     }
   }

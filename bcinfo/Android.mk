@@ -59,6 +59,7 @@ LOCAL_STATIC_LIBRARIES := $(libbcinfo_STATIC_LIBRARIES)
 LOCAL_SHARED_LIBRARIES := libLLVM libcutils liblog
 
 include $(LLVM_ROOT_PATH)/llvm-device-build.mk
+include $(LLVM_GEN_ATTRIBUTES_MK)
 include $(BUILD_SHARED_LIBRARY)
 endif
 
@@ -93,6 +94,7 @@ LOCAL_SHARED_LIBRARIES_darwin += libLLVM
 LOCAL_SHARED_LIBRARIES_windows += libLLVM
 
 include $(LLVM_ROOT_PATH)/llvm-host-build.mk
+include $(LLVM_GEN_ATTRIBUTES_MK)
 include $(BUILD_HOST_SHARED_LIBRARY)
 
 endif # don't build for unbundled branches

@@ -16,6 +16,7 @@
 
 #include "bcc/Renderscript/RSCompilerDriver.h"
 
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include <llvm/IR/Module.h>
 #include "llvm/Linker/Linker.h"
@@ -299,6 +300,16 @@ bool RSCompilerDriver::buildScriptGroup(
     const std::list<std::string>& fused,
     const std::list<std::list<std::pair<int, int>>>& invokes,
     const std::list<std::string>& invokeBatchNames) {
+
+  // Read and store metadata before linking the modules together
+  std::vector<bcinfo::MetadataExtractor*> metadata;
+  for (Source* source : sources) {
+    if (!source->extractMetadata()) {
+      ALOGE("Cannot extract metadata from module");
+      return false;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Link all input modules into a single module
   // ---------------------------------------------------------------------------
@@ -306,12 +317,15 @@ bool RSCompilerDriver::buildScriptGroup(
   llvm::LLVMContext& context = Context.getLLVMContext();
   llvm::Module module("Merged Script Group", context);
 
-  llvm::Linker linker(&module);
+  llvm::Linker linker(module);
   for (Source* source : sources) {
-    if (linker.linkInModule(&source->getModule())) {
+    std::unique_ptr<llvm::Module> sourceModule(&source->getModule());
+    if (linker.linkInModule(std::move(sourceModule))) {
       ALOGE("Linking for module in source failed.");
       return false;
     }
+    // source->getModule() is destroyed after linking.
+    source->markModuleDestroyed();
   }
 
   // ---------------------------------------------------------------------------

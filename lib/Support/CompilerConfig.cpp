@@ -50,11 +50,6 @@ bool HasF16C() {
 CompilerConfig::CompilerConfig(const std::string &pTriple)
   : mTriple(pTriple), mFullPrecision(true), mTarget(nullptr) {
   //===--------------------------------------------------------------------===//
-  // Default setting of register sheduler
-  //===--------------------------------------------------------------------===//
-  llvm::RegisterScheduler::setDefault(llvm::createDefaultScheduler);
-
-  //===--------------------------------------------------------------------===//
   // Default setting of target options
   //===--------------------------------------------------------------------===//
 

@@ -237,8 +237,8 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   const std::string &triple = module.getTargetTriple();
-  const llvm::DataLayout *dl = getTargetMachine().getDataLayout();
-  unsigned int pointerSize = dl->getPointerSizeInBits();
+  const llvm::DataLayout dl = getTargetMachine().createDataLayout();
+  unsigned int pointerSize = dl.getPointerSizeInBits();
   if (triple == "armv7-none-linux-gnueabi") {
     if (pointerSize != 32) {
       return kErrInvalidSource;
@@ -252,15 +252,15 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
   }
 
   // Sanitize module's target information.
-  module.setTargetTriple(getTargetMachine().getTargetTriple());
-  module.setDataLayout(*getTargetMachine().getDataLayout());
+  module.setTargetTriple(getTargetMachine().getTargetTriple().str());
+  module.setDataLayout(getTargetMachine().createDataLayout());
 
   // Materialize the bitcode module.
   if (module.getMaterializer() != nullptr) {
     // A module with non-null materializer means that it is a lazy-load module.
-    // Materialize it now via invoking MaterializeAllPermanently(). This
-    // function returns false when the materialization is successful.
-    std::error_code ec = module.materializeAllPermanently();
+    // Materialize it now.  This function returns false when the materialization
+    // is successful.
+    std::error_code ec = module.materializeAll();
     if (ec) {
       ALOGE("Failed to materialize the module `%s'! (%s)",
             module.getModuleIdentifier().c_str(), ec.message().c_str());

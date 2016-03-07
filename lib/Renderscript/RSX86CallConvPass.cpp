@@ -134,7 +134,7 @@ private:
     for (auto AI=OrigFn->arg_begin(), AE=OrigFn->arg_end(),
               NAI=NewFn->arg_begin();
          AI != AE; ++ AI, ++NAI) {
-      NAI->takeName(AI);
+      NAI->takeName(&*AI);
     }
 
     return NewFn;

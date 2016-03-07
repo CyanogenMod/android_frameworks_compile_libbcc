@@ -365,11 +365,12 @@ int main(int argc, char** argv) {
         inFile.c_str(), false);
 
     std::unique_ptr<llvm::Module> module;
-    llvm::ErrorOr<llvm::Module*> moduleOrError = llvm::parseBitcodeFile(mem.get()->getMemBufferRef(), ctx);
+    llvm::ErrorOr<std::unique_ptr<llvm::Module> > moduleOrError =
+        llvm::parseBitcodeFile(mem.get()->getMemBufferRef(), ctx);
     std::error_code ec = moduleOrError.getError();
     if (!ec) {
-        module.reset(moduleOrError.get());
-        ec = module->materializeAllPermanently();
+        module = std::move(moduleOrError.get());
+        ec = module->materializeAll();
     }
     std::string errmsg;
     if (ec) {

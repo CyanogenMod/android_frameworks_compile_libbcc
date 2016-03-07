@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
       return EXIT_FAILURE;
     }
 
-    RSScript *s = new (std::nothrow) RSScript(*source, RSCD.getConfig());
+    std::unique_ptr<RSScript> s(new (std::nothrow) RSScript(*source, RSCD.getConfig()));
     if (s == nullptr) {
       llvm::errs() << "Out of memory when creating script for file `"
                    << OptInputFilenames[0] << "'!\n";

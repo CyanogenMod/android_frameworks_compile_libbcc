@@ -602,6 +602,7 @@ bool MetadataExtractor::extract() {
   }
 
   std::unique_ptr<llvm::LLVMContext> mContext;
+  bool shouldNullModule = false;
 
   if (!mModule) {
     mContext.reset(new llvm::LLVMContext());
@@ -610,15 +611,16 @@ bool MetadataExtractor::extract() {
         llvm::StringRef(mBitcode, mBitcodeSize), "", false));
     std::string error;
 
-    // Module ownership is handled by the context, so we don't need to free it.
-    llvm::ErrorOr<llvm::Module* > errval = llvm::parseBitcodeFile(MEM.get()->getMemBufferRef(),
-                                                                  *mContext);
+    llvm::ErrorOr<std::unique_ptr<llvm::Module> > errval =
+        llvm::parseBitcodeFile(MEM.get()->getMemBufferRef(), *mContext);
     if (std::error_code ec = errval.getError()) {
         ALOGE("Could not parse bitcode file");
         ALOGE("%s", ec.message().c_str());
         return false;
     }
-    mModule = errval.get();
+
+    mModule = errval.get().release();
+    shouldNullModule = true;
   }
 
   const llvm::NamedMDNode *ExportVarMetadata =
@@ -645,31 +647,31 @@ bool MetadataExtractor::extract() {
   if (!populateNameMetadata(ExportVarMetadata, mExportVarNameList,
                             mExportVarCount)) {
     ALOGE("Could not populate export variable metadata");
-    return false;
+    goto err;
   }
 
   if (!populateNameMetadata(ExportFuncMetadata, mExportFuncNameList,
                             mExportFuncCount)) {
     ALOGE("Could not populate export function metadata");
-    return false;
+    goto err;
   }
 
   if (!populateForEachMetadata(ExportForEachNameMetadata,
                                ExportForEachMetadata)) {
     ALOGE("Could not populate ForEach signature metadata");
-    return false;
+    goto err;
   }
 
   if (!populateReduceNewMetadata(ExportReduceNewMetadata)) {
     ALOGE("Could not populate export general reduction metadata");
-    return false;
+    goto err;
   }
 
   populatePragmaMetadata(PragmaMetadata);
 
   if (!populateObjectSlotMetadata(ObjectSlotMetadata)) {
     ALOGE("Could not populate object slot metadata");
-    return false;
+    goto err;
   }
 
   readThreadableFlag(ThreadableMetadata);
@@ -677,7 +679,16 @@ bool MetadataExtractor::extract() {
 
   mHasDebugInfo = DebugInfoMetadata != nullptr;
 
+  if (shouldNullModule) {
+    mModule = nullptr;
+  }
   return true;
+
+err:
+  if (shouldNullModule) {
+    mModule = nullptr;
+  }
+  return false;
 }
 
 }  // namespace bcinfo

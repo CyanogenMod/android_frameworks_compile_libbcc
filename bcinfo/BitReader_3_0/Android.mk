@@ -17,6 +17,7 @@ LOCAL_SRC_FILES := $(bitcode_reader_3_0_SRC_FILES)
 LOCAL_CFLAGS += -D__HOST__
 
 include $(LLVM_HOST_BUILD_MK)
+include $(LLVM_GEN_ATTRIBUTES_MK)
 include $(LLVM_GEN_INTRINSICS_MK)
 include $(BUILD_HOST_STATIC_LIBRARY)
 
@@ -30,6 +31,7 @@ LOCAL_MODULE:= libLLVMBitReader_3_0
 LOCAL_SRC_FILES := $(bitcode_reader_3_0_SRC_FILES)
 
 include $(LLVM_DEVICE_BUILD_MK)
+include $(LLVM_GEN_ATTRIBUTES_MK)
 include $(LLVM_GEN_INTRINSICS_MK)
 include $(BUILD_STATIC_LIBRARY)
 endif
