@@ -358,12 +358,12 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   }
 
   // Expanded foreach and reduce functions should not be internalized;
-  // nor should general reduction initializer and outconverter
-  // functions. keep_funcs keeps the names of these functions around
-  // until createInternalizePass() is finished making its own copy of
-  // the visible symbols.
+  // nor should general reduction initializer, combiner, and
+  // outconverter functions. keep_funcs keeps the names of these
+  // functions around until createInternalizePass() is finished making
+  // its own copy of the visible symbols.
   std::vector<std::string> keep_funcs;
-  keep_funcs.reserve(exportForEachCount + exportReduceCount + exportReduceNewCount*3);
+  keep_funcs.reserve(exportForEachCount + exportReduceCount + exportReduceNewCount*4);
 
   for (i = 0; i < exportForEachCount; ++i) {
     keep_funcs.push_back(std::string(exportForEachNameList[i]) + ".expand");
@@ -376,8 +376,8 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   };
   for (i = 0; i < exportReduceNewCount; ++i) {
     keep_funcs.push_back(std::string(exportReduceNewList[i].mAccumulatorName) + ".expand");
-    // Note: driver does not currently use the combiner function
     keepFuncsPushBackIfPresent(exportReduceNewList[i].mInitializerName);
+    keepFuncsPushBackIfPresent(exportReduceNewList[i].mCombinerName);
     keepFuncsPushBackIfPresent(exportReduceNewList[i].mOutConverterName);
   }
 
