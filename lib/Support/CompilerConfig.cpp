@@ -145,6 +145,14 @@ bool CompilerConfig::initializeArch() {
     if (features.count("fp16") && features["fp16"])
       attributes.push_back("+fp16");
 
+#if defined(PROVIDE_ARM64_CODEGEN)
+    // On AArch64, asimd in /proc/cpuinfo signals the presence of hardware
+    // half-precision conversion instructions.  getHostCPUFeatures translates
+    // this to "neon".  If PROVIDE_ARM64_CODEGEN is set, enable "+fp16" for ARM
+    // codegen if "neon" is present in features.
+    if (features.count("neon") && features["neon"])
+      attributes.push_back("+fp16");
+#endif // PROVIDE_ARM64_CODEGEN
 
 #if defined(TARGET_BUILD)
     if (!getProperty("debug.rs.arm-no-tune-for-cpu")) {
