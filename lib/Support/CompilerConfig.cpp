@@ -244,7 +244,7 @@ bool CompilerConfig::initializeArch() {
 #if defined (PROVIDE_X86_CODEGEN)
 // PROVIDE_X86_CODEGEN is defined for both x86 and x86_64
   case llvm::Triple::x86_64:
-#if defined(DEFAULT_X86_64_CODEGEN)
+#if defined(DEFAULT_X86_64_CODEGEN) && !defined(__HOST__)
     setCPU(llvm::sys::getHostCPUName());
 #else
     // generic fallback for 64bit x86 targets
