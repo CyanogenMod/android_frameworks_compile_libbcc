@@ -16,6 +16,7 @@
 
 #include "bcc/Assert.h"
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Renderscript/RSUtils.h"
 
 #include <cstdlib>
 #include <functional>
@@ -1427,6 +1428,80 @@ public:
     return true;
   }
 
+  // Create a combiner function for a general reduce-style kernel that lacks one,
+  // by calling the accumulator function.
+  //
+  // The accumulator function must be of the form
+  //
+  //   define void @accumFn(accumType* %accum, accumType %in)
+  //
+  // A combiner function will be generated of the form
+  //
+  //   define void @accumFn.combiner(accumType* %accum, accumType* %other) {
+  //     %1 = load accumType, accumType* %other
+  //     call void @accumFn(accumType* %accum, accumType %1);
+  //   }
+  bool CreateReduceNewCombinerFromAccumulator(llvm::Function *FnAccumulator) {
+    ALOGV("Creating combiner from accumulator %s for general reduce kernel",
+          FnAccumulator->getName().str().c_str());
+
+    using llvm::Attribute;
+
+    bccAssert(FnAccumulator->arg_size() == 2);
+    auto AccumulatorArgIter = FnAccumulator->arg_begin();
+    llvm::Value *AccumulatorArg_accum = &*(AccumulatorArgIter++);
+    llvm::Value *AccumulatorArg_in    = &*(AccumulatorArgIter++);
+    llvm::Type *AccumulatorArgType = AccumulatorArg_accum->getType();
+    bccAssert(AccumulatorArgType->isPointerTy());
+
+    llvm::Type *VoidTy = llvm::Type::getVoidTy(*Context);
+    llvm::FunctionType *CombinerType =
+        llvm::FunctionType::get(VoidTy, { AccumulatorArgType, AccumulatorArgType }, false);
+    llvm::Function *FnCombiner =
+        llvm::Function::Create(CombinerType, llvm::GlobalValue::ExternalLinkage,
+                               nameReduceNewCombinerFromAccumulator(FnAccumulator->getName()),
+                               Module);
+
+    auto CombinerArgIter = FnCombiner->arg_begin();
+
+    llvm::Argument *CombinerArg_accum = &(*CombinerArgIter++);
+    CombinerArg_accum->setName("accum");
+    CombinerArg_accum->addAttr(llvm::AttributeSet::get(*Context, CombinerArg_accum->getArgNo() + 1,
+                                                       llvm::makeArrayRef(Attribute::NoCapture)));
+
+    llvm::Argument *CombinerArg_other = &(*CombinerArgIter++);
+    CombinerArg_other->setName("other");
+    CombinerArg_other->addAttr(llvm::AttributeSet::get(*Context, CombinerArg_other->getArgNo() + 1,
+                                                       llvm::makeArrayRef(Attribute::NoCapture)));
+
+    llvm::BasicBlock *BB = llvm::BasicBlock::Create(*Context, "BB", FnCombiner);
+    llvm::IRBuilder<> Builder(BB);
+
+    if (AccumulatorArg_in->getType()->isPointerTy()) {
+      // Types of sufficient size get passed by pointer-to-copy rather
+      // than passed by value.  An accumulator cannot take a pointer
+      // at the user level; so if we see a pointer here, we know that
+      // we have a pass-by-pointer-to-copy case.
+      llvm::Type *ElementType = AccumulatorArg_in->getType()->getPointerElementType();
+      llvm::Value *TempMem = Builder.CreateAlloca(ElementType, nullptr, "caller_copy");
+      Builder.CreateStore(Builder.CreateLoad(CombinerArg_other), TempMem);
+      Builder.CreateCall(FnAccumulator, { CombinerArg_accum, TempMem });
+    } else {
+      llvm::Value *TypeAdjustedOther = CombinerArg_other;
+      if (AccumulatorArgType->getPointerElementType() != AccumulatorArg_in->getType()) {
+        // Call lowering by frontend has done some type coercion
+        TypeAdjustedOther = Builder.CreatePointerCast(CombinerArg_other,
+                                                      AccumulatorArg_in->getType()->getPointerTo(),
+                                                      "cast");
+      }
+      llvm::Value *DerefOther = Builder.CreateLoad(TypeAdjustedOther);
+      Builder.CreateCall(FnAccumulator, { CombinerArg_accum, DerefOther });
+    }
+    Builder.CreateRetVoid();
+
+    return true;
+  }
+
   /// @brief Checks if pointers to allocation internals are exposed
   ///
   /// This function verifies if through the parameters passed to the kernel
@@ -1561,7 +1636,7 @@ public:
     const size_t ExportReduceNewCount = me.getExportReduceNewCount();
     const bcinfo::MetadataExtractor::ReduceNew *ExportReduceNewList = me.getExportReduceNewList();
     //   Note that functions can be shared between kernels
-    FunctionSet PromotedFunctions, ExpandedAccumulators;
+    FunctionSet PromotedFunctions, ExpandedAccumulators, AccumulatorsForCombiners;
 
     for (size_t i = 0; i < ExportReduceNewCount; ++i) {
       Changed |= PromoteReduceNewFunction(ExportReduceNewList[i].mInitializerName, PromotedFunctions);
@@ -1575,6 +1650,10 @@ public:
         Changed |= ExpandReduceNewAccumulator(accumulator,
                                               ExportReduceNewList[i].mSignature,
                                               ExportReduceNewList[i].mInputCount);
+      if (!ExportReduceNewList[i].mCombinerName) {
+        if (AccumulatorsForCombiners.insert(accumulator).second)
+          Changed |= CreateReduceNewCombinerFromAccumulator(accumulator);
+      }
     }
 
     if (gEnableRsTbaa && !allocPointersExposed(Module)) {

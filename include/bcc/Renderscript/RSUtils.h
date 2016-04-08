@@ -21,6 +21,9 @@
 
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/ADT/StringRef.h>
+
+#include <string>
 
 namespace {
 
@@ -101,5 +104,13 @@ static inline bool isRsObjectType(const llvm::Type *T) {
 }
 
 }  // end namespace
+
+// When we have a general reduction kernel with no combiner function,
+// we will synthesize a combiner function from the accumulator
+// function.  Given the accumulator function name, what should be the
+// name of the combiner function?
+static inline std::string nameReduceNewCombinerFromAccumulator(llvm::StringRef accumName) {
+  return std::string(accumName) + ".combiner";
+}
 
 #endif // BCC_RS_UTILS_H

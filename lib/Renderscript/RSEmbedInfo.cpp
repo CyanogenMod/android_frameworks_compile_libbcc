@@ -17,6 +17,7 @@
 #include "bcc/Assert.h"
 #include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Renderscript/RSUtils.h"
 #include "bcc/Support/Log.h"
 #include "bcinfo/MetadataExtractor.h"
 #include "rsDefines.h"
@@ -139,7 +140,9 @@ public:
         << reduceNew.mReduceName << " - "
         << reduceNewFnName(reduceNew.mInitializerName) << " - "
         << reduceNewFnName(reduceNew.mAccumulatorName) << " - "
-        << reduceNewFnName(reduceNew.mCombinerName) << " - "
+        << ((reduceNew.mCombinerName != nullptr)
+            ? reduceNew.mCombinerName
+            : nameReduceNewCombinerFromAccumulator(reduceNew.mAccumulatorName)) << " - "
         << reduceNewFnName(reduceNew.mOutConverterName) << " - "
         << reduceNewFnName(reduceNew.mHalterName)
         << "\n";

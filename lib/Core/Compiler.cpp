@@ -34,6 +34,7 @@
 #include "bcc/Assert.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Renderscript/RSTransforms.h"
+#include "bcc/Renderscript/RSUtils.h"
 #include "bcc/Script.h"
 #include "bcc/Source.h"
 #include "bcc/Support/CompilerConfig.h"
@@ -377,7 +378,11 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   for (i = 0; i < exportReduceNewCount; ++i) {
     keep_funcs.push_back(std::string(exportReduceNewList[i].mAccumulatorName) + ".expand");
     keepFuncsPushBackIfPresent(exportReduceNewList[i].mInitializerName);
-    keepFuncsPushBackIfPresent(exportReduceNewList[i].mCombinerName);
+    if (exportReduceNewList[i].mCombinerName != nullptr) {
+      keep_funcs.push_back(exportReduceNewList[i].mCombinerName);
+    } else {
+      keep_funcs.push_back(nameReduceNewCombinerFromAccumulator(exportReduceNewList[i].mAccumulatorName));
+    }
     keepFuncsPushBackIfPresent(exportReduceNewList[i].mOutConverterName);
   }
 
