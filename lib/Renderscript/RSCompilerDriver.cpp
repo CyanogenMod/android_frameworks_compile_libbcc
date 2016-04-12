@@ -23,6 +23,7 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetMachine.h>
 
 #include "bcinfo/BitcodeWrapper.h"
 #include "bcc/Assert.h"
@@ -124,6 +125,19 @@ Compiler::ErrorCode RSCompilerDriver::compileScript(RSScript& pScript, const cha
   // functions.  Fail if verification returns an error.
   if (mCompiler.screenGlobalFunctions(pScript) != Compiler::kSuccess) {
     return Compiler::kErrInvalidSource;
+  }
+
+  // For (32-bit) x86, translate GEPs on structs or arrays of structs to GEPs on
+  // int8* with byte offsets.  This is to ensure that layout of structs with
+  // 64-bit scalar fields matches frontend-generated code that adheres to ARM
+  // data layout.
+  //
+  // The translation is done before RenderScript runtime library is linked
+  // (during LinkRuntime below) to ensure that RenderScript-driver-provided
+  // structs (like Allocation_t) don't get forced into using the ARM layout
+  // rules.
+  if (mCompiler.getTargetMachine().getTargetTriple().getArch() == llvm::Triple::x86) {
+    mCompiler.translateGEPs(pScript);
   }
 
   //===--------------------------------------------------------------------===//
