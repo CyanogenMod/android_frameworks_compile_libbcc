@@ -646,8 +646,9 @@ public:
   // ArgIter - iterator pointing to first input of the UNexpanded function
   // NumInputs - number of inputs (NOT number of ARGUMENTS)
   //
-  // InBufPtrs[] - this function sets each array element to point to the first
-  //               cell of the corresponding input allocation
+  // InTypes[] - this function saves input type, they will be used in ExpandInputsBody().
+  // InBufPtrs[] - this function sets each array element to point to the first cell / byte
+  //               (byte for x86, cell for other platforms) of the corresponding input allocation
   // InStructTempSlots[] - this function sets each array element either to nullptr
   //                       or to the result of an alloca (for the case where the
   //                       calling convention dictates that a value must be passed
@@ -658,6 +659,7 @@ public:
                                  llvm::MDNode *TBAAPointer,
                                  llvm::Function::arg_iterator ArgIter,
                                  const size_t NumInputs,
+                                 llvm::SmallVectorImpl<llvm::Type *> &InTypes,
                                  llvm::SmallVectorImpl<llvm::Value *> &InBufPtrs,
                                  llvm::SmallVectorImpl<llvm::Value *> &InStructTempSlots) {
     bccAssert(NumInputs <= RS_KERNEL_INPUT_LIMIT);
@@ -693,12 +695,25 @@ public:
                                              static_cast<int32_t>(InputIndex)}));
       llvm::Value    *InBufPtrAddr = Builder.CreateInBoundsGEP(Arg_p, InBufPtrGEP, "input_buf.gep");
       llvm::LoadInst *InBufPtr = Builder.CreateLoad(InBufPtrAddr, "input_buf");
-      llvm::Value    *CastInBufPtr = Builder.CreatePointerCast(InBufPtr, InType, "casted_in");
+
+      llvm::Value *CastInBufPtr = nullptr;
+      if (Module->getTargetTriple() != DEFAULT_X86_TRIPLE_STRING) {
+        CastInBufPtr = Builder.CreatePointerCast(InBufPtr, InType, "casted_in");
+      } else {
+        // The disagreement between module and x86 target machine datalayout
+        // causes mismatched input/output data offset between slang reflected
+        // code and bcc codegen for GetElementPtr. To solve this issue, skip the
+        // cast to InType and leave CastInBufPtr as an int8_t*.  The buffer is
+        // later indexed with an explicit byte offset computed based on
+        // X86_CUSTOM_DL_STRING and then bitcast it to actual input type.
+        CastInBufPtr = InBufPtr;
+      }
 
       if (gEnableRsTbaa) {
         InBufPtr->setMetadata("tbaa", TBAAPointer);
       }
 
+      InTypes.push_back(InType);
       InBufPtrs.push_back(CastInBufPtr);
     }
 
@@ -713,6 +728,8 @@ public:
   // Arg_x1 - first X coordinate to be processed by the expanded function
   // TBAAAllocation - metadata for marking loads of input values out of allocations
   // NumInputs -- number of inputs (NOT number of ARGUMENTS)
+  // InTypes[] - this function uses the saved input types in ExpandInputsLoopInvariant()
+  //             to convert the pointer of byte InPtr to its real type.
   // InBufPtrs[] - this function consumes the information produced by ExpandInputsLoopInvariant()
   // InStructTempSlots[] - this function consumes the information produced by ExpandInputsLoopInvariant()
   // IndVar - value of loop induction variable (X coordinate) for a given loop iteration
@@ -723,16 +740,32 @@ public:
                         llvm::Value *Arg_x1,
                         llvm::MDNode *TBAAAllocation,
                         const size_t NumInputs,
+                        const llvm::SmallVectorImpl<llvm::Type *> &InTypes,
                         const llvm::SmallVectorImpl<llvm::Value *> &InBufPtrs,
                         const llvm::SmallVectorImpl<llvm::Value *> &InStructTempSlots,
                         llvm::Value *IndVar,
                         llvm::SmallVectorImpl<llvm::Value *> &RootArgs) {
     llvm::Value *Offset = Builder.CreateSub(IndVar, Arg_x1);
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*Context);
 
     for (size_t Index = 0; Index < NumInputs; ++Index) {
-      llvm::Value *InPtr = Builder.CreateInBoundsGEP(InBufPtrs[Index], Offset);
-      llvm::Value *Input;
 
+      llvm::Value *InPtr = nullptr;
+      if (Module->getTargetTriple() != DEFAULT_X86_TRIPLE_STRING) {
+        InPtr = Builder.CreateInBoundsGEP(InBufPtrs[Index], Offset);
+      } else {
+        // Treat x86 input buffer as byte[], get indexed pointer with explicit
+        // byte offset computed using a datalayout based on
+        // X86_CUSTOM_DL_STRING, then bitcast it to actual input type.
+        llvm::DataLayout DL(X86_CUSTOM_DL_STRING);
+        llvm::Type *InTy = InTypes[Index];
+        uint64_t InStep = DL.getTypeAllocSize(InTy->getPointerElementType());
+        llvm::Value *OffsetInBytes = Builder.CreateMul(Offset, llvm::ConstantInt::get(Int32Ty, InStep));
+        InPtr = Builder.CreateInBoundsGEP(InBufPtrs[Index], OffsetInBytes);
+        InPtr = Builder.CreatePointerCast(InPtr, InTy);
+      }
+
+      llvm::Value *Input;
       llvm::LoadInst *InputLoad = Builder.CreateLoad(InPtr, "input");
 
       if (gEnableRsTbaa) {
@@ -774,6 +807,9 @@ public:
     }
 
     llvm::DataLayout DL(Module);
+    if (Module->getTargetTriple() == DEFAULT_X86_TRIPLE_STRING) {
+      DL.reset(X86_CUSTOM_DL_STRING);
+    }
 
     llvm::Function *ExpandedFunction =
       createEmptyExpandedForEachKernel(Function->getName());
@@ -904,6 +940,10 @@ public:
 
     // TODO: Refactor this to share functionality with ExpandOldStyleForEach.
     llvm::DataLayout DL(Module);
+    if (Module->getTargetTriple() == DEFAULT_X86_TRIPLE_STRING) {
+      DL.reset(X86_CUSTOM_DL_STRING);
+    }
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*Context);
 
     llvm::Function *ExpandedFunction =
       createEmptyExpandedForEachKernel(Function->getName());
@@ -984,9 +1024,20 @@ public:
         OutBasePtr->setMetadata("tbaa", TBAAPointer);
       }
 
-      CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
+      if (Module->getTargetTriple() != DEFAULT_X86_TRIPLE_STRING) {
+        CastedOutBasePtr = Builder.CreatePointerCast(OutBasePtr, OutTy, "casted_out");
+      } else {
+        // The disagreement between module and x86 target machine datalayout
+        // causes mismatched input/output data offset between slang reflected
+        // code and bcc codegen for GetElementPtr. To solve this issue, skip the
+        // cast to OutTy and leave CastedOutBasePtr as an int8_t*.  The buffer
+        // is later indexed with an explicit byte offset computed based on
+        // X86_CUSTOM_DL_STRING and then bitcast it to actual output type.
+        CastedOutBasePtr = OutBasePtr;
+      }
     }
 
+    llvm::SmallVector<llvm::Type*,  8> InTypes;
     llvm::SmallVector<llvm::Value*, 8> InBufPtrs;
     llvm::SmallVector<llvm::Value*, 8> InStructTempSlots;
 
@@ -1011,7 +1062,7 @@ public:
 
     if (NumInPtrArguments > 0) {
       ExpandInputsLoopInvariant(Builder, LoopHeader, Arg_p, TBAAPointer, ArgIter, NumInPtrArguments,
-                                InBufPtrs, InStructTempSlots);
+                                InTypes, InBufPtrs, InStructTempSlots);
     }
 
     // Populate the actual call to kernel().
@@ -1024,7 +1075,18 @@ public:
     llvm::Value *OutPtr = nullptr;
     if (CastedOutBasePtr) {
       llvm::Value *OutOffset = Builder.CreateSub(IV, Arg_x1);
-      OutPtr = Builder.CreateInBoundsGEP(CastedOutBasePtr, OutOffset);
+
+      if (Module->getTargetTriple() != DEFAULT_X86_TRIPLE_STRING) {
+        OutPtr = Builder.CreateInBoundsGEP(CastedOutBasePtr, OutOffset);
+      } else {
+        // Treat x86 output buffer as byte[], get indexed pointer with explicit
+        // byte offset computed using a datalayout based on
+        // X86_CUSTOM_DL_STRING, then bitcast it to actual output type.
+        uint64_t OutStep = DL.getTypeAllocSize(OutTy->getPointerElementType());
+        llvm::Value *OutOffsetInBytes = Builder.CreateMul(OutOffset, llvm::ConstantInt::get(Int32Ty, OutStep));
+        OutPtr = Builder.CreateInBoundsGEP(CastedOutBasePtr, OutOffsetInBytes);
+        OutPtr = Builder.CreatePointerCast(OutPtr, OutTy);
+      }
 
       if (PassOutByPointer) {
         RootArgs.push_back(OutPtr);
@@ -1035,7 +1097,7 @@ public:
 
     if (NumInPtrArguments > 0) {
       ExpandInputsBody(Builder, Arg_x1, TBAAAllocation, NumInPtrArguments,
-                       InBufPtrs, InStructTempSlots, IV, RootArgs);
+                       InTypes, InBufPtrs, InStructTempSlots, IV, RootArgs);
     }
 
     finishArgList(RootArgs, CalleeArgs, CalleeArgsContextIdx, *Function, Builder);
@@ -1122,6 +1184,9 @@ public:
     ALOGV("Expanding simple reduce kernel %s", Function->getName().str().c_str());
 
     llvm::DataLayout DL(Module);
+    if (Module->getTargetTriple() == DEFAULT_X86_TRIPLE_STRING) {
+      DL.reset(X86_CUSTOM_DL_STRING);
+    }
 
     // TBAA Metadata
     llvm::MDNode *TBAARenderScriptDistinct, *TBAARenderScript, *TBAAAllocation;
@@ -1412,15 +1477,16 @@ public:
         ExpandSpecialArguments(Signature, IndVar, Arg_p, Builder, CalleeArgs,
                                [](){}, LoopHeader->getTerminator());
 
+    llvm::SmallVector<llvm::Type*,  8> InTypes;
     llvm::SmallVector<llvm::Value*, 8> InBufPtrs;
     llvm::SmallVector<llvm::Value*, 8> InStructTempSlots;
     ExpandInputsLoopInvariant(Builder, LoopHeader, Arg_p, TBAAPointer, AccumulatorArgIter, NumInputs,
-                              InBufPtrs, InStructTempSlots);
+                              InTypes, InBufPtrs, InStructTempSlots);
 
     // Populate the actual call to the original accumulator.
     llvm::SmallVector<llvm::Value*, 8> RootArgs;
     RootArgs.push_back(Arg_accum);
-    ExpandInputsBody(Builder, Arg_x1, TBAAAllocation, NumInputs, InBufPtrs, InStructTempSlots,
+    ExpandInputsBody(Builder, Arg_x1, TBAAAllocation, NumInputs, InTypes, InBufPtrs, InStructTempSlots,
                      IndVar, RootArgs);
     finishArgList(RootArgs, CalleeArgs, CalleeArgsContextIdx, *FnAccumulator, Builder);
     Builder.CreateCall(FnAccumulator, RootArgs);

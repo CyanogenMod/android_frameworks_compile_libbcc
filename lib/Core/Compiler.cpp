@@ -32,6 +32,7 @@
 #include <llvm/Transforms/Vectorize.h>
 
 #include "bcc/Assert.h"
+#include "bcc/Config/Config.h"
 #include "bcc/Renderscript/RSScript.h"
 #include "bcc/Renderscript/RSTransforms.h"
 #include "bcc/Renderscript/RSUtils.h"
@@ -75,6 +76,8 @@ const char *Compiler::GetErrorString(enum ErrorCode pErrCode) {
     return "Error loading input bitcode";
   case kIllegalGlobalFunction:
     return "Use of undefined external function";
+  case kErrInvalidTargetMachine:
+    return "Invalid/unexpected llvm::TargetMachine.";
   }
 
   // This assert should never be reached as the compiler verifies that the
@@ -250,6 +253,15 @@ enum Compiler::ErrorCode Compiler::compile(Script &pScript,
     }
   } else {
     return kErrInvalidSource;
+  }
+
+  if (getTargetMachine().getTargetTriple().getArch() == llvm::Triple::x86) {
+    // Detect and fail if TargetMachine datalayout is different than what we
+    // expect.  This is to detect changes in default target layout for x86 and
+    // update X86_CUSTOM_DL_STRING in include/bcc/Config/Config.h appropriately.
+    if (dl.getStringRepresentation().compare(X86_DEFAULT_DL_STRING) != 0) {
+      return kErrInvalidTargetMachine;
+    }
   }
 
   // Sanitize module's target information.
@@ -457,4 +469,12 @@ enum Compiler::ErrorCode Compiler::screenGlobalFunctions(Script &pScript) {
 
   return kSuccess;
 
+}
+
+void Compiler::translateGEPs(Script &pScript) {
+  llvm::legacy::PassManager pPM;
+  pPM.add(createRSX86TranslateGEPPass());
+
+  // Materialization done in screenGlobalFunctions above.
+  pPM.run(pScript.getSource().getModule());
 }

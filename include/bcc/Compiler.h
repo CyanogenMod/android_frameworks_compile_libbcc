@@ -68,7 +68,9 @@ public:
 
     kErrInvalidSource,
 
-    kIllegalGlobalFunction
+    kIllegalGlobalFunction,
+
+    kErrInvalidTargetMachine
   };
 
   static const char *GetErrorString(enum ErrorCode pErrCode);
@@ -116,6 +118,8 @@ public:
   // all RenderScript functions.  Returns error if any external function that is
   // not in this whitelist is callable from the script.
   enum ErrorCode screenGlobalFunctions(Script &pScript);
+
+  void translateGEPs(Script &pScript);
 };
 
 } // end namespace bcc
