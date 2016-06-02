@@ -109,7 +109,7 @@ static inline bool isRsObjectType(const llvm::Type *T) {
 // we will synthesize a combiner function from the accumulator
 // function.  Given the accumulator function name, what should be the
 // name of the combiner function?
-static inline std::string nameReduceNewCombinerFromAccumulator(llvm::StringRef accumName) {
+static inline std::string nameReduceCombinerFromAccumulator(llvm::StringRef accumName) {
   return std::string(accumName) + ".combiner";
 }
 

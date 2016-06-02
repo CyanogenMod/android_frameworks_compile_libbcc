@@ -110,7 +110,7 @@ static int parseOption(int argc, char** argv) {
 }
 
 
-static void dumpReduceNewInfo(FILE *info, const char *Kind, const char *Name) {
+static void dumpReduceInfo(FILE *info, const char *Kind, const char *Name) {
   if (Name)
     fprintf(info, "  %s(%s)\n", Kind, Name);
 }
@@ -149,23 +149,17 @@ static int dumpInfo(bcinfo::MetadataExtractor *ME) {
   }
 
   fprintf(info, "exportReduceCount: %zu\n", ME->getExportReduceCount());
-  const char **reduceNameList = ME->getExportReduceNameList();
+  const bcinfo::MetadataExtractor::Reduce *reduceList =
+      ME->getExportReduceList();
   for (size_t i = 0; i < ME->getExportReduceCount(); i++) {
-    fprintf(info, "%s\n", reduceNameList[i]);
-  }
-
-  fprintf(info, "exportReduceNewCount: %zu\n", ME->getExportReduceNewCount());
-  const bcinfo::MetadataExtractor::ReduceNew *reduceNewList =
-      ME->getExportReduceNewList();
-  for (size_t i = 0; i < ME->getExportReduceNewCount(); i++) {
-    const bcinfo::MetadataExtractor::ReduceNew &reduceNew = reduceNewList[i];
-    fprintf(info, "%u - %s - %u - %u\n", reduceNew.mSignature, reduceNew.mReduceName,
-            reduceNew.mInputCount, reduceNew.mAccumulatorDataSize);
-    dumpReduceNewInfo(info, "initializer",  reduceNew.mInitializerName);
-    dumpReduceNewInfo(info, "accumulator",  reduceNew.mAccumulatorName);
-    dumpReduceNewInfo(info, "combiner",     reduceNew.mCombinerName);
-    dumpReduceNewInfo(info, "outconverter", reduceNew.mOutConverterName);
-    dumpReduceNewInfo(info, "halter",       reduceNew.mHalterName);
+    const bcinfo::MetadataExtractor::Reduce &reduce = reduceList[i];
+    fprintf(info, "%u - %s - %u - %u\n", reduce.mSignature, reduce.mReduceName,
+            reduce.mInputCount, reduce.mAccumulatorDataSize);
+    dumpReduceInfo(info, "initializer",  reduce.mInitializerName);
+    dumpReduceInfo(info, "accumulator",  reduce.mAccumulatorName);
+    dumpReduceInfo(info, "combiner",     reduce.mCombinerName);
+    dumpReduceInfo(info, "outconverter", reduce.mOutConverterName);
+    dumpReduceInfo(info, "halter",       reduce.mHalterName);
   }
 
   fprintf(info, "objectSlotCount: %zu\n", ME->getObjectSlotCount());
@@ -223,23 +217,16 @@ static void dumpMetadata(bcinfo::MetadataExtractor *ME) {
   printf("\n");
 
   printf("exportReduceCount: %zu\n", ME->getExportReduceCount());
-  const char **reduceNameList = ME->getExportReduceNameList();
+  const bcinfo::MetadataExtractor::Reduce *reduceList = ME->getExportReduceList();
   for (size_t i = 0; i < ME->getExportReduceCount(); i++) {
-    printf("func[%zu]: %s\n", i, reduceNameList[i]);
-  }
-  printf("\n");
-
-  printf("exportReduceNewCount: %zu\n", ME->getExportReduceNewCount());
-  const bcinfo::MetadataExtractor::ReduceNew *reduceNewList = ME->getExportReduceNewList();
-  for (size_t i = 0; i < ME->getExportReduceNewCount(); i++) {
-    const bcinfo::MetadataExtractor::ReduceNew &reduceNew = reduceNewList[i];
-    printf("exportReduceNewList[%zu]: %s - 0x%08x - %u - %u\n", i, reduceNew.mReduceName,
-           reduceNew.mSignature, reduceNew.mInputCount, reduceNew.mAccumulatorDataSize);
-    dumpReduceNewInfo(stdout, "initializer",  reduceNew.mInitializerName);
-    dumpReduceNewInfo(stdout, "accumulator",  reduceNew.mAccumulatorName);
-    dumpReduceNewInfo(stdout, "combiner",     reduceNew.mCombinerName);
-    dumpReduceNewInfo(stdout, "outconverter", reduceNew.mOutConverterName);
-    dumpReduceNewInfo(stdout, "halter",       reduceNew.mHalterName);
+    const bcinfo::MetadataExtractor::Reduce &reduce = reduceList[i];
+    printf("exportReduceList[%zu]: %s - 0x%08x - %u - %u\n", i, reduce.mReduceName,
+           reduce.mSignature, reduce.mInputCount, reduce.mAccumulatorDataSize);
+    dumpReduceInfo(stdout, "initializer",  reduce.mInitializerName);
+    dumpReduceInfo(stdout, "accumulator",  reduce.mAccumulatorName);
+    dumpReduceInfo(stdout, "combiner",     reduce.mCombinerName);
+    dumpReduceInfo(stdout, "outconverter", reduce.mOutConverterName);
+    dumpReduceInfo(stdout, "halter",       reduce.mHalterName);
   }
   printf("\n");
 

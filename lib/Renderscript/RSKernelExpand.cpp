@@ -43,8 +43,7 @@
 #ifndef __DISABLE_ASSERTS
 // Only used in bccAssert()
 const int kNumExpandedForeachParams = 4;
-const int kNumExpandedReduceParams = 3;
-const int kNumExpandedReduceNewAccumulatorParams = 4;
+const int kNumExpandedReduceAccumulatorParams = 4;
 #endif
 
 const char kRenderScriptTBAARootName[] = "RenderScript Distinct TBAA";
@@ -109,15 +108,12 @@ private:
    * for expanded functions. These must be re-calculated for each module
    * the pass is run on.
    */
-  llvm::FunctionType *ExpandedForEachType, *ExpandedReduceType;
+  llvm::FunctionType *ExpandedForEachType;
   llvm::Type *RsExpandKernelDriverInfoPfxTy;
 
   uint32_t mExportForEachCount;
   const char **mExportForEachNameList;
   const uint32_t *mExportForEachSignatureList;
-
-  uint32_t mExportReduceCount;
-  const char **mExportReduceNameList;
 
   // Turns on optimization of allocation stride values.
   bool mEnableStepOpt;
@@ -310,9 +306,6 @@ private:
     // void (const RsExpandKernelDriverInfoPfxTy *p, uint32_t x1, uint32_t x2, uint32_t outstep)
     ExpandedForEachType = llvm::FunctionType::get(VoidTy,
         {RsExpandKernelDriverInfoPfxPtrTy, Int32Ty, Int32Ty, Int32Ty}, false);
-
-    // void (void *inBuf, void *outBuf, uint32_t len)
-    ExpandedReduceType = llvm::FunctionType::get(VoidTy, {VoidPtrTy, VoidPtrTy, Int32Ty}, false);
   }
 
   /// @brief Create skeleton of the expanded foreach kernel.
@@ -340,41 +333,6 @@ private:
     return ExpandedFunction;
   }
 
-  // Create skeleton of the expanded reduce kernel.
-  //
-  // This creates a function with the following signature:
-  //
-  //   void @func.expand(i8* nocapture %inBuf, i8* nocapture %outBuf, i32 len)
-  //
-  llvm::Function *createEmptyExpandedReduceKernel(llvm::StringRef OldName) {
-    llvm::Function *ExpandedFunction =
-      llvm::Function::Create(ExpandedReduceType,
-                             llvm::GlobalValue::ExternalLinkage,
-                             OldName + ".expand", Module);
-    bccAssert(ExpandedFunction->arg_size() == kNumExpandedReduceParams);
-
-    llvm::Function::arg_iterator AI = ExpandedFunction->arg_begin();
-
-    using llvm::Attribute;
-
-    llvm::Argument *InBuf = &(*AI++);
-    InBuf->setName("inBuf");
-    InBuf->addAttr(llvm::AttributeSet::get(*Context, InBuf->getArgNo() + 1, llvm::makeArrayRef(Attribute::NoCapture)));
-
-    llvm::Argument *OutBuf = &(*AI++);
-    OutBuf->setName("outBuf");
-    OutBuf->addAttr(llvm::AttributeSet::get(*Context, OutBuf->getArgNo() + 1, llvm::makeArrayRef(Attribute::NoCapture)));
-
-    (AI++)->setName("len");
-
-    llvm::BasicBlock *Begin = llvm::BasicBlock::Create(*Context, "Begin",
-                                                       ExpandedFunction);
-    llvm::IRBuilder<> Builder(Begin);
-    Builder.CreateRetVoid();
-
-    return ExpandedFunction;
-  }
-
   // Create skeleton of a general reduce kernel's expanded accumulator.
   //
   // This creates a function with the following signature:
@@ -382,19 +340,19 @@ private:
   //  void @func.expand(%RsExpandKernelDriverInfoPfx* nocapture %p,
   //                    i32 %x1, i32 %x2, accumType* nocapture %accum)
   //
-  llvm::Function *createEmptyExpandedReduceNewAccumulator(llvm::StringRef OldName,
-                                                          llvm::Type *AccumArgTy) {
+  llvm::Function *createEmptyExpandedReduceAccumulator(llvm::StringRef OldName,
+                                                       llvm::Type *AccumArgTy) {
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*Context);
     llvm::Type *VoidTy = llvm::Type::getVoidTy(*Context);
-    llvm::FunctionType *ExpandedReduceNewAccumulatorType =
+    llvm::FunctionType *ExpandedReduceAccumulatorType =
         llvm::FunctionType::get(VoidTy,
                                 {RsExpandKernelDriverInfoPfxTy->getPointerTo(),
                                  Int32Ty, Int32Ty, AccumArgTy}, false);
     llvm::Function *FnExpandedAccumulator =
-      llvm::Function::Create(ExpandedReduceNewAccumulatorType,
+      llvm::Function::Create(ExpandedReduceAccumulatorType,
                              llvm::GlobalValue::ExternalLinkage,
                              OldName + ".expand", Module);
-    bccAssert(FnExpandedAccumulator->arg_size() == kNumExpandedReduceNewAccumulatorParams);
+    bccAssert(FnExpandedAccumulator->arg_size() == kNumExpandedReduceAccumulatorParams);
 
     llvm::Function::arg_iterator AI = FnExpandedAccumulator->arg_begin();
 
@@ -1115,272 +1073,6 @@ public:
     return true;
   }
 
-  // Expand a simple reduce-style kernel function.
-  //
-  // The input is a kernel which represents a binary operation,
-  // of the form
-  //
-  //   define foo @func(foo %a, foo %b),
-  //
-  // (More generally, it can be of the forms
-  //
-  //   define void @func(foo* %ret, foo* %a, foo* %b)
-  //   define void @func(foo* %ret, foo1 %a, foo1 %b)
-  //   define foo1 @func(foo2 %a, foo2 %b)
-  //
-  // as a result of argument / return value conversions. Here, "foo1"
-  // and "foo2" refer to possibly coerced types, and the coerced
-  // argument type may be different from the coerced return type. See
-  // "Note on coercion" below.)
-  //
-  // Note also, we do not expect to encounter any case when the
-  // arguments are promoted to pointers but the return value is
-  // unpromoted to pointer, e.g.
-  //
-  //   define foo1 @func(foo* %a, foo* %b)
-  //
-  // and we will throw an assertion in this case.)
-  //
-  // The input kernel gets expanded into a kernel of the form
-  //
-  //   define void @func.expand(i8* %inBuf, i8* outBuf, i32 len)
-  //
-  // which performs a serial reduction of `len` elements from `inBuf`,
-  // and stores the result into `outBuf`. In pseudocode, @func.expand
-  // does:
-  //
-  //   inArr := (foo *)inBuf;
-  //   accum := inArr[0];
-  //   for (i := 1; i < len; ++i) {
-  //     accum := foo(accum, inArr[i]);
-  //   }
-  //   *(foo *)outBuf := accum;
-  //
-  // Note on coercion
-  //
-  // Both the return value and the argument types may undergo internal
-  // coercion in clang as part of call lowering. As a result, the
-  // return value type may differ from the argument type even if the
-  // types in the RenderScript signaure are the same. For instance, the
-  // kernel
-  //
-  //   int3 add(int3 a, int3 b) { return a + b; }
-  //
-  // gets lowered by clang as
-  //
-  //   define <3 x i32> @add(<4 x i32> %a.coerce, <4 x i32> %b.coerce)
-  //
-  // under AArch64. The details of this process are found in clang,
-  // lib/CodeGen/TargetInfo.cpp, under classifyArgumentType() and
-  // classifyReturnType() in ARMABIInfo, AArch64ABIInfo. If the value
-  // is passed by pointer, then the pointed-to type is not coerced.
-  //
-  // Since we lack the original type information, this code does loads
-  // and stores of allocation data by way of pointers to the coerced
-  // type.
-  bool ExpandReduce(llvm::Function *Function) {
-    bccAssert(Function);
-
-    ALOGV("Expanding simple reduce kernel %s", Function->getName().str().c_str());
-
-    llvm::DataLayout DL(Module);
-    if (Module->getTargetTriple() == DEFAULT_X86_TRIPLE_STRING) {
-      DL.reset(X86_CUSTOM_DL_STRING);
-    }
-
-    // TBAA Metadata
-    llvm::MDNode *TBAARenderScriptDistinct, *TBAARenderScript, *TBAAAllocation;
-    llvm::MDBuilder MDHelper(*Context);
-
-    TBAARenderScriptDistinct =
-      MDHelper.createTBAARoot(kRenderScriptTBAARootName);
-    TBAARenderScript = MDHelper.createTBAANode(kRenderScriptTBAANodeName,
-        TBAARenderScriptDistinct);
-    TBAAAllocation = MDHelper.createTBAAScalarTypeNode("allocation",
-                                                       TBAARenderScript);
-    TBAAAllocation = MDHelper.createTBAAStructTagNode(TBAAAllocation,
-                                                      TBAAAllocation, 0);
-
-    llvm::Function *ExpandedFunction =
-      createEmptyExpandedReduceKernel(Function->getName());
-
-    // Extract the expanded kernel's parameters.  It is guaranteed by
-    // createEmptyExpandedReduceKernel that there will be 3 parameters.
-    auto ExpandedFunctionArgIter = ExpandedFunction->arg_begin();
-
-    llvm::Value *Arg_inBuf  = &*(ExpandedFunctionArgIter++);
-    llvm::Value *Arg_outBuf = &*(ExpandedFunctionArgIter++);
-    llvm::Value *Arg_len    = &*(ExpandedFunctionArgIter++);
-
-    bccAssert(Function->arg_size() == 2 || Function->arg_size() == 3);
-
-    // Check if, instead of returning a value, the original kernel has
-    // a pointer parameter which points to a temporary buffer into
-    // which the return value gets written.
-    const bool ReturnValuePointerStyle = (Function->arg_size() == 3);
-    bccAssert(Function->getReturnType()->isVoidTy() == ReturnValuePointerStyle);
-
-    // Check if, instead of being passed by value, the inputs to the
-    // original kernel are passed by pointer.
-    auto FirstArgIter = Function->arg_begin();
-    // The second argument is always an input to the original kernel.
-    auto SecondArgIter = std::next(FirstArgIter);
-    const bool InputsPointerStyle = SecondArgIter->getType()->isPointerTy();
-
-    // Get the output type (i.e. return type of the original kernel).
-    llvm::PointerType *OutPtrTy = nullptr;
-    llvm::Type *OutTy = nullptr;
-    if (ReturnValuePointerStyle) {
-      OutPtrTy = llvm::dyn_cast<llvm::PointerType>(FirstArgIter->getType());
-      bccAssert(OutPtrTy && "Expected a pointer parameter to kernel");
-      OutTy = OutPtrTy->getElementType();
-    } else {
-      OutTy = Function->getReturnType();
-      bccAssert(!OutTy->isVoidTy());
-      OutPtrTy = OutTy->getPointerTo();
-    }
-
-    // Get the input type (type of the arguments to the original
-    // kernel). Some input types are different from the output type,
-    // due to explicit coercion that the compiler performs when
-    // lowering the parameters. See "Note on coercion" above.
-    llvm::PointerType *InPtrTy;
-    llvm::Type *InTy;
-    if (InputsPointerStyle) {
-      InPtrTy = llvm::dyn_cast<llvm::PointerType>(SecondArgIter->getType());
-      bccAssert(InPtrTy && "Expected a pointer parameter to kernel");
-      bccAssert(ReturnValuePointerStyle);
-      bccAssert(std::next(SecondArgIter)->getType() == InPtrTy &&
-                "Input type mismatch");
-      InTy = InPtrTy->getElementType();
-    } else {
-      InTy = SecondArgIter->getType();
-      InPtrTy = InTy->getPointerTo();
-      if (!ReturnValuePointerStyle) {
-        bccAssert(InTy == FirstArgIter->getType() && "Input type mismatch");
-      } else {
-        bccAssert(InTy == std::next(SecondArgIter)->getType() &&
-                  "Input type mismatch");
-      }
-    }
-
-    // The input type should take up the same amount of space in
-    // memory as the output type.
-    bccAssert(DL.getTypeAllocSize(InTy) == DL.getTypeAllocSize(OutTy));
-
-    // Construct the actual function body.
-    llvm::IRBuilder<> Builder(&*ExpandedFunction->getEntryBlock().begin());
-
-    // Cast input and output buffers to appropriate types.
-    llvm::Value *InBuf = Builder.CreatePointerCast(Arg_inBuf, InPtrTy);
-    llvm::Value *OutBuf = Builder.CreatePointerCast(Arg_outBuf, OutPtrTy);
-
-    // Create a slot to pass temporary results back. This needs to be
-    // separate from the accumulator slot because the kernel may mark
-    // the return value slot as noalias.
-    llvm::Value *ReturnBuf = nullptr;
-    if (ReturnValuePointerStyle) {
-      ReturnBuf = Builder.CreateAlloca(OutTy, nullptr, "ret.tmp");
-    }
-
-    // Create a slot to hold the second input if the inputs are passed
-    // by pointer to the original kernel. We cannot directly pass a
-    // pointer to the input buffer, because the kernel may modify its
-    // inputs.
-    llvm::Value *SecondInputTempBuf = nullptr;
-    if (InputsPointerStyle) {
-      SecondInputTempBuf = Builder.CreateAlloca(InTy, nullptr, "in.tmp");
-    }
-
-    // Create a slot to accumulate temporary results, and fill it with
-    // the first value.
-    llvm::Value *AccumBuf = Builder.CreateAlloca(OutTy, nullptr, "accum");
-    // Cast to OutPtrTy before loading, since AccumBuf has type OutPtrTy.
-    llvm::LoadInst *FirstElementLoad = Builder.CreateLoad(
-      Builder.CreatePointerCast(InBuf, OutPtrTy));
-    if (gEnableRsTbaa) {
-      FirstElementLoad->setMetadata("tbaa", TBAAAllocation);
-    }
-    // Memory operations with AccumBuf shouldn't be marked with
-    // RenderScript TBAA, since this might conflict with TBAA metadata
-    // in the kernel function when AccumBuf is passed by pointer.
-    Builder.CreateStore(FirstElementLoad, AccumBuf);
-
-    // Loop body
-
-    // Create the loop structure. Note that the first input in the input buffer
-    // has already been accumulated, so that we start at index 1.
-    llvm::Value *IndVar;
-    llvm::Value *Start = llvm::ConstantInt::get(Arg_len->getType(), 1);
-    llvm::BasicBlock *Exit = createLoop(Builder, Start, Arg_len, &IndVar);
-
-    llvm::Value *InputPtr = Builder.CreateInBoundsGEP(InBuf, IndVar, "next_input.gep");
-
-    // Set up arguments and call the original (unexpanded) kernel.
-    //
-    // The original kernel can have at most 3 arguments, which is
-    // achieved when the signature looks like:
-    //
-    //    define void @func(foo* %ret, bar %a, bar %b)
-    //
-    // (bar can be one of foo/foo.coerce/foo*).
-    llvm::SmallVector<llvm::Value *, 3> KernelArgs;
-
-    if (ReturnValuePointerStyle) {
-      KernelArgs.push_back(ReturnBuf);
-    }
-
-    if (InputsPointerStyle) {
-      bccAssert(ReturnValuePointerStyle);
-      // Because the return buffer is copied back into the
-      // accumulator, it's okay if the accumulator is overwritten.
-      KernelArgs.push_back(AccumBuf);
-
-      llvm::LoadInst *InputLoad = Builder.CreateLoad(InputPtr);
-      if (gEnableRsTbaa) {
-        InputLoad->setMetadata("tbaa", TBAAAllocation);
-      }
-      Builder.CreateStore(InputLoad, SecondInputTempBuf);
-
-      KernelArgs.push_back(SecondInputTempBuf);
-    } else {
-      // InPtrTy may be different from OutPtrTy (the type of
-      // AccumBuf), so first cast the accumulator buffer to the
-      // pointer type corresponding to the input argument type.
-      KernelArgs.push_back(
-        Builder.CreateLoad(Builder.CreatePointerCast(AccumBuf, InPtrTy)));
-
-      llvm::LoadInst *LoadedArg = Builder.CreateLoad(InputPtr);
-      if (gEnableRsTbaa) {
-        LoadedArg->setMetadata("tbaa", TBAAAllocation);
-      }
-      KernelArgs.push_back(LoadedArg);
-    }
-
-    llvm::Value *RetVal = Builder.CreateCall(Function, KernelArgs);
-
-    const uint64_t ElementSize = DL.getTypeStoreSize(OutTy);
-    const uint64_t ElementAlign = DL.getABITypeAlignment(OutTy);
-
-    // Store the output in the accumulator.
-    if (ReturnValuePointerStyle) {
-      Builder.CreateMemCpy(AccumBuf, ReturnBuf, ElementSize, ElementAlign);
-    } else {
-      Builder.CreateStore(RetVal, AccumBuf);
-    }
-
-    // Loop exit
-    Builder.SetInsertPoint(Exit, Exit->begin());
-
-    llvm::LoadInst *OutputLoad = Builder.CreateLoad(AccumBuf);
-    llvm::StoreInst *OutputStore = Builder.CreateStore(OutputLoad, OutBuf);
-    if (gEnableRsTbaa) {
-      OutputStore->setMetadata("tbaa", TBAAAllocation);
-    }
-
-    return true;
-  }
-
   // Certain categories of functions that make up a general
   // reduce-style kernel are called directly from the driver with no
   // expansion needed.  For a function in such a category, we need to
@@ -1389,7 +1081,7 @@ public:
   // This promotion is safe because we don't have any kind of cross
   // translation unit linkage model (except for linking against
   // RenderScript libraries), so we do not risk name clashes.
-  bool PromoteReduceNewFunction(const char *Name, FunctionSet &PromotedFunctions) {
+  bool PromoteReduceFunction(const char *Name, FunctionSet &PromotedFunctions) {
     if (!Name)  // a presumably-optional function that is not present
       return false;
 
@@ -1427,7 +1119,7 @@ public:
   //   }
   //
   // This is very similar to foreach kernel expansion with no output.
-  bool ExpandReduceNewAccumulator(llvm::Function *FnAccumulator, uint32_t Signature, size_t NumInputs) {
+  bool ExpandReduceAccumulator(llvm::Function *FnAccumulator, uint32_t Signature, size_t NumInputs) {
     ALOGV("Expanding accumulator %s for general reduce kernel",
           FnAccumulator->getName().str().c_str());
 
@@ -1451,13 +1143,13 @@ public:
 
     // Create empty accumulator function.
     llvm::Function *FnExpandedAccumulator =
-        createEmptyExpandedReduceNewAccumulator(FnAccumulator->getName(),
-                                                (AccumulatorArgIter++)->getType());
+        createEmptyExpandedReduceAccumulator(FnAccumulator->getName(),
+                                             (AccumulatorArgIter++)->getType());
 
     // Extract the expanded accumulator's parameters.  It is
-    // guaranteed by createEmptyExpandedReduceNewAccumulator that
+    // guaranteed by createEmptyExpandedReduceAccumulator that
     // there will be 4 parameters.
-    bccAssert(FnExpandedAccumulator->arg_size() == kNumExpandedReduceNewAccumulatorParams);
+    bccAssert(FnExpandedAccumulator->arg_size() == kNumExpandedReduceAccumulatorParams);
     auto ExpandedAccumulatorArgIter = FnExpandedAccumulator->arg_begin();
     llvm::Value *Arg_p     = &*(ExpandedAccumulatorArgIter++);
     llvm::Value *Arg_x1    = &*(ExpandedAccumulatorArgIter++);
@@ -1507,7 +1199,7 @@ public:
   //     %1 = load accumType, accumType* %other
   //     call void @accumFn(accumType* %accum, accumType %1);
   //   }
-  bool CreateReduceNewCombinerFromAccumulator(llvm::Function *FnAccumulator) {
+  bool CreateReduceCombinerFromAccumulator(llvm::Function *FnAccumulator) {
     ALOGV("Creating combiner from accumulator %s for general reduce kernel",
           FnAccumulator->getName().str().c_str());
 
@@ -1525,7 +1217,7 @@ public:
         llvm::FunctionType::get(VoidTy, { AccumulatorArgType, AccumulatorArgType }, false);
     llvm::Function *FnCombiner =
         llvm::Function::Create(CombinerType, llvm::GlobalValue::ExternalLinkage,
-                               nameReduceNewCombinerFromAccumulator(FnAccumulator->getName()),
+                               nameReduceCombinerFromAccumulator(FnAccumulator->getName()),
                                Module);
 
     auto CombinerArgIter = FnCombiner->arg_begin();
@@ -1687,38 +1379,27 @@ public:
       }
     }
 
-    // Expand simple reduce_* style kernels.
-    mExportReduceCount = me.getExportReduceCount();
-    mExportReduceNameList = me.getExportReduceNameList();
-
-    for (size_t i = 0; i < mExportReduceCount; ++i) {
-      llvm::Function *kernel = Module.getFunction(mExportReduceNameList[i]);
-      if (kernel) {
-        Changed |= ExpandReduce(kernel);
-      }
-    }
-
     // Process general reduce_* style functions.
-    const size_t ExportReduceNewCount = me.getExportReduceNewCount();
-    const bcinfo::MetadataExtractor::ReduceNew *ExportReduceNewList = me.getExportReduceNewList();
+    const size_t ExportReduceCount = me.getExportReduceCount();
+    const bcinfo::MetadataExtractor::Reduce *ExportReduceList = me.getExportReduceList();
     //   Note that functions can be shared between kernels
     FunctionSet PromotedFunctions, ExpandedAccumulators, AccumulatorsForCombiners;
 
-    for (size_t i = 0; i < ExportReduceNewCount; ++i) {
-      Changed |= PromoteReduceNewFunction(ExportReduceNewList[i].mInitializerName, PromotedFunctions);
-      Changed |= PromoteReduceNewFunction(ExportReduceNewList[i].mCombinerName, PromotedFunctions);
-      Changed |= PromoteReduceNewFunction(ExportReduceNewList[i].mOutConverterName, PromotedFunctions);
+    for (size_t i = 0; i < ExportReduceCount; ++i) {
+      Changed |= PromoteReduceFunction(ExportReduceList[i].mInitializerName, PromotedFunctions);
+      Changed |= PromoteReduceFunction(ExportReduceList[i].mCombinerName, PromotedFunctions);
+      Changed |= PromoteReduceFunction(ExportReduceList[i].mOutConverterName, PromotedFunctions);
 
       // Accumulator
-      llvm::Function *accumulator = Module.getFunction(ExportReduceNewList[i].mAccumulatorName);
+      llvm::Function *accumulator = Module.getFunction(ExportReduceList[i].mAccumulatorName);
       bccAssert(accumulator != nullptr);
       if (ExpandedAccumulators.insert(accumulator).second)
-        Changed |= ExpandReduceNewAccumulator(accumulator,
-                                              ExportReduceNewList[i].mSignature,
-                                              ExportReduceNewList[i].mInputCount);
-      if (!ExportReduceNewList[i].mCombinerName) {
+        Changed |= ExpandReduceAccumulator(accumulator,
+                                           ExportReduceList[i].mSignature,
+                                           ExportReduceList[i].mInputCount);
+      if (!ExportReduceList[i].mCombinerName) {
         if (AccumulatorsForCombiners.insert(accumulator).second)
-          Changed |= CreateReduceNewCombinerFromAccumulator(accumulator);
+          Changed |= CreateReduceCombinerFromAccumulator(accumulator);
       }
     }
 

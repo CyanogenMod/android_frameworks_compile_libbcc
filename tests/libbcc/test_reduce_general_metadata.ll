@@ -3,34 +3,34 @@
 ; RUN: llvm-rs-as %s -o %t
 ; RUN: bcinfo %t | FileCheck %s
 
-; CHECK: exportReduceNewCount: 8
-; CHECK: exportReduceNewList[0]: addint - 0x00000001 - 1 - 4
+; CHECK: exportReduceCount: 8
+; CHECK: exportReduceList[0]: addint - 0x00000001 - 1 - 4
 ; CHECK:   accumulator(aiAccum)
-; CHECK: exportReduceNewList[1]: mpyint - 0x00000001 - 1 - 4
+; CHECK: exportReduceList[1]: mpyint - 0x00000001 - 1 - 4
 ; CHECK:   initializer(mpyInit)
 ; CHECK:   accumulator(mpyAccum)
-; CHECK: exportReduceNewList[2]: dp - 0x00000001 - 2 - 4
+; CHECK: exportReduceList[2]: dp - 0x00000001 - 2 - 4
 ; CHECK:   accumulator(dpAccum)
 ; CHECK:   combiner(dpSum)
-; CHECK: exportReduceNewList[3]: findMinAndMax - 0x00000009 - 1 - 16
+; CHECK: exportReduceList[3]: findMinAndMax - 0x00000009 - 1 - 16
 ; CHECK:   initializer(fMMInit)
 ; CHECK:   accumulator(fMMAccumulator)
 ; CHECK:   combiner(fMMCombiner)
 ; CHECK:   outconverter(fMMOutConverter)
-; CHECK: exportReduceNewList[4]: fz - 0x00000009 - 1 - 4
+; CHECK: exportReduceList[4]: fz - 0x00000009 - 1 - 4
 ; CHECK:   initializer(fzInit)
 ; CHECK:   accumulator(fzAccum)
 ; CHECK:   combiner(fzCombine)
 ; CHECK:   halter(fzFound)
-; CHECK: exportReduceNewList[5]: fz2 - 0x00000019 - 1 - 8
+; CHECK: exportReduceList[5]: fz2 - 0x00000019 - 1 - 8
 ; CHECK:   initializer(fz2Init)
 ; CHECK:   accumulator(fz2Accum)
 ; CHECK:   combiner(fz2Combine)
 ; CHECK:   halter(fz2Found)
-; CHECK: exportReduceNewList[6]: histogram - 0x00000001 - 1 - 1024
+; CHECK: exportReduceList[6]: histogram - 0x00000001 - 1 - 1024
 ; CHECK:   accumulator(hsgAccum)
 ; CHECK:   combiner(hsgCombine)
-; CHECK: exportReduceNewList[7]: mode - 0x00000001 - 1 - 1024
+; CHECK: exportReduceList[7]: mode - 0x00000001 - 1 - 1024
 ; CHECK:   accumulator(hsgAccum)
 ; CHECK:   combiner(hsgCombine)
 ; CHECK:   outconverter(modeOutConvert)

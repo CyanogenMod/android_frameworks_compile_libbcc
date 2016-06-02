@@ -75,17 +75,15 @@ public:
     size_t exportFuncCount = me.getExportFuncCount();
     size_t exportForEachCount = me.getExportForEachSignatureCount();
     size_t exportReduceCount = me.getExportReduceCount();
-    size_t exportReduceNewCount = me.getExportReduceNewCount();
     size_t objectSlotCount = me.getObjectSlotCount();
     size_t pragmaCount = me.getPragmaCount();
     const char **exportVarNameList = me.getExportVarNameList();
     const char **exportFuncNameList = me.getExportFuncNameList();
     const char **exportForEachNameList = me.getExportForEachNameList();
-    const char **exportReduceNameList = me.getExportReduceNameList();
     const uint32_t *exportForEachSignatureList =
         me.getExportForEachSignatureList();
-    const bcinfo::MetadataExtractor::ReduceNew *exportReduceNewList =
-        me.getExportReduceNewList();
+    const bcinfo::MetadataExtractor::Reduce *exportReduceList =
+        me.getExportReduceList();
     const uint32_t *objectSlotList = me.getObjectSlotList();
     const char **pragmaKeyList = me.getPragmaKeyList();
     const char **pragmaValueList = me.getPragmaValueList();
@@ -97,18 +95,17 @@ public:
     // We use a simple text format here that the compatibility library
     // can easily parse. Each section starts out with its name
     // followed by a count.  The count denotes the number of lines to
-    // parse for that particular category. Variables and Functions and
-    // simple reduce kernels merely put the appropriate identifier on
-    // the line. ForEach kernels have the encoded int signature,
-    // followed by a hyphen followed by the identifier (function to
-    // look up). General reduce kernels have the encoded int
-    // signature, followed by a hyphen followed by the accumulator
-    // data size, followed by a hyphen followed by the identifier
-    // (reduction name); and then for each possible constituent
-    // function, a hyphen followed by the identifier (function name)
-    // -- in the case where the function is omitted, "." is used in
-    // place of the identifier.  Object Slots are just listed as one
-    // integer per line.
+    // parse for that particular category. Variables and Functions
+    // merely put the appropriate identifier on the line. ForEach
+    // kernels have the encoded int signature, followed by a hyphen
+    // followed by the identifier (function to look up). General
+    // reduce kernels have the encoded int signature, followed by a
+    // hyphen followed by the accumulator data size, followed by a
+    // hyphen followed by the identifier (reduction name); and then
+    // for each possible constituent function, a hyphen followed by
+    // the identifier (function name) -- in the case where the
+    // function is omitted, "." is used in place of the identifier.
+    // Object Slots are just listed as one integer per line.
 
     s << "exportVarCount: " << exportVarCount << "\n";
     for (i = 0; i < exportVarCount; ++i) {
@@ -127,24 +124,19 @@ public:
     }
 
     s << "exportReduceCount: " << exportReduceCount << "\n";
+    auto reduceFnName = [](const char *Name) { return Name ? Name : "."; };
     for (i = 0; i < exportReduceCount; ++i) {
-      s << exportReduceNameList[i] << "\n";
-    }
-
-    s << "exportReduceNewCount: " << exportReduceNewCount << "\n";
-    auto reduceNewFnName = [](const char *Name) { return Name ? Name : "."; };
-    for (i = 0; i < exportReduceNewCount; ++i) {
-      const bcinfo::MetadataExtractor::ReduceNew &reduceNew = exportReduceNewList[i];
-      s << reduceNew.mSignature << " - "
-        << reduceNew.mAccumulatorDataSize << " - "
-        << reduceNew.mReduceName << " - "
-        << reduceNewFnName(reduceNew.mInitializerName) << " - "
-        << reduceNewFnName(reduceNew.mAccumulatorName) << " - "
-        << ((reduceNew.mCombinerName != nullptr)
-            ? reduceNew.mCombinerName
-            : nameReduceNewCombinerFromAccumulator(reduceNew.mAccumulatorName)) << " - "
-        << reduceNewFnName(reduceNew.mOutConverterName) << " - "
-        << reduceNewFnName(reduceNew.mHalterName)
+      const bcinfo::MetadataExtractor::Reduce &reduce = exportReduceList[i];
+      s << reduce.mSignature << " - "
+        << reduce.mAccumulatorDataSize << " - "
+        << reduce.mReduceName << " - "
+        << reduceFnName(reduce.mInitializerName) << " - "
+        << reduceFnName(reduce.mAccumulatorName) << " - "
+        << ((reduce.mCombinerName != nullptr)
+            ? reduce.mCombinerName
+            : nameReduceCombinerFromAccumulator(reduce.mAccumulatorName)) << " - "
+        << reduceFnName(reduce.mOutConverterName) << " - "
+        << reduceFnName(reduce.mHalterName)
         << "\n";
     }
 

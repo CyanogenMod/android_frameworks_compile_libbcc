@@ -354,12 +354,10 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
   size_t exportFuncCount = me.getExportFuncCount();
   size_t exportForEachCount = me.getExportForEachSignatureCount();
   size_t exportReduceCount = me.getExportReduceCount();
-  size_t exportReduceNewCount = me.getExportReduceNewCount();
   const char **exportVarNameList = me.getExportVarNameList();
   const char **exportFuncNameList = me.getExportFuncNameList();
   const char **exportForEachNameList = me.getExportForEachNameList();
-  const char **exportReduceNameList = me.getExportReduceNameList();
-  const bcinfo::MetadataExtractor::ReduceNew *exportReduceNewList = me.getExportReduceNewList();
+  const bcinfo::MetadataExtractor::Reduce *exportReduceList = me.getExportReduceList();
   size_t i;
 
   for (i = 0; i < exportVarCount; ++i) {
@@ -370,32 +368,29 @@ bool Compiler::addInternalizeSymbolsPass(Script &pScript, llvm::legacy::PassMana
     export_symbols.push_back(exportFuncNameList[i]);
   }
 
-  // Expanded foreach and reduce functions should not be internalized;
-  // nor should general reduction initializer, combiner, and
-  // outconverter functions. keep_funcs keeps the names of these
-  // functions around until createInternalizePass() is finished making
-  // its own copy of the visible symbols.
+  // Expanded foreach functions should not be internalized; nor should
+  // general reduction initializer, combiner, and outconverter
+  // functions. keep_funcs keeps the names of these functions around
+  // until createInternalizePass() is finished making its own copy of
+  // the visible symbols.
   std::vector<std::string> keep_funcs;
-  keep_funcs.reserve(exportForEachCount + exportReduceCount + exportReduceNewCount*4);
+  keep_funcs.reserve(exportForEachCount + exportReduceCount*4);
 
   for (i = 0; i < exportForEachCount; ++i) {
     keep_funcs.push_back(std::string(exportForEachNameList[i]) + ".expand");
   }
-  for (i = 0; i < exportReduceCount; ++i) {
-    keep_funcs.push_back(std::string(exportReduceNameList[i]) + ".expand");
-  }
   auto keepFuncsPushBackIfPresent = [&keep_funcs](const char *Name) {
     if (Name) keep_funcs.push_back(Name);
   };
-  for (i = 0; i < exportReduceNewCount; ++i) {
-    keep_funcs.push_back(std::string(exportReduceNewList[i].mAccumulatorName) + ".expand");
-    keepFuncsPushBackIfPresent(exportReduceNewList[i].mInitializerName);
-    if (exportReduceNewList[i].mCombinerName != nullptr) {
-      keep_funcs.push_back(exportReduceNewList[i].mCombinerName);
+  for (i = 0; i < exportReduceCount; ++i) {
+    keep_funcs.push_back(std::string(exportReduceList[i].mAccumulatorName) + ".expand");
+    keepFuncsPushBackIfPresent(exportReduceList[i].mInitializerName);
+    if (exportReduceList[i].mCombinerName != nullptr) {
+      keep_funcs.push_back(exportReduceList[i].mCombinerName);
     } else {
-      keep_funcs.push_back(nameReduceNewCombinerFromAccumulator(exportReduceNewList[i].mAccumulatorName));
+      keep_funcs.push_back(nameReduceCombinerFromAccumulator(exportReduceList[i].mAccumulatorName));
     }
-    keepFuncsPushBackIfPresent(exportReduceNewList[i].mOutConverterName);
+    keepFuncsPushBackIfPresent(exportReduceList[i].mOutConverterName);
   }
 
   for (auto &symbol_name : keep_funcs) {
